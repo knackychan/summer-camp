@@ -48,39 +48,18 @@
         <div class="kid-grid" id="overview"></div>
       </section>
 
-      <section class="panel comms-panel">
-        <div class="section-head">
-          <h2 class="section-title">Messages 訊息</h2>
-          <label class="toggle-line"><input type="checkbox" id="showArchivedAsks"> Show archived 顯示封存</label>
+      <details class="fold" data-fold="note">
+        <summary>Papa's daily message 爸爸每日留言<span class="fold__count" id="foldCountNote"></span></summary>
+        <div class="fold__body">
+          <p class="compact-copy" id="noteDay"></p>
+          <label class="field">
+            <span>Message for today 給今天的留言</span>
+            <textarea class="input textarea" id="noteBody" placeholder="Have a brave, kind day! 今天也要勇敢又溫柔！"></textarea>
+          </label>
+          <p class="message message--ok" id="noteStatus"></p>
+          <button class="btn" id="saveNoteBtn">Save message 儲存留言</button>
         </div>
-        <div class="comms-layout">
-          <div class="message-composer">
-            <h3 class="subsection-title">Papa's daily message 爸爸每日留言</h3>
-            <p class="compact-copy" id="noteDay"></p>
-            <label class="field">
-              <span>Message for today 給今天的留言</span>
-              <textarea class="input textarea" id="noteBody" placeholder="Have a brave, kind day! 今天也要勇敢又溫柔！"></textarea>
-            </label>
-            <p class="message message--ok" id="noteStatus"></p>
-            <button class="btn" id="saveNoteBtn">Save message 儲存留言</button>
-          </div>
-          <div class="inbox-panel">
-            <h3 class="subsection-title">Ask inbox 求助收件匣</h3>
-            <div id="askInbox"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2 class="section-title">Captain claims 隊長申請</h2>
-        <p class="message message--error" id="helpClaimsStatus"></p>
-        <div id="helpClaims"></div>
-      </section>
-
-      <section class="panel">
-        <h2 class="section-title">Pass requests 券申請</h2>
-        <div id="passes"></div>
-      </section>
+      </details>
 
       <details class="fold" data-fold="acts">
         <summary>Activities ticked today 今天完成的活動<span class="fold__count" id="foldCountActs"></span></summary>
@@ -144,17 +123,44 @@
   </aside>
 
   <aside class="rail rail--right hidden" id="railRight">
-    <section class="panel notify-panel">
+    <section class="panel chat-panel">
       <div class="section-head">
-        <h2 class="section-title">Live notifications 即時通知</h2>
-        <span class="pill" id="notifyStatus">Dashboard only 只在頁面內</span>
+        <h2 class="section-title">💬 Conversation 對話</h2>
+        <span class="pill gold" id="chatNeedsBadge">0</span>
+        <button class="btn btn--secondary btn--icon" id="notifyEnableBtn" title="Windows notifications Windows通知">🔔</button>
+        <button class="btn btn--secondary btn--icon" id="notifyClearBtn" title="Clear feed 清除">🧹</button>
       </div>
-      <div class="row">
-        <button class="btn" id="notifyEnableBtn">Enable Windows notifications 開啟Windows通知</button>
-        <button class="btn btn--secondary" id="notifyClearBtn">Clear 清除</button>
+      <p class="pill" id="notifyStatus">Dashboard only 只在頁面內</p>
+
+      <div class="chat-filters" id="chatKidFilter" role="group" aria-label="Filter by kid 依孩子篩選"></div>
+      <div class="chat-filters" id="chatTypeFilter" role="group" aria-label="Filter by kind 依種類篩選"></div>
+
+      <div class="chat-pin" id="chatPin"></div>
+
+      <div class="chat-stream" id="chatStream" role="log" aria-live="polite"></div>
+      <button class="btn chat-jump hidden" id="chatJump">New messages ↓ 新訊息</button>
+
+      <p class="message message--error" id="helpClaimsStatus"></p>
+
+      <div class="chat-send">
+        <select class="input" id="chatTo" aria-label="Send to 傳給">
+          <option value="all">All 全部</option>
+          <option value="lucien">Lucien</option>
+          <option value="lili">Lili</option>
+          <option value="luis">Luis</option>
+        </select>
+        <textarea class="input textarea chat-input" id="chatBody" rows="2" placeholder="Message… 訊息…"></textarea>
+        <button class="btn btn--icon" id="chatSend" title="Send 送出">↑</button>
       </div>
-      <div class="notify-feed" id="notifyFeed" role="log" aria-live="polite"></div>
+      <label class="toggle-line"><input type="checkbox" id="showArchivedAsks"> Show archived 顯示封存</label>
     </section>
+
+    <details class="fold" data-fold="notify">
+      <summary>🔔 Raw feed 原始通知<span class="fold__count" id="foldCountNotify"></span></summary>
+      <div class="fold__body">
+        <div class="notify-feed" id="notifyFeed" role="log" aria-live="polite"></div>
+      </div>
+    </details>
   </aside>
 </main>
 <div class="gallery hidden" id="gallery" role="dialog" aria-label="Dinner gallery 晚餐播放">
@@ -172,6 +178,7 @@
 <script src="js/day-data.js"></script>
 <script src="js/act-data.js"></script>
 <script src="js/time-core.js"></script>
+<script src="js/chat-core.js"></script>
 <script src="js/admin.js"></script>
 <script>
 if("serviceWorker" in navigator){
