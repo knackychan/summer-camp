@@ -33,7 +33,7 @@ The goal: make adding an arcade game cost what adding a brain game costs — one
 |---|---|
 | D1 | **Full migration.** All nine arcade games move out of `index.html` into `js/games/*.js`. This explicitly authorises touching working gameplay, which CLAUDE.md otherwise forbids. |
 | D2 | **ES modules with lazy `import()`**, replacing the IIFE-plus-`<script>`-tag idiom for game files. |
-| D3 | **3D engine deferred.** The registry is designed so a 3D game is a drop-in plugin; the engine is chosen in slice 22, after the seam is proven with a throwaway cube. |
+| D3 | **Three.js, vendored and lazy-loaded.** Papa chose Three.js. It is vendored into `js/vendor/` (never a CDN, per offline-first), added to `APP_SHELL`, and loaded by dynamic `import()` only when a 3D game starts — so it costs nothing on the tablets and sessions that never open one. The **version is pinned to a build that parses on the Android 8 tablets** and verified there before any game is written; see §6. |
 | D4 | Behaviour preservation is the acceptance bar **for the migration slices (17–20)**, and only for them. Papa has confirmed gameplay itself will change afterwards; this bar exists so those changes arrive as their own small reviewable diffs, not smuggled inside 3000 lines of code movement. A migration slice that "improves" a game while moving it is not done — it is two changes wearing one hat. |
 | D5 | Gameplay changes are expected after slice 20 and are **out of scope for this design**. Each gets its own brainstorm and slice against the new registry. |
 
@@ -95,7 +95,7 @@ SQGames.register(mod.default);
 
 **Offline is preserved by precaching, not by eager parsing.** `sw.js` precaches `APP_SHELL` at install (`sw.js:29`), so every `js/games/*.js` file is on the tablet before a kid ever taps the game; `import()` then resolves from cache with wifi off. The offline-first non-negotiable holds. What lazy loading removes is *parse* cost, not availability: Lucien opening Big Machines no longer parses Orc Attack, Word Wizard and City Drive.
 
-This also keeps the deferred 3D decision cheap. If slice 22 lands on a vendored engine, it parses only when the 3D game starts, on the tablet that started it — instead of taxing every open on every device.
+This also keeps the deferred 3D decision cheap. Three.js is roughly 600 KB; lazy `import()` means it parses only when the 3D game starts, on the tablet that started it, instead of taxing every open on every device. Eager loading would have made vendoring it a tax on all three kids.
 
 **Secondary win:** `brain-core.js:4` currently does `typeof window!=="undefined" ? window.SQBrainData : require("./brain-data.js")`, a dual-mode hack existing only so one file can be both a browser global and a node test import. Under ESM that becomes a plain `import`. `scripts/core.test.mjs` is already `.mjs`, so tests get simpler, not harder.
 
@@ -126,9 +126,18 @@ Two additions make that real rather than theoretical:
 - **`ctx.mount`** — so a game can own its DOM instead of being handed one fixed canvas.
 - **WebGL context-loss handling in the host** — tablets drop GL contexts on background/resume. Without a `webglcontextlost` / `webglcontextrestored` path, a kid switching apps returns to a black screen. This is the one requirement 3D has that 2D never did.
 
-**Proof (slice 21):** a throwaway spinning-cube game, raw WebGL, roughly 80 lines, behind a dev flag, not in the games grid. If a cube can register, render, survive a tab switch and tear down cleanly through the same contract as Dig Site, the seam holds and the engine choice is genuinely deferrable. If it cannot, we learn that for 80 lines instead of after vendoring 600 KB.
+### Three.js version pinning — the constraint that picks the build
 
-**Slice 22 chooses the engine** with that evidence in hand. Candidates recorded, not decided: hand-rolled WebGL (0 KB, no models), vendored Three.js (~600 KB, real 3D, lazy-loaded), CSS 3D transforms (no canvas, tens of elements max). Whichever wins, it is vendored into the repo and added to `APP_SHELL` — no CDN, per the offline-first non-negotiable.
+`scripts/check.mjs:41-43` bans `?.`, `??` and `.flatMap` because the tablets run Android 8 with Chrome older than 80. **Modern Three.js builds use exactly that syntax**, so "latest" is not an option: a current `three.module.js` would parse-error on the tablets and the 3D game would never start. Two constraints therefore fix the version:
+
+1. **Syntax:** the vendored build must not contain `?.` or `??`. Optional chaining reached Chrome 80; a build that uses it excludes the target device.
+2. **WebGL1:** Three.js removed the WebGL1 renderer in r167. If the tablets report no WebGL2, the build must predate that.
+
+Slice 21 resolves both empirically — it probes the tablet for its Chrome version and WebGL2 support, then pins the newest Three.js release satisfying what it found, and records the version and the reason in `js/vendor/README.md`. Nothing is guessed. The vendored file is excluded from the `runtimeFiles` syntax scan (it is third-party and pinned deliberately), and a dedicated check asserts it stays free of the two banned operators — which is the same guarantee, applied where it belongs.
+
+**Proof (slice 21):** a throwaway spinning-cube game behind a dev flag, not in the games grid, built on the vendored Three.js. If a cube can register, render, survive a tab switch and tear down cleanly through the same contract as Dig Site — on a real tablet — the seam holds and the engine is proven. Failing here costs one file instead of a whole game.
+
+**Slice 22 builds the real 3D game** on that foundation.
 
 ## 7. Verification
 
@@ -151,8 +160,8 @@ Each ships independently and leaves the app working.
 | 18 | Keyboard games | `hunt`, `home`, `race`, `balloon`, `orc` |
 | 19 | Complex two | `vocab`, `machines` — largest settings surface |
 | 20 | Delete legacy | if/else chain, `renderSetbar` branches, `noKb`, shared `stopArena`, global `state`. `index.html` → roughly 60 KB |
-| 21 | 3D seam | `ctx.mount`, context-loss handling, spinning-cube proof behind a dev flag |
-| 22 | Real 3D game | engine chosen here |
+| 21 | 3D seam + Three.js | tablet capability probe, pinned Three.js vendored into `js/vendor/`, `ctx.mount`, WebGL context-loss handling, spinning-cube proof behind a dev flag |
+| 22 | Real 3D game | the game itself, on the proven seam |
 
 Slices 15–20 deliver the scalability win alone. 21–22 are the 3D track and can wait.
 
