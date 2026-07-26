@@ -1,3 +1,6 @@
+<!doctype html>
+<html lang="en">
+<head>
 <!-- SUMMER QUEST — games, missions & the daily plan for Lucien (4), Lili (7) & Luis (9). Self-contained, offline. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -267,8 +270,10 @@ button:disabled{cursor:default}
 .dayrow.now{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,201,60,.18),0 0 28px rgba(255,201,60,.18)}
 .dayrow.next{border-color:rgba(78,168,255,.65)}
 .dayrow.past{border-color:rgba(255,201,60,.72);background:rgba(255,201,60,.10)}
+.dayrow.excused{border-color:rgba(61,220,151,.55);background:rgba(61,220,151,.08)}
 .dayrow .dtime{flex:0 0 52px;font-family:'Fredoka';font-weight:700;font-size:14px;color:var(--gold);
   text-align:center;padding-top:3px}
+.movedflag{display:block;font-size:.6em;color:var(--ok);opacity:.9}
 .dayrow .dmid{flex:1;min-width:0}
 .dayrow .dt-title{font-family:'Fredoka';font-weight:600;font-size:16px}
 .dayrow .dt-mis{color:var(--ink);font-weight:700;font-size:14px;margin-top:3px;line-height:1.4}
@@ -319,6 +324,8 @@ button:disabled{cursor:default}
 .card p{color:var(--muted);font-weight:800;margin:6px 0 18px}
 .mute{margin-left:auto}
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <!-- HOME -->
@@ -444,7 +451,10 @@ button:disabled{cursor:default}
 <canvas id="confetti"></canvas>
 
 <script src="js/config.js"></script>
+<script src="js/day.js"></script>
 <script src="js/sync.js"></script>
+<script src="js/day-data.js"></script>
+<script src="js/time-core.js"></script>
 <script>
 /* ============ DATA ============ */
 const KIDS = {
@@ -538,7 +548,7 @@ const SENT=[
  ["why are you sad","😢","pourquoi es-tu triste","你為什麼難過"],
  ["when do we eat","🥄","quand mange-t-on","我們什麼時候吃飯"],
 ];
-const ALL_WORDS=Object.values(VOCAB).flatMap(p=>p.words);
+const ALL_WORDS=Object.values(VOCAB).reduce((all,p)=>all.concat(p.words),[]);
 /* ---- SUMMER CAMP data (from summer_schedule_kids.xlsx: Activity Bank + Photo Missions) ---- */
 const BANK=[
  {icon:"🤸",cat:"Roof gym — motricity",catz:"屋頂健身房——動作力",
@@ -638,44 +648,6 @@ homework:{
  luis:[["Summer homework — one page, then check it yourself ✏️", "暑假作業——寫一頁，然後自己檢查 ✏️"]],
 },
 };
-/* the day plan — from the Daily Rhythm sheet (EN + 中文) */
-const DAY=[
- {t:"8:00",icon:"☀️",title:"Wake up — dress & make your bed",tz:"起床——穿衣、鋪床",kind:"routine",
-  txt:{lucien:"Dress and shoes — a buddy helps",lili:"Dress, hair, make your bed",luis:"Open the windows — captain the morning"},
-  txtz:{lucien:"穿衣穿鞋——夥伴幫忙",lili:"穿衣、梳頭、鋪床",luis:"開窗——當早晨的隊長"}},
- {t:"8:15",icon:"🥐",title:"Breakfast + kitchen job",tz:"早餐＋廚房工作",kind:"routine",
-  txt:{lucien:"Carry your bowl, help set the table",lili:"Do your chore of the week",luis:"Do your chore of the week"},
-  txtz:{lucien:"端碗、幫忙擺餐桌",lili:"做本週家事",luis:"做本週家事"}},
- {t:"8:45",icon:"🎯",title:"Skill block",tz:"技能時間",kind:"mission",pool:"skill"},
- {t:"9:30",icon:"📚",title:"Reading — quiet & comfy",tz:"閱讀——安靜舒服",kind:"routine",
-  txt:{lucien:"Picture books, or listen to a story",lili:"Read a page aloud to someone",luis:"Chapter book — 20 quiet minutes"},
-  txtz:{lucien:"看圖畫書或聽故事",lili:"大聲唸一頁給別人聽",luis:"章節書——安靜20分鐘"}},
- {t:"10:00",icon:"✏️",title:"Homework",tz:"暑假作業",kind:"mission",pool:"homework"},
- {t:"11:15",icon:"📱",title:"Screen #1 — 45 min, earned",tz:"螢幕#1——45分鐘（要先賺到）",kind:"routine",
-  txt:{lucien:"Only if your morning boxes are ticked ✓",lili:"Only if skill + reading are ticked ✓",luis:"Only if skill + reading are ticked ✓ — set your own timer"},
-  txtz:{lucien:"早上的格子打勾才可以 ✓",lili:"技能＋閱讀打勾才可以 ✓",luis:"技能＋閱讀打勾 ✓——自己設定時器"}},
- {t:"12:00",icon:"🍽",title:"Lunch + kitchen job",tz:"午餐＋廚房工作",kind:"routine",
-  txt:{lucien:"Napkins, carry your plate",lili:"Chore of the week",luis:"Chore of the week"},
-  txtz:{lucien:"餐巾、端自己的盤子",lili:"本週家事",luis:"本週家事"}},
- {t:"12:45",icon:"🤫",title:"Quiet hour — peak heat",tz:"安靜時間——最熱的時候",kind:"routine",
-  txt:{lucien:"Nap time 😴",lili:"Rest or audiobook",luis:"Read or a quiet hobby"},
-  txtz:{lucien:"午睡 😴",lili:"休息或聽有聲書",luis:"閱讀或安靜的嗜好"}},
- {t:"14:00",icon:"🧩",title:"Project time",tz:"專題時間",kind:"mission",pool:"project"},
- {t:"15:45",icon:"📱",title:"Screen #2 — 45 min, earned",tz:"螢幕#2——45分鐘（要先賺到）",kind:"routine",
-  txt:{lucien:"Boxes ticked ✓ then videos or a game",lili:"Boxes ticked ✓ then Minecraft or a game",luis:"Boxes ticked ✓ then Minecraft or a game"},
-  txtz:{lucien:"格子打勾✓再看影片或玩遊戲",lili:"格子打勾✓再玩Minecraft或遊戲",luis:"格子打勾✓再玩Minecraft或遊戲"}},
- {t:"16:30",icon:"🧠",title:"Free — invent your own game",tz:"自由——發明你自己的遊戲",kind:"mission",pool:"boredom"},
- {t:"17:15",icon:"⚽",title:"Sport & move (when it cools)",tz:"運動時間（涼快時）",kind:"mission",pool:"sport"},
- {t:"18:00",icon:"🧹",title:"Tidy patrol + house help",tz:"整理巡邏＋家事幫手",kind:"mission",pool:"house"},
- {t:"18:30",icon:"🍽",title:"Dinner + kitchen job",tz:"晚餐＋廚房工作",kind:"routine",
-  txt:{lucien:"Carry your plate",lili:"Chore of the week",luis:"Chore + help cook"},
-  txtz:{lucien:"端你的盤子",lili:"本週家事",luis:"家事＋幫忙煮飯"}},
- {t:"19:30",icon:"🌙",title:"Bath, family game, bed",tz:"洗澡、家庭遊戲、睡覺",kind:"routine",
-  txt:{lucien:"Bed 20:30",lili:"Lights out 21:00",luis:"Lights out 21:15"},
-  txtz:{lucien:"8點30分睡覺",lili:"9點熄燈",luis:"9點15分熄燈"}},
- {t:"✨",icon:"📸",title:"Bonus — photo mission of the day",tz:"加碼——今日照片任務",kind:"mission",pool:"photo"},
-];
-
 /* 🧭 LEARN — learning-to-learn guides (EN + 中文) */
 const LEARN_GUIDES={
 know:{icon:"🔎",title:"I want to KNOW something",tz:"我想「知道」一件事",
@@ -1819,7 +1791,7 @@ let parts=[]; let fxRaf=null;
 function sizeCvs(){cvs.width=innerWidth;cvs.height=innerHeight;} sizeCvs(); addEventListener("resize",sizeCvs);
 const COLORS=["#3DDC97","#FF6FB5","#4EA8FF","#FFC93C","#A78BFA","#34D399"];
 function burst(n,px,py){
-  const x=px??innerWidth/2, y=py??innerHeight*0.42;
+  const x=px!=null?px:innerWidth/2, y=py!=null?py:innerHeight*0.42;
   for(let i=0;i<n;i++)parts.push({x,y,
     vx:(Math.random()-.5)*10,vy:Math.random()*-9-3,g:.35,
     s:Math.random()*8+5,c:rand(COLORS),life:60,rot:Math.random()*6});
@@ -1855,28 +1827,12 @@ document.getElementById("muteHome").onclick=toggleMute;
 
 /* ============ KID HUB ============ */
 let hubKid=null, actIdx=null, actTimerInt=null, actTimerLeft=0, actTimerTotal=0;
-function taipeiParts(date=new Date()){
-  return new Intl.DateTimeFormat("en-CA",{
-    timeZone:"Asia/Taipei",year:"numeric",month:"2-digit",day:"2-digit",
-    hour:"2-digit",minute:"2-digit",hour12:false
-  }).formatToParts(date).reduce((a,p)=>(a[p.type]=p.value,a),{});
-}
-const todayStr=()=>{const p=taipeiParts();return `${p.year}-${p.month}-${p.day}`;};
-const nowMins=()=>{const p=taipeiParts();return (+p.hour%24)*60+(+p.minute);};
-function blockMins(b){
-  if(!b||!String(b.t).includes(":"))return null;
-  const [h,m]=b.t.split(":").map(Number);
-  return h*60+m;
-}
-function timelineInfo(){
-  const now=nowMins(), timed=DAY.map((b,i)=>({i,t:blockMins(b)})).filter(x=>x.t!=null);
-  let current=timed[0]?.i??0, next=null;
-  for(let n=0;n<timed.length;n++){
-    if(timed[n].t<=now) current=timed[n].i;
-    if(timed[n].t>now){next=timed[n].i;break;}
-  }
-  return {now,current,next};
-}
+/* day/time via the single shared helper js/day.js (pinned FAMILY_TZ) */
+const todayStr=()=>SQ_DAY.iso();
+const nowMins=()=>SQ_DAY.nowMins();
+let dayOverrides={}; /* {blockIdx:"HH:MM"} — today only */
+const effT=i=>dayOverrides[i]!=null?dayOverrides[i]:DAY[i].t;
+function timelineInfo(){return SQTime.timelineInfo(DAY,dayOverrides,nowMins());}
 function actsToday(id){
   const P=progress[id];
   if(!P.actsDay||P.actsDay.d!==todayStr()) P.actsDay={d:todayStr(),done:{}};
@@ -1909,7 +1865,7 @@ function canRerollMission(id,i){
 }
 function screenStatus(i,d){
   if(!String(DAY[i].title).includes("Screen"))return "";
-  const needed=DAY.map((_,idx)=>idx).filter(idx=>idx<i&&blockMins(DAY[idx])!=null);
+  const needed=SQTime.neededBefore(DAY,dayOverrides,i);
   const earned=needed.every(idx=>d.done[idx]);
   return earned
     ? `<span class="screenflag">🔓 Earned screen window 螢幕時間已解鎖</span>`
@@ -1927,17 +1883,17 @@ function proofUrl(path){
 }
 function passText(p){
   if(!p)return "";
-  const kind=p.kind==="golden"?"Golden pass 黃金券":"Excused pass 請假券";
+  const kind=p.kind==="golden"?"🎟️ Golden pass 黃金券":"🤝 Excused pass 請假券";
   if(p.status==="requested")return `${kind} requested 已申請`;
   if(p.status==="granted")return `${kind} approved 已核准`;
   if(p.status==="spent")return `${kind} used 已使用`;
   return `${kind} denied 未核准`;
 }
 function timeFlag(i,isDone,info){
-  if(isDone||blockMins(DAY[i])==null)return "";
+  if(isDone||SQTime.effMins(DAY,dayOverrides,i)==null)return "";
   if(i===info.current)return `<span class="timeflag">Now 現在</span>`;
   if(i===info.next)return `<span class="timeflag">Next 下一個</span>`;
-  if(blockMins(DAY[i])<info.now)return `<span class="timeflag">You can still start! 還來得及開始！</span>`;
+  if(SQTime.effMins(DAY,dayOverrides,i)<info.now)return `<span class="timeflag">You can still start! 還來得及開始！</span>`;
   return "";
 }
 function renderMyDay(){
@@ -1945,15 +1901,17 @@ function renderMyDay(){
   const total=DAY.length, done=Object.keys(d.done).length;
   document.getElementById("dayFill").style.width=(done/total*100)+"%";
   document.getElementById("dayTxt").textContent=done+" / "+total+(done>=total?"  — DAY COMPLETE! 全部完成！🌟":"");
-  const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${store.papaNote}</div>`:"";
+  const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${escHtml(store.papaNote)}</div>`:"";
   document.getElementById("dayList").innerHTML=
     note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div>`+
-    DAY.map((b,i)=>{
+    SQTime.displayOrder(DAY,dayOverrides).map(i=>{
+      const b=DAY[i];
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
       const pass=passFor(hubKid,i), proof=proofFor(hubKid,i);
-      const rowState=isDone?"done":i===info.current?"now":i===info.next?"next":blockMins(b)!=null&&blockMins(b)<info.now?"past":"";
-      return `<div class="dayrow ${b.kind} ${rowState}" data-row="${i}">
-        <div class="dtime">${b.t}</div>
+      const rowState=isDone?"done":i===info.current?"now":i===info.next?"next":SQTime.effMins(DAY,dayOverrides,i)!=null&&SQTime.effMins(DAY,dayOverrides,i)<info.now?"past":"";
+      const excused=pass&&pass.kind==="excused"&&pass.status==="spent";
+      return `<div class="dayrow ${b.kind} ${rowState}${excused?" excused":""}" data-row="${i}">
+        <div class="dtime">${effT(i)}${dayOverrides[i]!=null?`<span class="movedflag">moved 已調整</span>`:""}</div>
         <div class="dmid">
           <div class="dt-title">${b.icon} ${b.title}<span class="zht">${b.tz||""}</span></div>
           <div class="dt-mis ${b.kind}">${b.kind==="mission"
@@ -1965,7 +1923,7 @@ function renderMyDay(){
         </div>
         <div class="dbtns">
           <button class="btn small tick" data-done="${i}"
-            style="${isDone?'background:var(--ok);color:#1c1436':''}">${isDone?"✓":"✓ 完成"}</button>
+            style="${isDone?'background:var(--ok);color:#1c1436':''}">${isDone?(excused?"🤝":"✓"):"✓ 完成"}</button>
           ${!isDone&&canRerollMission(hubKid,i)?`<button class="btn small tick" data-rr="${i}">🎲</button>`:""}
           ${b.kind==="mission"&&!isDone&&!pass?`<button class="btn small tick" data-pass="${i}">🎟️</button>`:""}
           ${pass&&pass.status==="granted"&&!isDone?`<button class="btn small tick" data-usepass="${pass.id}" data-i="${i}">Use 使用</button>`:""}
@@ -2034,6 +1992,9 @@ async function usePass(id,i){
   const {error}=await store.spendPass(id,todayStr(),i);
   if(error){sBad();return;}
   const d=dayState(hubKid); d.done[i]=true;
+  if(Object.keys(d.done).length>=DAY.length){
+    progress[hubKid].stars=(progress[hubKid].stars||0)+2; sWin(); burst(60); bigFloat("🌟");
+  }
   await saveProgress(); sGood(); await store.hydrate(); renderMyDay(); renderHubHead();
 }
 async function uploadProof(i,file){
@@ -2044,7 +2005,7 @@ async function uploadProof(i,file){
 }
 let lastTimelineBlock=null;
 function announceBlock(i){
-  const b=DAY[i]; if(!b||blockMins(b)==null)return;
+  const b=DAY[i]; if(!b||SQTime.effMins(DAY,dayOverrides,i)==null)return;
   const en=`${b.title.split("—")[0].trim()} time!`;
   const zh=`${(b.tz||"").split("——")[0].split("（")[0].trim()}時間到了`;
   sWin(); say(en,"en-US"); setTimeout(()=>say(zh,"zh-TW",true),900);
@@ -2294,7 +2255,7 @@ function renderCaptain(){
   document.getElementById("claimList").innerHTML=claims.map(c=>`
     <article class="askcard ${c.status==="approved"?"answered":c.status==="denied"?"":"open"}">
       <div class="askmeta">
-        <span>${KIDS[c.helped_kid_id]?.name||"Sibling"} 家人</span>
+        <span>${(KIDS[c.helped_kid_id]&&KIDS[c.helped_kid_id].name)||"Sibling"} 家人</span>
         <span>${claimStatusText(c.status)}</span>
         <span>${new Date(c.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>
       </div>
@@ -2325,7 +2286,7 @@ const ASK_CANNED=[
   ["I finished and need a check","我完成了，需要檢查"]
 ];
 let askRows=[], askRecorder=null, askChunks=[];
-const escHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const escHtml=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 function askSeenKey(id){return `sq:askSeen:${id}`;}
 function askAudioUrl(path){return store&&store.supabase&&path?store.supabase.storage.from("voices").getPublicUrl(path).data.publicUrl:"";}
 async function fetchAsks(id){
@@ -2454,3 +2415,5 @@ if("serviceWorker" in navigator){
 }
 (async()=>{ await loadProgress(); renderHome(); setupRealtime(); startTimelineWatcher(); })();
 </script>
+</body>
+</html>

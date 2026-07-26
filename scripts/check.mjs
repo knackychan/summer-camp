@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const root = new URL("..", import.meta.url);
 const failures = [];
@@ -16,6 +17,7 @@ const assertPair = (value, where) => {
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
+const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/time-core.js", "js/sync.js", "js/admin.js", "sw.js"];
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -34,6 +36,13 @@ try {
   rmSync(tmp, { recursive: true, force: true });
 }
 
+for (const file of runtimeFiles) {
+  const text = readFileSync(new URL(file, root), "utf8");
+  if (/\?\./.test(text)) fail("android 8 syntax", `${file} contains optional chaining`);
+  if (/\?\?/.test(text)) fail("android 8 syntax", `${file} contains nullish coalescing`);
+  if (/\.flatMap\s*\(/.test(text)) fail("android 8 syntax", `${file} contains Array.prototype.flatMap`);
+}
+
 try {
   const marker = "/* finger map";
   const markerIndex = appScript.indexOf(marker);
@@ -41,7 +50,9 @@ try {
     throw new Error(`missing ${marker} marker`);
   }
   const dataScript = appScript.slice(0, markerIndex);
-  const data = new Function(`${dataScript}
+  const dayDataJs = readFileSync(new URL("js/day-data.js", root), "utf8");
+  const data = new Function(`${dayDataJs}
+${dataScript}
 return { ALL_WORDS, SENT, MISSIONS, BANK, ACT_GUIDE, BANK_POOL, DAY, PHOTO_POOL, PHOTO_TRICKS, LEARN_GUIDES };`)();
 
   const seenWords = new Set();
@@ -146,6 +157,16 @@ if (!indexHtml.includes('data-t="captain"') || !indexHtml.includes("renderCaptai
 }
 if (!adminHtml.includes("helpClaims")) {
   fail("captain", "admin missing help claims queue");
+}
+
+const syncTest = spawnSync(process.execPath, [fileURLToPath(new URL("sync.test.mjs", import.meta.url))], { encoding: "utf8" });
+if (syncTest.status !== 0) {
+  fail("sync tests", (syncTest.stderr || syncTest.stdout || "sync.test.mjs failed").trim());
+}
+
+const coreTest = spawnSync(process.execPath, ["--test", "scripts/core.test.mjs"], { cwd: root, encoding: "utf8" });
+if (coreTest.status !== 0) {
+  fail("core tests", (coreTest.stderr || coreTest.stdout || "node --test scripts/core.test.mjs failed").trim().split("\n").slice(-8).join("\n"));
 }
 
 try {
