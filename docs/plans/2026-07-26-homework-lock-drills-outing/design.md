@@ -97,10 +97,20 @@ Rule for all slices: **data stays in one place, behavior lives in small shared m
 | 05 | Outing mode | slice 03/04 (pinpad, papa-tools), P2 pass lifecycle | after 04 |
 | 06 | Practice drills | slice 01 landed (schedule stable); 02 helpful | P3 era |
 | 07 | Installable PWA (manifest + icons + service worker) | deployed HTTPS site; best after 02 (stable js/ list) | anytime |
+| 08 | Admin controls (stars ± / send-back / app pause) | slice 03 (`family_settings`, pinpad, lock-core) | after 03 |
 
 ## 7. Installable PWA (slice 07) — added 2026-07-26
 
 Manifest + icons + service worker so tablets install Summer Quest to the home screen (fullscreen standalone, shell loads offline). The worker is network-first, same-origin GET only: it **never** touches Supabase (sync.js's queue owns offline data) and never pins versions, so frequent deploys propagate without cache-busting. iOS gets add-to-home-screen meta tags; admin.html stays a plain browser page (YAGNI).
+
+## 8. Admin controls — star adjust, tick verification, app pause (slice 08) — added 2026-07-26
+
+Papa's requests (2026-07-26): adjust star counts up **or down**; review kid-ticked blocks and send unfinished ones back (block re-locks until redone); pause a kid's whole app when needed.
+
+- **Star adjust:** the admin grants panel gains minus buttons and a signed custom amount. Every adjustment is a `stars_ledger` delta with `source='admin'` — never an edit of a total (the ledger non-negotiable stands). Negative deltas are quiet on tablets: no celebration, no shame animation.
+- **Tick verification / send-back:** the overview stays a read-only glance by default. Each ticked block gets a small "↩︎ Send back 退回" action: deletes the `day_ticks` row, refunds earned stars through the ledger (−1 if it was a mission block; −2 more if the day-complete bonus had fired), and flags the block in a new `day_redos` table with an optional note. The kid's row shows an invite badge ("Papa asked: please finish this one 爸爸請你再完成 💪" — no red, no shame), and **games lock on any redo-flagged block until it is re-ticked, regardless of the clock** (extends `lock-core`). A granted pass on that block clears the lock too (Papa can always excuse instead). Re-ticking re-awards normally, so the ledger stays balanced. Redo flags expire with the day.
+- **App pause:** per-kid `family_settings` key `applock_<kid>` (non-empty value = paused, value doubles as an optional reason). The paused kid's hub shows a calm full-screen overlay ("Time for a break 休息一下 😌") — no tabs, no games; siblings' profiles are untouched. Unpause: admin toggle, or Papa PIN on the tablet (clears the flag through the offline queue). Tone rule: this is Papa's pause button, not the app punishing — copy invites, never blames, and the pause is **always Papa-triggered, never automatic**.
+- **Stance note:** CLAUDE.md's "no punishments / indicate-only" non-negotiable gains a second Papa-approved exception for the app pause; "guides/Learn/My Day/ask never lock" still holds for everything the *app* decides on its own — only an explicit Papa pause covers the whole app.
 
 ## Non-goals
 
