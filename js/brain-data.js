@@ -77,6 +77,53 @@
     return {prompt:{type:"text",en:a+" "+sign+" "+b+" = ?",zh:a+" "+sign+" "+b+" = ?"},answer:String(sum)};
   }
 
+  /* ---- 2. Sign Finder 找符號 ---- */
+  function applyOp(op,a,b){
+    if(op==="+")return a+b;
+    if(op==="−")return a-b;
+    if(op==="×")return a*b;
+    return a/b;
+  }
+  function signItem(rnd,ops,lo,hi){
+    const op=pick(rnd,ops);
+    let a,b;
+    if(op==="÷"){b=intBetween(rnd,2,9);a=b*intBetween(rnd,2,9);}
+    else{
+      a=intBetween(rnd,lo,hi); b=intBetween(rnd,lo,hi);
+      if(op==="−"&&b>a){const t=a;a=b;b=t;}
+    }
+    const r=applyOp(op,a,b);
+    return {
+      prompt:{type:"text",a:a,b:b,r:r,en:a+" ? "+b+" = "+r,zh:a+" ? "+b+" = "+r},
+      say:["What sign is missing?","缺哪個符號？"],
+      answer:op, choices:ops.slice()
+    };
+  }
+
+  /* ---- 4. Color Words 顏色字 (Stroop) ---- */
+  const STROOP_KEYS=["red","blue","green","yellow"];
+  const COLOR_EN={red:"Red",blue:"Blue",green:"Green",yellow:"Yellow",purple:"Purple",black:"Black"};
+  const COLOR_ZH={red:"紅色",blue:"藍色",green:"綠色",yellow:"黃色",purple:"紫色",black:"黑色"};
+
+  function stroopTot(rnd){
+    const ink=pick(rnd,STROOP_KEYS);
+    return {
+      prompt:{type:"swatch",ink:ink,en:"Which colour? 哪個顏色？",zh:"哪個顏色？"},
+      say:["Which colour is this?","這是什麼顏色？"],
+      answer:ink, choices:shuffleWith(rnd,STROOP_KEYS.slice()), choiceStyle:"swatch"
+    };
+  }
+  function stroopWord(rnd,zh){
+    const ink=pick(rnd,STROOP_KEYS);
+    let word=pick(rnd,STROOP_KEYS);
+    if(word===ink)word=pick(rnd,STROOP_KEYS.filter(function(k){return k!==ink;}));
+    return {
+      prompt:{type:"colorword",ink:ink,word:zh?COLOR_ZH[word]:COLOR_EN[word],
+        en:"Say the INK colour",zh:"說出「顏色」不是字"},
+      answer:ink, choices:shuffleWith(rnd,STROOP_KEYS.slice())
+    };
+  }
+
   const GAMES={
     calc:{
       id:"calc", icon:"➕", skill:"math",
@@ -86,6 +133,24 @@
         tot :{items:10,clock:false,pad:"choice",gen:genCalcTot},
         mid :{items:20,clock:true, pad:"keypad",gen:genCalcMid},
         hard:{items:20,clock:true, pad:"keypad",gen:genCalcHard}
+      }
+    },
+    signs:{
+      id:"signs", icon:"❓", skill:"math",
+      title:["Sign Finder","找符號"], blurb:["Find the missing sign","找出缺的符號"],
+      tiers:{
+        tot :{items:10,clock:false,pad:"choice",gen:function(r){return signItem(r,["+","−"],1,5);}},
+        mid :{items:15,clock:true, pad:"choice",gen:function(r){return signItem(r,["+","−","×"],2,9);}},
+        hard:{items:15,clock:true, pad:"choice",gen:function(r){return signItem(r,["+","−","×","÷"],2,12);}}
+      }
+    },
+    stroop:{
+      id:"stroop", icon:"🎨", skill:"attention",
+      title:["Color Words","顏色字"], blurb:["Say the ink, not the word","看顏色不看字"],
+      tiers:{
+        tot :{items:10,clock:false,pad:"choice",gen:stroopTot},
+        mid :{items:20,clock:true, pad:"choice",gen:function(r){return stroopWord(r,false);}},
+        hard:{items:20,clock:true, pad:"choice",gen:function(r){return stroopWord(r,r()<0.5);}}
       }
     }
   };

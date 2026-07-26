@@ -396,3 +396,43 @@ test("buildRound uses a tier-level build() when present", () => {
   assert.equal(round.items.length, 3);
   assert.equal(round.items[0].worth, 0);
 });
+
+test("Sign Finder answers are always a real operator that makes the equation true", () => {
+  const rnd = SQBrainCore.mulberry32(3);
+  for (const tier of ["tot", "mid", "hard"]) {
+    const round = SQBrainCore.buildRound("signs", tier, rnd);
+    for (const item of round.items) {
+      assert.ok(["+", "−", "×", "÷"].indexOf(item.answer) >= 0);
+      const [a, b, r] = [item.prompt.a, item.prompt.b, item.prompt.r];
+      const applied = { "+": a + b, "−": a - b, "×": a * b, "÷": a / b }[item.answer];
+      assert.equal(applied, r, `${a} ${item.answer} ${b} should be ${r}`);
+      assert.ok(item.choices.indexOf(item.answer) >= 0);
+    }
+  }
+});
+
+test("Sign Finder tot only ever asks for plus or minus", () => {
+  const round = SQBrainCore.buildRound("signs", "tot", SQBrainCore.mulberry32(11));
+  for (const item of round.items) {
+    assert.ok(["+", "−"].indexOf(item.answer) >= 0);
+    assert.ok(item.prompt.r >= 0);
+  }
+});
+
+test("Color Words asks for the ink, never the word", () => {
+  const round = SQBrainCore.buildRound("stroop", "mid", SQBrainCore.mulberry32(5));
+  for (const item of round.items) {
+    assert.equal(item.answer, item.prompt.ink);
+    assert.ok(item.choices.indexOf(item.answer) >= 0);
+    assert.equal(item.choices.length, 4);
+  }
+});
+
+test("Color Words tot uses swatches and never a written word", () => {
+  const round = SQBrainCore.buildRound("stroop", "tot", SQBrainCore.mulberry32(5));
+  for (const item of round.items) {
+    assert.equal(item.prompt.type, "swatch");
+    assert.equal(item.choiceStyle, "swatch");
+    assert.ok(item.say && item.say[0] && item.say[1]);
+  }
+});

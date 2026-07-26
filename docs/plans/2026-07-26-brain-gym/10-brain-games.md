@@ -344,7 +344,7 @@ git commit -m "feat(brain): add grid and type pads plus clock, colour, money and
 - Modify: `js/brain-data.js`
 - Test: `scripts/core.test.mjs`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 test("Sign Finder answers are always a real operator that makes the equation true", () => {
@@ -388,12 +388,12 @@ test("Color Words tot uses swatches and never a written word", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test scripts/core.test.mjs`
 Expected: FAIL — `unknown brain game: signs`
 
-- [ ] **Step 3: Implement in `js/brain-data.js`**
+- [x] **Step 3: Implement in `js/brain-data.js`**
 
 ```js
   /* ---- 2. Sign Finder 找符號 ---- */
@@ -469,12 +469,12 @@ Add to `GAMES`:
 
 The `choices` for Stroop must render as words at `mid`/`hard` — the UI shows the raw key, so map it. In `brain-ui.js`'s choice branch, when `item.choiceStyle` is absent and `COLORS[c]` exists, render `COLORS[c][1]+" "+COLORS[c][2]` instead of the bare key.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `node --test scripts/core.test.mjs && node scripts/check.mjs`
 Expected: PASS both.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add js/brain-data.js js/brain-ui.js scripts/core.test.mjs

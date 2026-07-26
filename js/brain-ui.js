@@ -72,7 +72,8 @@
           if(item.choiceStyle==="swatch")
             return `<button class="btn bkey bswatchkey" data-v="${c}"
               style="background:${COLORS[c][0]}" aria-label="${COLORS[c][1]}"></button>`;
-          return `<button class="btn bkey" data-v="${c}">${c}</button>`;}).join("")}</div>`;
+          const label=COLORS[c]?COLORS[c][1]+" "+COLORS[c][2]:c;
+          return `<button class="btn bkey" data-v="${c}">${label}</button>`;}).join("")}</div>`;
       }
       if(round.pad==="grid"){
         return `<div class="bpad bgridpad" id="bGridPad"></div>
