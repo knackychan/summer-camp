@@ -17,13 +17,13 @@
 **Files:**
 - Modify: `index.html` (`LEVELS`, `startGame`, `handleInput`, `keydown` listener)
 
-- [ ] **Step 1: `LEVELS` entry** (after the `city` line):
+- [x] **Step 1: `LEVELS` entry** (after the `city` line):
 
 ```js
   dig:    {icon:"⛏️", title:"Dig Site", tz:"挖土工地",      blurb:"Dig the right rocks"},
 ```
 
-- [ ] **Step 2: Dispatch** in `startGame`:
+- [x] **Step 2: Dispatch** in `startGame`:
 
 ```js
   else if(lvl==="city") initCity();
@@ -31,13 +31,13 @@
   else initOrc();
 ```
 
-- [ ] **Step 3: Widen the keyboard-hide condition** from slice 01:
+- [x] **Step 3: Widen the keyboard-hide condition** from slice 01:
 
 ```js
   const noKb=(lvl==="city"||lvl==="dig");
 ```
 
-- [ ] **Step 4: Route input.** In `handleInput`, after the `city` guard:
+- [x] **Step 4: Route input.** In `handleInput`, after the `city` guard:
 
 ```js
   if(level==="city") return;
@@ -46,7 +46,7 @@
 
 (Space already reaches `handleInput`; letters are ignored.)
 
-- [ ] **Step 5: Arrow keys.** In the `keydown` listener, after the `city` block:
+- [x] **Step 5: Arrow keys.** In the `keydown` listener, after the `city` block:
 
 ```js
   if(level==="dig"){
@@ -57,7 +57,7 @@
   }
 ```
 
-- [ ] **Step 6: Stub** after the City Drive block (replaced in Task 3):
+- [x] **Step 6: Stub** after the City Drive block (replaced in Task 3):
 
 ```js
 /* ---- MODE: DIG SITE (excavator puzzle) ---- */
@@ -66,9 +66,9 @@ function digMove(dr,dc){}
 function digAct(){}
 ```
 
-- [ ] **Step 7: Verify** — `node scripts/check.mjs` green; ⛏️ chip appears; empty stage, no errors.
+- [x] **Step 7: Verify** — `node scripts/check.mjs` green; ⛏️ chip appears; empty stage, no errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add index.html
@@ -82,7 +82,7 @@ git commit -m "feat(dig): level registry, dispatch and input wiring"
 **Files:**
 - Modify: `index.html` (style block, after the City Drive rules)
 
-- [ ] **Step 1: Add:**
+- [x] **Step 1: Add:**
 
 ```css
 /* ---------- DIG SITE ---------- */
@@ -109,8 +109,8 @@ git commit -m "feat(dig): level registry, dispatch and input wiring"
 .dg-dig:active{transform:translateY(2px)}
 ```
 
-- [ ] **Step 2: Verify** — `check.mjs` green.
-- [ ] **Step 3: Commit**
+- [x] **Step 2: Verify** — `check.mjs` green.
+- [x] **Step 3: Commit**
 
 ```bash
 git add index.html
@@ -124,7 +124,7 @@ git commit -m "feat(dig): grid, rock and d-pad styles"
 **Files:**
 - Modify: `index.html` — replace the Task 1 stub
 
-- [ ] **Step 1: Full mode** (uses `rint` from slice 01):
+- [x] **Step 1: Full mode** (uses `rint` from slice 01):
 
 ```js
 /* ---- MODE: DIG SITE (excavator puzzle) ---- */
@@ -285,9 +285,9 @@ function finishDig(){
 
 Note: like City Drive, the best updates on **every** completed task (`digTaskDone`), so an interrupted run keeps its best.
 
-- [ ] **Step 2: Verify** — `check.mjs` green. Per kid: Lucien letter task (dig 3 targets, decoys clunk); Lili spell in order (out-of-order clunks); Luis sums (overshoot restores all rocks + resets running sum, cue shows running total). Arrows + Space work; d-pad + DIG work with touch; 90 s → overlay.
+- [x] **Step 2: Verify** — `check.mjs` green. Per kid: Lucien letter task (dig 3 targets, decoys clunk); Lili spell in order (out-of-order clunks); Luis sums (overshoot restores all rocks + resets running sum, cue shows running total). Arrows + Space work; d-pad + DIG work with touch; 90 s → overlay.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add index.html
@@ -303,7 +303,7 @@ git commit -m "feat(dig): playable dig site with age-based tasks"
 - Test: `scripts/sync.test.mjs` (Test 1)
 - Modify: `js/sync.js` (`ensureKid`, `hydrate`, `enqueueDiff`)
 
-- [ ] **Step 1 (index.html):** extend both objects with `dig`:
+- [x] **Step 1 (index.html):** extend both objects with `dig`:
 
 ```js
 const newProg=()=>({stars:0,best:{balloon:0,race:0,orc:0,shop:0,city:0,dig:0},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
@@ -316,7 +316,7 @@ const newProg=()=>({stars:0,best:{balloon:0,race:0,orc:0,shop:0,city:0,dig:0},vo
     if(P.best.dig==null)P.best.dig=0;
 ```
 
-- [ ] **Step 2: Write the failing test.** In Test 1 of `scripts/sync.test.mjs`, after `after.lili.best.city = 7;` add:
+- [x] **Step 2: Write the failing test.** In Test 1 of `scripts/sync.test.mjs`, after `after.lili.best.city = 7;` add:
 
 ```js
   after.lili.best.dig = 4;
@@ -328,9 +328,9 @@ and expect a third `stat`:
   assert.deepEqual(types, ["actDone", "roll", "stars", "stars", "stat", "stat", "stat", "tick", "vocab"]);
 ```
 
-- [ ] **Step 3: Run to verify it fails.** `node scripts/sync.test.mjs` → deepEqual mismatch (two `stat` ops).
+- [x] **Step 3: Run to verify it fails.** `node scripts/sync.test.mjs` → deepEqual mismatch (two `stat` ops).
 
-- [ ] **Step 4: Implement in `js/sync.js`.**
+- [x] **Step 4: Implement in `js/sync.js`.**
 
 `ensureKid`:
 
@@ -344,9 +344,9 @@ and expect a third `stat`:
 ["balloon","race","orc","shop","city","dig"]
 ```
 
-- [ ] **Step 5: Run tests.** `node scripts/sync.test.mjs` → both `ok -`; `node scripts/check.mjs` → green.
+- [x] **Step 5: Run tests.** `node scripts/sync.test.mjs` → both `ok -`; `node scripts/check.mjs` → green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add index.html js/sync.js scripts/sync.test.mjs
@@ -357,10 +357,10 @@ git commit -m "feat(dig): sync best_dig through game_stats"
 
 ### Task 5: Slice verification (DONE WHEN)
 
-- [ ] `node scripts/check.mjs` green.
-- [ ] Touch emulation: d-pad + DIG usable with thumbs (targets ≥52 px).
-- [ ] All three task kinds behave per design; every string bilingual; wrong digs never punish (clunk + hint only).
+- [x] `node scripts/check.mjs` green.
+- [x] Touch emulation: d-pad + DIG usable with thumbs (targets ≥52 px).
+- [x] All three task kinds behave per design; every string bilingual; wrong digs never punish (clunk + hint only).
 - [ ] Online: new best syncs to `game_stats` (`dig` row), hydrates after reload.
-- [ ] Wifi off: fully playable.
-- [ ] Games-lock overlay appears during an unticked block (inherited).
-- [ ] Escape mid-run exits clean (interval cleared by `stopArena`).
+- [x] Wifi off: fully playable.
+- [x] Games-lock overlay appears during an unticked block (inherited).
+- [x] Escape mid-run exits clean (interval cleared by `stopArena`).
