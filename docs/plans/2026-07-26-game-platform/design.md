@@ -34,7 +34,8 @@ The goal: make adding an arcade game cost what adding a brain game costs — one
 | D1 | **Full migration.** All nine arcade games move out of `index.html` into `js/games/*.js`. This explicitly authorises touching working gameplay, which CLAUDE.md otherwise forbids. |
 | D2 | **ES modules with lazy `import()`**, replacing the IIFE-plus-`<script>`-tag idiom for game files. |
 | D3 | **3D engine deferred.** The registry is designed so a 3D game is a drop-in plugin; the engine is chosen in slice 19, after the seam is proven with a throwaway cube. |
-| D4 | Behaviour preservation is the acceptance bar for every migration slice: a migrated game plays identically or the slice is not done. |
+| D4 | Behaviour preservation is the acceptance bar **for the migration slices (14–17)**, and only for them. Papa has confirmed gameplay itself will change afterwards; this bar exists so those changes arrive as their own small reviewable diffs, not smuggled inside 3000 lines of code movement. A migration slice that "improves" a game while moving it is not done — it is two changes wearing one hat. |
+| D5 | Gameplay changes are expected after slice 17 and are **out of scope for this design**. Each gets its own brainstorm and slice against the new registry. |
 
 ## 2. The registry
 
@@ -155,13 +156,16 @@ Each ships independently and leaves the app working.
 
 Slices 12–17 deliver the scalability win alone. 18–19 are the 3D track and can wait.
 
+**Rewrite-instead-of-migrate (per D5).** Any game with a gameplay rewrite already planned should not be migrated and then rewritten — that is the same file written twice. Such a game is dropped from its migration slice and written directly in registry form as part of its own rewrite slice, which then also carries the migration. Slices 14–16 open by confirming with Papa which games, if any, are in that state; the answer only removes work from those slices, so it never blocks them.
+
 **After slice 17, adding an arcade game costs:** one file in `js/games/`, one line in `js/games/index.js`, one line in `sw.js`. Same shape as adding a brain game.
 
 ## 9. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Migrating gameplay CLAUDE.md says not to touch | Per-slice behaviour-preservation DONE WHEN, smoke tests, one game group per slice so a regression is bisectable. This is the real risk and D1 accepts it knowingly. |
+| Migrating gameplay CLAUDE.md says not to touch | Per-slice behaviour-preservation DONE WHEN, smoke tests, one game group per slice so a regression is bisectable. D1 accepts this knowingly. D5 lowers the stakes further — gameplay is changing soon regardless, so a subtle migration regression in a game about to be reworked is cheap. It is still caught, not tolerated: the point of D4 is that nobody has to wonder *which* change broke something. |
+| Migrating a game that is about to be rewritten | Wasted work. Before slices 14–16 begin, Papa names any game with a known gameplay rewrite coming; that game skips migration and is written directly in registry form as part of its own rewrite slice. See §8. |
 | Latent cross-game coupling via global `state` | Expected to surface in slices 14–16. Each game's state moves to closure scope; anything genuinely shared moves to `ctx`, and if something resists, it is recorded rather than smuggled back into a global. |
 | `file://` dev stops working | README dev-server note in slice 12. Only genuine ergonomic loss. |
 | Stale service-worker shell | `CACHE_NAME` bump on every file-touching slice's checklist. |
