@@ -1719,10 +1719,135 @@ function cityTick(){
   state.time--; cityHud();
   if(state.time<=0) finishCity();
 }
-function cityMission(){}
-function cityArrive(){}
-function finishCity(){}
 function cityPrompt(html){const el=document.getElementById("cdPrompt");if(el)el.innerHTML=html;}
+function cityMathQ(age){
+  let a,b,op;
+  if(age<=8){
+    if(Math.random()<0.6){op="+";a=1+rint(10);b=1+rint(10);}
+    else {op="−";a=5+rint(15);b=1+rint(Math.min(a-1,9));}
+  } else {
+    const r=Math.random();
+    if(r<0.4){op="×";a=2+rint(8);b=2+rint(8);}
+    else if(r<0.7){op="+";a=10+rint(60);b=1+rint(30);}
+    else {op="−";a=20+rint(79);b=1+rint(19);}
+  }
+  const val=op==="+"?a+b:op==="−"?a-b:a*b;
+  return {text:a+" "+op+" "+b, val:val};
+}
+const rint=n=>Math.floor(Math.random()*n);
+function cityLetterSpots(word){
+  const roads=[];
+  for(let y=0;y<CITY_H;y++)for(let x=0;x<CITY_W;x++)
+    if(CITY_MAP[y].charAt(x)==="R") roads.push([x,y]);
+  const cx=Math.floor(state.car.x/CT), cy=Math.floor(state.car.y/CT);
+  const far=(a,bx,by)=>Math.abs(a[0]-bx)+Math.abs(a[1]-by)>=4;
+  const pool=shuffle(roads), spots=[];
+  for(let i=0;i<pool.length&&spots.length<word.length;i++){
+    const c=pool[i]; let ok=far(c,cx,cy);
+    for(let j=0;j<spots.length;j++) if(!far(c,spots[j][0],spots[j][1])) ok=false;
+    if(ok) spots.push(c);
+  }
+  return spots.map((c,i)=>({x:c[0]*CT+CT/2,y:c[1]*CT+CT/2,ch:word.charAt(i)}));
+}
+function cityMission(){
+  const age=KIDS[kid].age;
+  const kinds=age<=5?["place","letters"]:age<=8?["place","deliver"]:["deliver","taxi","place"];
+  const kind=kinds[state.mn%kinds.length]; state.mn++;
+  state.m={kind:kind,done:false}; state.signs=null;
+  if(kind==="place"){
+    const pool=CITY_B.filter(b=>!b.house&&(age>5||["school","zoo","park","farm"].indexOf(b.id)>=0));
+    const b=rand(pool), w=cityWord(b.id);
+    state.m.target=b;
+    cityPrompt(`${b.em} Drive to the <b>${w[0]}</b>! 開到${w[3]}!`);
+    sayPair(w[0],w[2]);
+  } else if(kind==="deliver"){
+    const q=cityMathQ(age);
+    const houses=shuffle(CITY_B.filter(b=>b.house));
+    state.m.target=houses[0];
+    const vals=[q.val];
+    while(vals.length<3){
+      const d=q.val+(1+rint(4))*(Math.random()<0.5?-1:1);
+      if(d>0&&vals.indexOf(d)<0) vals.push(d);
+    }
+    state.signs={}; houses.forEach((h,i)=>{state.signs[h.id]=vals[i];});
+    cityPrompt(`🍎 Deliver to house <b>${q.text}</b>! 送到 <b>${q.text}</b> 的房子!`);
+  } else if(kind==="taxi"){
+    const stops=shuffle(CITY_B.filter(b=>!b.house));
+    state.m.pickup=stops[0]; state.m.target=stops[1]; state.m.picked=false;
+    const pw=cityWord(stops[0].id);
+    cityPrompt(`🙋 Pick up your passenger at the <b>${pw[0]}</b>! 去${pw[3]}接乘客!`);
+    say("passenger at the "+pw[0]);
+  } else { /* letters */
+    const pool=WORDS_EASY.filter(x=>x[0].length===3);
+    const w=rand(pool);
+    state.m.word=w[0].toUpperCase(); state.m.i=0; state.m.em=w[1]; state.m.say=w[0];
+    state.m.spots=cityLetterSpots(state.m.word);
+    cityPrompt(`🔤 Collect <b>${state.m.word}</b>! 收集字母 ${state.m.word}! ${w[1]}`);
+    say(w[0]);
+  }
+  cityHud();
+}
+function cityArrive(){
+  const m=state.m, car=state.car;
+  if(!m||m.done) return;
+  const now=performance.now();
+  if(m.kind==="letters"){
+    const s=m.spots[m.i];
+    if(s&&Math.hypot(car.x-s.x,car.y-s.y)<26){
+      m.i++; sGood(); burst(6); say(s.ch);
+      if(m.i>=m.spots.length){ say(m.say); cityComplete(); }
+    }
+    return;
+  }
+  const goal=(m.kind==="taxi"&&!m.picked)?m.pickup:m.target;
+  const parked=b=>{const d=doorXY(b);return Math.abs(car.v)<45&&Math.hypot(car.x-d.x,car.y-d.y)<44;};
+  if(m.kind==="deliver"){
+    const others=CITY_B.filter(b=>b.house&&b.id!==m.target.id);
+    for(let i=0;i<others.length;i++){
+      if(parked(others[i])&&(!state.hintAt||now-state.hintAt>2500)){
+        state.hintAt=now; sBad();
+        hint(`That house is ${state.signs[others[i].id]} — try another! 那間是 ${state.signs[others[i].id]}，再試一間!`);
+      }
+    }
+  }
+  if(!parked(goal)) return;
+  if(m.kind==="taxi"&&!m.picked){
+    m.picked=true; sGood(); burst(8);
+    const w=cityWord(m.target.id);
+    cityPrompt(`💬 "Take me to the <b>${w[0]}</b>, please!" 「請帶我去${w[3]}!」`);
+    sayPair("take me to the "+w[0],w[2]);
+    return;
+  }
+  const w=cityWord(m.target.id);
+  if(m.kind==="place"||m.kind==="taxi") sayPair(w[0],w[2]);
+  cityComplete();
+}
+function cityComplete(){
+  state.m.done=true; state.score++; sWin(); burst(16); flash("ok");
+  hint("Great driving! 開得真好!");
+  if(state.score>bestOf(kid,"city")){ progress[kid].best.city=state.score; }
+  saveProgress(); cityHud();
+  setTimeout(()=>{ if(state.running) cityMission(); },1400);
+}
+function finishCity(){
+  state.running=false;
+  if(state.raf) cancelAnimationFrame(state.raf); state.raf=null;
+  if(state.timer) clearInterval(state.timer); state.timer=null;
+  const prevBest=bestOf(kid,"city");
+  const isBest=state.score>=prevBest&&state.score>0;
+  saveProgress(); burst(40);
+  const ov=document.createElement("div"); ov.className="overlay";
+  ov.innerHTML=`<div class="card">
+    <h3 style="color:${KIDS[kid].color}">${isBest?"🏆 New best! 新紀錄!":"🏁 Day over! 收工了!"}</h3>
+    <div class="big" style="color:${KIDS[kid].color}">${state.score}</div>
+    <p>missions done 完成的任務${isBest?"":` · best 最佳 ${prevBest}`}</p>
+    <button class="btn" id="again" style="background:${KIDS[kid].raw};color:#1c1436">Drive again 再開一次 🚗</button>
+    <button class="btn small" id="ovhome" style="margin-left:8px">Heroes</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector("#again").onclick=()=>{ov.remove();initCity();};
+  ov.querySelector("#ovhome").onclick=()=>{ov.remove();goHome();};
+}
 
 /* ---- MODE: WORD WIZARD (vocab) ---- */
 const vLevel=()=>settings.vocab.levels[kid]||"copy";
