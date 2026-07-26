@@ -211,11 +211,29 @@ create table if not exists search_log (
   created_at timestamptz default now()
 );
 
+-- Captain view: Luis can claim that he helped a sibling; Papa reviews it.
+create table if not exists help_claims (
+  id            uuid primary key default gen_random_uuid(),
+  captain_id    text not null references kids(id) default 'luis',
+  helped_kid_id text not null references kids(id),
+  day           date not null,
+  body          text not null,
+  status        text not null default 'requested', -- 'requested' | 'approved' | 'denied'
+  reviewed_by   text,
+  reviewed_at   timestamptz,
+  created_at    timestamptz default now(),
+  constraint help_claims_captain_luis check (captain_id = 'luis'),
+  constraint help_claims_not_self check (captain_id <> helped_kid_id)
+);
+create index if not exists idx_help_claims_status on help_claims (status, created_at desc);
+create index if not exists idx_help_claims_day on help_claims (day, created_at desc);
+
 alter table papa_notes enable row level security;
 alter table asks       enable row level security;
 alter table passes     enable row level security;
 alter table photos     enable row level security;
 alter table search_log enable row level security;
+alter table help_claims enable row level security;
 
 create policy "read notes"   on papa_notes for select using (true);
 create policy "admin notes"  on papa_notes for all to authenticated using (true) with check (true);
@@ -230,6 +248,16 @@ create policy "read photos"  on photos for select using (true);
 create policy "kid photo"    on photos for insert with check (true);
 create policy "read search"  on search_log for select using (true);
 create policy "kid search"   on search_log for insert with check (true);
+create policy "read help claims" on help_claims for select using (true);
+create policy "kid help claim"   on help_claims for insert
+  with check (captain_id = 'luis' and status = 'requested' and reviewed_at is null);
+create policy "admin help claims" on help_claims for update to authenticated using (true) with check (true);
+
+do $$
+begin
+  alter publication supabase_realtime add table help_claims;
+exception when duplicate_object then null;
+end $$;
 
 -- Storage: create buckets 'voices' and 'proofs' (public read, anon insert) in Dashboard.
 -- Push for urgent asks: Edge Function on asks INSERT where kind='urgent'

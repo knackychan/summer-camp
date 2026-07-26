@@ -14,7 +14,7 @@
   ];
 
   let client=null, session=null, today="", tomorrow="";
-  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[]};
+  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={};
 
@@ -60,7 +60,7 @@
 
   async function loadAll(){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -70,11 +70,12 @@
       client.from("passes").select("*").order("created_at",{ascending:false}).limit(80),
       client.from("photos").select("*").order("created_at",{ascending:false}).limit(80),
       client.from("kids").select("id,pin").order("id"),
-      client.from("day_ticks").select("kid_id,day,block_idx").gte("day",start).lte("day",today)
+      client.from("day_ticks").select("kid_id,day,block_idx").gte("day",start).lte("day",today),
+      client.from("help_claims").select("*").order("created_at",{ascending:false}).limit(80)
     ]);
     rows={
       ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[],
-      passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[]
+      passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[],helpClaims:helpClaims.data||[]
     };
     $("noteBody").value=note.data&&note.data.body?note.data.body:"";
     renderAll();
@@ -85,6 +86,7 @@
     renderGrants();
     renderLedger();
     renderAsks();
+    renderHelpClaims();
     renderPasses();
     renderProofs();
     renderHistory();
@@ -225,6 +227,41 @@
     await loadAll();
   }
 
+  function renderHelpClaims(){
+    const sorted=[...rows.helpClaims].sort((a,b)=>
+      (a.status==="requested"?0:1)-(b.status==="requested"?0:1) || new Date(b.created_at)-new Date(a.created_at)
+    );
+    $("helpClaims").innerHTML=sorted.length?`<table class="table"><thead><tr>
+      <th>Time 時間</th><th>Captain 隊長</th><th>Helped 幫忙對象</th><th>Status 狀態</th><th>Claim 申請內容</th><th></th>
+    </tr></thead><tbody>${sorted.map(c=>`<tr>
+      <td>${fmt(c.created_at)}</td><td>${kidName(c.captain_id)}</td><td>${kidName(c.helped_kid_id)}</td>
+      <td>${c.status==="approved"?"Approved 已核准":c.status==="denied"?"Denied 未核准":"Waiting 等待"}</td>
+      <td>${esc(c.body)}</td>
+      <td>${c.status==="requested"?`<button class="btn" data-helpok="${c.id}">Approve +1 核准 +1</button>
+        <button class="btn btn--danger" data-helpno="${c.id}">Deny 拒絕</button>`:""}</td>
+    </tr>`).join("")}</tbody></table>`:`<p>No captain claims. 還沒有隊長申請。</p>`;
+    document.querySelectorAll("[data-helpok]").forEach(b=>b.onclick=()=>setHelpClaim(b.dataset.helpok,"approved"));
+    document.querySelectorAll("[data-helpno]").forEach(b=>b.onclick=()=>setHelpClaim(b.dataset.helpno,"denied"));
+  }
+  async function setHelpClaim(id,status){
+    const claim=rows.helpClaims.find(c=>c.id===id);
+    if(!claim)return;
+    $("helpClaimsStatus").textContent="";
+    const reviewed_at=new Date().toISOString();
+    const {error}=await client.from("help_claims").update({
+      status,reviewed_by:session.user.id,reviewed_at
+    }).eq("id",id);
+    if(error){$("helpClaimsStatus").textContent=error.message;return;}
+    if(status==="approved"){
+      const reason=`captain help: ${kidName(claim.helped_kid_id)} — ${claim.body}`;
+      const grant=await client.from("stars_ledger").insert({
+        kid_id:claim.captain_id,delta:1,reason,source:"admin",granted_by:session.user.id
+      });
+      if(grant.error){$("helpClaimsStatus").textContent=grant.error.message;return;}
+    }
+    await loadAll();
+  }
+
   function renderPasses(){
     $("passes").innerHTML=rows.passes.length?`<table class="table"><thead><tr>
       <th>Time 時間</th><th>Kid 孩子</th><th>Block 格子</th><th>Kind 類型</th><th>Status 狀態</th><th>Reason 原因</th><th></th>
@@ -321,6 +358,7 @@
       .on("postgres_changes",{event:"*",schema:"public",table:"asks"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"passes"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"photos"},loadAll)
+      .on("postgres_changes",{event:"*",schema:"public",table:"help_claims"},loadAll)
       .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},loadAll)
       .subscribe();
   }

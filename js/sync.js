@@ -86,6 +86,7 @@
       this.kidPins=loadJson("sq:kidPins",{});
       this.passes=[];
       this.photos=[];
+      this.helpClaims=[];
       this.last=clone(this.progress);
       this.flushTimer=null;
     }
@@ -118,7 +119,7 @@
       const day=todayISO();
       const p=normalize(this.progress);
 
-      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos}]=await Promise.all([
+      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims}]=await Promise.all([
         this.supabase.from("kids").select("id,pin"),
         this.supabase.from("day_ticks").select("kid_id,block_idx").eq("day",day),
         this.supabase.from("day_rolls").select("kid_id,block_idx,count").eq("day",day),
@@ -129,6 +130,7 @@
         this.supabase.from("papa_notes").select("body").eq("day",day).maybeSingle(),
         this.supabase.from("passes").select("*").or(`day.is.null,day.eq.${day}`).order("created_at",{ascending:false}),
         this.supabase.from("photos").select("*").eq("day",day).order("created_at",{ascending:false}),
+        this.supabase.from("help_claims").select("*").eq("day",day).order("created_at",{ascending:false}),
       ]);
 
       this.kidPins={};
@@ -136,6 +138,7 @@
       saveJson("sq:kidPins",this.kidPins);
       this.passes=passes||[];
       this.photos=photos||[];
+      this.helpClaims=helpClaims||[];
       KIDS.forEach(kid=>{
         p[kid].day={d:day,done:{},rr:{}};
         p[kid].actsDay={d:day,done:{}};
@@ -320,6 +323,12 @@
       if(!this.supabase||!query) return;
       await this.supabase.from("search_log").insert({kid_id:kid,query,engine});
     }
+    async createHelpClaim(captainId,helpedKidId,day,body){
+      if(!this.supabase) return {error:new Error("Sync is offline")};
+      return this.supabase.from("help_claims").insert({
+        captain_id:captainId,helped_kid_id:helpedKidId,day,body,status:"requested"
+      });
+    }
     onStars(cb){
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`stars-${Date.now()}`)
@@ -345,6 +354,13 @@
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`kids-${Date.now()}`)
         .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},p=>cb(p.new))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
+    onHelpClaims(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`help-claims-${Date.now()}`)
+        .on("postgres_changes",{event:"*",schema:"public",table:"help_claims"},p=>cb(p.new||p.old))
         .subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }

@@ -347,6 +347,7 @@ button:disabled{cursor:default}
       <button class="chip" data-t="acts">🏕️ Activities 活動</button>
       <button class="chip" data-t="learn">🧭 Learn 學習</button>
       <button class="chip" data-t="ask">💬 Ask 求助<span class="badge hidden" id="askBadge">0</span></button>
+      <button class="chip hidden" id="captainTab" data-t="captain">👑 Captain 隊長</button>
     </div>
     <div id="tab-day">
       <div class="dayprog"><div class="dayfill" id="dayFill"></div><span id="dayTxt"></span></div>
@@ -394,6 +395,23 @@ button:disabled{cursor:default}
         <div class="tipline" id="askStatus">Papa will see this in the admin inbox · 爸爸會在管理頁看到</div>
       </div>
       <div class="asklist" id="askList"></div>
+    </div>
+    <div id="tab-captain" class="hidden">
+      <div class="bigcard">
+        <h3>👑 Captain Luis <span class="zhs" style="font-size:14px">Luis 隊長</span></h3>
+        <div class="bankgrid" id="captainSiblings"></div>
+        <div class="tipline">Read-only sibling progress · 只能查看弟弟妹妹進度</div>
+      </div>
+      <div class="bigcard">
+        <h3>🤝 I helped someone <span class="zhs" style="font-size:14px">我幫了家人</span></h3>
+        <div class="kidtabs" id="claimKid"></div>
+        <input class="qinput" id="claimText" placeholder="What did you help with? 你幫忙做了什麼？" maxlength="180">
+        <div class="vrow">
+          <button class="btn" id="claimSend">Send claim 送出申請</button>
+        </div>
+        <div class="tipline" id="claimStatus">Papa approves captain stars · 爸爸核准隊長星星</div>
+      </div>
+      <div class="asklist" id="claimList"></div>
     </div>
   </section>
 
@@ -2052,13 +2070,16 @@ function startTimelineWatcher(){
 }
 function renderHubHead(){
   const k=KIDS[hubKid], P=progress[hubKid];
+  const sub=hubTab==="day"?"Here is your day 📅":hubTab==="captain"?"Captain board 隊長看板 👑":"What do you want to do?";
   document.getElementById("hubStars").innerHTML=`<span class="starpill">⭐ ${P.stars||0}</span>`;
   document.getElementById("hubHead").innerHTML=
     `<span class="av">${k.av}</span><div><h2 style="color:${k.color}">Hi ${k.name}!</h2>
-     <p>${hubTab==="day"?"Here is your day 📅":"What do you want to do?"}</p></div>`;
+     <p>${sub}</p></div>`;
 }
 function renderHub(){
   const k=KIDS[hubKid], done=actsToday(hubKid);
+  if(hubKid!=="luis"&&hubTab==="captain") hubTab="day";
+  document.getElementById("captainTab").classList.toggle("hidden",hubKid!=="luis");
   renderHubHead();
   /* tabs */
   document.querySelectorAll("#hubTabs .chip").forEach(c=>{
@@ -2072,9 +2093,11 @@ function renderHub(){
   document.getElementById("tab-acts").classList.toggle("hidden",hubTab!=="acts");
   document.getElementById("tab-learn").classList.toggle("hidden",hubTab!=="learn");
   document.getElementById("tab-ask").classList.toggle("hidden",hubTab!=="ask");
+  document.getElementById("tab-captain").classList.toggle("hidden",hubTab!=="captain");
   if(hubTab==="learn") renderLearn();
   if(hubTab==="day") renderMyDay();
   if(hubTab==="ask") renderAsk();
+  if(hubTab==="captain") renderCaptain();
   /* games — the kid's own game first */
   const order=[k.level,...Object.keys(LEVELS).filter(l=>l!==k.level)];
   document.getElementById("gameRow").innerHTML=order.map(l=>
@@ -2248,6 +2271,58 @@ function openLearn(key){
   };
 }
 
+/* ============ CAPTAIN TAB ============ */
+let captainClaimKid="lucien";
+function claimStatusText(status){
+  if(status==="approved")return "Approved 已核准";
+  if(status==="denied")return "Denied 未核准";
+  return "Waiting 等爸爸";
+}
+function renderCaptain(){
+  if(hubKid!=="luis")return;
+  document.getElementById("captainSiblings").innerHTML=["lucien","lili"].map(id=>{
+    const k=KIDS[id], P=progress[id], done=Object.keys(dayState(id).done).length;
+    return `<article class="gamecard" style="border-color:${k.raw}">
+      <span class="gi">${k.av}</span><b>${k.name}</b>
+      <small>${done}/${DAY.length} blocks 格子 · ⭐ ${P.stars||0} · 📸 ${P.missions||0}</small>
+      <div class="progress" style="margin-top:10px"><div class="progress__fill" style="width:${done/DAY.length*100}%;background:${k.raw}"></div></div>
+    </article>`;
+  }).join("");
+  const claimKid=document.getElementById("claimKid");
+  claimKid.innerHTML=["lucien","lili"].map(id=>{
+    const on=id===captainClaimKid;
+    return `<button class="chip ${on?"on":""}" data-claimkid="${id}" style="${on?`background:${KIDS[id].raw};color:#1c1436`:''}">${KIDS[id].name}</button>`;
+  }).join("");
+  claimKid.querySelectorAll("[data-claimkid]").forEach(btn=>btn.onclick=()=>{
+    captainClaimKid=btn.dataset.claimkid; renderCaptain();
+  });
+  document.getElementById("claimSend").onclick=sendHelpClaim;
+  const claims=((store&&store.helpClaims)||[]).filter(c=>c.captain_id==="luis");
+  document.getElementById("claimList").innerHTML=claims.map(c=>`
+    <article class="askcard ${c.status==="approved"?"answered":c.status==="denied"?"":"open"}">
+      <div class="askmeta">
+        <span>${KIDS[c.helped_kid_id]?.name||"Sibling"} 家人</span>
+        <span>${claimStatusText(c.status)}</span>
+        <span>${new Date(c.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>
+      </div>
+      <p>${escHtml(c.body)}</p>
+    </article>`).join("")||`<div class="tipline">No captain claims yet · 還沒有隊長申請</div>`;
+  if(!store||!store.supabase) document.getElementById("claimStatus").textContent="Sync is not configured yet · 尚未設定同步";
+}
+async function sendHelpClaim(){
+  const status=document.getElementById("claimStatus");
+  const input=document.getElementById("claimText");
+  const body=input.value.trim();
+  if(!store||!store.supabase){sBad();status.textContent="Sync is not ready · 同步還沒準備好";return;}
+  if(!body){sBad();input.focus();return;}
+  status.textContent="Sending 送出中...";
+  const {error}=await store.createHelpClaim("luis",captainClaimKid,todayStr(),body);
+  if(error){sBad();status.textContent=error.message;return;}
+  input.value="";
+  status.textContent="Sent to Papa 已送給爸爸";
+  sGood(); await store.hydrate(); renderCaptain();
+}
+
 /* ============ ASK TAB ============ */
 const ASK_CANNED=[
   ["I am stuck","我卡住了"],
@@ -2367,6 +2442,11 @@ function setupRealtime(){
     if(!row||row.kid_id!==hubKid)return;
     await store.hydrate();
     if(hubTab==="day")renderMyDay();
+  });
+  store.onHelpClaims(async row=>{
+    if(!row||hubKid!=="luis")return;
+    await store.hydrate();
+    if(hubTab==="captain")renderCaptain();
   });
   store.onKids(row=>{
     if(!row||!row.id)return;

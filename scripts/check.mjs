@@ -15,6 +15,7 @@ const assertPair = (value, where) => {
 
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
+const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -135,6 +136,16 @@ try {
   }
 } catch (error) {
   fail("pwa", error.message);
+}
+
+if (!schemaSql.includes("create table if not exists help_claims")) {
+  fail("captain", "schema missing help_claims table");
+}
+if (!indexHtml.includes('data-t="captain"') || !indexHtml.includes("renderCaptain")) {
+  fail("captain", "kid app missing Captain tab wiring");
+}
+if (!adminHtml.includes("helpClaims")) {
+  fail("captain", "admin missing help claims queue");
 }
 
 try {
