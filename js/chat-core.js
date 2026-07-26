@@ -26,11 +26,75 @@
     return out;
   }
 
-  function buildStream(rows, ctx){
-    const c=ctx||{};
-    return askRows(rows&&rows.asks, c).sort(function(x,y){
-      return new Date(x.at)-new Date(y.at);
+  function claimRows(claims){
+    return (claims||[]).map(function(c){
+      return {
+        id:"claim:"+c.id, srcId:c.id, type:"claim", side:"kid", kidId:c.captain_id,
+        at:c.created_at, body:c.body||"", audio:null,
+        needs:c.status==="requested", archived:false,
+        meta:{helped:c.helped_kid_id, status:c.status||"requested"}
+      };
     });
+  }
+
+  /* 'outing' passes are Papa's own bulk removals from the Today panel, not a kid
+     asking for anything — they would flood the rail with noise. */
+  function passRows(passes){
+    return (passes||[]).filter(function(p){return p.kind!=="outing";}).map(function(p){
+      return {
+        id:"pass:"+p.id, srcId:p.id, type:"pass", side:"kid", kidId:p.kid_id,
+        at:p.created_at, body:p.reason||"", audio:null,
+        needs:p.status==="requested", archived:false,
+        meta:{kind:p.kind||"golden", status:p.status||"requested", blockIdx:p.block_idx}
+      };
+    });
+  }
+
+  function photoRows(photos, today){
+    return (photos||[]).filter(function(p){return p.day===today;}).map(function(p){
+      return {
+        id:"photo:"+p.id, srcId:p.id, type:"photo", side:"kid", kidId:p.kid_id,
+        at:p.created_at, body:"", audio:null, needs:false, archived:false,
+        meta:{path:p.path, blockIdx:p.block_idx}
+      };
+    });
+  }
+
+  function systemRows(rows, today){
+    const out=[];
+    (rows.ticks||[]).filter(function(t){return t.day===today;}).forEach(function(t){
+      out.push({
+        id:"tick:"+t.kid_id+":"+t.day+":"+t.block_idx, srcId:null, type:"system",
+        side:"system", kidId:t.kid_id, at:t.created_at, body:"", audio:null,
+        needs:false, archived:false, meta:{event:"tick", blockIdx:t.block_idx}
+      });
+    });
+    (rows.ledger||[]).forEach(function(l){
+      out.push({
+        id:"star:"+l.id, srcId:l.id, type:"system", side:"system", kidId:l.kid_id,
+        at:l.created_at, body:l.reason||"", audio:null, needs:false, archived:false,
+        meta:{event:"star", delta:l.delta, source:l.source}
+      });
+    });
+    (rows.redos||[]).filter(function(r){return r.day===today;}).forEach(function(r){
+      out.push({
+        id:"redo:"+r.kid_id+":"+r.day+":"+r.block_idx, srcId:null, type:"system",
+        side:"system", kidId:r.kid_id, at:r.created_at, body:r.note||"", audio:null,
+        needs:false, archived:false, meta:{event:"redo", blockIdx:r.block_idx}
+      });
+    });
+    return out;
+  }
+
+  function buildStream(rows, ctx){
+    const c=ctx||{}, r=rows||{};
+    return []
+      .concat(askRows(r.asks, c))
+      .concat(claimRows(r.helpClaims))
+      .concat(passRows(r.passes))
+      .concat(photoRows(r.photos, c.today))
+      .concat(systemRows(r, c.today))
+      .sort(function(x,y){return new Date(x.at)-new Date(y.at);});
   }
 
   const api={buildStream:buildStream};
