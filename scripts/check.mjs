@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -121,8 +121,10 @@ try {
   const allowedServiceRoleFiles = new Set([".claude/commands/ship.md", "CLAUDE.md", "js/config.example.js"]);
   const allowedJwtFiles = new Set([".claude/commands/ship.md"]);
   for (const file of tracked) {
-    const text = readFileSync(new URL(file, root), "utf8");
     const normalizedFile = file.replaceAll("\\", "/");
+    const fileUrl = new URL(file, root);
+    if (!existsSync(fileUrl)) continue;
+    const text = readFileSync(fileUrl, "utf8");
     if (text.includes(jwtPattern) && !allowedJwtFiles.has(normalizedFile)) {
       fail("secrets", `${file} contains JWT prefix ${jwtPattern}`);
     }
