@@ -9,7 +9,9 @@
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g,c=>
       (c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
 
+  // Single shared day helper (js/day.js) with an inline fallback for non-browser tests.
   function todayISO(){
+    if(window.SQ_DAY) return window.SQ_DAY.iso();
     const parts=new Intl.DateTimeFormat("en-CA",{
       timeZone:(window.SQ_CONFIG&&window.SQ_CONFIG.FAMILY_TZ)||"Asia/Taipei",
       year:"numeric",month:"2-digit",day:"2-digit"
@@ -84,6 +86,7 @@
       this.settings=seed.settings;
       this.queue=loadJson(QUEUE_KEY,[]);
       this.kidPins=loadJson("sq:kidPins",{});
+      this.adminPin=loadJson("sq:adminPin","");
       this.passes=[];
       this.photos=[];
       this.helpClaims=[];
@@ -119,7 +122,7 @@
       const day=todayISO();
       const p=normalize(this.progress);
 
-      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims}]=await Promise.all([
+      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings}]=await Promise.all([
         this.supabase.from("kids").select("id,pin"),
         this.supabase.from("day_ticks").select("kid_id,block_idx").eq("day",day),
         this.supabase.from("day_rolls").select("kid_id,block_idx,count").eq("day",day),
@@ -131,6 +134,7 @@
         this.supabase.from("passes").select("*").or(`day.is.null,day.eq.${day}`).order("created_at",{ascending:false}),
         this.supabase.from("photos").select("*").eq("day",day).order("created_at",{ascending:false}),
         this.supabase.from("help_claims").select("*").eq("day",day).order("created_at",{ascending:false}),
+        this.supabase.from("family_settings").select("key,value"),
       ]);
 
       this.kidPins={};
@@ -139,6 +143,10 @@
       this.passes=passes||[];
       this.photos=photos||[];
       this.helpClaims=helpClaims||[];
+      this.familySettings={};
+      (famSettings||[]).forEach(r=>{this.familySettings[r.key]=r.value;});
+      this.adminPin=this.familySettings.admin_pin||"";
+      saveJson("sq:adminPin",this.adminPin);
       KIDS.forEach(kid=>{
         p[kid].day={d:day,done:{},rr:{}};
         p[kid].actsDay={d:day,done:{}};
@@ -154,6 +162,26 @@
         if(r.stat==="missions") p[r.kid_id].missions=r.value||0;
       });
       this.papaNote=note&&note.body?note.body:"";
+
+      // spec: hydration merges server rows, then the local queue replays anything pending
+      this.queue.forEach(op=>{
+        if(!op||!op.kid) return;
+        ensureKid(p,op.kid);
+        const P=p[op.kid];
+        if(op.type==="tick"&&op.day===day){
+          if(op.ticked) P.day.done[op.blockIdx]=true; else delete P.day.done[op.blockIdx];
+        }else if(op.type==="roll"&&op.day===day){
+          P.day.rr[op.blockIdx]=Math.max(P.day.rr[op.blockIdx]||0,op.count||0);
+        }else if(op.type==="actDone"&&op.day===day){
+          P.actsDay.done[op.actIdx]=true;
+        }else if(op.type==="stars"){
+          P.stars=(P.stars||0)+(op.delta||0);
+        }else if(op.type==="vocab"){
+          P.vocab[op.wordKey]=op.box||0;
+        }else if(op.type==="stat"){
+          if(op.stat==="missions") P.missions=op.value||0; else P.best[op.stat]=op.value||0;
+        }
+      });
 
       await this.flush();
     }

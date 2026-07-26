@@ -259,6 +259,35 @@ begin
 exception when duplicate_object then null;
 end $$;
 
+-- ============================================================
+-- v3 additions — lock / reschedule / outing (plans 2026-07-26)
+-- ============================================================
+
+-- Family-wide settings (admin PIN etc). Plaintext by design — toddler lock, not security.
+create table if not exists family_settings (
+  key        text primary key,
+  value      text not null default '',
+  updated_at timestamptz default now()
+);
+alter table family_settings enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'family_settings' and policyname = 'read settings'
+  ) then
+    create policy "read settings" on family_settings for select using (true);
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'family_settings' and policyname = 'admin settings'
+  ) then
+    create policy "admin settings" on family_settings for all to authenticated using (true) with check (true);
+  end if;
+end $$;
+
 -- Storage: create buckets 'voices' and 'proofs' (public read, anon insert) in Dashboard.
 -- Push for urgent asks: Edge Function on asks INSERT where kind='urgent'
 -- → POST to ntfy.sh/<family-topic> (or a Telegram bot). Free, no app needed.

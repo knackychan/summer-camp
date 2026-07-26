@@ -323,6 +323,13 @@ button:disabled{cursor:default}
 .card .big{font-family:'Fredoka';font-weight:700;font-size:64px;line-height:1;margin:8px 0}
 .card p{color:var(--muted);font-weight:800;margin:6px 0 18px}
 .mute{margin-left:auto}
+.pincard{text-align:center;max-width:280px}
+.pindots{font-size:1.6em;letter-spacing:.3em;margin:10px 0}
+.pingrid{display:grid;grid-template-columns:repeat(3,64px);gap:10px;justify-content:center;margin-bottom:12px}
+.pinkey{font-size:1.3em;min-height:52px}
+.shake{animation:pinshake .4s}
+@keyframes pinshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.gameslocked #gameRow{display:none}
 </style>
 </head>
 <body>
@@ -455,6 +462,8 @@ button:disabled{cursor:default}
 <script src="js/sync.js"></script>
 <script src="js/day-data.js"></script>
 <script src="js/time-core.js"></script>
+<script src="js/lock-core.js"></script>
+<script src="js/pinpad.js"></script>
 <script>
 /* ============ DATA ============ */
 const KIDS = {
@@ -1032,6 +1041,8 @@ function renderSetbar(){
 
 /* ============ GAME FLOW ============ */
 function startGame(id,lvl){
+  const ls=gameLockState();
+  if(ls.locked){showLockOverlay(ls.blockIdx);return;}
   stopArena();
   kid=id; level=lvl;
   ["home","hub","act"].forEach(x=>document.getElementById(x).classList.add("hidden"));
@@ -1785,6 +1796,27 @@ function bigFloat(txt){
   requestAnimationFrame(()=>{d.style.top="12%";d.style.opacity="0";d.style.fontSize="120px";});
   setTimeout(()=>d.remove(),900);
 }
+function showLockOverlay(blockIdx){
+  if(document.getElementById("lockOverlay"))return;
+  const b=DAY[blockIdx];
+  const o=document.createElement("div");
+  o.className="overlay"; o.id="lockOverlay";
+  o.innerHTML=`<div class="card" style="text-align:center;max-width:340px">
+    <div style="font-size:2.2em">${b.icon}</div>
+    <h3>It's ${b.title.split("—")[0].trim()} time! ${(b.tz||"").split("——")[0].split("（")[0]}時間到了！</h3>
+    <p>Games are resting 遊戲休息中 😌<br>Finish the activity, then tick it in My Day! 完成活動後在「我的一天」打勾！</p>
+    <div class="vrow">
+      <button class="btn" id="lockGoDay">📅 My Day 我的一天</button>
+      <button class="btn small" id="lockPapa">🔧 Papa 爸爸</button>
+    </div>
+  </div>`;
+  document.body.appendChild(o);
+  o.querySelector("#lockGoDay").onclick=function(){o.remove();if(hubKid){hubTab="day";renderHub();}};
+  o.querySelector("#lockPapa").onclick=function(){
+    SQPin.show({title:"Unlock games 解鎖遊戲",subtitle:"Rest of this block only 只到這個時段結束",
+      onOk:function(){lockOverride={day:todayStr(),blockIdx:blockIdx};o.remove();refreshLockUI();}});
+  };
+}
 /* confetti */
 const cvs=document.getElementById("confetti"),ctx=cvs.getContext("2d");
 let parts=[]; let fxRaf=null;
@@ -1833,6 +1865,19 @@ const nowMins=()=>SQ_DAY.nowMins();
 let dayOverrides={}; /* {blockIdx:"HH:MM"} — today only */
 const effT=i=>dayOverrides[i]!=null?dayOverrides[i]:DAY[i].t;
 function timelineInfo(){return SQTime.timelineInfo(DAY,dayOverrides,nowMins());}
+/* games lock (design.md §2): coach, not cop — invite, never shame */
+let lockOverride=null; /* {day,blockIdx} — Papa PIN unlock, rest of that block only */
+function activeKid(){return hubKid||((typeof kid!=="undefined")&&kid)||null;}
+function passOkFor(id,i){return !!(id&&passFor(id,i,["granted","spent"]));}
+function gameLockState(){
+  const id=activeKid();
+  const done=id?dayState(id).done:{};
+  const st=SQLock.computeLock({day:DAY,overrides:dayOverrides,now:nowMins(),done:done,passOk:function(i){return passOkFor(id,i);}});
+  if(st.locked&&lockOverride&&lockOverride.day===todayStr()&&lockOverride.blockIdx===st.blockIdx)
+    return {locked:false,blockIdx:null};
+  if(!st.locked)lockOverride=null;
+  return st;
+}
 function actsToday(id){
   const P=progress[id];
   if(!P.actsDay||P.actsDay.d!==todayStr()) P.actsDay={d:todayStr(),done:{}};
@@ -1937,7 +1982,7 @@ function renderMyDay(){
   },80);
   document.querySelectorAll("#dayList [data-done]").forEach(btn=>btn.onclick=()=>{
     const i=+btn.dataset.done, d2=dayState(hubKid);
-    if(d2.done[i]){delete d2.done[i]; saveProgress(); renderMyDay(); return;} /* un-tick allowed */
+    if(d2.done[i]){delete d2.done[i]; saveProgress(); renderMyDay(); refreshLockUI(); return;} /* un-tick allowed */
     d2.done[i]=true;
     if(DAY[i].kind==="mission"){
       progress[hubKid].stars=(progress[hubKid].stars||0)+1;
@@ -1947,7 +1992,9 @@ function renderMyDay(){
     if(Object.keys(d2.done).length>=DAY.length){
       progress[hubKid].stars+=2; sWin(); burst(60); bigFloat("🌟");
     }
-    saveProgress(); renderMyDay(); renderHubHead();
+    saveProgress(); renderMyDay(); renderHubHead(); refreshLockUI();
+    const lo=document.getElementById("lockOverlay");
+    if(lo&&!gameLockState().locked)lo.remove();
   });
   document.querySelectorAll("#dayList [data-rr]").forEach(btn=>btn.onclick=()=>{
     const i=+btn.dataset.rr, d2=dayState(hubKid);
@@ -1995,7 +2042,7 @@ async function usePass(id,i){
   if(Object.keys(d.done).length>=DAY.length){
     progress[hubKid].stars=(progress[hubKid].stars||0)+2; sWin(); burst(60); bigFloat("🌟");
   }
-  await saveProgress(); sGood(); await store.hydrate(); renderMyDay(); renderHubHead();
+  await saveProgress(); sGood(); await store.hydrate(); renderMyDay(); renderHubHead(); refreshLockUI();
 }
 async function uploadProof(i,file){
   if(!file||!store||!store.supabase)return;
@@ -2019,6 +2066,11 @@ function startTimelineWatcher(){
       announceBlock(info.current);
       if(hubKid&&hubTab==="day") renderMyDay();
     }
+    const ls=gameLockState();
+    if(ls.locked&&!document.getElementById("game").classList.contains("hidden")){
+      goHome(); showLockOverlay(ls.blockIdx);
+    }
+    if(hubKid&&hubTab==="games")refreshLockUI();
   };
   tick(); setInterval(tick,5000);
 }
@@ -2048,6 +2100,7 @@ function renderHub(){
   document.getElementById("tab-learn").classList.toggle("hidden",hubTab!=="learn");
   document.getElementById("tab-ask").classList.toggle("hidden",hubTab!=="ask");
   document.getElementById("tab-captain").classList.toggle("hidden",hubTab!=="captain");
+  refreshLockUI();
   if(hubTab==="learn") renderLearn();
   if(hubTab==="day") renderMyDay();
   if(hubTab==="ask") renderAsk();
@@ -2070,6 +2123,25 @@ function renderHub(){
   document.querySelectorAll("#actGrid .actcard").forEach(c=>
     c.onclick=()=>openAct(+c.dataset.i));
   updateAskBadge();
+}
+function refreshLockUI(){
+  const tab=document.getElementById("tab-games");
+  if(!tab)return;
+  const ls=gameLockState();
+  let card=document.getElementById("gamesLockCard");
+  if(ls.locked&&hubTab==="games"){
+    if(!card){
+      card=document.createElement("div");
+      card.id="gamesLockCard"; card.className="dayhero";
+      tab.insertBefore(card,tab.firstChild);
+    }
+    const b=DAY[ls.blockIdx];
+    card.innerHTML=`${b.icon} It's ${b.title.split("—")[0].trim()} time — games are resting 遊戲休息中。 Tick it in My Day to unlock! 在「我的一天」打勾就能解鎖！`;
+    tab.classList.add("gameslocked");
+  }else{
+    if(card)card.remove();
+    tab.classList.remove("gameslocked");
+  }
 }
 function openAct(i){
   actIdx=i; showOnly("act"); renderAct();
@@ -2396,6 +2468,7 @@ function setupRealtime(){
     if(!row||row.kid_id!==hubKid)return;
     await store.hydrate();
     if(hubTab==="day")renderMyDay();
+    refreshLockUI();
   });
   store.onHelpClaims(async row=>{
     if(!row||hubKid!=="luis")return;

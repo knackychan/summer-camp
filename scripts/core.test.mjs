@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const SQTime = require("../js/time-core.js");
+const SQLock = require("../js/lock-core.js");
 
 const DAY = [
   { t: "8:00", title: "Wake", tz: "起床", kind: "routine", txtz: {} },
@@ -71,4 +72,46 @@ test("resolveOverrides: kid row wins over all row", () => {
   assert.deepEqual(SQTime.resolveOverrides(raw, "luis"), { 1: "15:00", 3: "17:30" });
   assert.deepEqual(SQTime.resolveOverrides(raw, null), { 1: "15:00", 3: "17:30" });
   assert.deepEqual(SQTime.resolveOverrides(null, "lili"), {});
+});
+
+const LDAY = [
+  { t: "8:00", title: "Wake", tz: "起床" },
+  { t: "10:00", title: "Homework", tz: "暑假作業" },
+  { t: "11:15", title: "Screen #1 — earned", tz: "螢幕#1" },
+  { t: "12:00", title: "Lunch", tz: "午餐" },
+  { t: "✨", title: "Bonus", tz: "加碼" },
+];
+const noPass = () => false;
+const lock = (now, done, passOk = noPass, overrides = {}) =>
+  SQLock.computeLock({ day: LDAY, overrides, now, done, passOk });
+
+test("locked during unticked activity block", () => {
+  assert.deepEqual(lock(10 * 60 + 30, {}), { locked: true, blockIdx: 1 });
+});
+
+test("unlocked once current activity ticked", () => {
+  assert.deepEqual(lock(10 * 60 + 30, { 1: true }), { locked: false, blockIdx: null });
+});
+
+test("pass on current block unlocks", () => {
+  assert.deepEqual(lock(10 * 60 + 30, {}, i => i === 1), { locked: false, blockIdx: null });
+});
+
+test("overrun linger: screen block current, previous activity unticked", () => {
+  assert.deepEqual(lock(11 * 60 + 30, { 0: true }), { locked: true, blockIdx: 1 });
+  assert.deepEqual(lock(11 * 60 + 30, { 0: true, 1: true }), { locked: false, blockIdx: null });
+});
+
+test("current activity governs alone even if earlier one unticked", () => {
+  assert.deepEqual(lock(12 * 60 + 10, { 3: true }), { locked: false, blockIdx: null });
+  assert.deepEqual(lock(12 * 60 + 10, {}), { locked: true, blockIdx: 3 });
+});
+
+test("before first block: unlocked", () => {
+  assert.deepEqual(lock(6 * 60, {}), { locked: false, blockIdx: null });
+});
+
+test("override moves the governing block", () => {
+  assert.deepEqual(lock(10 * 60 + 30, {}, noPass, { 1: "15:00" }), { locked: true, blockIdx: 0 });
+  assert.deepEqual(lock(10 * 60 + 30, { 0: true }, noPass, { 1: "15:00" }), { locked: false, blockIdx: null });
 });

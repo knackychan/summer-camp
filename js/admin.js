@@ -14,15 +14,26 @@
   ];
 
   let client=null, session=null, today="", tomorrow="";
-  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[]};
+  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
-  const pinFeedback={};
+  const pinFeedback={}, adminPinFeedback={};
 
   const $=id=>document.getElementById(id);
   const show=(id,on)=>$(id).classList.toggle("hidden",!on);
   const kidName=id=>KIDS[id]?KIDS[id].name:id;
-  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const fmt=ts=>new Date(ts).toLocaleString([],{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
+
+  function toast(msg,ok){
+    const t=$("toast");
+    if(!t)return;
+    t.textContent=msg;
+    t.classList.remove("hidden","toast--ok","toast--error");
+    t.classList.add(ok?"toast--ok":"toast--error");
+    clearTimeout(toast._t);
+    toast._t=setTimeout(()=>t.classList.add("hidden"),4000);
+  }
+  const writeFailed=error=>toast(`Could not save 無法儲存 — ${error.message}`);
 
   function loadScript(src){
     return new Promise((resolve,reject)=>{
@@ -32,12 +43,7 @@
     });
   }
 
-  function dayISO(offset=0){
-    const d=new Date(Date.now()+offset*86400000);
-    const p=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Taipei",year:"numeric",month:"2-digit",day:"2-digit"})
-      .formatToParts(d).reduce((a,x)=>(a[x.type]=x.value,a),{});
-    return `${p.year}-${p.month}-${p.day}`;
-  }
+  const dayISO=(offset=0)=>SQ_DAY.isoOffset(offset);
 
   async function init(){
     if(!window.SQ_CONFIG||!SQ_CONFIG.SUPABASE_URL||!SQ_CONFIG.SUPABASE_ANON_KEY) return;
@@ -60,7 +66,7 @@
 
   async function loadAll(){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -71,11 +77,13 @@
       client.from("photos").select("*").order("created_at",{ascending:false}).limit(80),
       client.from("kids").select("id,pin").order("id"),
       client.from("day_ticks").select("kid_id,day,block_idx").gte("day",start).lte("day",today),
-      client.from("help_claims").select("*").order("created_at",{ascending:false}).limit(80)
+      client.from("help_claims").select("*").order("created_at",{ascending:false}).limit(80),
+      client.from("family_settings").select("key,value")
     ]);
     rows={
       ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[],
-      passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[],helpClaims:helpClaims.data||[]
+      passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[],helpClaims:helpClaims.data||[],
+      familySettings:familySettings.data||[]
     };
     $("noteBody").value=note.data&&note.data.body?note.data.body:"";
     renderAll();
@@ -91,6 +99,7 @@
     renderProofs();
     renderHistory();
     renderPins();
+    renderAdminPin();
   }
 
   function renderOverview(){
@@ -137,7 +146,9 @@
     const input=$(`reason-${kid}`);
     const reason=input.value.trim();
     if(!reason){input.focus();return;}
-    await client.from("stars_ledger").insert({kid_id:kid,delta,reason,source:"admin",granted_by:session.user.id});
+    const {error}=await client.from("stars_ledger").insert({kid_id:kid,delta,reason,source:"admin",granted_by:session.user.id});
+    if(error){writeFailed(error);return;}
+    toast(`+${delta} ⭐ ${kidName(kid)} — saved 已儲存`,true);
     input.value="";
     await loadAll();
   }
@@ -151,7 +162,9 @@
       <td>${r.source==="admin"?`<button class="btn btn--danger" data-delstar="${r.id}">Undo 復原</button>`:""}</td>
     </tr>`).join("")}</tbody></table>`;
     document.querySelectorAll("[data-delstar]").forEach(b=>b.onclick=async()=>{
-      await client.from("stars_ledger").delete().eq("id",b.dataset.delstar);
+      const {error}=await client.from("stars_ledger").delete().eq("id",b.dataset.delstar);
+      if(error){writeFailed(error);return;}
+      toast("Grant undone 已復原",true);
       await loadAll();
     });
   }
@@ -219,11 +232,14 @@
     if(answerAskId===id&&answerChunks.length){
       const blob=new Blob(answerChunks,{type:"audio/webm"});
       answer_audio_path=`answers/${id}-${Date.now()}.webm`;
-      await client.storage.from("voices").upload(answer_audio_path,blob,{contentType:"audio/webm",upsert:false});
+      const up=await client.storage.from("voices").upload(answer_audio_path,blob,{contentType:"audio/webm",upsert:false});
+      if(up.error){writeFailed(up.error);return;}
       answerAskId=null; answerChunks=[];
     }
     if(!body&&!answer_audio_path){$(`answer-${id}`).focus();return;}
-    await client.from("asks").update({answer:body||null,answer_audio_path,answered_at:new Date().toISOString()}).eq("id",id);
+    const {error}=await client.from("asks").update({answer:body||null,answer_audio_path,answered_at:new Date().toISOString()}).eq("id",id);
+    if(error){writeFailed(error);return;}
+    toast("Answer sent 回覆已送出",true);
     await loadAll();
   }
 
@@ -266,7 +282,7 @@
     $("passes").innerHTML=rows.passes.length?`<table class="table"><thead><tr>
       <th>Time 時間</th><th>Kid 孩子</th><th>Block 格子</th><th>Kind 類型</th><th>Status 狀態</th><th>Reason 原因</th><th></th>
     </tr></thead><tbody>${rows.passes.map(p=>`<tr>
-      <td>${fmt(p.created_at)}</td><td>${kidName(p.kid_id)}</td><td>${DAY[p.block_idx]?.[1]||"-"}<br><span class="muted">${DAY[p.block_idx]?.[2]||""}</span></td>
+      <td>${fmt(p.created_at)}</td><td>${kidName(p.kid_id)}</td><td>${(DAY[p.block_idx]&&DAY[p.block_idx][1])||"-"}<br><span class="muted">${(DAY[p.block_idx]&&DAY[p.block_idx][2])||""}</span></td>
       <td>${p.kind==="golden"?"Golden 黃金":"Excused 請假"}</td><td>${esc(p.status)}</td><td>${esc(p.reason||"")}</td>
       <td>${p.status==="requested"?`<button class="btn" data-passok="${p.id}">Approve 核准</button>
         <button class="btn btn--danger" data-passno="${p.id}">Deny 拒絕</button>`:""}</td>
@@ -275,7 +291,9 @@
     document.querySelectorAll("[data-passno]").forEach(b=>b.onclick=()=>setPass(b.dataset.passno,"denied"));
   }
   async function setPass(id,status){
-    await client.from("passes").update({status,granted_by:session.user.id}).eq("id",id);
+    const {error}=await client.from("passes").update({status,granted_by:session.user.id}).eq("id",id);
+    if(error){writeFailed(error);return;}
+    toast(status==="granted"?"Pass approved 已核准":"Pass denied 已拒絕",true);
     await loadAll();
   }
 
@@ -283,9 +301,33 @@
     $("proofs").innerHTML=rows.photos.length?`<div class="thumb-grid">${rows.photos.map(p=>`
       <article class="ask-card">
         <img class="thumb" src="${proofUrl(p.path)}" alt="Photo proof 照片證明">
-        <p>${kidName(p.kid_id)} · ${p.day} · ${DAY[p.block_idx]?.[1]||"Block"}<br><span class="muted">${DAY[p.block_idx]?.[2]||""}</span></p>
+        <p>${kidName(p.kid_id)} · ${p.day} · ${(DAY[p.block_idx]&&DAY[p.block_idx][1])||"Block"}<br><span class="muted">${(DAY[p.block_idx]&&DAY[p.block_idx][2])||""}</span></p>
       </article>`).join("")}</div>`:`<p>No proof photos yet. 還沒有照片證明。</p>`;
   }
+
+  /* Dinner gallery — full-screen slideshow of today's photos */
+  let galleryTimer=null,galleryIdx=0,galleryShots=[];
+  function drawGallery(){
+    const p=galleryShots[galleryIdx];
+    if(!p)return;
+    $("galleryImg").src=proofUrl(p.path);
+    $("galleryCap").innerHTML=`<b>${kidName(p.kid_id)}</b> · ${(DAY[p.block_idx]&&DAY[p.block_idx][1])||"Photo"} <span class="muted">${(DAY[p.block_idx]&&DAY[p.block_idx][2])||""}</span> · ${galleryIdx+1}/${galleryShots.length}`;
+  }
+  function galleryStep(dir){
+    galleryIdx=(galleryIdx+dir+galleryShots.length)%galleryShots.length;
+    drawGallery(); startGalleryTimer();
+  }
+  function startGalleryTimer(){
+    stopGalleryTimer();
+    galleryTimer=setInterval(()=>{galleryIdx=(galleryIdx+1)%galleryShots.length;drawGallery();},6000);
+  }
+  function stopGalleryTimer(){if(galleryTimer){clearInterval(galleryTimer);galleryTimer=null;}}
+  function openGallery(){
+    galleryShots=rows.photos.filter(p=>p.day===today);
+    if(!galleryShots.length){toast("No photos today yet 今天還沒有照片",true);return;}
+    galleryIdx=0; show("gallery",true); drawGallery(); startGalleryTimer();
+  }
+  function closeGallery(){stopGalleryTimer();show("gallery",false);}
 
   function renderHistory(){
     const days=Array.from({length:14},(_,i)=>dayISO(i-13));
@@ -351,6 +393,45 @@
     renderPins();
   }
 
+  function adminPinValue(){
+    const row=rows.familySettings.find(function(x){return x.key==="admin_pin";})||{};
+    return row.value||"";
+  }
+  function renderAdminPin(){
+    const feedback=adminPinFeedback.type?adminPinFeedback:{};
+    const displayPin=feedback.value!==undefined?feedback.value:adminPinValue();
+    $("adminPinSettings").innerHTML=`<div class="pin-card__head">
+        <h3>Papa PIN 爸爸密碼</h3>
+        <span class="status-pill ${adminPinValue()?"status-pill--ok":"status-pill--muted"}">${adminPinValue()?"PIN set 已設定":"No PIN 未設定"}</span>
+      </div>
+      <label class="field"><span>Papa PIN (lock override) 爸爸密碼</span><input class="input pin-input" id="adminPin" inputmode="numeric" maxlength="4" value="${esc(displayPin)}" placeholder="4 digits 四位數" autocomplete="off" pattern="[0-9]*"></label>
+      <p class="pin-note">Used on tablets to unlock games for the current block. 平板上用來解鎖目前時段的遊戲。</p>
+      <div class="row pin-actions">
+        <button class="btn" id="saveAdminPinBtn" ${feedback.type==="pending"?"disabled":""}>${feedback.type==="pending"?"Saving 儲存中":"Save Papa PIN 儲存爸爸密碼"}</button>
+      </div>
+      <p class="message pin-message ${feedback.type==="ok"?"message--ok":feedback.type==="error"?"message--error":""}" id="adminPinStatus" aria-live="polite">${feedback.text||""}</p>`;
+    $("saveAdminPinBtn").onclick=saveAdminPin;
+  }
+  async function saveAdminPin(){
+    const value=$("adminPin").value.trim();
+    if(!/^[0-9]{4}$/.test(value)){
+      adminPinFeedback.type="error"; adminPinFeedback.text="4 digits please 請輸入四位數"; adminPinFeedback.value=value;
+      renderAdminPin(); $("adminPin").focus(); $("adminPin").select(); return;
+    }
+    adminPinFeedback.type="pending"; adminPinFeedback.text="Saving 儲存中"; adminPinFeedback.value=value;
+    renderAdminPin();
+    const {error}=await client.from("family_settings").upsert({key:"admin_pin",value:value,updated_at:new Date().toISOString()});
+    if(error){
+      adminPinFeedback.type="error"; adminPinFeedback.text="Could not save 無法儲存"; adminPinFeedback.value=value;
+      renderAdminPin(); return;
+    }
+    const row=rows.familySettings.find(function(x){return x.key==="admin_pin";});
+    if(row)row.value=value; else rows.familySettings.push({key:"admin_pin",value:value});
+    const time=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+    adminPinFeedback.type="ok"; adminPinFeedback.text=`Saved ${time} 已儲存`; adminPinFeedback.value=value;
+    renderAdminPin();
+  }
+
   function subscribeRealtime(){
     client.channel("p1-admin")
       .on("postgres_changes",{event:"*",schema:"public",table:"day_ticks"},loadAll)
@@ -359,6 +440,7 @@
       .on("postgres_changes",{event:"*",schema:"public",table:"passes"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"photos"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"help_claims"},loadAll)
+      .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},loadAll)
       .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},loadAll)
       .subscribe();
   }
@@ -374,6 +456,16 @@
   };
   $("logoutBtn").onclick=async()=>{await client.auth.signOut();location.reload();};
   $("refreshBtn").onclick=loadAll;
+  $("galleryBtn").onclick=openGallery;
+  $("galleryPrev").onclick=()=>galleryStep(-1);
+  $("galleryNext").onclick=()=>galleryStep(1);
+  $("galleryClose").onclick=closeGallery;
+  addEventListener("keydown",e=>{
+    if($("gallery").classList.contains("hidden"))return;
+    if(e.key==="Escape")closeGallery();
+    if(e.key==="ArrowLeft")galleryStep(-1);
+    if(e.key==="ArrowRight")galleryStep(1);
+  });
   $("saveNoteBtn").onclick=async()=>{
     const body=$("noteBody").value.trim();
     const status=$("noteStatus");
@@ -382,5 +474,5 @@
     const {error}=await client.from("papa_notes").upsert({day:tomorrow,body});
     status.textContent=error?error.message:"Saved 儲存好了";
   };
-  init().catch(e=>{$("configState").querySelector("p").textContent=e.message;});
+  init().catch(e=>{show("configState",true);$("configState").querySelector("p").textContent=e.message;});
 })();

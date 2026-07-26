@@ -83,7 +83,10 @@
     </section>
 
     <section class="panel">
-      <h2 class="section-title">Proof gallery 照片證明</h2>
+      <div class="section-head">
+        <h2 class="section-title">Proof gallery 照片證明</h2>
+        <button class="btn btn--secondary" id="galleryBtn">🍽 Dinner gallery 晚餐播放</button>
+      </div>
       <div id="proofs"></div>
     </section>
 
@@ -95,6 +98,7 @@
     <section class="panel">
       <h2 class="section-title">Settings 設定</h2>
       <div class="kid-grid" id="pinSettings"></div>
+      <div class="kid-card" id="adminPinSettings"></div>
     </section>
 
     <section class="panel">
@@ -103,7 +107,18 @@
     </section>
   </section>
 </main>
+<div class="gallery hidden" id="gallery" role="dialog" aria-label="Dinner gallery 晚餐播放">
+  <img id="galleryImg" alt="Family photo of the day 今日家庭照片">
+  <p id="galleryCap"></p>
+  <div class="row gallery__nav">
+    <button class="btn btn--secondary" id="galleryPrev">‹ Prev 上一張</button>
+    <button class="btn btn--secondary" id="galleryNext">Next 下一張 ›</button>
+    <button class="btn" id="galleryClose">Close 關閉</button>
+  </div>
+</div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <script src="js/config.js"></script>
+<script src="js/day.js"></script>
 <script src="js/admin.js"></script>
 <script>
 if("serviceWorker" in navigator){
