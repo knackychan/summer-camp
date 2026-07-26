@@ -31,6 +31,14 @@ Decisions recorded here were confirmed explicitly by Papa; implementers should n
   3. **Papa PIN override** on the tablet: instant unlock for the current block, works offline. 4-digit admin PIN, plaintext at the same trust level as kid PINs; stored in admin Settings, synced and cached in `localStorage` so it works with wifi off.
 - Screen blocks keep their existing 🔓/🔒 earned-status logic; free blocks stay free.
 
+### Overrun handling — soft linger, no shifting (Papa's decision 2026-07-26)
+
+The clock stays the authority: the schedule is a rhythm, not a stopwatch, and real anchors (meals, 19:00 recap) never move. When an activity runs past its slot:
+
+- The block turns amber as today ("You can still start/finish! 還來得及！"); a late tick still counts fully and earns its star. No shifting of later blocks, ever — no per-kid drift, no announcement drift.
+- **Lock persistence:** if the previous activity block is unticked, the games lock persists into the following block(s) until it is ticked — *except* when the current block is itself an activity, in which case the current activity governs the lock. The lock overlay names the unfinished block. Passes, outing mode, and the Papa PIN override clear it as usual.
+- No "extend block" button, no auto-shift. Rejected for complexity and predictability loss.
+
 ## 3. Outing mode (slice 03)
 
 Covers "we were out all morning" — visit, walk, trip. Kid is not at fault; amber "you can still start!" is the wrong message and the lock must not fire.
