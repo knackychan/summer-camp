@@ -1011,7 +1011,7 @@ git commit -m "feat(brain): add Math Recall with dependent items"
 **Files:**
 - Modify: `index.html:505` (`LEVELS`)
 
-- [ ] **Step 1: Add the eight remaining `LEVELS` entries**
+- [x] **Step 1: Add the eight remaining `LEVELS` entries**
 
 Beside the `calc` entry from slice 09:
 
@@ -1028,7 +1028,7 @@ Beside the `calc` entry from slice 09:
 
 Every `LEVELS` key must equal its `SQBrainData.GAMES` id — slice 09's `startGame` branch dispatches on that.
 
-- [ ] **Step 2: Confirm the LEVELS check still holds**
+- [x] **Step 2: Confirm the LEVELS check still holds**
 
 Slice 09 already added this rule to the BRAIN block of `scripts/check.mjs` — it now has to pass for all nine ids, which is the point:
 
@@ -1040,12 +1040,12 @@ Slice 09 already added this rule to the BRAIN block of `scripts/check.mjs` — i
 
 No edit needed — if it fails, an id in `brain-data.js` has no `LEVELS` entry.
 
-- [ ] **Step 3: Run the check**
+- [x] **Step 3: Run the check**
 
 Run: `node scripts/check.mjs`
 Expected: `Summer Quest check passed: ...`
 
-- [ ] **Step 4: Manual smoke test, all nine, all three kids**
+- [x] **Step 4: Manual smoke test, all nine, all three kids**
 
 For each kid profile, open every brain tile and confirm:
 
@@ -1062,7 +1062,7 @@ For each kid profile, open every brain tile and confirm:
 | Math Recall | first screen says "just remember it"; later screens ask for the previous value |
 | Any game | a wrong answer shakes, shows the answer, continues — no red, no game over |
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add index.html scripts/check.mjs

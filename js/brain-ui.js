@@ -165,11 +165,16 @@
     function advance(given){
       answers[idx]=given;
       const item=round.items[idx];
+      if(item.worth===0){step();return;}
       if(String(given).trim()!==String(item.answer).trim()){
         /* no fail state: shake, show the answer, then carry on */
         shaking=true; render();
         const box=o.querySelector(".bprompt");
         if(box)box.innerHTML=item.prompt.en+' <b class="bans">'+item.answer+"</b>";
+        else{
+          const pad=o.querySelector(".bpad")||o.querySelector(".btype");
+          if(pad)pad.insertAdjacentHTML("beforebegin",'<div class="bsub bans">'+item.answer+"</div>");
+        }
         setTimeout(function(){shaking=false;step();},900);
         return;
       }
