@@ -485,3 +485,25 @@ test("Change Maker tot compares two coins and names the bigger one", () => {
     assert.equal(item.answer, String(Math.max(Number(item.choices[0]), Number(item.choices[1]))));
   }
 });
+
+test("Low to High answers are the cells sorted ascending", () => {
+  const rnd = SQBrainCore.mulberry32(21);
+  for (const tier of ["tot", "mid", "hard"]) {
+    const round = SQBrainCore.buildRound("lowhigh", tier, rnd);
+    assert.equal(round.pad, "grid");
+    for (const item of round.items) {
+      const ns = item.prompt.cells.map((c) => c.n);
+      assert.equal(new Set(ns).size, ns.length, "no duplicate numbers in a grid");
+      assert.equal(item.answer, ns.slice().sort((a, b) => a - b).join(","));
+      assert.ok(item.prompt.flashMs >= 1000);
+    }
+  }
+});
+
+test("Low to High grows with the tier", () => {
+  const tot = SQBrainCore.buildRound("lowhigh", "tot", SQBrainCore.mulberry32(1));
+  const hard = SQBrainCore.buildRound("lowhigh", "hard", SQBrainCore.mulberry32(1));
+  assert.equal(tot.items[0].prompt.cells.length, 3);
+  assert.equal(hard.items[0].prompt.cells.length, 7);
+  assert.ok(tot.items[0].prompt.flashMs > hard.items[0].prompt.flashMs, "tot gets a longer look");
+});

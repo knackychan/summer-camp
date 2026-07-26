@@ -100,6 +100,23 @@
     };
   }
 
+  /* ---- 3. Low to High 由小到大 ---- */
+  function lowHighItem(rnd,count,max,flashMs){
+    const seen={}, cells=[];
+    while(cells.length<count){
+      const n=intBetween(rnd,1,max);
+      if(seen[n])continue;
+      seen[n]=true; cells.push({n:n});
+    }
+    const sorted=cells.map(function(c){return c.n;}).sort(function(a,b){return a-b;});
+    return {
+      prompt:{type:"gridflash",cells:cells,flashMs:flashMs,
+        en:"Remember, then tap smallest first",zh:"記住，然後從最小開始點"},
+      say:["Remember these numbers","記住這些數字"],
+      answer:sorted.join(",")
+    };
+  }
+
   /* ---- 4. Color Words 顏色字 (Stroop) ---- */
   const STROOP_KEYS=["red","blue","green","yellow"];
   const COLOR_EN={red:"Red",blue:"Blue",green:"Green",yellow:"Yellow",purple:"Purple",black:"Black"};
@@ -214,6 +231,15 @@
         tot :{items:10,clock:false,pad:"choice",gen:function(r){return signItem(r,["+","−"],1,5);}},
         mid :{items:15,clock:true, pad:"choice",gen:function(r){return signItem(r,["+","−","×"],2,9);}},
         hard:{items:15,clock:true, pad:"choice",gen:function(r){return signItem(r,["+","−","×","÷"],2,12);}}
+      }
+    },
+    lowhigh:{
+      id:"lowhigh", icon:"🔢", skill:"memory",
+      title:["Low to High","由小到大"], blurb:["Remember and order","記住再排序"],
+      tiers:{
+        tot :{items:5,clock:false,pad:"grid",gen:function(r){return lowHighItem(r,3,5,4000);}},
+        mid :{items:5,clock:true, pad:"grid",gen:function(r){return lowHighItem(r,5,20,3000);}},
+        hard:{items:5,clock:true, pad:"grid",gen:function(r){return lowHighItem(r,7,50,2500);}}
       }
     },
     stroop:{

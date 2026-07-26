@@ -675,7 +675,7 @@ git commit -m "feat(brain): add Number Cruncher, Time Lapse and Change Maker"
 - Modify: `js/brain-data.js`
 - Test: `scripts/core.test.mjs`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 test("Low to High answers are the cells sorted ascending", () => {
@@ -701,12 +701,12 @@ test("Low to High grows with the tier", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test scripts/core.test.mjs`
 Expected: FAIL — `unknown brain game: lowhigh`
 
-- [ ] **Step 3: Implement in `js/brain-data.js`**
+- [x] **Step 3: Implement in `js/brain-data.js`**
 
 ```js
   /* ---- 3. Low to High 由小到大 ---- */
@@ -741,12 +741,12 @@ Add to `GAMES`:
     },
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `node --test scripts/core.test.mjs && node scripts/check.mjs`
 Expected: PASS both.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add js/brain-data.js scripts/core.test.mjs
