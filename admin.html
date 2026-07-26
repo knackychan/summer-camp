@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 <title>Summer Quest Admin</title>
 <link rel="stylesheet" href="css/admin.css">
-<main class="app-shell">
+<main class="app-shell is-locked" id="shell">
   <header class="app-top">
     <div>
       <h1 class="page-title">Summer Quest Admin</h1>
@@ -19,46 +19,116 @@
     <button class="btn btn--secondary hidden" id="logoutBtn">Sign out 登出</button>
   </header>
 
-  <section class="panel" id="configState">
-    <h2 class="section-title">Config needed 需要設定</h2>
-    <p>Create <code>js/config.js</code> from <code>js/config.example.js</code>.</p>
-  </section>
-
-  <section class="panel hidden" id="login">
-    <h2 class="section-title">Login 登入</h2>
-    <label class="field">
-      <span>Email 電子信箱</span>
-      <input class="input" id="email" type="email" autocomplete="email">
-    </label>
-    <label class="field">
-      <span>Password 密碼</span>
-      <input class="input" id="password" type="password" autocomplete="current-password">
-    </label>
-    <p class="message message--error" id="loginErr"></p>
-    <button class="btn" id="loginBtn">Sign in 登入</button>
-  </section>
-
-  <section id="dash" class="hidden">
-    <section class="panel">
-      <div class="section-head">
-        <h2 class="section-title">Today at a glance 今日總覽</h2>
-        <span class="pill" id="todayLabel"></span>
-        <label class="toggle-line"><input type="checkbox" id="removedCredited" checked> Removed blocks earn stars 移除也算星星</label>
-        <button class="btn btn--danger" id="resetAcceptedBtn">Reset day 重設今天</button>
-        <button class="btn btn--secondary" id="refreshBtn">Refresh 更新</button>
-      </div>
-      <p class="hint">Drag blocks to change order. Use the time field for exact moves. Accept, undo, remove, or add blocks back from each kid's list. 拖曳格子調整順序，也可直接改時間。</p>
-      <div class="kid-grid" id="overview"></div>
+  <div class="col-center">
+    <section class="panel" id="configState">
+      <h2 class="section-title">Config needed 需要設定</h2>
+      <p>Create <code>js/config.js</code> from <code>js/config.example.js</code>.</p>
     </section>
 
-    <section class="panel notify-panel">
+    <section class="panel hidden" id="login">
+      <h2 class="section-title">Login 登入</h2>
+      <label class="field">
+        <span>Email 電子信箱</span>
+        <input class="input" id="email" type="email" autocomplete="email">
+      </label>
+      <label class="field">
+        <span>Password 密碼</span>
+        <input class="input" id="password" type="password" autocomplete="current-password">
+      </label>
+      <p class="message message--error" id="loginErr"></p>
+      <button class="btn" id="loginBtn">Sign in 登入</button>
+    </section>
+
+    <section id="dash" class="hidden">
+      <section class="panel">
+        <div class="section-head">
+          <h2 class="section-title">Today at a glance 今日總覽</h2>
+        </div>
+        <p class="hint">Drag blocks to change order. Use the time field for exact moves. Accept, undo, remove, or add blocks back from each kid's list. 拖曳格子調整順序，也可直接改時間。</p>
+        <div class="kid-grid" id="overview"></div>
+      </section>
+
+      <section class="panel comms-panel">
+        <div class="section-head">
+          <h2 class="section-title">Messages 訊息</h2>
+          <label class="toggle-line"><input type="checkbox" id="showArchivedAsks"> Show archived 顯示封存</label>
+        </div>
+        <div class="comms-layout">
+          <div class="message-composer">
+            <h3 class="subsection-title">Papa's daily message 爸爸每日留言</h3>
+            <p class="compact-copy" id="noteDay"></p>
+            <label class="field">
+              <span>Message for today 給今天的留言</span>
+              <textarea class="input textarea" id="noteBody" placeholder="Have a brave, kind day! 今天也要勇敢又溫柔！"></textarea>
+            </label>
+            <p class="message message--ok" id="noteStatus"></p>
+            <button class="btn" id="saveNoteBtn">Save message 儲存留言</button>
+          </div>
+          <div class="inbox-panel">
+            <h3 class="subsection-title">Ask inbox 求助收件匣</h3>
+            <div id="askInbox"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="section-title">Captain claims 隊長申請</h2>
+        <p class="message message--error" id="helpClaimsStatus"></p>
+        <div id="helpClaims"></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="section-title">Pass requests 券申請</h2>
+        <div id="passes"></div>
+      </section>
+
+      <details class="fold" data-fold="acts">
+        <summary>Activities ticked today 今天完成的活動<span class="fold__count" id="foldCountActs"></span></summary>
+        <div class="fold__body">
+          <p class="hint">Revoke takes the star back and un-ticks the activity, so the kid can do it for real and earn it again today. 收回星星並取消勾選，孩子今天可以真的做完再拿一次。</p>
+          <div class="kid-grid" id="actsToday"></div>
+        </div>
+      </details>
+
+      <details class="fold" data-fold="proofs">
+        <summary>Proof gallery 照片證明<span class="fold__count" id="foldCountProofs"></span></summary>
+        <div class="fold__body">
+          <button class="btn btn--secondary" id="galleryBtn">🍽 Dinner gallery 晚餐播放</button>
+          <div id="proofs"></div>
+        </div>
+      </details>
+
+      <details class="fold" data-fold="history">
+        <summary>14-day history 14天紀錄<span class="fold__count" id="foldCountHistory"></span></summary>
+        <div class="fold__body"><div id="history"></div></div>
+      </details>
+
+      <details class="fold" data-fold="ledger">
+        <summary>Ledger 星星紀錄<span class="fold__count" id="foldCountLedger"></span></summary>
+        <div class="fold__body"><div id="ledger"></div></div>
+      </details>
+
+      <details class="fold" data-fold="settings">
+        <summary>Settings 設定<span class="fold__count" id="foldCountSettings"></span></summary>
+        <div class="fold__body">
+          <div class="kid-grid" id="pinSettings"></div>
+          <div class="kid-card" id="adminPinSettings"></div>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <aside class="rail rail--left hidden" id="railLeft">
+    <section class="panel">
       <div class="section-head">
-        <h2 class="section-title">Live notifications 即時通知</h2>
-        <span class="pill" id="notifyStatus">Dashboard only 只在頁面內</span>
-        <button class="btn" id="notifyEnableBtn">Enable Windows notifications 開啟Windows通知</button>
-        <button class="btn btn--secondary" id="notifyClearBtn">Clear 清除</button>
+        <h2 class="section-title">Today 今天</h2>
+        <span class="pill" id="todayLabel"></span>
       </div>
-      <div class="notify-feed" id="notifyFeed" role="log" aria-live="polite"></div>
+      <div class="row">
+        <button class="btn btn--secondary" id="refreshBtn">Refresh 更新</button>
+        <button class="btn btn--danger" id="resetAcceptedBtn">Reset day 重設今天</button>
+      </div>
+      <label class="toggle-line"><input type="checkbox" id="removedCredited" checked> Removed blocks earn stars 移除也算星星</label>
     </section>
 
     <section class="panel grant-panel">
@@ -67,75 +137,25 @@
     </section>
 
     <section class="panel">
-      <h2 class="section-title">Activities ticked today 今天完成的活動</h2>
-      <p class="hint">Revoke takes the star back and un-ticks the activity, so the kid can do it for real and earn it again today. 收回星星並取消勾選，孩子今天可以真的做完再拿一次。</p>
-      <div class="kid-grid" id="actsToday"></div>
-    </section>
-
-    <section class="panel comms-panel">
-      <div class="section-head">
-        <h2 class="section-title">Messages 訊息</h2>
-        <label class="toggle-line"><input type="checkbox" id="showArchivedAsks"> Show archived 顯示封存</label>
-      </div>
-      <div class="comms-layout">
-        <div class="message-composer">
-          <h3 class="subsection-title">Papa's daily message 爸爸每日留言</h3>
-          <p class="compact-copy" id="noteDay"></p>
-          <label class="field">
-            <span>Message for today 給今天的留言</span>
-            <textarea class="input textarea" id="noteBody" placeholder="Have a brave, kind day! 今天也要勇敢又溫柔！"></textarea>
-          </label>
-          <p class="message message--ok" id="noteStatus"></p>
-          <button class="btn" id="saveNoteBtn">Save message 儲存留言</button>
-        </div>
-        <div class="inbox-panel">
-          <h3 class="subsection-title">Ask inbox 求助收件匣</h3>
-          <div id="askInbox"></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2 class="section-title">Captain claims 隊長申請</h2>
-      <p class="message message--error" id="helpClaimsStatus"></p>
-      <div id="helpClaims"></div>
-    </section>
-
-    <section class="panel">
-      <h2 class="section-title">Pass requests 券申請</h2>
-      <div id="passes"></div>
-    </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <h2 class="section-title">Proof gallery 照片證明</h2>
-        <button class="btn btn--secondary" id="galleryBtn">🍽 Dinner gallery 晚餐播放</button>
-      </div>
-      <div id="proofs"></div>
-    </section>
-
-    <section class="panel">
-      <h2 class="section-title">14-day history 14天紀錄</h2>
-      <div id="history"></div>
-    </section>
-
-    <section class="panel">
-      <h2 class="section-title">Settings 設定</h2>
-      <div class="kid-grid" id="pinSettings"></div>
-      <div class="kid-card" id="adminPinSettings"></div>
-    </section>
-
-    <section class="panel">
       <h2 class="section-title">App locks 暫停與分類鎖</h2>
       <p class="muted">Pause the whole app, or lock one category while My Day stays available. 可暫停整個app，或只鎖某個分類，「我的一天」仍可查看。</p>
       <div id="applocks" class="kid-grid"></div>
     </section>
+  </aside>
 
-    <section class="panel">
-      <h2 class="section-title">Ledger 星星紀錄</h2>
-      <div id="ledger"></div>
+  <aside class="rail rail--right hidden" id="railRight">
+    <section class="panel notify-panel">
+      <div class="section-head">
+        <h2 class="section-title">Live notifications 即時通知</h2>
+        <span class="pill" id="notifyStatus">Dashboard only 只在頁面內</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="notifyEnableBtn">Enable Windows notifications 開啟Windows通知</button>
+        <button class="btn btn--secondary" id="notifyClearBtn">Clear 清除</button>
+      </div>
+      <div class="notify-feed" id="notifyFeed" role="log" aria-live="polite"></div>
     </section>
-  </section>
+  </aside>
 </main>
 <div class="gallery hidden" id="gallery" role="dialog" aria-label="Dinner gallery 晚餐播放">
   <img id="galleryImg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="Family photo of the day 今日家庭照片">
