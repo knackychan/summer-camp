@@ -586,6 +586,7 @@ const LEVELS = {
   crunch: {icon:"🔍", title:"Number Cruncher", tz:"數一數", blurb:"Count them fast",     brain:true},
   clock:  {icon:"🕐", title:"Time Lapse", tz:"時鐘",      blurb:"Read the clock",        brain:true},
   change: {icon:"💱", title:"Change Maker", tz:"找零錢",  blurb:"Count the change",      brain:true},
+  wordmem:{icon:"🧠", title:"Word Memory", tz:"記單字",   blurb:"Remember the words",    brain:true},
 };
 /* English / emoji / French word packs */
 const VOCAB={
@@ -664,6 +665,10 @@ const SENT=[
  ["why are you sad","😢","pourquoi es-tu triste","你為什麼難過"],
  ["when do we eat","🥄","quand mange-t-on","我們什麼時候吃飯"],
 ];
+/* Word Memory reuses the vocab pack words — no second word list to maintain */
+if(typeof SQBrainData!=="undefined")SQBrainData.setWordPool(Object.keys(VOCAB).reduce(function(acc,k){
+  return acc.concat(VOCAB[k].words.map(function(w){return w[0];}));
+},[]).filter(function(w){return /^[a-z]+$/.test(w);}));
 const ALL_WORDS=Object.values(VOCAB).reduce((all,p)=>all.concat(p.words),[]);
 /* ---- SUMMER CAMP data (from summer_schedule_kids.xlsx: Activity Bank + Photo Missions) ---- */
 const BANK=[

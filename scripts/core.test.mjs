@@ -507,3 +507,33 @@ test("Low to High grows with the tier", () => {
   assert.equal(hard.items[0].prompt.cells.length, 7);
   assert.ok(tot.items[0].prompt.flashMs > hard.items[0].prompt.flashMs, "tot gets a longer look");
 });
+
+test("Word Memory is one weighted item that grades partial recall", () => {
+  const round = SQBrainCore.buildRound("wordmem", "mid", SQBrainCore.mulberry32(31));
+  assert.equal(round.items.length, 1);
+  const item = round.items[0];
+  assert.equal(item.prompt.type, "wordlist");
+  assert.equal(item.prompt.words.length, 8);
+  assert.equal(item.worth, 8);
+  assert.equal(typeof item.grade, "function");
+  const half = item.prompt.words.slice(0, 4).join(" ");
+  assert.equal(item.grade(half), 4);
+  assert.equal(item.grade(half + " zebra unicorn"), 4, "wrong words never add points");
+  assert.equal(item.grade(""), 0);
+});
+
+test("Word Memory grading is case- and separator-insensitive and ignores repeats", () => {
+  const round = SQBrainCore.buildRound("wordmem", "mid", SQBrainCore.mulberry32(31));
+  const item = round.items[0];
+  const first = item.prompt.words[0];
+  assert.equal(item.grade(first.toUpperCase() + ", " + first), 1);
+});
+
+test("Word Memory tot taps the missing emoji instead of typing", () => {
+  const round = SQBrainCore.buildRound("wordmem", "tot", SQBrainCore.mulberry32(31));
+  assert.equal(round.pad, "choice");
+  for (const item of round.items) {
+    assert.ok(item.choices.indexOf(item.answer) >= 0);
+    assert.ok(item.prompt.words.indexOf(item.answer) >= 0);
+  }
+});

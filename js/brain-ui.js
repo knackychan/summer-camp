@@ -132,7 +132,15 @@
       const ta=o.querySelector("#bType");
       if(ta)ta.disabled=true;
       setTimeout(function(){
+        if(item.choices){
+          host.innerHTML=item.prompt.words
+            .filter(function(w){return w!==item.answer;})
+            .map(function(w){return `<span class="bword">${w}</span>`;}).join("")
+            +`<span class="bword bhidden">？</span>`;
+          return;
+        }
         host.innerHTML=`<span class="bsub">Now type what you remember 現在打出你記得的</span>`;
+        const ta=o.querySelector("#bType");
         if(ta){ta.disabled=false;ta.focus();}
       },item.prompt.studyMs);
     }

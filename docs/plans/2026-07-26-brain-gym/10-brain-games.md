@@ -763,7 +763,7 @@ Reuses the existing `VOCAB` data rather than adding word content. `brain-data.js
 - Modify: `js/brain-data.js`, `index.html`
 - Test: `scripts/core.test.mjs`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 test("Word Memory is one weighted item that grades partial recall", () => {
@@ -797,12 +797,12 @@ test("Word Memory tot taps the missing emoji instead of typing", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test scripts/core.test.mjs`
 Expected: FAIL — `unknown brain game: wordmem`
 
-- [ ] **Step 3: Implement in `js/brain-data.js`**
+- [x] **Step 3: Implement in `js/brain-data.js`**
 
 ```js
   /* ---- 8. Word Memory 記單字 ----
@@ -859,7 +859,7 @@ Add to `GAMES` and export `setWordPool` in the api object:
     },
 ```
 
-- [ ] **Step 4: Inject the real word pool from `index.html`**
+- [x] **Step 4: Inject the real word pool from `index.html`**
 
 After the `VOCAB` constant is defined (near `index.html:515`), add:
 
@@ -872,7 +872,7 @@ SQBrainData.setWordPool(Object.keys(VOCAB).reduce(function(acc,k){
 
 The `/^[a-z]+$/` filter drops multi-word entries like `"ice cream"`, which would break the whitespace-split grader.
 
-- [ ] **Step 5: Handle the tot variant in the UI**
+- [x] **Step 5: Handle the tot variant in the UI**
 
 `wordMemTot` shows 4 emoji, hides one, then asks which disappeared. In `mountWords`, when the item has `choices`, re-render the list after `studyMs` with the answer removed rather than replacing it with the prompt line:
 
@@ -891,12 +891,12 @@ The `/^[a-z]+$/` filter drops multi-word entries like `"ice cream"`, which would
       },item.prompt.studyMs);
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `node --test scripts/core.test.mjs && node scripts/check.mjs`
 Expected: PASS both.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add js/brain-data.js js/brain-ui.js index.html scripts/core.test.mjs

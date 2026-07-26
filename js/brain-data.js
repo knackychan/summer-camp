@@ -213,6 +213,45 @@
     };
   }
 
+  /* ---- 8. Word Memory 記單字 ----
+     Words are injected from index.html's VOCAB at boot; the fallback keeps
+     this module standalone for node tests and for a config-less local run. */
+  let WORD_POOL=["cat","dog","fish","bird","apple","water","house","book",
+    "green","jump","friend","music","river","cloud","spoon","tiger"];
+  const EMOJI_POOL=["🐱","🐶","🐟","🐦","🍎","💧","🏠","📚","🌳","⭐","🚗","🎈"];
+  function setWordPool(list){if(list&&list.length>=12)WORD_POOL=list.slice();}
+
+  function wordMemItem(rnd,count,studyMs){
+    const words=shuffleWith(rnd,WORD_POOL.slice()).slice(0,count);
+    const want={};
+    words.forEach(function(w){want[w.toLowerCase()]=true;});
+    return {
+      prompt:{type:"wordlist",words:words,studyMs:studyMs,
+        en:"Remember these words",zh:"記住這些單字"},
+      worth:count,
+      answer:words.join(" "),
+      grade:function(given){
+        const hit={};
+        String(given).toLowerCase().split(/[^a-z']+/).forEach(function(w){
+          if(w&&want[w])hit[w]=true;
+        });
+        return Object.keys(hit).length;
+      }
+    };
+  }
+
+  function wordMemTot(rnd){
+    const shown=shuffleWith(rnd,EMOJI_POOL.slice()).slice(0,4);
+    const missing=pick(rnd,shown);
+    return {
+      prompt:{type:"wordlist",words:shown,studyMs:4000,
+        en:"Which one disappeared?",zh:"哪一個不見了？"},
+      say:["Remember these pictures","記住這些圖片"],
+      answer:missing,
+      choices:shuffleWith(rnd,shown.slice())
+    };
+  }
+
   const GAMES={
     calc:{
       id:"calc", icon:"➕", skill:"math",
@@ -277,11 +316,21 @@
         mid :{items:10,clock:true, pad:"keypad",gen:function(r){return changeItem(r,45,[50,100]);}},
         hard:{items:10,clock:true, pad:"keypad",gen:function(r){return changeItem(r,480,[500,1000]);}}
       }
+    },
+    wordmem:{
+      id:"wordmem", icon:"🧠", skill:"memory",
+      title:["Word Memory","記單字"], blurb:["Remember the words","記住單字"],
+      tiers:{
+        tot :{items:5,clock:false,pad:"choice",gen:wordMemTot},
+        mid :{items:1,clock:true, pad:"type",gen:function(r){return wordMemItem(r,8,45000);}},
+        hard:{items:1,clock:true, pad:"type",gen:function(r){return wordMemItem(r,12,60000);}}
+      }
     }
   };
 
   const api={TIERS:TIERS,TIER_DEFAULT:TIER_DEFAULT,GAMES:GAMES,
-    pick:pick,intBetween:intBetween,numChoices:numChoices,shuffleWith:shuffleWith,zhNum:zhNum};
+    pick:pick,intBetween:intBetween,numChoices:numChoices,shuffleWith:shuffleWith,zhNum:zhNum,
+    setWordPool:setWordPool};
   if(typeof window!=="undefined")window.SQBrainData=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();
