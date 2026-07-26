@@ -1,11 +1,13 @@
-const CACHE_NAME = "summer-quest-v6";
+const CACHE_NAME = "summer-quest-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./admin.html",
   "./css/admin.css",
+  "./js/config.js",
   "./js/day.js",
   "./js/day-data.js",
+  "./js/act-data.js",
   "./js/time-core.js",
   "./js/lock-core.js",
   "./js/pinpad.js",
@@ -13,6 +15,9 @@ const APP_SHELL = [
   "./js/drills.js",
   "./js/sync.js",
   "./js/admin.js",
+  "./js/brain-data.js",
+  "./js/brain-core.js",
+  "./js/brain-ui.js",
   "./manifest.webmanifest",
   "./assets/icons/icon.svg",
   "./assets/icons/icon-192.png",
@@ -46,28 +51,25 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.endsWith("/js/config.js")) return;
+  if (url.origin !== self.location.origin) return;
 
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match(request).then(cached => cached || caches.match("./index.html")))
-    );
-    return;
-  }
+  // Network-first for EVERY same-origin GET, not just navigations. Cache-first on
+  // scripts meant tablets kept running the previous deploy's JS until someone did a
+  // hard reload. js/config.js is handled here too: leaving it to the browser's HTTP
+  // cache is what made F5 show "Config needed" while ctrl+shift+R worked.
+  const offline = request.mode === "navigate"
+    ? cached => cached || caches.match("./index.html")
+    : cached => cached;
 
   event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(response => {
-      if (response.ok) {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-      }
-      return response;
-    }))
+    fetch(request)
+      .then(response => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request).then(offline))
   );
 });
