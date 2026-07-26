@@ -258,12 +258,19 @@ button:disabled{cursor:default}
   border-radius:16px;padding:12px 14px}
 .dayrow.done{border-color:var(--ok);opacity:.72}
 .dayrow.done .dt-title{text-decoration:line-through}
+.dayrow.now{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,201,60,.18),0 0 28px rgba(255,201,60,.18)}
+.dayrow.next{border-color:rgba(78,168,255,.65)}
+.dayrow.past{border-color:rgba(255,201,60,.72);background:rgba(255,201,60,.10)}
 .dayrow .dtime{flex:0 0 52px;font-family:'Fredoka';font-weight:700;font-size:14px;color:var(--gold);
   text-align:center;padding-top:3px}
 .dayrow .dmid{flex:1;min-width:0}
 .dayrow .dt-title{font-family:'Fredoka';font-weight:600;font-size:16px}
 .dayrow .dt-mis{color:var(--ink);font-weight:700;font-size:14px;margin-top:3px;line-height:1.4}
 .dayrow .dt-mis.routine{color:var(--muted)}
+.timeflag,.screenflag{display:inline-block;margin-top:5px;font-size:12px;font-weight:900;color:var(--gold)}
+.screenflag.locked{color:#B7B9D6}
+.notehero{background:rgba(78,168,255,.16);border:2px solid rgba(78,168,255,.35);border-radius:16px;
+  padding:12px 14px;margin-bottom:12px;font-weight:800;color:var(--ink);white-space:pre-wrap;text-align:left}
 .dayrow .dbtns{display:flex;flex-direction:column;gap:6px}
 .dayrow .btn.tick{padding:8px 12px;font-size:15px}
 .dayrow.mission{border-left:5px solid var(--gold)}
@@ -1771,7 +1778,28 @@ document.getElementById("muteHome").onclick=toggleMute;
 
 /* ============ KID HUB ============ */
 let hubKid=null, actIdx=null, actTimerInt=null, actTimerLeft=0, actTimerTotal=0;
-const todayStr=()=>new Date().toISOString().slice(0,10);
+function taipeiParts(date=new Date()){
+  return new Intl.DateTimeFormat("en-CA",{
+    timeZone:"Asia/Taipei",year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit",hour12:false
+  }).formatToParts(date).reduce((a,p)=>(a[p.type]=p.value,a),{});
+}
+const todayStr=()=>{const p=taipeiParts();return `${p.year}-${p.month}-${p.day}`;};
+const nowMins=()=>{const p=taipeiParts();return (+p.hour%24)*60+(+p.minute);};
+function blockMins(b){
+  if(!b||!String(b.t).includes(":"))return null;
+  const [h,m]=b.t.split(":").map(Number);
+  return h*60+m;
+}
+function timelineInfo(){
+  const now=nowMins(), timed=DAY.map((b,i)=>({i,t:blockMins(b)})).filter(x=>x.t!=null);
+  let current=timed[0]?.i??0, next=null;
+  for(let n=0;n<timed.length;n++){
+    if(timed[n].t<=now) current=timed[n].i;
+    if(timed[n].t>now){next=timed[n].i;break;}
+  }
+  return {now,current,next};
+}
 function actsToday(id){
   const P=progress[id];
   if(!P.actsDay||P.actsDay.d!==todayStr()) P.actsDay={d:todayStr(),done:{}};
@@ -1798,22 +1826,40 @@ function missionFor(id,i){
   const rr=(dayState(id).rr[i]||0);
   return pool[(dseed(todayStr()+id+i)+rr)%pool.length];
 }
+function screenStatus(i,d){
+  if(!String(DAY[i].title).includes("Screen"))return "";
+  const needed=DAY.map((_,idx)=>idx).filter(idx=>idx<i&&blockMins(DAY[idx])!=null);
+  const earned=needed.every(idx=>d.done[idx]);
+  return earned
+    ? `<span class="screenflag">🔓 Earned screen window 螢幕時間已解鎖</span>`
+    : `<span class="screenflag locked">🔒 Tick earlier boxes first 先完成前面的格子</span>`;
+}
+function timeFlag(i,isDone,info){
+  if(isDone||blockMins(DAY[i])==null)return "";
+  if(i===info.current)return `<span class="timeflag">Now 現在</span>`;
+  if(i===info.next)return `<span class="timeflag">Next 下一個</span>`;
+  if(blockMins(DAY[i])<info.now)return `<span class="timeflag">You can still start! 還來得及開始！</span>`;
+  return "";
+}
 function renderMyDay(){
-  const d=dayState(hubKid), k=KIDS[hubKid];
+  const d=dayState(hubKid), k=KIDS[hubKid], info=timelineInfo();
   const total=DAY.length, done=Object.keys(d.done).length;
   document.getElementById("dayFill").style.width=(done/total*100)+"%";
   document.getElementById("dayTxt").textContent=done+" / "+total+(done>=total?"  — DAY COMPLETE! 全部完成！🌟":"");
+  const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${store.papaNote}</div>`:"";
   document.getElementById("dayList").innerHTML=
-    `<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div>`+
+    note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div>`+
     DAY.map((b,i)=>{
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
-      return `<div class="dayrow ${b.kind} ${isDone?'done':''}">
+      const rowState=isDone?"done":i===info.current?"now":i===info.next?"next":blockMins(b)!=null&&blockMins(b)<info.now?"past":"";
+      return `<div class="dayrow ${b.kind} ${rowState}" data-row="${i}">
         <div class="dtime">${b.t}</div>
         <div class="dmid">
           <div class="dt-title">${b.icon} ${b.title}<span class="zht">${b.tz||""}</span></div>
           <div class="dt-mis ${b.kind}">${b.kind==="mission"
             ?`🎯 ${mis[0]}<span class="zhs">${mis[1]}</span>`
-            :`${b.txt?b.txt[hubKid]:""}<span class="zhs">${b.txtz?b.txtz[hubKid]:""}</span>`}</div>
+            :`${b.txt?b.txt[hubKid]:""}<span class="zhs">${b.txtz?b.txtz[hubKid]:""}</span>`}
+            ${screenStatus(i,d)}${timeFlag(i,isDone,info)}</div>
         </div>
         <div class="dbtns">
           <button class="btn small tick" data-done="${i}"
@@ -1822,6 +1868,10 @@ function renderMyDay(){
         </div>
       </div>`;
     }).join("");
+  setTimeout(()=>{
+    const row=document.querySelector(`#dayList [data-row="${info.current}"]`);
+    if(row&&!row.classList.contains("done")) row.scrollIntoView({block:"center",behavior:"smooth"});
+  },80);
   document.querySelectorAll("#dayList [data-done]").forEach(btn=>btn.onclick=()=>{
     const i=+btn.dataset.done, d2=dayState(hubKid);
     if(d2.done[i]){delete d2.done[i]; saveProgress(); renderMyDay(); return;} /* un-tick allowed */
@@ -1840,6 +1890,25 @@ function renderMyDay(){
     const i=+btn.dataset.rr, d2=dayState(hubKid);
     d2.rr[i]=(d2.rr[i]||0)+1; saveProgress(); sGood(); renderMyDay();
   });
+}
+let lastTimelineBlock=null;
+function announceBlock(i){
+  const b=DAY[i]; if(!b||blockMins(b)==null)return;
+  const en=b.title==="Create & build"?"Create & build time!":`${b.title.split("—")[0].trim()} time!`;
+  const zh=b.title==="Create & build"?"創作與建造時間到了":`${(b.tz||"").split("——")[0].split("（")[0].trim()}時間到了`;
+  sWin(); say(en,"en-US"); setTimeout(()=>say(zh,"zh-TW",true),900);
+}
+function startTimelineWatcher(){
+  const tick=()=>{
+    const info=timelineInfo();
+    if(lastTimelineBlock==null){lastTimelineBlock=info.current;return;}
+    if(info.current!==lastTimelineBlock){
+      lastTimelineBlock=info.current;
+      announceBlock(info.current);
+      if(hubKid&&hubTab==="day") renderMyDay();
+    }
+  };
+  tick(); setInterval(tick,5000);
 }
 function renderHubHead(){
   const k=KIDS[hubKid], P=progress[hubKid];
@@ -2036,5 +2105,5 @@ function openLearn(key){
 }
 
 /* ============ BOOT ============ */
-(async()=>{ await loadProgress(); renderHome(); })();
+(async()=>{ await loadProgress(); renderHome(); startTimelineWatcher(); })();
 </script>

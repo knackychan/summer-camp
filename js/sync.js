@@ -115,13 +115,14 @@
       const day=todayISO();
       const p=normalize(this.progress);
 
-      const [{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats}]=await Promise.all([
+      const [{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note}]=await Promise.all([
         this.supabase.from("day_ticks").select("kid_id,block_idx").eq("day",day),
         this.supabase.from("day_rolls").select("kid_id,block_idx,count").eq("day",day),
         this.supabase.from("act_done").select("kid_id,act_idx").eq("day",day),
         this.supabase.from("star_totals").select("kid_id,stars"),
         this.supabase.from("vocab_mastery").select("kid_id,word_key,box"),
         this.supabase.from("game_stats").select("kid_id,stat,value"),
+        this.supabase.from("papa_notes").select("body").eq("day",day).maybeSingle(),
       ]);
 
       KIDS.forEach(kid=>{
@@ -138,6 +139,7 @@
         if(["balloon","race","orc","shop"].includes(r.stat)) p[r.kid_id].best[r.stat]=r.value||0;
         if(r.stat==="missions") p[r.kid_id].missions=r.value||0;
       });
+      this.papaNote=note&&note.body?note.body:"";
 
       await this.flush();
     }

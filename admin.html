@@ -1,4 +1,111 @@
 <!doctype html>
+<html lang="en">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Summer Quest Admin</title>
-<h1>Admin — coming in P1</h1>
+<style>
+  :root{--bg:#17132A;--panel:#241E3D;--line:#3A3359;--ink:#F8F4FF;--muted:#B7B9D6;--gold:#FFC93C;--ok:#3DDC97;--bad:#FF7A90}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif;padding:24px}
+  main{max-width:720px;margin:0 auto}
+  h1,h2{margin:0 0 8px}
+  p{color:var(--muted);font-weight:700}
+  .card{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:18px;margin:16px 0}
+  label{display:block;font-weight:800;margin:12px 0 6px}
+  input,textarea{width:100%;border:2px solid var(--line);border-radius:12px;background:#151127;color:var(--ink);padding:12px;font:inherit}
+  textarea{min-height:150px;resize:vertical}
+  button{border:0;border-radius:999px;background:var(--gold);color:#17132A;font-weight:900;padding:12px 18px;font:inherit;cursor:pointer}
+  button.secondary{background:transparent;color:var(--ink);border:2px solid var(--line)}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .hidden{display:none}
+  .status{font-weight:900;color:var(--ok)}
+  .error{color:var(--bad)}
+</style>
+<main>
+  <h1>Summer Quest Admin</h1>
+  <p>Papa dashboard 爸爸管理頁</p>
+
+  <section class="card" id="configState">
+    <h2>Config needed 需要設定</h2>
+    <p>Create <code>js/config.js</code> from <code>js/config.example.js</code>.</p>
+  </section>
+
+  <section class="card hidden" id="login">
+    <h2>Login 登入</h2>
+    <label>Email 電子信箱</label>
+    <input id="email" type="email" autocomplete="email">
+    <label>Password 密碼</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <p class="error" id="loginErr"></p>
+    <button id="loginBtn">Sign in 登入</button>
+  </section>
+
+  <section class="card hidden" id="notes">
+    <div class="row">
+      <h2 style="flex:1">Papa's Daily Message 爸爸每日留言</h2>
+      <button class="secondary" id="logoutBtn">Sign out 登出</button>
+    </div>
+    <p id="noteDay"></p>
+    <label>Message for tomorrow 給明天的留言</label>
+    <textarea id="noteBody" placeholder="Have a brave, kind day! 今天也要勇敢又溫柔！"></textarea>
+    <p class="status" id="noteStatus"></p>
+    <button id="saveNoteBtn">Save message 儲存留言</button>
+  </section>
+</main>
+<script src="js/config.js"></script>
+<script>
+const CDN="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+let client=null, tomorrow="";
+function loadScript(src){
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement("script");
+    s.src=src; s.onload=resolve; s.onerror=reject;
+    document.head.appendChild(s);
+  });
+}
+function dayISO(offset){
+  const d=new Date(Date.now()+offset*86400000);
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Taipei",year:"numeric",month:"2-digit",day:"2-digit"})
+    .formatToParts(d).reduce((a,p)=>(a[p.type]=p.value,a),{});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+function show(id,on){document.getElementById(id).classList.toggle("hidden",!on);}
+async function init(){
+  if(!window.SQ_CONFIG||!SQ_CONFIG.SUPABASE_URL||!SQ_CONFIG.SUPABASE_ANON_KEY)return;
+  show("configState",false);
+  await loadScript(CDN);
+  client=supabase.createClient(SQ_CONFIG.SUPABASE_URL,SQ_CONFIG.SUPABASE_ANON_KEY);
+  const {data:{session}}=await client.auth.getSession();
+  if(session) openNotes(); else show("login",true);
+}
+async function openNotes(){
+  show("login",false); show("notes",true);
+  tomorrow=dayISO(1);
+  document.getElementById("noteDay").textContent=`Tomorrow 明天: ${tomorrow}`;
+  const {data}=await client.from("papa_notes").select("body").eq("day",tomorrow).maybeSingle();
+  document.getElementById("noteBody").value=data&&data.body?data.body:"";
+}
+document.getElementById("loginBtn").onclick=async()=>{
+  document.getElementById("loginErr").textContent="";
+  const email=document.getElementById("email").value.trim();
+  const password=document.getElementById("password").value;
+  const {error}=await client.auth.signInWithPassword({email,password});
+  if(error){document.getElementById("loginErr").textContent=error.message;return;}
+  openNotes();
+};
+document.getElementById("saveNoteBtn").onclick=async()=>{
+  const body=document.getElementById("noteBody").value.trim();
+  const status=document.getElementById("noteStatus");
+  status.textContent="";
+  if(!body){status.textContent="Write a bilingual message first. 請先寫雙語留言。";return;}
+  const {error}=await client.from("papa_notes").upsert({day:tomorrow,body});
+  status.textContent=error?error.message:"Saved 儲存好了";
+};
+document.getElementById("logoutBtn").onclick=async()=>{
+  await client.auth.signOut(); location.reload();
+};
+init().catch(e=>{
+  document.getElementById("configState").querySelector("p").textContent=e.message;
+});
+</script>
+</html>
