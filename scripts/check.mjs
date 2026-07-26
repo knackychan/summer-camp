@@ -167,7 +167,9 @@ try {
       if (!(cfg.items > 0)) fail("BRAIN", `${id}.${t}: items must be > 0`);
       if (typeof cfg.clock !== "boolean") fail("BRAIN", `${id}.${t}: clock must be boolean`);
       if (!["keypad", "choice", "grid", "type"].includes(cfg.pad)) fail("BRAIN", `${id}.${t}: unknown pad ${cfg.pad}`);
-      if (typeof cfg.gen !== "function") fail("BRAIN", `${id}.${t}: missing gen()`);
+      if (typeof cfg.gen !== "function" && typeof cfg.build !== "function") {
+        fail("BRAIN", `${id}.${t}: needs gen() or build()`);
+      }
     }
     if (g.tiers.tot && g.tiers.tot.clock !== false) fail("BRAIN", `${id}: tot tier must be unclocked`);
     if (!new RegExp(`\\b${id}\\s*:\\s*\\{[^}]*brain\\s*:\\s*true`).test(indexHtml)) {

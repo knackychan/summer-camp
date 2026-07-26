@@ -74,19 +74,36 @@
     if(!g)throw new Error("unknown brain game: "+gameId);
     const cfg=g.tiers[tier];
     if(!cfg)throw new Error("game "+gameId+" has no tier "+tier);
-    const items=[];
-    for(let i=0;i<cfg.items;i++)items.push(cfg.gen(rnd));
+    let items;
+    if(typeof cfg.build==="function"){
+      items=cfg.build(rnd,cfg);
+    }else{
+      items=[];
+      for(let i=0;i<cfg.items;i++)items.push(cfg.gen(rnd,{i:i,items:items}));
+    }
     return {gameId:gameId,tier:tier,pad:cfg.pad,clock:!!cfg.clock,items:items};
   }
 
+  /* An item is worth 1 point unless it says otherwise, and grades itself as
+     all-or-nothing unless it supplies grade(given) -> 0..worth. */
   function scoreRound(ctx){
     const items=ctx.items||[], answers=ctx.answers||[];
+    let score=0, total=0;
     const correct=items.map(function(item,i){
+      const worth=item.worth==null?1:item.worth;
       const given=answers[i]==null?"":String(answers[i]).trim();
-      return given===String(item.answer).trim();
+      let got;
+      if(typeof item.grade==="function"){
+        got=item.grade(given);
+        if(!(got>0))got=0;
+        if(got>worth)got=worth;
+      }else{
+        got=given===String(item.answer).trim()?worth:0;
+      }
+      score+=got; total+=worth;
+      return worth>0&&got===worth;
     });
-    const score=correct.filter(function(c){return c;}).length;
-    return {score:score,total:items.length,ms:ctx.clock?(ctx.ms||0):0,correct:correct};
+    return {score:score,total:total,ms:ctx.clock?(ctx.ms||0):0,correct:correct};
   }
 
   const api={dseed:dseed,mulberry32:mulberry32,tierFor:tierFor,

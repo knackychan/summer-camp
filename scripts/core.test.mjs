@@ -277,6 +277,7 @@ test("every tier generator produces a well-formed item", () => {
       assert.ok(cfg.items > 0, `${id}.${t}: items must be > 0`);
       assert.equal(typeof cfg.clock, "boolean", `${id}.${t}: clock must be boolean`);
       assert.ok(["keypad", "choice", "grid", "type"].indexOf(cfg.pad) >= 0, `${id}.${t}: bad pad`);
+      if (typeof cfg.gen !== "function") continue;   // build()-driven tier, covered by its own test
       for (let n = 0; n < 25; n++) {
         const item = cfg.gen(rnd);
         assert.ok(item.prompt && item.prompt.type, `${id}.${t}: item missing prompt.type`);
@@ -343,4 +344,55 @@ test("scoreRound treats a missing answer as wrong, never as a crash", () => {
   const out = SQBrainCore.scoreRound({ items: [{ answer: "1" }, { answer: "2" }], answers: ["1"], ms: 0, clock: false });
   assert.equal(out.score, 1);
   assert.deepEqual(out.correct, [true, false]);
+});
+
+test("scoreRound still scores plain items one point each", () => {
+  const out = SQBrainCore.scoreRound({
+    items: [{ answer: "1" }, { answer: "2" }], answers: ["1", "9"], ms: 0, clock: false,
+  });
+  assert.equal(out.score, 1);
+  assert.equal(out.total, 2);
+});
+
+test("scoreRound honours item.worth", () => {
+  const out = SQBrainCore.scoreRound({
+    items: [{ answer: "a", worth: 0 }, { answer: "b", worth: 5 }],
+    answers: ["zzz", "b"], ms: 0, clock: false,
+  });
+  assert.equal(out.score, 5);
+  assert.equal(out.total, 5);
+});
+
+test("scoreRound honours item.grade for partial credit", () => {
+  const item = {
+    worth: 4,
+    answer: "cat dog fish bird",
+    grade: (given) => String(given).split(/\s+/).filter((w) => ["cat", "dog", "fish", "bird"].indexOf(w) >= 0).length,
+  };
+  const out = SQBrainCore.scoreRound({ items: [item], answers: ["cat bird zebra"], ms: 0, clock: false });
+  assert.equal(out.score, 2);
+  assert.equal(out.total, 4);
+  assert.deepEqual(out.correct, [false]);   // partial is not "correct"
+});
+
+test("scoreRound clamps grade into 0..worth", () => {
+  const item = { worth: 2, answer: "x", grade: () => 99 };
+  const out = SQBrainCore.scoreRound({ items: [item], answers: ["x"], ms: 0, clock: false });
+  assert.equal(out.score, 2);
+});
+
+test("buildRound uses a tier-level build() when present", () => {
+  const FAKE_BUILD = {
+    TIERS: ["tot", "mid", "hard"], TIER_DEFAULT: { lili: "mid" },
+    GAMES: {
+      chain: {
+        id: "chain", skill: "memory", icon: "x", title: ["a", "b"], blurb: ["a", "b"],
+        tiers: { mid: { items: 3, clock: true, pad: "keypad",
+          build: (rnd, cfg) => [{ answer: "0", worth: 0 }, { answer: "1" }, { answer: "2" }] } },
+      },
+    },
+  };
+  const round = SQBrainCore.buildRound("chain", "mid", SQBrainCore.mulberry32(1), FAKE_BUILD);
+  assert.equal(round.items.length, 3);
+  assert.equal(round.items[0].worth, 0);
 });
