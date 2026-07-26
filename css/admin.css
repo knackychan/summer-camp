@@ -822,6 +822,143 @@ p {
   }
 }
 
+/* Conversation rail — chat layout. Kid rows read left, Papa rows read right,
+   system events are centred and quiet. */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.chat-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #151127;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chip.is-on {
+  color: var(--ink);
+  border-color: var(--kid-color, var(--gold));
+  box-shadow: inset 0 0 0 1px var(--kid-color, var(--gold));
+}
+
+.chip--needs.is-on {
+  background: var(--gold);
+  color: #201A40;
+}
+
+.chip.is-muted {
+  opacity: .4;
+}
+
+.chat-pin {
+  padding: 10px;
+  border-radius: 8px;
+  background: #151127;
+  border-left: 3px solid var(--gold);
+  font-size: 13px;
+}
+
+.chat-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 220px;
+  max-height: 52vh;
+  padding: 4px 2px;
+}
+
+.bubble {
+  max-width: 88%;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: #151127;
+  border: 1px solid var(--line);
+}
+
+.bubble--kid {
+  align-self: flex-start;
+  border-left: 3px solid var(--kid-color, var(--blue));
+  border-top-left-radius: 4px;
+}
+
+.bubble--papa {
+  align-self: flex-end;
+  border-right: 3px solid var(--gold);
+  border-top-right-radius: 4px;
+}
+
+.bubble--action {
+  max-width: 100%;
+  width: 100%;
+}
+
+.bubble.is-archived {
+  opacity: .55;
+}
+
+.bubble__meta {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.bubble p {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.chat-sys {
+  align-self: center;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.chat-empty {
+  text-align: center;
+  padding: 24px 8px;
+}
+
+.chat-jump {
+  align-self: center;
+}
+
+.chat-send {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: end;
+}
+
+.chat-input {
+  min-height: 44px;
+  resize: vertical;
+}
+
+.btn--icon {
+  min-width: 44px;
+  padding: 0 10px;
+}
+
 /* 1400px: the left rail folds into the top of the centre column, the
    conversation rail survives — it is the one Papa watches all day. */
 @media (max-width: 1400px) {
