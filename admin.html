@@ -14,81 +14,81 @@
   <header class="app-top">
     <div>
       <h1 class="page-title">Summer Quest Admin</h1>
-      <p class="page-subtitle">Papa dashboard 爸爸管理頁</p>
+      <p class="page-subtitle">Papa dashboard</p>
     </div>
-    <button class="btn btn--secondary hidden" id="logoutBtn">Sign out 登出</button>
+    <button class="btn btn--secondary hidden" id="logoutBtn">Sign out</button>
   </header>
 
   <div class="col-center">
     <section class="panel" id="configState">
-      <h2 class="section-title">Config needed 需要設定</h2>
+      <h2 class="section-title">Config needed</h2>
       <p>Create <code>js/config.js</code> from <code>js/config.example.js</code>.</p>
     </section>
 
     <section class="panel hidden" id="login">
-      <h2 class="section-title">Login 登入</h2>
+      <h2 class="section-title">Login</h2>
       <label class="field">
-        <span>Email 電子信箱</span>
+        <span>Email</span>
         <input class="input" id="email" type="email" autocomplete="email">
       </label>
       <label class="field">
-        <span>Password 密碼</span>
+        <span>Password</span>
         <input class="input" id="password" type="password" autocomplete="current-password">
       </label>
       <p class="message message--error" id="loginErr"></p>
-      <button class="btn" id="loginBtn">Sign in 登入</button>
+      <button class="btn" id="loginBtn">Sign in</button>
     </section>
 
     <section id="dash" class="hidden">
       <section class="panel">
         <div class="section-head">
-          <h2 class="section-title">Today at a glance 今日總覽</h2>
+          <h2 class="section-title">Today at a glance</h2>
         </div>
-        <p class="hint">Drag blocks to change order. Use the time field for exact moves. Accept, undo, remove, or add blocks back from each kid's list. 拖曳格子調整順序，也可直接改時間。</p>
+        <p class="hint">Drag blocks to change order. Use the time field for exact moves. Accept, undo, remove, or add blocks back from each kid's list.</p>
         <div class="kid-grid" id="overview"></div>
       </section>
 
       <details class="fold" data-fold="note">
-        <summary>Papa's daily message 爸爸每日留言<span class="fold__count" id="foldCountNote"></span></summary>
+        <summary>Papa's daily message<span class="fold__count" id="foldCountNote"></span></summary>
         <div class="fold__body">
           <p class="compact-copy" id="noteDay"></p>
           <label class="field">
-            <span>Message for today 給今天的留言</span>
-            <textarea class="input textarea" id="noteBody" placeholder="Have a brave, kind day! 今天也要勇敢又溫柔！"></textarea>
+            <span>Message for today</span>
+            <textarea class="input textarea" id="noteBody" placeholder="Have a brave, kind day!"></textarea>
           </label>
           <p class="message message--ok" id="noteStatus"></p>
-          <button class="btn" id="saveNoteBtn">Save message 儲存留言</button>
+          <button class="btn" id="saveNoteBtn">Save message</button>
         </div>
       </details>
 
       <details class="fold" data-fold="acts">
-        <summary>Activities ticked today 今天完成的活動<span class="fold__count" id="foldCountActs"></span></summary>
+        <summary>Activities ticked today<span class="fold__count" id="foldCountActs"></span></summary>
         <div class="fold__body">
-          <p class="hint">Revoke takes the star back and un-ticks the activity, so the kid can do it for real and earn it again today. 收回星星並取消勾選，孩子今天可以真的做完再拿一次。</p>
+          <p class="hint">Revoke takes the star back and un-ticks the activity, so the kid can do it for real and earn it again today.</p>
           <div class="kid-grid" id="actsToday"></div>
         </div>
       </details>
 
       <details class="fold" data-fold="proofs">
-        <summary>Proof gallery 照片證明<span class="fold__count" id="foldCountProofs"></span></summary>
+        <summary>Proof gallery<span class="fold__count" id="foldCountProofs"></span></summary>
         <div class="fold__body">
-          <button class="btn btn--secondary" id="galleryBtn">🍽 Dinner gallery 晚餐播放</button>
+          <button class="btn btn--secondary" id="galleryBtn">🍽 Dinner gallery</button>
           <div id="proofs"></div>
         </div>
       </details>
 
       <details class="fold" data-fold="history">
-        <summary>14-day history 14天紀錄<span class="fold__count" id="foldCountHistory"></span></summary>
+        <summary>14-day history<span class="fold__count" id="foldCountHistory"></span></summary>
         <div class="fold__body"><div id="history"></div></div>
       </details>
 
       <details class="fold" data-fold="ledger">
-        <summary>Ledger 星星紀錄<span class="fold__count" id="foldCountLedger"></span></summary>
+        <summary>Ledger<span class="fold__count" id="foldCountLedger"></span></summary>
         <div class="fold__body"><div id="ledger"></div></div>
       </details>
 
       <details class="fold" data-fold="settings">
-        <summary>Settings 設定<span class="fold__count" id="foldCountSettings"></span></summary>
+        <summary>Settings<span class="fold__count" id="foldCountSettings"></span></summary>
         <div class="fold__body">
           <div class="kid-grid" id="pinSettings"></div>
           <div class="kid-card" id="adminPinSettings"></div>
@@ -100,32 +100,32 @@
   <aside class="rail rail--left hidden" id="railLeft">
     <section class="panel">
       <div class="section-head">
-        <h2 class="section-title">Today 今天</h2>
+        <h2 class="section-title">Today</h2>
         <span class="pill" id="todayLabel"></span>
       </div>
       <div class="row">
-        <button class="btn btn--secondary" id="refreshBtn">Refresh 更新</button>
-        <button class="btn btn--danger" id="resetAcceptedBtn">Reset day 重設今天</button>
+        <button class="btn btn--secondary" id="refreshBtn">Refresh</button>
+        <button class="btn btn--danger" id="resetAcceptedBtn">Reset day</button>
       </div>
-      <label class="toggle-line"><input type="checkbox" id="removedCredited" checked> Removed blocks earn stars 移除也算星星</label>
+      <label class="toggle-line"><input type="checkbox" id="removedCredited" checked> Removed blocks earn stars</label>
     </section>
 
     <section class="panel grant-panel">
-      <h2 class="section-title">Grant stars 加星星</h2>
+      <h2 class="section-title">Grant stars</h2>
       <div class="kid-grid" id="grants"></div>
     </section>
 
     <section class="panel">
       <div class="section-head">
-        <h2 class="section-title">🧾 Recent 最近</h2>
-        <button class="btn btn--secondary" id="ledgerAllBtn">All ▸ 全部</button>
+        <h2 class="section-title">🧾 Recent</h2>
+        <button class="btn btn--secondary" id="ledgerAllBtn">All ▸</button>
       </div>
       <div class="ledger-recent" id="ledgerRecent"></div>
     </section>
 
     <section class="panel">
-      <h2 class="section-title">App locks 暫停與分類鎖</h2>
-      <p class="muted">Pause the whole app, or lock one category while My Day stays available. 可暫停整個app，或只鎖某個分類，「我的一天」仍可查看。</p>
+      <h2 class="section-title">App locks</h2>
+      <p class="muted">Pause the whole app, or lock one category while My Day stays available.</p>
       <div id="applocks" class="kid-grid"></div>
     </section>
   </aside>
@@ -133,51 +133,51 @@
   <aside class="rail rail--right hidden" id="railRight">
     <section class="panel chat-panel">
       <div class="section-head">
-        <h2 class="section-title">💬 Conversation 對話</h2>
+        <h2 class="section-title">💬 Conversation</h2>
         <span class="pill gold" id="chatNeedsBadge">0</span>
-        <button class="btn btn--secondary btn--icon" id="notifyEnableBtn" title="Windows notifications Windows通知">🔔</button>
-        <button class="btn btn--secondary btn--icon" id="notifyClearBtn" title="Clear feed 清除">🧹</button>
+        <button class="btn btn--secondary btn--icon" id="notifyEnableBtn" title="Windows notifications">🔔</button>
+        <button class="btn btn--secondary btn--icon" id="notifyClearBtn" title="Clear feed">🧹</button>
       </div>
-      <p class="pill" id="notifyStatus">Dashboard only 只在頁面內</p>
+      <p class="pill" id="notifyStatus">Dashboard only</p>
 
-      <div class="chat-filters" id="chatKidFilter" role="group" aria-label="Filter by kid 依孩子篩選"></div>
-      <div class="chat-filters" id="chatTypeFilter" role="group" aria-label="Filter by kind 依種類篩選"></div>
+      <div class="chat-filters" id="chatKidFilter" role="group" aria-label="Filter by kid"></div>
+      <div class="chat-filters" id="chatTypeFilter" role="group" aria-label="Filter by kind"></div>
 
       <div class="chat-pin" id="chatPin"></div>
 
       <div class="chat-stream" id="chatStream" role="log" aria-live="polite"></div>
-      <button class="btn chat-jump hidden" id="chatJump">New messages ↓ 新訊息</button>
+      <button class="btn chat-jump hidden" id="chatJump">New messages ↓</button>
 
       <p class="message message--error" id="helpClaimsStatus"></p>
 
       <div class="chat-send">
-        <select class="input" id="chatTo" aria-label="Send to 傳給">
-          <option value="all">All 全部</option>
+        <select class="input" id="chatTo" aria-label="Send to">
+          <option value="all">All</option>
           <option value="lucien">Lucien</option>
           <option value="lili">Lili</option>
           <option value="luis">Luis</option>
         </select>
-        <textarea class="input textarea chat-input" id="chatBody" rows="2" placeholder="Message… 訊息…"></textarea>
-        <button class="btn btn--icon" id="chatSend" title="Send 送出">↑</button>
+        <textarea class="input textarea chat-input" id="chatBody" rows="2" placeholder="Message…"></textarea>
+        <button class="btn btn--icon" id="chatSend" title="Send">↑</button>
       </div>
-      <label class="toggle-line"><input type="checkbox" id="showArchivedAsks"> Show archived 顯示封存</label>
+      <label class="toggle-line"><input type="checkbox" id="showArchivedAsks"> Show archived</label>
     </section>
 
     <details class="fold" data-fold="notify">
-      <summary>🔔 Raw feed 原始通知<span class="fold__count" id="foldCountNotify"></span></summary>
+      <summary>🔔 Raw feed<span class="fold__count" id="foldCountNotify"></span></summary>
       <div class="fold__body">
         <div class="notify-feed" id="notifyFeed" role="log" aria-live="polite"></div>
       </div>
     </details>
   </aside>
 </main>
-<div class="gallery hidden" id="gallery" role="dialog" aria-label="Dinner gallery 晚餐播放">
-  <img id="galleryImg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="Family photo of the day 今日家庭照片">
+<div class="gallery hidden" id="gallery" role="dialog" aria-label="Dinner gallery">
+  <img id="galleryImg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="Family photo of the day">
   <p id="galleryCap"></p>
   <div class="row gallery__nav">
-    <button class="btn btn--secondary" id="galleryPrev">‹ Prev 上一張</button>
-    <button class="btn btn--secondary" id="galleryNext">Next 下一張 ›</button>
-    <button class="btn" id="galleryClose">Close 關閉</button>
+    <button class="btn btn--secondary" id="galleryPrev">‹ Prev</button>
+    <button class="btn btn--secondary" id="galleryNext">Next ›</button>
+    <button class="btn" id="galleryClose">Close</button>
   </div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
