@@ -266,17 +266,21 @@
   }
   function renderFoldCounts(){
     const counts={
+      Note:$("noteBody").value.trim()?1:0,
       Acts:rows.acts.length,
       Proofs:rows.photos.length,
       History:rows.history.length,
       Ledger:rows.ledger.length,
+      Notify:notifyItems.length,
       Settings:rows.kids.filter(function(k){return k.pin;}).length
     };
     Object.keys(counts).forEach(function(name){
       const el=$("foldCount"+name);
       if(!el)return;
       const n=counts[name];
-      el.textContent=name==="Settings"?`${n} PIN${n===1?"":"s"} 密碼`:String(n);
+      el.textContent=name==="Settings"?`${n} PIN${n===1?"":"s"} 密碼`
+        :name==="Note"?(n?"written 已寫":"empty 未寫")
+        :String(n);
     });
   }
 
