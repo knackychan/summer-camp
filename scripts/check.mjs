@@ -17,7 +17,7 @@ const assertPair = (value, where) => {
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
-const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/time-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/sync.js", "js/admin.js", "sw.js"];
+const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/time-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/sync.js", "js/admin.js", "sw.js"];
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -143,6 +143,45 @@ try {
   }
 } catch (error) {
   fail("DRILLS load", error.message);
+}
+
+try {
+  const { createRequire } = await import("node:module");
+  const requireCjs = createRequire(import.meta.url);
+  const brainData = requireCjs("../js/brain-data.js");
+  const brainCore = requireCjs("../js/brain-core.js");
+  const ids = Object.keys(brainData.GAMES);
+  if (!ids.length) fail("BRAIN", "no games defined");
+  for (const id of ids) {
+    const g = brainData.GAMES[id];
+    if (g.id !== id) fail("BRAIN", `${id}: id field does not match its key`);
+    assertPair(g.title, `BRAIN.${id}.title`);
+    assertPair(g.blurb, `BRAIN.${id}.blurb`);
+    if (!g.icon) fail("BRAIN", `${id}: missing icon`);
+    if (!g.skill) fail("BRAIN", `${id}: missing skill tag`);
+    const tiers = Object.keys(g.tiers || {});
+    if (!tiers.length) fail("BRAIN", `${id}: defines no tiers`);
+    for (const t of tiers) {
+      if (!brainData.TIERS.includes(t)) fail("BRAIN", `${id}: unknown tier ${t}`);
+      const cfg = g.tiers[t];
+      if (!(cfg.items > 0)) fail("BRAIN", `${id}.${t}: items must be > 0`);
+      if (typeof cfg.clock !== "boolean") fail("BRAIN", `${id}.${t}: clock must be boolean`);
+      if (!["keypad", "choice", "grid", "type"].includes(cfg.pad)) fail("BRAIN", `${id}.${t}: unknown pad ${cfg.pad}`);
+      if (typeof cfg.gen !== "function") fail("BRAIN", `${id}.${t}: missing gen()`);
+    }
+    if (g.tiers.tot && g.tiers.tot.clock !== false) fail("BRAIN", `${id}: tot tier must be unclocked`);
+    if (!new RegExp(`\\b${id}\\s*:\\s*\\{[^}]*brain\\s*:\\s*true`).test(indexHtml)) {
+      fail("BRAIN", `${id}: missing a LEVELS entry with brain:true in index.html`);
+    }
+  }
+  for (const kid of ["lucien", "lili", "luis"]) {
+    const trio = brainCore.dailyThree(kid, "2026-07-27", {});
+    const again = brainCore.dailyThree(kid, "2026-07-27", {});
+    if (trio.join() !== again.join()) fail("BRAIN", `dailyThree not deterministic for ${kid}`);
+    if (new Set(trio).size !== trio.length) fail("BRAIN", `dailyThree repeated a game for ${kid}`);
+  }
+} catch (error) {
+  fail("BRAIN load", error.message);
 }
 
 try {
