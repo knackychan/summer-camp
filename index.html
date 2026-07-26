@@ -383,6 +383,8 @@ button:disabled{cursor:default}
 </div>
 <canvas id="confetti"></canvas>
 
+<script src="js/config.js"></script>
+<script src="js/sync.js"></script>
 <script>
 /* ============ DATA ============ */
 const KIDS = {
@@ -796,21 +798,25 @@ let settings={
 };
 
 /* ============ STORAGE ============ */
+let store=null;
+function normalizeProgressShape(){
+  Object.keys(progress).forEach(k=>{const P=progress[k];
+    if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0};
+    if(P.best.shop==null)P.best.shop=0;
+    if(!P.vocab)P.vocab={};
+    if(P.missions==null)P.missions=0;
+    if(!P.day)P.day={d:'',done:{},rr:{}};});
+}
 async function loadProgress(){
-  try{ if(window.storage){const r=await window.storage.get("keyquest:v2");
-    if(r&&r.value){const d=JSON.parse(r.value);
-      if(d.progress){progress=d.progress;
-        Object.keys(progress).forEach(k=>{const P=progress[k];
-          if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0};
-          if(P.best.shop==null)P.best.shop=0;
-          if(!P.vocab)P.vocab={};
-          if(P.missions==null)P.missions=0;
-          if(!P.day)P.day={d:'',done:{},rr:{}};});}
-      if(d.settings) settings=Object.assign(settings,d.settings);}} }catch(e){}
+  try{
+    store=await window.SyncStore.init({progress,settings,normalizeProgressShape});
+    progress=store.progress;
+    settings=store.settings;
+    normalizeProgressShape();
+  }catch(e){normalizeProgressShape();}
 }
 async function saveProgress(){
-  try{ if(window.storage) await window.storage.set("keyquest:v2",
-    JSON.stringify({progress,settings}),false);}catch(e){}
+  try{ if(store) await store.save(progress,settings); }catch(e){}
 }
 
 /* ============ SOUND ============ */
