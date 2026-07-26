@@ -168,3 +168,33 @@ test("all drill steps are bilingual pairs", () => {
     }
   }
 });
+
+const SQBrainCore = require("../js/brain-core.js");
+const SQBrainData = require("../js/brain-data.js");
+
+test("tierFor falls back to the per-kid default", () => {
+  assert.equal(SQBrainCore.tierFor("lucien", {}), "tot");
+  assert.equal(SQBrainCore.tierFor("lili", {}), "mid");
+  assert.equal(SQBrainCore.tierFor("luis", {}), "hard");
+  assert.equal(SQBrainCore.tierFor("nobody", {}), "mid");
+});
+
+test("tierFor honours a valid admin override", () => {
+  assert.equal(SQBrainCore.tierFor("lucien", { brain_tier_lucien: "mid" }), "mid");
+  assert.equal(SQBrainCore.tierFor("luis", { brain_tier_luis: "tot" }), "tot");
+});
+
+test("tierFor ignores an empty or unrecognised override", () => {
+  assert.equal(SQBrainCore.tierFor("lucien", { brain_tier_lucien: "" }), "tot");
+  assert.equal(SQBrainCore.tierFor("lucien", { brain_tier_lucien: "genius" }), "tot");
+});
+
+test("mulberry32 is deterministic and in range", () => {
+  const a = SQBrainCore.mulberry32(42);
+  const b = SQBrainCore.mulberry32(42);
+  for (let i = 0; i < 20; i++) {
+    const v = a();
+    assert.equal(v, b());
+    assert.ok(v >= 0 && v < 1);
+  }
+});
