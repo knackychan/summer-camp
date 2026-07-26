@@ -183,7 +183,7 @@ git commit -m "feat(brain): support weighted, self-grading items and tier-built 
 **Files:**
 - Modify: `js/brain-ui.js`, `index.html` (styles)
 
-- [ ] **Step 1: Add the prompt renderers**
+- [x] **Step 1: Add the prompt renderers**
 
 Replace `promptHtml` in `js/brain-ui.js` with:
 
@@ -227,7 +227,7 @@ Replace `promptHtml` in `js/brain-ui.js` with:
   }
 ```
 
-- [ ] **Step 2: Add the two new pads**
+- [x] **Step 2: Add the two new pads**
 
 In `padHtml`, before the keypad fallback:
 
@@ -255,7 +255,7 @@ For the `choice` pad, honour an optional swatch style so Lucien's Stroop tier sh
       }
 ```
 
-- [ ] **Step 3: Wire the two interactive phases**
+- [x] **Step 3: Wire the two interactive phases**
 
 Grid games flash cells then accept taps in order; Word Memory shows a study list then hides it. Both are per-item lifecycles, so add a `mount` hook that runs after each render:
 
@@ -309,7 +309,7 @@ Grid games flash cells then accept taps in order; Word Memory shows a study list
 
 Call `mount()` at the end of `render()`, and make `step()`/the initial render reset `entry` to `""` before rendering (slice 09 already resets it in `step`; add the same reset before the first `render()` call).
 
-- [ ] **Step 4: Add the styles**
+- [x] **Step 4: Add the styles**
 
 Append to the `<style>` block in `index.html`:
 
@@ -329,7 +329,7 @@ Append to the `<style>` block in `index.html`:
 .btype{width:100%;font-size:1.2em;padding:.6em;border-radius:12px;margin:.4em 0}
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add js/brain-ui.js index.html

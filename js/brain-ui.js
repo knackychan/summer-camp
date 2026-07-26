@@ -9,9 +9,41 @@
     return m+":"+(r<10?"0":"")+r;
   }
 
+  const COLORS={red:["#e5484d","Red","紅色"],blue:["#3b82f6","Blue","藍色"],
+    green:["#22c55e","Green","綠色"],yellow:["#eab308","Yellow","黃色"],
+    purple:["#a855f7","Purple","紫色"],black:["#111827","Black","黑色"]};
+
+  function clockSvg(h,m){
+    const ha=(h%12)*30+m*0.5-90, ma=m*6-90, R=Math.PI/180;
+    const hx=50+26*Math.cos(ha*R), hy=50+26*Math.sin(ha*R);
+    const mx=50+38*Math.cos(ma*R), my=50+38*Math.sin(ma*R);
+    let ticks="";
+    for(let i=0;i<12;i++){
+      const a=i*30-90;
+      ticks+=`<circle cx="${50+42*Math.cos(a*R)}" cy="${50+42*Math.sin(a*R)}" r="2" fill="currentColor"/>`;
+    }
+    return `<svg viewBox="0 0 100 100" class="bclockface" aria-hidden="true">
+      <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="3"/>
+      ${ticks}
+      <line x1="50" y1="50" x2="${hx}" y2="${hy}" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+      <line x1="50" y1="50" x2="${mx}" y2="${my}" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="50" cy="50" r="3" fill="currentColor"/></svg>`;
+  }
+
   function promptHtml(p){
-    if(p.type==="emoji")
-      return `<div class="bprompt bemoji">${p.en}</div>`;
+    if(p.type==="emoji")     return `<div class="bprompt bemoji">${p.en}</div>`;
+    if(p.type==="swatch")    return `<div class="bswatch" style="background:${COLORS[p.ink][0]}"></div>`;
+    if(p.type==="colorword") return `<div class="bprompt bcolorword" style="color:${COLORS[p.ink][0]}">${p.word}</div>`;
+    if(p.type==="countfield")return `<div class="bfield">${p.glyphs.join("")}</div>
+      <div class="bsub">${p.en}<span class="zhs">${p.zh}</span></div>`;
+    if(p.type==="clockface") return `${clockSvg(p.h,p.m)}
+      <div class="bsub">${p.en}<span class="zhs">${p.zh}</span></div>`;
+    if(p.type==="money")     return `<div class="bmoney">${p.art}</div>
+      <div class="bsub">${p.en}<span class="zhs">${p.zh}</span></div>`;
+    if(p.type==="gridflash") return `<div class="bgrid" id="bGrid"></div>
+      <div class="bsub">${p.en}<span class="zhs">${p.zh}</span></div>`;
+    if(p.type==="wordlist")  return `<div class="bwords" id="bWords"></div>
+      <div class="bsub">${p.en}<span class="zhs">${p.zh}</span></div>`;
     return `<div class="bprompt">${p.en}</div>`;
   }
 
@@ -37,13 +69,71 @@
     function padHtml(item){
       if(round.pad==="choice"){
         return `<div class="bpad bchoice">${item.choices.map(function(c){
+          if(item.choiceStyle==="swatch")
+            return `<button class="btn bkey bswatchkey" data-v="${c}"
+              style="background:${COLORS[c][0]}" aria-label="${COLORS[c][1]}"></button>`;
           return `<button class="btn bkey" data-v="${c}">${c}</button>`;}).join("")}</div>`;
+      }
+      if(round.pad==="grid"){
+        return `<div class="bpad bgridpad" id="bGridPad"></div>
+          <div class="bentry">${entry===""?"&nbsp;":entry.split(",").join(" · ")}</div>`;
+      }
+      if(round.pad==="type"){
+        return `<textarea class="btype" id="bType" rows="3"
+            placeholder="Type the words 打出單字"></textarea>
+          <button class="btn bkey" data-v="✓">Done 完成</button>`;
       }
       /* keypad */
       const keys=["1","2","3","4","5","6","7","8","9","⌫","0","✓"];
       return `<div class="bentry">${entry===""?"&nbsp;":entry}</div>
         <div class="bpad bkeypad">${keys.map(function(k){
           return `<button class="btn bkey" data-v="${k}">${k}</button>`;}).join("")}</div>`;
+    }
+
+    function mount(){
+      const item=round.items[idx];
+      if(item.prompt.type==="gridflash")mountGrid(item);
+      if(item.prompt.type==="wordlist")mountWords(item);
+      if(round.pad==="type"){
+        const ta=o.querySelector("#bType");
+        if(ta)ta.oninput=function(){entry=ta.value;};
+      }
+    }
+
+    /* Low to High: show the numbers, hide them, then tap ascending. */
+    function mountGrid(item){
+      const host=o.querySelector("#bGrid"), pad=o.querySelector("#bGridPad");
+      if(!host||!pad)return;
+      const cells=item.prompt.cells;
+      host.innerHTML=cells.map(function(c){return `<span class="bcell">${c.n}</span>`;}).join("");
+      pad.innerHTML="";
+      setTimeout(function(){
+        host.innerHTML=cells.map(function(){return `<span class="bcell bhidden">?</span>`;}).join("");
+        pad.innerHTML=C.seededShuffle(cells,Math.random).map(function(c){
+          return `<button class="btn bkey" data-v="${c.n}">${c.n}</button>`;}).join("");
+        pad.querySelectorAll(".bkey").forEach(function(b){
+          b.onclick=function(){
+            b.disabled=true; b.classList.add("bused");
+            entry=entry===""?b.dataset.v:entry+","+b.dataset.v;
+            const box=o.querySelector(".bentry");
+            if(box)box.textContent=entry.split(",").join(" · ");
+            if(entry.split(",").length===cells.length)advance(entry);
+          };
+        });
+      },item.prompt.flashMs);
+    }
+
+    /* Word Memory: study the list, it disappears, then type what you remember. */
+    function mountWords(item){
+      const host=o.querySelector("#bWords");
+      if(!host)return;
+      host.innerHTML=item.prompt.words.map(function(w){return `<span class="bword">${w}</span>`;}).join("");
+      const ta=o.querySelector("#bType");
+      if(ta)ta.disabled=true;
+      setTimeout(function(){
+        host.innerHTML=`<span class="bsub">Now type what you remember 現在打出你記得的</span>`;
+        if(ta){ta.disabled=false;ta.focus();}
+      },item.prompt.studyMs);
     }
 
     function render(){
@@ -60,6 +150,7 @@
       </div>`;
       o.querySelectorAll(".bkey").forEach(function(b){b.onclick=function(){press(b.dataset.v);};});
       o.querySelector("#bQuit").onclick=close;
+      mount();
     }
 
     function advance(given){
@@ -97,7 +188,7 @@
       if(opts.onFinish)opts.onFinish(Object.assign({gameId:opts.gameId,tier:opts.tier},res));
     }
 
-    render(); speak();
+    entry=""; render(); speak();
     startTs=Date.now();
     if(round.clock){
       tickInt=setInterval(function(){
