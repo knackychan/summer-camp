@@ -164,6 +164,29 @@ body{
 .cd-gas{right:12px;width:76px;height:76px;font-size:32px;background:rgba(61,220,151,.25);
   border-color:var(--ok,#3DDC97)}
 
+/* ---------- DIG SITE ---------- */
+.dg-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-width:520px;margin:10px auto 0}
+.dg-cell{position:relative;aspect-ratio:1;background:#3a3160;border:2px solid var(--line);
+  border-radius:10px;display:flex;align-items:center;justify-content:center}
+.dg-cell.ex{border-color:var(--gold);box-shadow:0 0 10px rgba(255,201,60,.4)}
+.dg-rock{position:relative;font-size:clamp(22px,5vw,34px)}
+.dg-rock i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-style:normal;font-family:'Fredoka';font-weight:700;font-size:clamp(13px,2.6vw,17px);
+  color:#fff;text-shadow:0 1px 2px #000}
+.dg-rock.clunk{animation:dgclunk .35s}
+@keyframes dgclunk{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.dg-exv{position:absolute;font-size:clamp(26px,6vw,40px);z-index:2}
+.dg-ctl{display:flex;justify-content:center;align-items:center;gap:18px;margin-top:10px}
+.dg-pad{display:flex;align-items:center;gap:6px}
+.dg-ud{display:flex;flex-direction:column;gap:6px}
+.dbtn{width:52px;height:52px;font-size:22px;border-radius:12px;border:2px solid var(--line);
+  background:var(--panel);color:var(--ink);touch-action:manipulation}
+.dbtn:active{transform:translateY(2px)}
+.dg-dig{height:64px;padding:0 22px;font-family:'Fredoka';font-weight:700;font-size:20px;
+  border-radius:16px;border:2px solid var(--gold);background:var(--gold);color:#1c1436;
+  touch-action:manipulation}
+.dg-dig:active{transform:translateY(2px)}
+
 /* ---------- WORD WIZARD ---------- */
 .vfr{font-family:'Fredoka';font-weight:600;font-size:24px;color:var(--gold);margin-top:2px}
 .vzh{font-family:'Fredoka';font-weight:500;font-size:19px;color:var(--muted);margin-top:2px}
