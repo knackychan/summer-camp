@@ -1853,7 +1853,8 @@ function cityComplete(){
   hint("Great driving! 開得真好!");
   if(state.score>bestOf(kid,"city")){ progress[kid].best.city=state.score; }
   saveProgress(); cityHud();
-  setTimeout(()=>{ if(state.running) cityMission(); },1400);
+  const run=state;   /* identity guard: a stale timer must not touch a newer run */
+  setTimeout(()=>{ if(state===run&&state.running) cityMission(); },1400);
 }
 function finishCity(){
   state.running=false;
@@ -1980,7 +1981,8 @@ function digTaskDone(){
   if(state.tasks>bestOf(kid,"dig")){ progress[kid].best.dig=state.tasks; }
   saveProgress(); digHud();
   hint("Task done! 完成任務!");
-  setTimeout(()=>{ if(state.running) nextDigTask(); },1000);
+  const run=state;   /* identity guard: a stale timer must not touch a newer run */
+  setTimeout(()=>{ if(state===run&&state.running) nextDigTask(); },1000);
 }
 function digAct(){
   if(!state.running) return;
