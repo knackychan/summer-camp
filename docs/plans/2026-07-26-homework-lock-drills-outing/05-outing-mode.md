@@ -165,7 +165,8 @@ wired to `outing(o.querySelector("#ptBody"))`, and add:
 
 ```js
   function outing(el){
-    const blocks=window.SQTime.timedOrder(window.SQ_DAY,window.sqDayOverrides());
+    /* family-wide view: 'all' overrides only (outing applies to everyone) */
+    const blocks=window.SQTime.timedOrder(window.SQ_DAY,window.SQTime.resolveOverrides(window.sqOverridesRaw(),null));
     el.innerHTML=`<p>Which blocks are we out for? 我們出門的時段？</p>
       <div class="vrow" style="flex-wrap:wrap">${blocks.map(x=>{
         const b=window.SQ_DAY[x.i];
@@ -224,7 +225,7 @@ In `js/admin.js` (admin is authenticated → direct inserts; ledger rows carry `
   const outingSel=new Set();
   function renderOutingBlocks(){
     const DAYP=window.SQ_DAY;
-    $("outingBlocks").innerHTML=SQTime.timedOrder(DAYP,overridesToday).map(x=>{
+    $("outingBlocks").innerHTML=SQTime.timedOrder(DAYP,SQTime.resolveOverrides(overridesRaw,null)).map(x=>{
       const b=DAYP[x.i];
       return `<button class="btn btn--secondary outblk ${outingSel.has(x.i)?"on":""}" data-oi="${x.i}">${b.icon} ${b.t} ${b.title}</button>`;
     }).join("");

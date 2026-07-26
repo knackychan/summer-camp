@@ -65,8 +65,8 @@ Lili takes ballet; there is a piano in the kids' room. Guided practice mode, reu
 
 Papa (or Maman's change of plans, relayed by Papa) can **move any block to a different time, today only**.
 
-- Scope: **all kids at once** (schedule keeps one shape family-wide), from **admin.html and from any tablet via the Papa PIN pad** (offline-queued). Overrides reset automatically tomorrow — the base DAY plan is never edited.
-- Data: `day_overrides` table `(day, block_idx, t)`; tablets hydrate + realtime-subscribe. Client keeps `dayOverrides = {blockIdx: "HH:MM"}` for today.
+- Scope: **all kids by default, or one kid individually** (updated 2026-07-26 — e.g. Luis did homework, Lili didn't). From **admin.html and from any tablet via the Papa PIN pad** (offline-queued). Overrides reset automatically tomorrow — the base DAY plan is never edited.
+- Data: `day_overrides` table `(day, block_idx, kid_id, t)` with `kid_id = 'all'` for family-wide moves; a kid-specific row **wins over** the `'all'` row for that kid. Tablets hydrate + realtime-subscribe and resolve `dayOverrides = merge(all, activeKid)` — each tablet's timeline, announcements, and lock follow its own kid's effective schedule. Caveat accepted: kid-specific moves mean tablets in the same room can announce different things.
 - **Everything follows effective time**: timeline current/next, announcements, amber "still can start", screen-earned prerequisites (a block moved *after* a screen block stops being its prerequisite), the activity lock, and My Day row order (rows sort by effective time). This is why slice 02 extracts a shared time core first.
 - Moved rows show a small "moved 已調整" flag. No shame states.
 
