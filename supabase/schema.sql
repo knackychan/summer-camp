@@ -556,7 +556,7 @@ exception when duplicate_object then null;
 end $$;
 
 -- ============================================================
--- v3 addition — Papa can revoke a bogus activity star
+-- v6 addition — Papa can revoke a bogus activity star
 -- (kid ticked "house help" without doing it: take the star back
 --  AND un-tick it, so they can do it for real and earn it again today)
 -- ============================================================
