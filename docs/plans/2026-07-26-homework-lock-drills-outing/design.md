@@ -96,6 +96,11 @@ Rule for all slices: **data stays in one place, behavior lives in small shared m
 | 04 | Reschedule blocks + papa-tools | slice 02, 03 (pinpad) | after 03 |
 | 05 | Outing mode | slice 03/04 (pinpad, papa-tools), P2 pass lifecycle | after 04 |
 | 06 | Practice drills | slice 01 landed (schedule stable); 02 helpful | P3 era |
+| 07 | Installable PWA (manifest + icons + service worker) | deployed HTTPS site; best after 02 (stable js/ list) | anytime |
+
+## 7. Installable PWA (slice 07) — added 2026-07-26
+
+Manifest + icons + service worker so tablets install Summer Quest to the home screen (fullscreen standalone, shell loads offline). The worker is network-first, same-origin GET only: it **never** touches Supabase (sync.js's queue owns offline data) and never pins versions, so frequent deploys propagate without cache-busting. iOS gets add-to-home-screen meta tags; admin.html stays a plain browser page (YAGNI).
 
 ## Non-goals
 
