@@ -1093,20 +1093,26 @@
 
   function renderAppLocks(){
     const fs=Object.fromEntries(rows.familySettings.map(r=>[r.key,r.value]));
-    $("applocks").innerHTML=Object.entries(KIDS).map(([id,k])=>{
+    $("applocks").innerHTML=Object.entries(KIDS).map(function(e){
+      const id=e[0], k=e[1];
       const paused=(fs["applock_"+id]||"")!=="";
-      return `<article class="kid-card" style="--kid-color:${k.color}">
-        <h3>${k.name} ${paused?"⏸ paused 已暫停":""}</h3>
-        <button class="btn ${paused?"":"btn--danger"}" data-applock="${id}" data-paused="${paused?1:0}">
-          ${paused?"Resume app 恢復app":"Pause whole app 暫停整個app"}</button>
-        <div class="cat-locks">
-          ${LOCK_CATS.filter(([cat])=>cat!=="captain"||id==="luis").map(([cat,label])=>{
-            const locked=(fs[`catlock_${id}_${cat}`]||"")!=="";
-            return `<button class="btn ${locked?"btn--danger":"btn--secondary"}" data-catlock="${id}:${cat}" data-locked="${locked?1:0}">
-              ${locked?"Unlock 解鎖":"Lock 鎖定"} ${label}</button>`;
-          }).join("")}
+      const cats=LOCK_CATS.filter(function(c){return c[0]!=="captain"||id==="luis";});
+      const lockedCount=cats.filter(function(c){return (fs[`catlock_${id}_${c[0]}`]||"")!=="";}).length;
+      const summary=paused?"⏸ paused 已暫停":lockedCount?`🔒 ${lockedCount} locked ${lockedCount}項鎖定`:"free 自由";
+      return `<details class="lock-row ${paused?"is-paused":""}" style="--kid-color:${k.color}">
+        <summary><b>${esc(k.name)}</b> <span class="muted">${summary}</span></summary>
+        <div class="lock-row__body">
+          <button class="btn ${paused?"":"btn--danger"}" data-applock="${id}" data-paused="${paused?1:0}">
+            ${paused?"Resume app 恢復app":"Pause whole app 暫停整個app"}</button>
+          <div class="cat-locks">
+            ${cats.map(function(c){
+              const locked=(fs[`catlock_${id}_${c[0]}`]||"")!=="";
+              return `<button class="btn ${locked?"btn--danger":"btn--secondary"}" data-catlock="${id}:${c[0]}" data-locked="${locked?1:0}">
+                ${locked?"Unlock 解鎖":"Lock 鎖定"} ${c[1]}</button>`;
+            }).join("")}
+          </div>
         </div>
-      </article>`;
+      </details>`;
     }).join("");
     document.querySelectorAll("[data-applock]").forEach(b=>b.onclick=async()=>{
       const id=b.dataset.applock, paused=b.dataset.paused==="1";

@@ -1051,6 +1051,44 @@ p {
   color: var(--bad);
 }
 
+/* App locks — one summary row per kid; the controls expand in place. Paused is
+   the one state that must read at a glance, so it keeps a coloured edge. */
+#applocks {
+  display: block;
+}
+
+.lock-row {
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: #151127;
+  border-left: 3px solid var(--kid-color, var(--blue));
+}
+
+.lock-row.is-paused {
+  border-left-color: var(--gold);
+}
+
+.lock-row > summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.lock-row__body {
+  padding: 0 10px 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.lock-row .cat-locks {
+  display: grid;
+  gap: 6px;
+}
+
 /* 1400px: the left rail folds into the top of the centre column, the
    conversation rail survives — it is the one Papa watches all day. */
 @media (max-width: 1400px) {
