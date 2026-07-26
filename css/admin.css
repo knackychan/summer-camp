@@ -19,6 +19,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
   padding: 18px;
 }
@@ -89,7 +90,16 @@ p {
 }
 
 .kid-card {
-  border-left: 5px solid var(--blue);
+  position: relative;
+  overflow: hidden;
+}
+
+.kid-card::before {
+  content: "";
+  display: block;
+  height: 3px;
+  margin: -10px -10px 10px;
+  background: var(--kid-color, var(--blue));
 }
 
 .kid-grid {
@@ -123,6 +133,13 @@ p {
   color: var(--ink);
   padding: 10px;
   font: inherit;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-color: var(--gold);
 }
 
 .textarea {
@@ -139,12 +156,32 @@ p {
   font-weight: 900;
   padding: 10px 12px;
   cursor: pointer;
+  min-height: 42px;
+  transition: transform .12s ease, box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
+}
+
+.btn:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(255, 201, 60, .18);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(.96);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .btn--secondary {
   background: transparent;
   color: var(--ink);
   border-color: var(--line);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  border-color: var(--muted);
+  box-shadow: 0 0 0 3px rgba(183, 185, 214, .12);
 }
 
 .btn--danger {
@@ -191,6 +228,70 @@ p {
   padding: 3px 7px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.status-pill--ok {
+  color: var(--ok);
+  border-color: rgba(61, 220, 151, .55);
+  background: rgba(61, 220, 151, .1);
+}
+
+.status-pill--muted {
+  color: var(--muted);
+  background: rgba(255, 255, 255, .03);
+}
+
+.pin-card {
+  display: grid;
+  gap: 8px;
+}
+
+.pin-card.is-set {
+  background: linear-gradient(180deg, rgba(61, 220, 151, .08), rgba(36, 30, 61, 0) 62%), var(--panel);
+}
+
+.pin-card__head,
+.pin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pin-card__head {
+  justify-content: space-between;
+}
+
+.pin-card__head h3 {
+  margin: 0;
+}
+
+.pin-input {
+  letter-spacing: .08em;
+}
+
+.pin-note,
+.pin-message {
+  margin: 0;
+  font-size: 12px;
+}
+
+.pin-note {
+  color: var(--muted);
+}
+
+.pin-message {
+  min-height: 18px;
 }
 
 .progress {

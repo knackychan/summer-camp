@@ -16,6 +16,7 @@
   let client=null, session=null, today="", tomorrow="";
   let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
+  const pinFeedback={};
 
   const $=id=>document.getElementById(id);
   const show=(id,on)=>$(id).classList.toggle("hidden",!on);
@@ -95,7 +96,7 @@
       const done=new Set(rows.ticks.filter(t=>t.kid_id===id).map(t=>t.block_idx));
       const stars=(rows.totals.find(t=>t.kid_id===id)||{}).stars||0;
       const missions=(rows.stats.find(s=>s.kid_id===id)||{}).value||0;
-      return `<article class="kid-card" style="border-left-color:${k.color}">
+      return `<article class="kid-card" style="--kid-color:${k.color}">
         <h2 class="card-title">${k.name}</h2>
         <p><span class="gold">${stars}</span> stars 星星 · ${missions} photo missions 照片任務</p>
         <div class="progress"><div class="progress__fill" style="width:${done.size/DAY.length*100}%;background:${k.color}"></div></div>
@@ -110,7 +111,7 @@
 
   function renderGrants(){
     $("grants").innerHTML=Object.entries(KIDS).map(([id,k])=>`
-      <article class="kid-card" style="border-left-color:${k.color}">
+      <article class="kid-card" style="--kid-color:${k.color}">
         <h3>${k.name}</h3>
         <label class="field"><span>Reason 原因</span><input class="input" id="reason-${id}" placeholder="helped Lucien 幫Lucien"></label>
         <div class="row">
@@ -265,23 +266,52 @@
   function renderPins(){
     $("pinSettings").innerHTML=Object.entries(KIDS).map(([id,k])=>{
       const row=rows.kids.find(x=>x.id===id)||{};
-      return `<article class="kid-card" style="border-left-color:${k.color}">
-        <h3>${k.name}</h3>
-        <label class="field"><span>PIN 密碼</span><input class="input" id="pin-${id}" inputmode="numeric" maxlength="4" value="${esc(row.pin||"")}" placeholder="optional 選填"></label>
-        <div class="row">
-          <button class="btn" data-pin="${id}">Save 儲存</button>
-          <button class="btn btn--secondary" data-clearpin="${id}">Clear 清除</button>
+      const feedback=pinFeedback[id]||{};
+      const isSet=!!row.pin, pending=feedback.type==="pending";
+      const displayPin=feedback.value!==undefined?feedback.value:(row.pin||"");
+      return `<article class="kid-card pin-card ${isSet?"is-set":""}" style="--kid-color:${k.color}">
+        <div class="pin-card__head">
+          <h3>${k.name}</h3>
+          <span class="status-pill ${isSet?"status-pill--ok":"status-pill--muted"}">${isSet?"PIN set 已設定":"No PIN 未設定"}</span>
         </div>
+        <label class="field"><span>PIN 密碼</span><input class="input pin-input" id="pin-${id}" inputmode="numeric" maxlength="4" value="${esc(displayPin)}" placeholder="optional 選填" autocomplete="off" pattern="[0-9]*" data-pininput="${id}" data-current="${esc(row.pin||"")}"></label>
+        <p class="pin-note">4 digits, or leave blank. 4個數字，或留空。</p>
+        <div class="row pin-actions">
+          <button class="btn" data-pin="${id}" ${pending?"disabled":""}>${pending?"Saving 儲存中":"Save 儲存"}</button>
+          <button class="btn btn--secondary" data-clearpin="${id}" ${pending||!isSet?"disabled":""}>Clear 清除</button>
+        </div>
+        <p class="message pin-message ${feedback.type==="ok"?"message--ok":feedback.type==="error"?"message--error":""}" id="pinmsg-${id}" aria-live="polite">${feedback.text||""}</p>
       </article>`;
     }).join("");
     document.querySelectorAll("[data-pin]").forEach(b=>b.onclick=()=>savePin(b.dataset.pin,false));
     document.querySelectorAll("[data-clearpin]").forEach(b=>b.onclick=()=>savePin(b.dataset.clearpin,true));
+    document.querySelectorAll("[data-pininput]").forEach(inp=>inp.oninput=()=>{
+      const id=inp.dataset.pininput;
+      if(inp.value!==inp.dataset.current){
+        pinFeedback[id]={type:"dirty",text:"Not saved 尚未儲存"};
+        const msg=$(`pinmsg-${id}`);
+        if(msg){msg.className="message pin-message";msg.textContent=pinFeedback[id].text;}
+      }
+    });
   }
   async function savePin(id,clear){
     const value=clear?null:$(`pin-${id}`).value.trim();
-    if(value&&!/^[0-9]{4}$/.test(value)){$(`pin-${id}`).focus();return;}
-    await client.from("kids").update({pin:value||null}).eq("id",id);
-    await loadAll();
+    if(value&&!/^[0-9]{4}$/.test(value)){
+      pinFeedback[id]={type:"error",text:"Use 4 digits 使用4個數字",value};
+      renderPins(); $(`pin-${id}`).focus(); $(`pin-${id}`).select(); return;
+    }
+    pinFeedback[id]={type:"pending",text:"Saving 儲存中",value:value||""};
+    renderPins();
+    const {error}=await client.from("kids").update({pin:value||null}).eq("id",id);
+    if(error){
+      pinFeedback[id]={type:"error",text:"Could not save 無法儲存",value:value||""};
+      renderPins(); return;
+    }
+    const existing=rows.kids.find(x=>x.id===id);
+    if(existing) existing.pin=value||null; else rows.kids.push({id,pin:value||null});
+    const time=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+    pinFeedback[id]={type:"ok",text:`Saved ${time} 已儲存`};
+    renderPins();
   }
 
   function subscribeRealtime(){
