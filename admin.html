@@ -43,60 +43,50 @@
       <div class="section-head">
         <h2 class="section-title">Today at a glance 今日總覽</h2>
         <span class="pill" id="todayLabel"></span>
+        <label class="toggle-line"><input type="checkbox" id="removedCredited" checked> Removed blocks earn stars 移除也算星星</label>
+        <button class="btn btn--danger" id="resetAcceptedBtn">Reset day 重設今天</button>
         <button class="btn btn--secondary" id="refreshBtn">Refresh 更新</button>
       </div>
+      <p class="hint">Drag blocks to change order. Use the time field for exact moves. Accept, undo, remove, or add blocks back from each kid's list. 拖曳格子調整順序，也可直接改時間。</p>
       <div class="kid-grid" id="overview"></div>
     </section>
 
-    <div class="layout-two">
-      <section class="panel">
-        <h2 class="section-title">Grant stars 加星星</h2>
-        <div class="kid-grid" id="grants"></div>
-      </section>
-
-      <section class="panel">
-        <h2 class="section-title">Papa's daily message 爸爸每日留言</h2>
-        <p id="noteDay"></p>
-        <label class="field">
-          <span>Message for tomorrow 給明天的留言</span>
-          <textarea class="input textarea" id="noteBody" placeholder="Have a brave, kind day! 今天也要勇敢又溫柔！"></textarea>
-        </label>
-        <p class="message message--ok" id="noteStatus"></p>
-        <button class="btn" id="saveNoteBtn">Save message 儲存留言</button>
-      </section>
-    </div>
-
-    <section class="panel">
-      <h2 class="section-title">Reschedule today 調整今天時間</h2>
-      <p class="hint">Pick who it applies to — a kid's own move wins over All. 選擇對象——個人調整會蓋過全部。</p>
-      <div class="row" id="reschedKids">
-        <button class="btn btn--secondary reschedkid on" data-rk="all">All 全部</button>
-        <button class="btn btn--secondary reschedkid" data-rk="lucien">Lucien</button>
-        <button class="btn btn--secondary reschedkid" data-rk="lili">Lili</button>
-        <button class="btn btn--secondary reschedkid" data-rk="luis">Luis</button>
+    <section class="panel notify-panel">
+      <div class="section-head">
+        <h2 class="section-title">Live notifications 即時通知</h2>
+        <span class="pill" id="notifyStatus">Dashboard only 只在頁面內</span>
+        <button class="btn" id="notifyEnableBtn">Enable Windows notifications 開啟Windows通知</button>
+        <button class="btn btn--secondary" id="notifyClearBtn">Clear 清除</button>
       </div>
-      <div id="reschedList"></div>
-      <div class="row">
-        <button class="btn" id="reschedSaveBtn">Save moves 儲存調整</button>
-        <button class="btn btn--secondary" id="reschedResetBtn">Reset selection to normal 恢復原時間</button>
-      </div>
-      <p class="message message--ok" id="reschedStatus"></p>
+      <div class="notify-feed" id="notifyFeed" role="log" aria-live="polite"></div>
     </section>
 
-    <section class="panel">
-      <h2 class="section-title">Outing today 今天出遊</h2>
-      <div id="outingBlocks" class="row" style="flex-wrap:wrap"></div>
-      <label class="row"><input type="checkbox" id="outingCredited" checked> Blocks still earn stars ⭐ 出遊也算完成、得星星</label>
-      <div class="row">
-        <button class="btn" id="outingGoBtn">Mark outing 標記出遊</button>
-        <button class="btn btn--secondary" id="outingClearBtn">Undo today's outing 取消出遊</button>
-      </div>
-      <p class="message message--ok" id="outingStatus"></p>
+    <section class="panel grant-panel">
+      <h2 class="section-title">Grant stars 加星星</h2>
+      <div class="kid-grid" id="grants"></div>
     </section>
 
-    <section class="panel">
-      <h2 class="section-title">Ask inbox 求助收件匣</h2>
-      <div id="askInbox"></div>
+    <section class="panel comms-panel">
+      <div class="section-head">
+        <h2 class="section-title">Messages 訊息</h2>
+        <label class="toggle-line"><input type="checkbox" id="showArchivedAsks"> Show archived 顯示封存</label>
+      </div>
+      <div class="comms-layout">
+        <div class="message-composer">
+          <h3 class="subsection-title">Papa's daily message 爸爸每日留言</h3>
+          <p class="compact-copy" id="noteDay"></p>
+          <label class="field">
+            <span>Message for today 給今天的留言</span>
+            <textarea class="input textarea" id="noteBody" placeholder="Have a brave, kind day! 今天也要勇敢又溫柔！"></textarea>
+          </label>
+          <p class="message message--ok" id="noteStatus"></p>
+          <button class="btn" id="saveNoteBtn">Save message 儲存留言</button>
+        </div>
+        <div class="inbox-panel">
+          <h3 class="subsection-title">Ask inbox 求助收件匣</h3>
+          <div id="askInbox"></div>
+        </div>
+      </div>
     </section>
 
     <section class="panel">
@@ -130,8 +120,8 @@
     </section>
 
     <section class="panel">
-      <h2 class="section-title">App pause 暫停使用</h2>
-      <p class="muted">Pauses the whole app for that kid until you resume — or Papa PIN on the tablet. 暫停後孩子無法使用，直到恢復（平板上也可用爸爸密碼恢復）。</p>
+      <h2 class="section-title">App locks 暫停與分類鎖</h2>
+      <p class="muted">Pause the whole app, or lock one category while My Day stays available. 可暫停整個app，或只鎖某個分類，「我的一天」仍可查看。</p>
       <div id="applocks" class="kid-grid"></div>
     </section>
 
@@ -142,7 +132,7 @@
   </section>
 </main>
 <div class="gallery hidden" id="gallery" role="dialog" aria-label="Dinner gallery 晚餐播放">
-  <img id="galleryImg" alt="Family photo of the day 今日家庭照片">
+  <img id="galleryImg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="Family photo of the day 今日家庭照片">
   <p id="galleryCap"></p>
   <div class="row gallery__nav">
     <button class="btn btn--secondary" id="galleryPrev">‹ Prev 上一張</button>

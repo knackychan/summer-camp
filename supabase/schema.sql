@@ -500,3 +500,57 @@ begin
   alter publication supabase_realtime add table family_settings;
 exception when duplicate_object then null;
 end $$;
+
+-- ============================================================
+-- v5 additions — Brain Gym (plan 2026-07-26, slices 09-11)
+-- ============================================================
+
+-- One row per brain exercise a kid finished today. Mirrors day_ticks.
+-- Rows expire naturally with the day (every query filters by day).
+create table if not exists brain_done (
+  kid_id     text not null references kids(id),
+  day        date not null,
+  game_id    text not null,             -- 'calc' | 'signs' | 'lowhigh' | …
+  score      int  not null default 0,
+  ms         int,                       -- null on unclocked (tot) tiers
+  created_at timestamptz default now(),
+  primary key (kid_id, day, game_id)
+);
+alter table brain_done enable row level security;
+
+do $$
+begin
+  execute 'drop policy if exists "read brain" on public.brain_done';
+  execute 'drop policy if exists "kid brain" on public.brain_done';
+  execute 'drop policy if exists "admin brain" on public.brain_done';
+  execute 'drop policy if exists "kid braingate" on public.family_settings';
+
+  execute 'create policy "read brain" on public.brain_done for select using (true)';
+  execute 'create policy "kid brain" on public.brain_done for insert with check (true)';
+  execute 'create policy "admin brain" on public.brain_done for all to authenticated using (true) with check (true)';
+
+  -- Kid-device (anon) may only write the brain-gate bypass flag, set by the
+  -- Papa PIN pad on the tablet. It can never touch any other setting key.
+  --
+  -- NOTE ON DATES: Postgres current_date is UTC; the app's day is Asia/Taipei
+  -- (UTC+8), so a strict same-day equality check would reject Taipei mornings.
+  -- The window below is deliberately loose — this policy's job is to stop anon
+  -- writing to OTHER keys, not to enforce the calendar. Day correctness lives
+  -- client-side in SQ_DAY.iso().
+  execute 'create policy "kid braingate" on public.family_settings for update
+    using (key like ''braingate_%'')
+    with check (key like ''braingate_%''
+                and (value = '''' or value::date between current_date - 1 and current_date + 1))';
+end $$;
+
+-- Seed the settings rows so the tablet only ever needs UPDATE (never INSERT).
+insert into family_settings (key, value) values
+  ('braingate_lucien',''), ('braingate_lili',''), ('braingate_luis',''),
+  ('brain_tier_lucien',''), ('brain_tier_lili',''), ('brain_tier_luis','')
+on conflict (key) do nothing;
+
+do $$
+begin
+  alter publication supabase_realtime add table brain_done;
+exception when duplicate_object then null;
+end $$;

@@ -71,6 +71,8 @@ body{
 .chip{font-family:'Fredoka';font-weight:600;font-size:14px;border:2px solid var(--line);background:transparent;
   color:var(--muted);border-radius:999px;padding:6px 14px;cursor:pointer}
 .chip.on{color:#1c1436;border-color:transparent}
+.chip.locked{opacity:.55;cursor:not-allowed}
+.chip.locked::after{content:" 🔒"}
 .hud{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
 .stat{background:var(--panel);border-radius:16px;padding:10px 16px;min-width:92px;text-align:center;
   border:2px solid transparent}
@@ -302,25 +304,29 @@ button:disabled{cursor:default}
 .dayprog span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   font-family:'Fredoka';font-weight:600;font-size:14px;color:var(--ink);text-shadow:0 1px 2px rgba(0,0,0,.4)}
 .daylist{display:flex;flex-direction:column;gap:10px}
-.dayrow{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:2px solid var(--line);
-  border-radius:16px;padding:12px 14px}
-.dayrow.done{border-color:var(--ok);opacity:.72}
+.dayrow{display:flex;gap:12px;align-items:flex-start;background:rgba(78,168,255,.08);border:2px solid rgba(78,168,255,.32);
+  border-radius:16px;padding:12px 14px;cursor:pointer;transition:transform .15s ease,border-color .15s ease,background .15s ease}
+.dayrow:active{transform:translateY(1px)}
+.dayrow:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.dayrow.done{border-color:rgba(61,220,151,.55);background:rgba(61,220,151,.12);opacity:.86}
 .dayrow.done .dt-title{text-decoration:line-through}
 .dayrow.now{border-color:var(--gold);
-  background:linear-gradient(135deg,rgba(255,201,60,.22),rgba(255,201,60,.06) 72%);
+  background:rgba(255,201,60,.18);
   box-shadow:0 6px 22px rgba(255,201,60,.22),0 0 0 3px rgba(255,201,60,.18)}
 .dayrow.now .dtime{color:#FFD966;font-size:16px}
 .nowflag{display:block;background:var(--gold);color:#201A40;font-weight:800;font-size:11px;
   border-radius:999px;padding:2px 6px;margin-top:5px;text-align:center;animation:nowpulse 2s ease-in-out infinite}
 @keyframes nowpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
-.dayrow.next{border-color:rgba(78,168,255,.65)}
-.dayrow.past{border-color:rgba(255,201,60,.72);background:rgba(255,201,60,.10)}
+.dayrow.next{border-color:rgba(78,168,255,.65);background:rgba(78,168,255,.1)}
+.dayrow.past{border-color:rgba(255,122,144,.55);background:rgba(255,122,144,.13)}
 .dayrow.excused{border-color:rgba(61,220,151,.55);background:rgba(61,220,151,.08)}
 .dayrow .dtime{flex:0 0 52px;font-family:'Fredoka';font-weight:700;font-size:14px;color:var(--gold);
   text-align:center;padding-top:3px}
 .movedflag{display:block;font-size:.6em;color:var(--ok);opacity:.9}
 .dayrow .dmid{flex:1;min-width:0}
-.dayrow .dt-title{font-family:'Fredoka';font-weight:600;font-size:16px}
+.dayrow .dt-title{font-family:'Fredoka';font-weight:600;font-size:16px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dt-more{margin-left:auto;min-width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.12);border:1px solid var(--line);font-weight:800;color:var(--gold)}
 .dayrow .dt-mis{color:var(--ink);font-weight:700;font-size:14px;margin-top:3px;line-height:1.4}
 .dayrow .dt-mis.routine{color:var(--muted)}
 .timeflag,.screenflag{display:inline-block;margin-top:5px;font-size:12px;font-weight:900;color:var(--gold)}
@@ -340,7 +346,12 @@ button:disabled{cursor:default}
 .passline{font-size:12px;font-weight:900;color:var(--gold);margin-top:6px}
 .dayrow .dbtns{display:flex;flex-direction:column;gap:6px}
 .dayrow .btn.tick{padding:8px 12px;font-size:15px}
-.dayrow.mission{border-left:5px solid var(--gold)}
+.dayrow.mission{border-left-width:5px}
+.dayrow.mission.done,
+.dayrow.mission.excused{border-left-color:rgba(61,220,151,.75)}
+.dayrow.mission.past{border-left-color:rgba(255,122,144,.75)}
+.dayrow.mission.now{border-left-color:var(--gold)}
+.dayrow.mission.next{border-left-color:rgba(78,168,255,.75)}
 .dayclock{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   background:linear-gradient(135deg,var(--panel2),var(--panel));border:2px solid var(--line);
   border-radius:18px;padding:10px 16px;margin-bottom:10px}
@@ -352,6 +363,11 @@ button:disabled{cursor:default}
 .dc-now .zhs{margin-top:1px}
 .dt-guide{margin-top:7px;padding:8px 12px;background:rgba(16,10,36,.35);border-radius:12px}
 .dt-tip{font-size:13px;font-weight:600;color:var(--ink);line-height:1.5;margin:4px 0}
+.dt-detail{margin-top:10px;padding:10px 12px;background:rgba(16,10,36,.38);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;color:var(--ink)}
+.dt-detail p{margin:0 0 8px;font-weight:800}
+.dt-detail ol{margin:0;padding-left:22px}
+.dt-detail li{font-size:13px;font-weight:700;line-height:1.45;margin:5px 0}
 .zhs{display:block;font-size:12.5px;color:var(--muted);font-weight:700;margin-top:2px}
 .dt-title .zht{font-size:12px;color:var(--muted);font-weight:700;margin-left:6px}
 .dayhero{background:linear-gradient(135deg,#2E5E4E,#3D7A5F);border-radius:18px;padding:14px 16px;
@@ -1166,6 +1182,7 @@ function renderSetbar(){
 /* ============ GAME FLOW ============ */
 function startGame(id,lvl){
   if(hubKid&&appLockReason(hubKid)){refreshAppLock();return;}
+  if(catLockReason(id,"games")){hubKid=id; hubTab="day"; saveAppPlace("hub"); renderHub(); bigFloat("🔒"); return;}
   const ls=gameLockState();
   if(ls.locked){showLockOverlay(ls.blockIdx);return;}
   stopArena();
@@ -2468,6 +2485,27 @@ function appLockReason(id){
   const v=store&&store.familySettings&&store.familySettings["applock_"+id];
   return v?v:null;
 }
+function catLockReason(id,cat){
+  const v=store&&store.familySettings&&store.familySettings[`catlock_${id}_${cat}`];
+  return v?v:null;
+}
+function tabLocked(cat){
+  return !!(hubKid&&cat!=="day"&&catLockReason(hubKid,cat));
+}
+function lockedCategoryMessage(cat){
+  const names={games:"Games 遊戲",acts:"Activities 活動",learn:"Learn 學習",ask:"Ask 求助",captain:"Captain 隊長"};
+  return `${names[cat]||"This category"} is locked by Papa for now. 這個分類暫時鎖定。`;
+}
+function leaveLockedCategory(){
+  if(!hubKid)return;
+  if(!document.getElementById("game").classList.contains("hidden")&&catLockReason(hubKid,"games")){
+    stopArena(); showOnly("hub"); hubTab="day"; saveAppPlace("hub"); renderHub(); return;
+  }
+  if(!document.getElementById("act").classList.contains("hidden")){
+    const cat=String(actIdx||"").charAt(0)==="L"?"learn":"acts";
+    if(catLockReason(hubKid,cat)){stopActTimer(); showOnly("hub"); hubTab="day"; saveAppPlace("hub"); renderHub();}
+  }
+}
 function refreshAppLock(){
   let o=document.getElementById("appLockOverlay");
   if(!hubKid||!appLockReason(hubKid)){if(o)o.remove();return;}
@@ -2607,9 +2645,10 @@ function showOnly(id){
   ["home","game","hub","act"].forEach(x=>
     document.getElementById(x).classList.toggle("hidden",x!==id));
 }
-let hubTab="day";
+let hubTab="day", openDayRow=null;
 function openHub(id){
   stopArena(); stopActTimer();
+  if(hubKid!==id)openDayRow=null;
   hubKid=id; refreshOverrides(); showOnly("hub"); saveAppPlace("hub"); renderHub();
 }
 function dseed(str){let h=7;for(const c of str)h=(h*31+c.charCodeAt(0))>>>0;return h;}
@@ -2666,6 +2705,22 @@ function timeFlag(i,isDone,info){
   if(SQTime.effMins(DAY,dayOverrides,i)<info.now)return `<span class="timeflag">You can still start! 還來得及開始！</span>`;
   return "";
 }
+function dayDetailHtml(i,b,mis,isPractice){
+  const main=isPractice
+    ?(()=>{const s=SQDrills.sessionFor(hubKid,todayStr());return [s.drill.name[0],s.drill.name[1],s.drill.steps];})()
+    :b.kind==="mission"
+      ?[mis[0],mis[1],b.tips||[]]
+      :[b.txt?b.txt[hubKid]:"",b.txtz?b.txtz[hubKid]:"",b.tips||[]];
+  return `<div class="dt-detail" id="day-detail-${i}">
+    <p>${escHtml(main[0])}<span class="zhs">${escHtml(main[1])}</span></p>
+    ${main[2].length?`<ol>${main[2].map(s=>`<li>${escHtml(s[0])}<span class="zhs">${escHtml(s[1])}</span></li>`).join("")}</ol>`:""}
+  </div>`;
+}
+function inDayControl(el){
+  for(;el&&el.id!=="dayList";el=el.parentNode)
+    if(/^(BUTTON|LABEL|INPUT|A)$/.test(el.tagName))return true;
+  return false;
+}
 function coveredCount(id,d){
   let n=Object.keys(d.done).length;
   DAY.forEach(function(b,i){
@@ -2689,7 +2744,7 @@ function tickBlockDone(i){
   const lo=document.getElementById("lockOverlay");
   if(lo&&!gameLockState().locked)lo.remove();
 }
-function renderMyDay(){
+function renderMyDay(skipScroll){
   const d=dayState(hubKid), k=KIDS[hubKid], info=timelineInfo();
   const total=DAY.length, done=coveredCount(hubKid,d);
   document.getElementById("dayFill").style.width=(done/total*100)+"%";
@@ -2703,12 +2758,14 @@ function renderMyDay(){
       const isPractice=i===PRACTICE_IDX&&SQDrills.isPracticeDay(todayStr());
       const pass=passFor(hubKid,i), proof=proofFor(hubKid,i);
       const outing=pass&&pass.kind==="outing";
+      const expanded=openDayRow===i;
       const rowState=outing?"done":isDone?"done":i===info.current?"now":i===info.next?"next":SQTime.effMins(DAY,dayOverrides,i)!=null&&SQTime.effMins(DAY,dayOverrides,i)<info.now?"past":"";
       const excused=pass&&pass.kind==="excused"&&pass.status==="spent";
-      return `<div class="dayrow ${b.kind} ${rowState}${excused?" excused":""}" data-row="${i}">
+      return `<div class="dayrow ${b.kind} ${rowState}${excused?" excused":""}" data-row="${i}" tabindex="0"
+        aria-expanded="${expanded}" aria-controls="day-detail-${i}">
         <div class="dtime">${effT(i)}${dayOverrides[i]!=null?`<span class="movedflag">moved 已調整</span>`:""}${rowState==="now"?`<span class="nowflag">NOW 現在</span>`:""}</div>
         <div class="dmid">
-          <div class="dt-title">${isPractice?"🎶 Practice":`${b.icon} ${b.title}`}<span class="zht">${isPractice?"練習時間":b.tz||""}</span></div>
+          <div class="dt-title">${isPractice?"🎶 Practice":`${b.icon} ${b.title}`}<span class="zht">${isPractice?"練習時間":b.tz||""}</span><span class="dt-more" aria-hidden="true">${expanded?"-":"+"}</span></div>
           <div class="dt-mis ${b.kind}">${isPractice
             ?(()=>{const s=SQDrills.sessionFor(hubKid,todayStr());
               return `🎶 Practice: ${s.drill.name[0]}<span class="zhs">練習：${s.drill.name[1]}</span>${!isDone&&!outing?`<button class="btn small" data-drill="1">▶ Start practice 開始練習</button>`:""}`;})()
@@ -2718,7 +2775,7 @@ function renderMyDay(){
             ${screenStatus(i,d)}${timeFlag(i,isDone||outing,info)}
             ${pass?`<div class="passline">${passText(pass)}</div>`:""}
             ${!isDone&&redoNote(i)!=null?`<div class="passline">💪 Papa asked: please finish this one 爸爸請你再完成${redoNote(i)?` — ${escHtml(redoNote(i))}`:""}</div>`:""}
-            ${(rowState==="now"||rowState==="next")&&!isDone&&!outing&&b.tips?`<div class="dt-guide">${b.tips.map(s=>`<div class="dt-tip">▸ ${s[0]}<span class="zhs">${s[1]}</span></div>`).join("")}</div>`:""}
+            ${expanded?dayDetailHtml(i,b,mis,isPractice):""}
             ${proof?`<img class="proofthumb" src="${proofUrl(proof.path)}" alt="Photo proof 照片證明">`:""}</div>
         </div>
         <div class="dbtns">${outing?"":
@@ -2733,10 +2790,18 @@ function renderMyDay(){
         </div>
       </div>`;
     }).join("");
-  setTimeout(()=>{
+  if(!skipScroll)setTimeout(()=>{
     const row=document.querySelector(`#dayList [data-row="${info.current}"]`);
     if(row&&!row.classList.contains("done")) row.scrollIntoView({block:"center",behavior:"smooth"});
   },80);
+  document.querySelectorAll("#dayList .dayrow").forEach(row=>{
+    const toggle=()=>{openDayRow=openDayRow===+row.dataset.row?null:+row.dataset.row;renderMyDay(true);};
+    row.onclick=e=>{if(inDayControl(e.target))return;toggle();};
+    row.onkeydown=e=>{
+      if(e.target!==row||(e.key!=="Enter"&&e.key!==" "))return;
+      e.preventDefault(); toggle();
+    };
+  });
   document.querySelectorAll("#dayList [data-done]").forEach(btn=>btn.onclick=()=>{
     tickBlockDone(+btn.dataset.done);
   });
@@ -2858,14 +2923,19 @@ function renderHubHead(){
 function renderHub(){
   const k=KIDS[hubKid], done=actsToday(hubKid);
   if(hubKid!=="luis"&&hubTab==="captain") hubTab="day";
+  if(tabLocked(hubTab)) hubTab="day";
   document.getElementById("captainTab").classList.toggle("hidden",hubKid!=="luis");
   renderHubHead();
   /* tabs */
   document.querySelectorAll("#hubTabs .chip").forEach(c=>{
     const on=c.dataset.t===hubTab;
+    const locked=tabLocked(c.dataset.t);
     c.classList.toggle("on",on);
+    c.classList.toggle("locked",locked);
+    c.disabled=locked;
+    c.title=locked?lockedCategoryMessage(c.dataset.t):"";
     c.style.background=on?k.raw:"";
-    c.onclick=()=>{hubTab=c.dataset.t; saveAppPlace("hub"); renderHub();};
+    c.onclick=()=>{if(locked){bigFloat("🔒");return;} hubTab=c.dataset.t; saveAppPlace("hub"); renderHub();};
   });
   document.getElementById("tab-day").classList.toggle("hidden",hubTab!=="day");
   document.getElementById("tab-games").classList.toggle("hidden",hubTab!=="games");
@@ -2918,6 +2988,7 @@ function refreshLockUI(){
   }
 }
 function openAct(i){
+  if(catLockReason(hubKid,"acts")){hubTab="day"; showOnly("hub"); saveAppPlace("hub"); renderHub(); bigFloat("🔒"); return;}
   actIdx=i; showOnly("act"); saveAppPlace("act"); renderAct();
 }
 function renderAct(){
@@ -3047,6 +3118,7 @@ function qbGo(base){
   sGood(); window.open(base+encodeURIComponent(q),"_blank");
 }
 function openLearn(key){
+  if(catLockReason(hubKid,"learn")){hubTab="day"; showOnly("hub"); saveAppPlace("hub"); renderHub(); bigFloat("🔒"); return;}
   actIdx="L"+key; showOnly("act"); saveAppPlace("act");
   const g=LEARN_GUIDES[key], k=KIDS[hubKid];
   const done=actsToday(hubKid)[actIdx];
@@ -3138,7 +3210,9 @@ function askAudioUrl(path){return store&&store.supabase&&path?store.supabase.sto
 async function fetchAsks(id){
   if(!store||!store.supabase) return [];
   const {data}=await store.supabase.from("asks").select("*").eq("kid_id",id).order("created_at",{ascending:false}).limit(20);
-  return data||[];
+  let archived=[];
+  try{archived=JSON.parse((store.familySettings&&store.familySettings.archived_asks)||"[]");}catch(e){}
+  return (data||[]).filter(a=>!archived.includes(a.id));
 }
 async function updateAskBadge(){
   if(!hubKid||!store||!store.supabase)return;
@@ -3268,6 +3342,8 @@ function setupRealtime(){
     store.familySettings[row.key]=row.value;
     localStorage.setItem("sq:famSettings",JSON.stringify(store.familySettings));
     if(row.key==="admin_pin")localStorage.setItem("sq:adminPin",JSON.stringify(row.value||""));
+    leaveLockedCategory();
+    if(hubKid&&!document.getElementById("hub").classList.contains("hidden"))renderHub();
     refreshAppLock();
   });
   store.onHelpClaims(async row=>{

@@ -6,13 +6,22 @@
     luis:{name:"Luis",color:"#4EA8FF"}
   };
   const DAY=window.SQ_DAY_DATA||[];
+  const LOCK_CATS=[
+    ["games","Games 遊戲"],
+    ["acts","Activities 活動"],
+    ["learn","Learn 學習"],
+    ["ask","Ask 求助"],
+    ["captain","Captain 隊長"]
+  ];
 
-  let client=null, session=null, today="", tomorrow="";
+  let client=null, session=null, today="", realtimeChannel=null;
   let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={}, adminPinFeedback={};
-  let overridesRaw={}, reschedKid="all";
-  const outingSel=new Set();
+  let overridesRaw={}, dragState=null;
+  let notifyItems=[];
+  let browserNotifyEnabled=localStorage.getItem("sq-admin-notify")==="1";
+  const silentRealtime=new Map();
 
   const $=id=>document.getElementById(id);
   const show=(id,on)=>$(id).classList.toggle("hidden",!on);
@@ -21,6 +30,20 @@
   const blockTz=i=>(DAY[i]&&DAY[i].tz)||"";
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const fmt=ts=>new Date(ts).toLocaleString([],{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
+  const clock=t=>`${String(Math.floor(t/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`;
+  const timeOnly=ts=>new Date(ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  const todayTicks=kid=>rows.ticks.filter(t=>t.kid_id===kid&&t.day===today);
+  const tickFor=(kid,i)=>rows.ticks.find(t=>t.kid_id===kid&&t.day===today&&t.block_idx===i);
+  const passFor=(kid,i,kind)=>rows.passes.find(p=>p.kid_id===kid&&p.day===today&&p.block_idx===i&&p.status==="granted"&&(!kind||p.kind===kind));
+  function archivedAskIds(){
+    const row=rows.familySettings.find(r=>r.key==="archived_asks");
+    try{return new Set(JSON.parse(row&&row.value||"[]"));}catch(e){return new Set();}
+  }
+  const coveredSet=kid=>new Set([
+    ...todayTicks(kid).map(t=>t.block_idx),
+    ...rows.passes.filter(p=>p.kid_id===kid&&p.day===today&&["granted","spent"].includes(p.status)).map(p=>p.block_idx)
+  ]);
+  const dayComplete=kid=>coveredSet(kid).size>=DAY.length;
 
   function toast(msg,ok){
     const t=$("toast");
@@ -32,6 +55,102 @@
     toast._t=setTimeout(()=>t.classList.add("hidden"),4000);
   }
   const writeFailed=error=>toast(`Could not save 無法儲存 — ${error.message}`);
+
+  function renderNotifications(){
+    const supported="Notification" in window;
+    const permission=supported?Notification.permission:"unsupported";
+    const enabled=supported&&browserNotifyEnabled&&permission==="granted";
+    const permissionLabel={granted:"allowed 已允許",denied:"blocked 已封鎖",default:"not enabled 未開啟"}[permission]||permission;
+    const status=$("notifyStatus"), btn=$("notifyEnableBtn"), feed=$("notifyFeed");
+    if(status)status.textContent=enabled?"Windows on Windows通知已開啟":supported?`Windows ${permissionLabel}`:"Windows unsupported 不支援";
+    if(btn){
+      btn.textContent=enabled?"Disable Windows notifications 關閉Windows通知":"Enable Windows notifications 開啟Windows通知";
+      btn.disabled=!supported||permission==="denied";
+    }
+    if(feed)feed.innerHTML=notifyItems.map(n=>`
+      <article class="notify-item notify-item--${n.kind}">
+        <span class="notify-time">${timeOnly(n.at)}</span>
+        <div><b>${esc(n.title)}</b><p>${esc(n.body)}</p></div>
+      </article>`).join("")||`<p class="notify-empty">Waiting for live activity. 等待即時活動。</p>`;
+  }
+
+  async function toggleBrowserNotifications(){
+    if(!("Notification" in window)){toast("Browser notifications are not supported 此瀏覽器不支援通知",false);return;}
+    if(browserNotifyEnabled&&Notification.permission==="granted"){
+      browserNotifyEnabled=false;
+      localStorage.setItem("sq-admin-notify","0");
+      renderNotifications();
+      return;
+    }
+    const permission=Notification.permission==="granted"?"granted":await Notification.requestPermission();
+    browserNotifyEnabled=permission==="granted";
+    localStorage.setItem("sq-admin-notify",browserNotifyEnabled?"1":"0");
+    renderNotifications();
+    toast(browserNotifyEnabled?"Windows notifications enabled 已開啟Windows通知":"Windows notifications not allowed 未允許Windows通知",browserNotifyEnabled);
+  }
+
+  function pushNotify(title,body,kind){
+    const item={title,body:body||"",kind:kind||"info",at:new Date().toISOString()};
+    notifyItems=[item,...notifyItems].slice(0,30);
+    renderNotifications();
+    if("Notification" in window&&browserNotifyEnabled&&Notification.permission==="granted"){
+      try{new Notification("Summer Quest Admin",{body:`${title} — ${body||""}`,icon:"assets/icons/icon-192.png",tag:`sq-${kind||"info"}-${Date.now()}`});}catch(e){}
+    }
+  }
+
+  function realtimeKey(table,row){
+    if(!row)return "";
+    if(table==="day_ticks")return `${row.kid_id}:${row.day}:${row.block_idx}`;
+    return row.id||"";
+  }
+  function suppressRealtime(table,row){
+    const key=realtimeKey(table,row);
+    if(key)silentRealtime.set(`${table}:${key}`,Date.now()+5000);
+  }
+  function shouldSuppressRealtime(table,row){
+    const key=realtimeKey(table,row);
+    if(!key)return false;
+    const full=`${table}:${key}`, until=silentRealtime.get(full)||0;
+    if(until>Date.now())return true;
+    silentRealtime.delete(full);
+    return false;
+  }
+
+  function notificationFor(table,payload){
+    const row=payload.new||{};
+    if(payload.eventType!=="INSERT"||shouldSuppressRealtime(table,row))return null;
+    if(table==="asks")return {
+      kind:row.kind==="urgent"?"urgent":"ask",
+      title:`${kidName(row.kid_id)} asked for help 求助`,
+      body:row.body||"Voice memo 語音訊息"
+    };
+    if(table==="passes"&&row.status==="requested")return {
+      kind:"pass",
+      title:`${kidName(row.kid_id)} requested a ${row.kind||"pass"} pass 申請券`,
+      body:`${blockTitle(row.block_idx)} ${blockTz(row.block_idx)}`
+    };
+    if(table==="photos")return {
+      kind:"photo",
+      title:`${kidName(row.kid_id)} uploaded proof 上傳照片`,
+      body:`${blockTitle(row.block_idx)} ${blockTz(row.block_idx)}`
+    };
+    if(table==="help_claims"&&row.status==="requested")return {
+      kind:"claim",
+      title:`${kidName(row.captain_id)} sent a captain claim 隊長申請`,
+      body:`Helped ${kidName(row.helped_kid_id)} 幫忙${kidName(row.helped_kid_id)}`
+    };
+    if(table==="day_ticks"&&row.day===today)return {
+      kind:"done",
+      title:`${kidName(row.kid_id)} completed a block 完成格子`,
+      body:`${blockTitle(row.block_idx)} ${blockTz(row.block_idx)}`
+    };
+    if(table==="stars_ledger"&&row.source==="app")return {
+      kind:"star",
+      title:`${kidName(row.kid_id)} earned ${row.delta} star${row.delta===1?"":"s"} 得到星星`,
+      body:row.reason||"App activity app活動"
+    };
+    return null;
+  }
 
   function loadScript(src){
     return new Promise((resolve,reject)=>{
@@ -55,9 +174,10 @@
 
   async function openDashboard(){
     show("login",false); show("dash",true); show("logoutBtn",true);
-    today=dayISO(0); tomorrow=dayISO(1);
+    today=dayISO(0);
     $("todayLabel").textContent=`Today 今天 ${today}`;
-    $("noteDay").textContent=`Tomorrow 明天 ${tomorrow}`;
+    $("noteDay").textContent=`Today 今天 ${today}`;
+    renderNotifications();
     await loadAll();
     subscribeRealtime();
   }
@@ -69,8 +189,8 @@
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
       client.from("stars_ledger").select("*").order("created_at",{ascending:false}).limit(30),
-      client.from("asks").select("*").order("created_at",{ascending:false}).limit(40),
-      client.from("papa_notes").select("body").eq("day",tomorrow).maybeSingle(),
+      client.from("asks").select("*").order("created_at",{ascending:false}).limit(80),
+      client.from("papa_notes").select("body").eq("day",today).maybeSingle(),
       client.from("passes").select("*").order("created_at",{ascending:false}).limit(80),
       client.from("photos").select("*").order("created_at",{ascending:false}).limit(80),
       client.from("kids").select("id,pin").order("id"),
@@ -105,54 +225,252 @@
     renderPins();
     renderAdminPin();
     renderAppLocks();
-    renderResched();
-    renderOutingBlocks();
   }
 
   function renderOverview(){
     $("overview").innerHTML=Object.entries(KIDS).map(([id,k])=>{
-      const done=new Set(rows.ticks.filter(t=>t.kid_id===id).map(t=>t.block_idx));
+      const done=new Set(todayTicks(id).map(t=>t.block_idx));
       const redo=new Set(rows.redos.filter(r=>r.kid_id===id).map(r=>r.block_idx));
+      const covered=coveredSet(id);
       const stars=(rows.totals.find(t=>t.kid_id===id)||{}).stars||0;
       const missions=(rows.stats.find(s=>s.kid_id===id)||{}).value||0;
       return `<article class="kid-card" style="--kid-color:${k.color}">
-        <h2 class="card-title">${k.name}</h2>
-        <p><span class="gold">${stars}</span> stars 星星 · ${missions} photo missions 照片任務</p>
-        <div class="progress"><div class="progress__fill" style="width:${done.size/DAY.length*100}%;background:${k.color}"></div></div>
-        <h3>${done.size}/${DAY.length} blocks 格子</h3>
-        <div class="blocks">${DAY.map((b,i)=>`<div class="block-row">
-          <span>${b.t}</span><b class="${done.has(i)?"ok":"muted"}">${done.has(i)?"✓":redo.has(i)?"↩︎":"-"}</b>
-          <span>${b.title}<br><span class="muted">${b.tz}</span>
-            ${done.has(i)?`<br><button class="btn btn--secondary" data-sendback="${id}:${i}">↩︎ Send back 退回</button>`
-              :redo.has(i)?`<br><span class="muted">waiting redo 等待再做</span>`:""}</span>
-        </div>`).join("")}</div>
+        <div class="schedule-head">
+          <div>
+            <h2 class="card-title">${k.name}</h2>
+            <p><span class="gold">${stars}</span> stars 星星 · ${missions} photo missions 照片任務</p>
+          </div>
+          <span class="pill">${covered.size}/${DAY.length} blocks 格子</span>
+        </div>
+        <div class="progress"><div class="progress__fill" style="width:${covered.size/DAY.length*100}%;background:${k.color}"></div></div>
+        <div class="schedule-list" data-schedule="${id}">
+          ${scheduleOrder(id).map(i=>scheduleBlock(id,i,done,redo)).join("")}
+        </div>
       </article>`;
     }).join("");
-    document.querySelectorAll("[data-sendback]").forEach(b=>b.onclick=async()=>{
-      const [kid,iStr]=b.dataset.sendback.split(":"), i=+iStr;
-      const titleZh=`${DAY[i].title} ${DAY[i].tz||""}`.trim();
-      if(!confirm(`Send "${titleZh}" back to ${kidName(kid)} for a redo? 退回請${kidName(kid)}再做一次？`))return;
-      const note=prompt("Note for the kid (optional) 給孩子的留言（可留空）","")||"";
-      const day=today;
-      /* refund what the tick earned, through the ledger (never edit totals) */
-      const refunds=[];
-      if(DAY[i].kind==="mission")
-        refunds.push({kid_id:kid,delta:-1,reason:`Sent back 退回: ${titleZh}`,source:"admin",granted_by:session.user.id});
-      const kidDone=rows.ticks.filter(t=>t.kid_id===kid).map(t=>t.block_idx);
-      const passIdx=rows.passes.filter(p=>p.kid_id===kid&&["granted","spent"].includes(p.status)).map(p=>p.block_idx);
-      if(new Set([...kidDone,...passIdx]).size>=DAY.length)
-        refunds.push({kid_id:kid,delta:-2,reason:"Day-complete bonus undone 全天完成獎勵取消",source:"admin",granted_by:session.user.id});
-      const r1=await client.from("day_ticks").delete().eq("kid_id",kid).eq("day",day).eq("block_idx",i);
-      if(r1.error){writeFailed(r1.error);return;}
-      const r2=await client.from("day_redos").upsert({kid_id:kid,day:day,block_idx:i,note});
-      if(r2.error){writeFailed(r2.error);return;}
-      if(refunds.length){
-        const r3=await client.from("stars_ledger").insert(refunds);
-        if(r3.error){writeFailed(r3.error);return;}
-      }
-      toast(`Sent back 退回 ↩︎ ${kidName(kid)} — ${titleZh}`,true);
-      await loadAll();
+    bindScheduleBlocks();
+  }
+
+  function scheduleOrder(kid){
+    return SQTime.displayOrder(DAY,SQTime.resolveOverrides(overridesRaw,kid));
+  }
+
+  function scheduleBlock(kid,i,done,redo){
+    const b=DAY[i], eff=SQTime.resolveOverrides(overridesRaw,kid);
+    const mins=SQTime.effMins(DAY,eff,i), timed=mins!=null;
+    const info=SQTime.timelineInfo(DAY,eff,SQ_DAY.nowMins());
+    const moved=(overridesRaw[kid]||{})[i]!=null;
+    const removed=passFor(kid,i,"outing");
+    const accepted=done.has(i);
+    const state=accepted||removed?"is-done":i===info.current?"is-current":timed&&mins<info.now?"is-overdue":"is-upcoming";
+    const status=removed?"removed 已移除":accepted?"accepted 已接受":redo.has(i)?"redo 等待再做":"open 未完成";
+    return `<div class="schedule-block ${state} ${accepted?"is-accepted":""} ${removed?"is-removed":""}" data-kid="${kid}" data-block="${i}" draggable="${timed&&!removed}">
+      <button class="drag-handle" type="button" aria-label="Move block 移動格子" ${timed&&!removed?"":"disabled"}>↕</button>
+      <label class="schedule-time">
+        <span>Time 時間</span>
+        <input class="input input--time" type="time" data-time="${kid}:${i}" value="${timed?clock(mins):""}" ${timed&&!removed?"":"disabled"}>
+      </label>
+      <div class="schedule-main">
+        <b>${b.icon} ${b.title}</b>
+        <span class="muted">${b.tz}</span>
+        <span class="schedule-status ${accepted||removed?"ok":redo.has(i)?"gold":"muted"}">${status}${moved?" · moved 已調整":""}</span>
+      </div>
+      <div class="schedule-actions">
+        ${accepted
+          ?`<button class="btn btn--secondary" data-unaccept="${kid}:${i}">Undo 取消接受</button>
+            <button class="btn btn--secondary" data-sendback="${kid}:${i}">Send back 退回</button>`
+          :removed
+            ?`<button class="btn" data-addback="${removed.id}:${kid}:${i}:${removed.credited?1:0}">Add back 加回</button>`
+            :`<button class="btn" data-accept="${kid}:${i}">Accept 接受</button>
+              <button class="btn btn--secondary" data-removeblock="${kid}:${i}">Remove 移除</button>`}
+      </div>
+    </div>`;
+  }
+
+  function bindScheduleBlocks(){
+    document.querySelectorAll(".schedule-block").forEach(row=>{
+      row.ondragstart=e=>{
+        if(row.getAttribute("draggable")!=="true"){e.preventDefault();return;}
+        dragState={kid:row.dataset.kid,block:+row.dataset.block};
+        row.classList.add("is-dragging");
+        e.dataTransfer.effectAllowed="move";
+      };
+      row.ondragend=()=>{dragState=null;row.classList.remove("is-dragging");clearDropTargets();};
+      row.ondragover=e=>{
+        if(dragState&&dragState.kid===row.dataset.kid&&row.getAttribute("draggable")==="true"){
+          e.preventDefault(); row.classList.add("is-drop-target");
+        }
+      };
+      row.ondragleave=()=>row.classList.remove("is-drop-target");
+      row.ondrop=e=>{
+        e.preventDefault(); clearDropTargets();
+        if(!dragState||dragState.kid!==row.dataset.kid)return;
+        saveDraggedOrder(row.dataset.kid,dragState.block,+row.dataset.block);
+      };
     });
+    document.querySelectorAll("[data-time]").forEach(inp=>inp.onchange=()=>{
+      const [kid,i]=inp.dataset.time.split(":");
+      saveBlockTime(kid,+i,inp.value);
+    });
+    document.querySelectorAll("[data-accept]").forEach(b=>b.onclick=()=>{
+      const [kid,i]=b.dataset.accept.split(":");
+      acceptBlock(kid,+i);
+    });
+    document.querySelectorAll("[data-unaccept]").forEach(b=>b.onclick=()=>{
+      const [kid,i]=b.dataset.unaccept.split(":");
+      unacceptBlock(kid,+i,false);
+    });
+    document.querySelectorAll("[data-sendback]").forEach(b=>b.onclick=()=>{
+      const [kid,i]=b.dataset.sendback.split(":");
+      sendBackBlock(kid,+i);
+    });
+    document.querySelectorAll("[data-removeblock]").forEach(b=>b.onclick=()=>{
+      const [kid,i]=b.dataset.removeblock.split(":");
+      removeBlock(kid,+i);
+    });
+    document.querySelectorAll("[data-addback]").forEach(b=>b.onclick=()=>{
+      const [passId,kid,i,credited]=b.dataset.addback.split(":");
+      addBackBlock(passId,kid,+i,credited==="1");
+    });
+  }
+
+  function clearDropTargets(){
+    document.querySelectorAll(".is-drop-target").forEach(x=>x.classList.remove("is-drop-target"));
+  }
+
+  async function saveDraggedOrder(kid,fromBlock,toBlock){
+    if(fromBlock===toBlock)return;
+    const order=scheduleOrder(kid).filter(i=>SQTime.effMins(DAY,SQTime.resolveOverrides(overridesRaw,kid),i)!=null&&!passFor(kid,i,"outing"));
+    const from=order.indexOf(fromBlock), to=order.indexOf(toBlock);
+    if(from<0||to<0)return;
+    order.splice(to,0,order.splice(from,1)[0]);
+    const eff=SQTime.resolveOverrides(overridesRaw,kid);
+    const slots=order.map(i=>SQTime.effMins(DAY,eff,i)).sort((a,b)=>a-b);
+    const jobs=order.map((i,n)=>saveBlockTime(kid,i,clock(slots[n]),true));
+    const results=await Promise.all(jobs);
+    const err=results.find(r=>r&&r.error);
+    if(err){writeFailed(err.error);return;}
+    toast(`Schedule moved for ${kidName(kid)} 行程已移動`,true);
+    await loadAll();
+  }
+
+  function baseTimeFor(kid,i){
+    return (overridesRaw.all||{})[i]!=null?(overridesRaw.all||{})[i]:DAY[i].t;
+  }
+
+  async function saveBlockTime(kid,i,value,silent){
+    const mins=SQTime.parseMins(value);
+    if(mins==null)return {error:new Error("Use a valid time 請輸入正確時間")};
+    const base=baseTimeFor(kid,i);
+    const q=SQTime.parseMins(value)===SQTime.parseMins(base)
+      ?client.from("day_overrides").delete().eq("day",today).eq("block_idx",i).eq("kid_id",kid)
+      :client.from("day_overrides").upsert({day:today,block_idx:i,kid_id:kid,t:value,updated_at:new Date().toISOString()});
+    const result=await q;
+    if(result.error){if(!silent)writeFailed(result.error);return result;}
+    if(!silent){toast(`Time saved 已儲存時間 — ${kidName(kid)}`,true);await loadAll();}
+    return result;
+  }
+
+  function starRefunds(kid,blocks,reason){
+    return blocks.filter(i=>DAY[i]&&DAY[i].kind==="mission").map(i=>({
+      kid_id:kid,delta:-1,reason:`${reason}: ${DAY[i].title}`,source:"admin",granted_by:session.user.id
+    }));
+  }
+
+  async function acceptBlock(kid,i){
+    if(tickFor(kid,i)||passFor(kid,i,"outing"))return;
+    const beforeComplete=dayComplete(kid);
+    suppressRealtime("day_ticks",{kid_id:kid,day:today,block_idx:i});
+    const {error}=await client.from("day_ticks").insert({kid_id:kid,day:today,block_idx:i});
+    if(error){writeFailed(error);return;}
+    await client.from("day_redos").delete().eq("kid_id",kid).eq("day",today).eq("block_idx",i);
+    const grants=[];
+    if(DAY[i].kind==="mission")grants.push({kid_id:kid,delta:1,reason:`Admin accepted 接受: ${DAY[i].title}`,source:"admin",granted_by:session.user.id});
+    const after=new Set([...coveredSet(kid),i]);
+    if(!beforeComplete&&after.size>=DAY.length)grants.push({kid_id:kid,delta:2,reason:"Day-complete bonus 全天完成獎勵",source:"admin",granted_by:session.user.id});
+    if(grants.length){
+      const r=await client.from("stars_ledger").insert(grants);
+      if(r.error){writeFailed(r.error);return;}
+    }
+    toast(`Accepted 接受 ✓ ${kidName(kid)} — ${DAY[i].title}`,true);
+    await loadAll();
+  }
+
+  async function unacceptBlock(kid,i,redoNote){
+    if(!tickFor(kid,i))return;
+    const beforeComplete=dayComplete(kid);
+    const {error}=await client.from("day_ticks").delete().eq("kid_id",kid).eq("day",today).eq("block_idx",i);
+    if(error){writeFailed(error);return;}
+    const after=coveredSet(kid);
+    after.delete(i);
+    if(rows.passes.some(p=>p.kid_id===kid&&p.day===today&&p.block_idx===i&&["granted","spent"].includes(p.status)))after.add(i);
+    const refunds=starRefunds(kid,[i],redoNote?"Sent back 退回":"Admin undo 取消接受");
+    if(beforeComplete&&after.size<DAY.length)refunds.push({kid_id:kid,delta:-2,reason:"Day-complete bonus undone 全天完成獎勵取消",source:"admin",granted_by:session.user.id});
+    if(refunds.length){
+      const r=await client.from("stars_ledger").insert(refunds);
+      if(r.error){writeFailed(r.error);return;}
+    }
+    if(redoNote!=null){
+      const r=await client.from("day_redos").upsert({kid_id:kid,day:today,block_idx:i,note:redoNote});
+      if(r.error){writeFailed(r.error);return;}
+    }
+    toast(`${redoNote!=null?"Sent back 退回":"Acceptance undone 已取消"} — ${kidName(kid)}`,true);
+    await loadAll();
+  }
+
+  async function sendBackBlock(kid,i){
+    const titleZh=`${DAY[i].title} ${DAY[i].tz||""}`.trim();
+    if(!confirm(`Send "${titleZh}" back to ${kidName(kid)} for a redo? 退回請${kidName(kid)}再做一次？`))return;
+    const note=prompt("Note for the kid (optional) 給孩子的留言（可留空）","")||"";
+    await unacceptBlock(kid,i,note);
+  }
+
+  async function removeBlock(kid,i){
+    if(passFor(kid,i,"outing"))return;
+    const credited=$("removedCredited").checked;
+    const pass={kid_id:kid,kind:"outing",status:"granted",day:today,block_idx:i,reason:"Removed from today's schedule 從今天行程移除",credited,granted_by:session.user.id};
+    const r1=await client.from("passes").insert(pass);
+    if(r1.error){writeFailed(r1.error);return;}
+    if(credited){
+      const r2=await client.from("stars_ledger").insert({kid_id:kid,delta:1,reason:`Removed block counts 算完成: ${DAY[i].title}`,source:"admin",granted_by:session.user.id});
+      if(r2.error){writeFailed(r2.error);return;}
+    }
+    toast(`Removed 移除 — ${kidName(kid)} ${DAY[i].title}`,true);
+    await loadAll();
+  }
+
+  async function addBackBlock(passId,kid,i,credited){
+    const r1=await client.from("passes").delete().eq("id",passId);
+    if(r1.error){writeFailed(r1.error);return;}
+    if(credited){
+      const r2=await client.from("stars_ledger").insert({kid_id:kid,delta:-1,reason:`Removed block added back 加回: ${DAY[i].title}`,source:"admin",granted_by:session.user.id});
+      if(r2.error){writeFailed(r2.error);return;}
+    }
+    toast(`Added back 加回 — ${kidName(kid)} ${DAY[i].title}`,true);
+    await loadAll();
+  }
+
+  async function resetAcceptedDay(){
+    const ticks=rows.ticks.filter(t=>t.day===today);
+    if(!ticks.length){toast("No accepted blocks to reset 今天沒有已接受格子",true);return;}
+    if(!confirm("Reset all accepted blocks for today? This keeps removed/outing blocks. 重設今天所有已接受格子？已移除/出遊格子會保留。"))return;
+    const refunds=[];
+    Object.keys(KIDS).forEach(kid=>{
+      const kidTicks=ticks.filter(t=>t.kid_id===kid).map(t=>t.block_idx);
+      refunds.push(...starRefunds(kid,kidTicks,"Day reset 重設今天"));
+      const passOnly=new Set(rows.passes.filter(p=>p.kid_id===kid&&p.day===today&&["granted","spent"].includes(p.status)).map(p=>p.block_idx));
+      if(dayComplete(kid)&&passOnly.size<DAY.length)
+        refunds.push({kid_id:kid,delta:-2,reason:"Day reset bonus undo 重設全天完成獎勵",source:"admin",granted_by:session.user.id});
+    });
+    const r1=await client.from("day_ticks").delete().eq("day",today);
+    if(r1.error){writeFailed(r1.error);return;}
+    await client.from("day_redos").delete().eq("day",today);
+    if(refunds.length){
+      const r2=await client.from("stars_ledger").insert(refunds);
+      if(r2.error){writeFailed(r2.error);return;}
+    }
+    toast("Accepted blocks reset 今天已接受格子已重設",true);
+    await loadAll();
   }
 
   function renderGrants(){
@@ -187,8 +505,7 @@
 
   async function grantStars(kid,delta){
     const input=$(`reason-${kid}`);
-    const reason=input.value.trim();
-    if(!reason){input.focus();return;}
+    const reason=input.value.trim()||(delta>0?"Admin grant 手動加星星":"Admin correction 手動扣星星");
     const {error}=await client.from("stars_ledger").insert({kid_id:kid,delta,reason,source:"admin",granted_by:session.user.id});
     if(error){writeFailed(error);return;}
     toast(`${delta>0?"+":""}${delta} ⭐ ${kidName(kid)} — saved 已儲存`,true);
@@ -234,21 +551,26 @@
   }
 
   function renderAsks(){
-    const open=rows.asks.filter(a=>!a.answered_at);
-    const answered=rows.asks.filter(a=>a.answered_at);
-    $("askInbox").innerHTML=[...open,...answered].map(a=>`
-      <article class="ask-card">
+    const showArchived=$("showArchivedAsks").checked;
+    const archivedIds=archivedAskIds();
+    const visible=rows.asks.filter(a=>showArchived||!archivedIds.has(a.id));
+    const open=visible.filter(a=>!a.answered_at&&!archivedIds.has(a.id));
+    const answered=visible.filter(a=>a.answered_at&&!archivedIds.has(a.id));
+    const archived=visible.filter(a=>archivedIds.has(a.id));
+    $("askInbox").innerHTML=[...open,...answered,...archived].map(a=>`
+      <article class="ask-card ${archivedIds.has(a.id)?"is-archived":""}">
         <div class="row">
           <b>${kidName(a.kid_id)}</b>
           <span class="pill">${esc(a.kind)} 類型</span>
           <span class="pill">${fmt(a.created_at)}</span>
-          ${a.answered_at?`<span class="pill ok">answered 已回覆</span>`:`<span class="pill gold">open 未回覆</span>`}
+          ${archivedIds.has(a.id)?`<span class="pill">archived 已封存</span>`
+            :a.answered_at?`<span class="pill ok">answered 已回覆</span>`:`<span class="pill gold">open 未回覆</span>`}
         </div>
         <p>${esc(a.body||"Voice memo 語音訊息")}</p>
         ${a.audio_path?`<audio class="audio" controls src="${publicUrl(a.audio_path)}"></audio>`:""}
         ${a.answer?`<p class="ok">Answer 回覆: ${esc(a.answer)}</p>`:""}
         ${a.answer_audio_path?`<audio class="audio" controls src="${publicUrl(a.answer_audio_path)}"></audio>`:""}
-        ${!a.answered_at?`<label class="field"><span>Answer 回覆</span>
+        ${!a.answered_at&&!archivedIds.has(a.id)?`<label class="field"><span>Answer 回覆</span>
           <textarea class="input textarea" id="answer-${a.id}" placeholder="I can help after lunch. 午餐後我可以幫你。"></textarea></label>
           <div class="row">
             <button class="btn" data-answer="${a.id}">Send answer 送出回覆</button>
@@ -256,10 +578,17 @@
             <button class="btn btn--secondary" data-stop="${a.id}" disabled>Stop 停止</button>
             <span class="message message--ok" id="recstatus-${a.id}"></span>
           </div>`:""}
-      </article>`).join("")||`<p>No asks yet. 還沒有求助。</p>`;
+        <div class="row inbox-actions">
+          ${archivedIds.has(a.id)
+            ?`<button class="btn btn--secondary" data-unarchiveask="${a.id}">Restore 還原</button>`
+            :`<button class="btn btn--secondary" data-archiveask="${a.id}">Archive 封存</button>`}
+        </div>
+      </article>`).join("")||`<p>No active asks. 沒有需要處理的求助。</p>`;
     document.querySelectorAll("[data-answer]").forEach(b=>b.onclick=()=>answerAsk(b.dataset.answer));
     document.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>startAnswerRecord(b.dataset.rec));
     document.querySelectorAll("[data-stop]").forEach(b=>b.onclick=()=>stopAnswerRecord(b.dataset.stop));
+    document.querySelectorAll("[data-archiveask]").forEach(b=>b.onclick=()=>archiveAsk(b.dataset.archiveask,true));
+    document.querySelectorAll("[data-unarchiveask]").forEach(b=>b.onclick=()=>archiveAsk(b.dataset.unarchiveask,false));
   }
 
   async function startAnswerRecord(id){
@@ -295,6 +624,17 @@
     const {error}=await client.from("asks").update({answer:body||null,answer_audio_path,answered_at:new Date().toISOString()}).eq("id",id);
     if(error){writeFailed(error);return;}
     toast("Answer sent 回覆已送出",true);
+    await loadAll();
+  }
+
+  async function archiveAsk(id,archive){
+    const ids=archivedAskIds();
+    if(archive)ids.add(id); else ids.delete(id);
+    const {error}=await client.from("family_settings").upsert({
+      key:"archived_asks",value:JSON.stringify([...ids]),updated_at:new Date().toISOString()
+    });
+    if(error){writeFailed(error);return;}
+    toast(archive?"Ask archived 已封存":"Ask restored 已還原",true);
     await loadAll();
   }
 
@@ -397,89 +737,6 @@
     </div>`;
   }
 
-  function reschedEffective(){
-    return reschedKid==="all"?(overridesRaw.all||{}):SQTime.resolveOverrides(overridesRaw,reschedKid);
-  }
-  function renderResched(){
-    const kids=document.querySelectorAll("#reschedKids .reschedkid");
-    kids.forEach(function(b){
-      b.classList.toggle("on",b.dataset.rk===reschedKid);
-      b.onclick=function(){reschedKid=b.dataset.rk;renderResched();};
-    });
-    const eff=reschedEffective(), own=overridesRaw[reschedKid]||{};
-    $("reschedList").innerHTML=SQTime.timedOrder(DAY,eff).map(function(x){
-      const b=DAY[x.i];
-      const tag=own[x.i]!=null?(reschedKid==="all"?"moved 已調整":"own move 個人調整")
-        :(reschedKid!=="all"&&(overridesRaw.all||{})[x.i]!=null?"family move 全家調整":"");
-      const hh=String(Math.floor(x.t/60)).padStart(2,"0"), mm=String(x.t%60).padStart(2,"0");
-      return `<div class="row resched-row">
-        <span class="pill">${b.icon} ${b.title} ${b.tz}</span>
-        <input class="input input--time" type="time" data-ri="${x.i}" value="${hh}:${mm}">
-        ${tag?`<span class="pill pill--ok">${tag}</span>`:""}
-      </div>`;
-    }).join("");
-  }
-  async function saveResched(){
-    const jobs=[], own=overridesRaw[reschedKid]||{};
-    document.querySelectorAll("#reschedList [data-ri]").forEach(function(inp){
-      const i=+inp.dataset.ri, v=inp.value;
-      if(!v)return;
-      const parts=v.split(":").map(Number), t=`${parts[0]}:${String(parts[1]).padStart(2,"0")}`;
-      const base=reschedKid==="all"?DAY[i].t:((overridesRaw.all||{})[i]!=null?(overridesRaw.all||{})[i]:DAY[i].t);
-      const cur=own[i]!=null?own[i]:base;
-      if(SQTime.parseMins(t)===SQTime.parseMins(cur))return;
-      if(SQTime.parseMins(t)===SQTime.parseMins(base)){
-        jobs.push(client.from("day_overrides").delete()
-          .eq("day",today).eq("block_idx",i).eq("kid_id",reschedKid));
-      }else{
-        jobs.push(client.from("day_overrides").upsert({day:today,block_idx:i,kid_id:reschedKid,t:t,updated_at:new Date().toISOString()}));
-      }
-    });
-    const results=await Promise.all(jobs);
-    const err=results.find(function(r){return r.error;});
-    $("reschedStatus").textContent=err?err.error.message:"Saved — tablets update live 已儲存 ✓";
-    await loadAll();
-  }
-  async function resetResched(){
-    const {error}=await client.from("day_overrides").delete().eq("day",today).eq("kid_id",reschedKid);
-    $("reschedStatus").textContent=error?error.message:"Back to normal 已恢復 ✓";
-    await loadAll();
-  }
-
-  function renderOutingBlocks(){
-    $("outingBlocks").innerHTML=SQTime.timedOrder(DAY,SQTime.resolveOverrides(overridesRaw,null)).map(function(x){
-      const b=DAY[x.i];
-      return `<button class="btn btn--secondary outblk ${outingSel.has(x.i)?"on":""}" data-oi="${x.i}">${b.icon} ${b.t} ${b.title}</button>`;
-    }).join("");
-    document.querySelectorAll(".outblk").forEach(function(btn){
-      btn.onclick=function(){
-        const i=+btn.dataset.oi;
-        if(outingSel.has(i))outingSel.delete(i); else outingSel.add(i);
-        renderOutingBlocks();
-      };
-    });
-  }
-  async function markOuting(){
-    if(!outingSel.size){$("outingStatus").textContent="Pick blocks first 先選時段";return;}
-    const credited=$("outingCredited").checked, kids=["lucien","lili","luis"], passRows=[], stars=[];
-    kids.forEach(function(k){
-      outingSel.forEach(function(i){
-        passRows.push({kid_id:k,kind:"outing",status:"granted",day:today,block_idx:i,reason:"Family outing 家庭出遊",credited:credited,granted_by:session.user.id});
-        if(credited)stars.push({kid_id:k,delta:1,reason:"Outing 出遊",source:"admin",granted_by:session.user.id});
-      });
-    });
-    const r1=await client.from("passes").insert(passRows);
-    const r2=stars.length?await client.from("stars_ledger").insert(stars):{error:null};
-    const err=r1.error||r2.error;
-    $("outingStatus").textContent=err?err.message:"Marked 已標記 ✓";
-    if(!err){outingSel.clear();await loadAll();}
-  }
-  async function clearOuting(){
-    const {error}=await client.from("passes").delete().eq("day",today).eq("kind","outing");
-    $("outingStatus").textContent=error?error.message:"Cleared 已取消 ✓";
-    if(!error)await loadAll();
-  }
-
   function renderPins(){
     $("pinSettings").innerHTML=Object.entries(KIDS).map(([id,k])=>{
       const row=rows.kids.find(x=>x.id===id)||{};
@@ -577,7 +834,14 @@
       return `<article class="kid-card" style="--kid-color:${k.color}">
         <h3>${k.name} ${paused?"⏸ paused 已暫停":""}</h3>
         <button class="btn ${paused?"":"btn--danger"}" data-applock="${id}" data-paused="${paused?1:0}">
-          ${paused?"Resume 恢復":"Pause 暫停"}</button>
+          ${paused?"Resume app 恢復app":"Pause whole app 暫停整個app"}</button>
+        <div class="cat-locks">
+          ${LOCK_CATS.filter(([cat])=>cat!=="captain"||id==="luis").map(([cat,label])=>{
+            const locked=(fs[`catlock_${id}_${cat}`]||"")!=="";
+            return `<button class="btn ${locked?"btn--danger":"btn--secondary"}" data-catlock="${id}:${cat}" data-locked="${locked?1:0}">
+              ${locked?"Unlock 解鎖":"Lock 鎖定"} ${label}</button>`;
+          }).join("")}
+        </div>
       </article>`;
     }).join("");
     document.querySelectorAll("[data-applock]").forEach(b=>b.onclick=async()=>{
@@ -588,20 +852,35 @@
       toast(paused?"Resumed 已恢復 ▶":"Paused 已暫停 ⏸",true);
       await loadAll();
     });
+    document.querySelectorAll("[data-catlock]").forEach(b=>b.onclick=async()=>{
+      const [id,cat]=b.dataset.catlock.split(":"), locked=b.dataset.locked==="1";
+      const {error}=await client.from("family_settings").upsert({
+        key:`catlock_${id}_${cat}`,value:locked?"":"1",updated_at:new Date().toISOString()
+      });
+      if(error){writeFailed(error);return;}
+      toast(`${kidName(id)} ${cat} ${locked?"unlocked 已解鎖":"locked 已鎖定"}`,true);
+      await loadAll();
+    });
   }
 
   function subscribeRealtime(){
-    client.channel("p1-admin")
-      .on("postgres_changes",{event:"*",schema:"public",table:"day_ticks"},loadAll)
-      .on("postgres_changes",{event:"*",schema:"public",table:"stars_ledger"},loadAll)
-      .on("postgres_changes",{event:"*",schema:"public",table:"asks"},loadAll)
-      .on("postgres_changes",{event:"*",schema:"public",table:"passes"},loadAll)
-      .on("postgres_changes",{event:"*",schema:"public",table:"photos"},loadAll)
-      .on("postgres_changes",{event:"*",schema:"public",table:"help_claims"},loadAll)
-      .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},loadAll)
-      .on("postgres_changes",{event:"*",schema:"public",table:"day_overrides"},loadAll)
-      .on("postgres_changes",{event:"*",schema:"public",table:"day_redos"},loadAll)
-      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},loadAll)
+    if(realtimeChannel)return;
+    const live=table=>payload=>{
+      const note=notificationFor(table,payload);
+      if(note)pushNotify(note.title,note.body,note.kind);
+      loadAll();
+    };
+    realtimeChannel=client.channel("p1-admin")
+      .on("postgres_changes",{event:"*",schema:"public",table:"day_ticks"},live("day_ticks"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"stars_ledger"},live("stars_ledger"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"asks"},live("asks"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"passes"},live("passes"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"photos"},live("photos"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"help_claims"},live("help_claims"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},live("family_settings"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"day_overrides"},live("day_overrides"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"day_redos"},live("day_redos"))
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},live("kids"))
       .subscribe();
   }
 
@@ -616,10 +895,10 @@
   };
   $("logoutBtn").onclick=async()=>{await client.auth.signOut();location.reload();};
   $("refreshBtn").onclick=loadAll;
-  $("reschedSaveBtn").onclick=saveResched;
-  $("reschedResetBtn").onclick=resetResched;
-  $("outingGoBtn").onclick=markOuting;
-  $("outingClearBtn").onclick=clearOuting;
+  $("resetAcceptedBtn").onclick=resetAcceptedDay;
+  $("notifyEnableBtn").onclick=toggleBrowserNotifications;
+  $("notifyClearBtn").onclick=()=>{notifyItems=[];renderNotifications();};
+  $("showArchivedAsks").onchange=renderAsks;
   $("galleryBtn").onclick=openGallery;
   $("galleryPrev").onclick=()=>galleryStep(-1);
   $("galleryNext").onclick=()=>galleryStep(1);
@@ -635,7 +914,7 @@
     const status=$("noteStatus");
     status.textContent="";
     if(!body){status.textContent="Write a bilingual message first. 請先寫雙語留言。";return;}
-    const {error}=await client.from("papa_notes").upsert({day:tomorrow,body});
+    const {error}=await client.from("papa_notes").upsert({day:today,body});
     status.textContent=error?error.message:"Saved 儲存好了";
   };
   init().catch(e=>{show("configState",true);$("configState").querySelector("p").textContent=e.message;});

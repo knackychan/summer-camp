@@ -75,31 +75,54 @@ Design stance for all of these: **coach, not cop** — late/locked states invite
 10. **🤖 AI tutor (last)** — Edge Function proxy, kid-safe system prompt, rate-limited, full transcripts in admin. Luis first.
 
 ## Priorities
+_Status reviewed against the code 2026-07-26 — see "Review status" below for gaps._
+
 ### P0 — shared state (the point of it all)
-- [ ] Split `summer_quest.html` → `index.html` + `js/` per file plan; app works unchanged with SyncStore in "local-only" fallback when config is missing.
-- [ ] Schema deployed (base + v2 tables); SyncStore hydrates + writes ticks, rolls, stars (app source), act dones.
-- [ ] Live timeline + spoken transitions + earned-screen 🔓/🔒 indicator (client-only, no new tables).
-- [ ] Papa's daily message rendered from `papa_notes`; admin can write tomorrow's note.
-- [ ] **DONE WHEN:** tick on tablet A → visible on tablet B after reload; totals identical; app fully playable offline (queue flushes on reconnect); at 10:00 sharp a tablet announces "Create & build time! 創作與建造時間到了".
+- [x] Split `summer_quest.html` → `index.html` + `js/` per file plan; app works unchanged with SyncStore in "local-only" fallback when config is missing.
+- [x] Schema deployed (base + v2 tables); SyncStore hydrates + writes ticks, rolls, stars (app source), act dones.
+- [x] Live timeline + spoken transitions + earned-screen 🔓/🔒 indicator (client-only, no new tables).
+- [x] Papa's daily message rendered from `papa_notes`; admin can write tomorrow's note.
+- [x] **DONE WHEN:** tick on tablet A → visible on tablet B after reload; totals identical; app fully playable offline (queue flushes on reconnect); at 10:00 sharp a tablet announces the block (10:00 is now Homework per approved 2026-07-26 plan).
 
 ### P1 — Papa supervises & assists remotely
-- [ ] `admin.html`: login, today-at-a-glance (live ticks), grant/undo stars with reason, ledger.
-- [ ] Ask channel end-to-end: canned + typed + voice memo → admin inbox → answer (text/voice) → badge on kid tablet. Urgent → phone push via ntfy.
-- [ ] Realtime: admin star lands on the kid's tablet with 🌟 fanfare.
-- [ ] **DONE WHEN:** from work, Papa gets a push for Lucien's urgent voice memo, replies by voice, grants Lili +2 "helped Lucien", and both tablets react live within 2s.
+- [x] `admin.html`: login, today-at-a-glance (live ticks), grant/undo stars with reason, ledger. _(Ledger is last 30 total, not per kid — acceptable, noted.)_
+- [x] Ask channel end-to-end: canned + typed + voice memo → admin inbox → answer (text/voice) → badge on kid tablet. Urgent → phone push via ntfy. _(Push is direct from kid tablet to ntfy.sh — no Edge Function; silently skipped if `NTFY_TOPIC` unset or tablet offline.)_
+- [x] Realtime: admin star lands on the kid's tablet with 🌟 fanfare.
+- [x] **DONE WHEN:** from work, Papa gets a push for Lucien's urgent voice memo, replies by voice, grants Lili +2 "helped Lucien", and both tablets react live within 2s.
 
 ### P2 — passes, proof & continuity
-- [ ] Pass lifecycle: request → approve/deny → spend/excuse; My Day renders 🎟️/🤝 states; day-complete logic honours them.
-- [ ] Photo proof upload + admin view + evening dinner-gallery mode.
-- [ ] Vocab mastery + game bests synced; kid PINs; `search_log` writes from the Learn tab.
-- [ ] 14-day history heatmap in admin.
-- [ ] **DONE WHEN:** factory-reset a tablet → pick Lili + PIN → everything is there; Lili requests an excused pass for Sport ("knee hurts"), Papa approves from his phone, her day-complete bonus is still earnable.
+- [x] Pass lifecycle: request → approve/deny → spend/excuse; My Day renders 🎟️/🤝 states (excused blocks get the 🤝 treatment); day-complete logic honours them.
+- [x] Photo proof upload + admin view + evening dinner-gallery mode (full-screen slideshow of today's photos in admin, auto-advance + manual nav).
+- [x] Vocab mastery + game bests synced; kid PINs; `search_log` writes from the Learn tab. _(Vocab syncs via save-diff, not the spec'd 2s debounced `setVocab` batch — equivalent in practice.)_
+- [x] 14-day history heatmap in admin.
+- [x] **DONE WHEN:** factory-reset a tablet → pick Lili + PIN → everything is there; excused pass flow works and the day-complete bonus is still earnable (bonus-via-pass fixed 2026-07-26).
 
 ### P3 — nice-to-have
-- [ ] Captain view for Luis (+ approval queue for helped-a-sibling claims).
+- [~] Captain view for Luis (+ approval queue for helped-a-sibling claims) — in progress (`help_claims` schema + kid tab + admin queue landed, uncommitted).
 - [ ] 19:00 recap cards + Sunday digest; reward-threshold progress bars (20/50/80 ⭐); month CSV export.
 - [ ] Mission pins (`mission_pins`: Papa fixes tomorrow's mission for a block).
 - [ ] AI tutor Edge Function with transcript review in admin.
+
+## Review status (2026-07-26, updated after gap-fix pass)
+**Fixed in review pass 1:** papa-note HTML escaped in My Day; day-complete +2 bonus granted when the last block is finished via a pass; SyncStore hydration replays the pending offline queue into local state (spec rule); admin boot errors surface instead of writing to a hidden panel.
+
+**Fixed in gap-fix pass 2:**
+- Day/timezone unified into one shared helper `js/day.js` (`SQ_DAY`, honours `FAMILY_TZ`); `index.html`, `js/sync.js`, `js/admin.js` all delegate to it.
+- Admin write failures (grant/undo stars, approve/deny pass, answer ask incl. voice upload) now surface via a toast; successes confirm too.
+- Dinner-gallery evening mode: full-screen slideshow of today's proofs in admin (auto-advance 6s, prev/next, Escape).
+- Excused blocks now get the 🤝 treatment (pass label emoji, soft green row, 🤝 on the tick button).
+- `scripts/sync.test.mjs`: node-run SyncStore tests (queue diff ops, hydrate + queue replay, local-only fallback) — wired into `scripts/check.mjs`.
+
+**Known gaps / deviations (accepted or open):**
+1. Urgent push has no Edge Function fallback — an offline tablet's urgent ask reaches Papa only after reconnect, with no retry for the ntfy ping itself.
+2. `DAY[]` labels duplicated in `js/admin.js` — must be updated in lockstep with `index.html`.
+3. Admin ledger shows last 30 entries total, not per kid.
+4. Accessibility: kid-app overlays (PIN, pass request) lack Escape-to-close/focus trap. Tablet-first targets are otherwise good.
+
+**Next steps in priority order:**
+1. Finish + commit captain view (in flight), then remaining P3: recaps/digest, reward-threshold bars, CSV export, mission pins, AI tutor.
+2. Approved 2026-07-26 plan slices still pending (02-06: day core, activity lock, reschedule, outing mode, practice drills).
+3. Optional hardening: ntfy retry queue for urgent asks; kid-app overlay a11y.
 
 ## Risks / notes
 - Anon key + permissive RLS means anyone with the URL could write junk. Perimeter = unlisted URL + PINs; hardening path if ever needed = move kid writes behind Supabase magic-link "kid" users. Not worth it at family scale on day 1.

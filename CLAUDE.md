@@ -14,7 +14,7 @@ Family summer app: 3 kid profiles on tablets + Papa admin. Static site (GitHub P
 
 ## Workflow
 - Read docs/SPEC.md priorities; work one tier at a time; a tier is done only when its DONE WHEN passes.
-- **Plans & brainstorms:** every brainstorm/planning session writes to `docs/plans/YYYY-MM-DD-<topic>/` — a `design.md` (decisions + rationale, marked approved by Papa) plus sliced plan files `NN-<slice>.md`, each with its own dependencies and DONE WHEN. Slices ship independently. Where a design.md and SPEC.md disagree, the newer approved design wins for its features. Approved plans currently pending: `docs/plans/2026-07-26-homework-lock-drills-outing/`.
+- **Plans & brainstorms:** every brainstorm/planning session writes to `docs/plans/YYYY-MM-DD-<topic>/` — a `design.md` (decisions + rationale, marked approved by Papa) plus sliced plan files `NN-<slice>.md`, each with its own dependencies and DONE WHEN. Slices ship independently. Where a design.md and SPEC.md disagree, the newer approved design wins for its features. Approved plans currently pending: `docs/plans/2026-07-26-homework-lock-drills-outing/` (slices 01–08), `docs/plans/2026-07-26-brain-gym/` (slices 09–11).
 - After ANY edit to index.html or js/: run `node scripts/check.mjs` (or /check). Red check ⇒ do not commit.
 - Conventional commits. Small commits per feature, not per tier.
 - Timezone: all "day" computations via one shared helper pinned to Asia/Taipei.
