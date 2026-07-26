@@ -1247,9 +1247,7 @@ function balloonInput(ch){
     cand.el.classList.add("popfx");
     setTimeout(()=>cand.el.remove(),300);
     if(state.popped>bestOf(kid,"balloon")) progress[kid].best.balloon=state.popped;
-    if(state.popped%10===0){
-      progress[kid].stars++; saveProgress(); star(); sWin();
-    } else { saveProgress(); }
+    saveProgress();
     balloonHud();
   } else {
     sBad(); state.streak=0; balloonHud();
@@ -1366,7 +1364,6 @@ function killOrc(o){
   state.kills++;
   state.score+=o.word.length*10;
   if(state.score>bestOf(kid,"orc")){progress[kid].best.orc=state.score;}
-  if(state.kills%5===0){progress[kid].stars++; star(); sWin();}
   saveProgress();
   orcHud();
 }
@@ -1464,7 +1461,6 @@ function mchHeli(){
 }
 function mchWin(extraSay){
   state.wins++; sWin(); burst(14); flash("ok");
-  if(state.wins%5===0){progress[kid].stars++; saveProgress(); star();}
   hud([{k:"Wins",v:state.wins,c:KIDS[kid].raw},{k:"Stars",v:progress[kid].stars}]);
   setTimeout(nextMachine,1300);
 }
@@ -1602,7 +1598,6 @@ function vocabComplete(){
   if(now&&!was){
     state.sessionMastered++;
     bigFloat(state.em);
-    if(state.sessionMastered%3===0){progress[kid].stars++; star();}
   }
   saveProgress();
   if(!success){ /* missed → bring it back a few cards later */
@@ -1712,9 +1707,10 @@ function vocabInput(ch){
   if(state.word==null||state.pos>=state.word.length) return;
   if(ch===state.word[state.pos]){
     state.pos++; state.wrong=false; sGood();
+    redrawVocabWord();
     if(state.pos>=state.word.length){
       if(settings.vocab.mode==="shop") shopComplete(); else vocabComplete();
-    } else redrawVocabWord();
+    }
   } else {
     state.wrong=true; state.firstTry=false; sBad(); flash("bad");
     redrawVocabWord();
@@ -1732,7 +1728,6 @@ function handleInput(ch){
   if(level==="hunt"){
     if(ch.toUpperCase()===state.letter){
       state.found++; sGood(); flash("ok"); burst(6);
-      if(state.found%5===0){progress[kid].stars++; saveProgress(); star();}
       setTimeout(nextHunt,220);
     } else { sBad(); flash("bad"); wobbleMsg("Oops! Press the glowing key 👆"); }
     return;
@@ -1743,14 +1738,12 @@ function handleInput(ch){
   if(ch===expect.toLowerCase() || (expect===" "&&ch===" ")){
     state.pos++; state.wrong=false; state.correct=(state.correct||0)+1;
     sGood();
+    (level==="home")?drawWord("home"):drawWord("race");
     if(state.pos>=state.word.length){
       state.words++; burst(10); sWin();
       if(level==="home"){
-        if(state.words%3===0){progress[kid].stars++;saveProgress();star();}
         state.i++; setTimeout(nextHome,300);
       } else { setTimeout(nextRace,120); }
-    } else {
-      (level==="home")?drawWord("home"):drawWord("race");
     }
     updatePlayHud();
   } else {
@@ -1790,7 +1783,7 @@ function finishRace(){
   const acc=total?Math.round((state.correct/total)*100):100;
   const prevBest=bestOf(kid,"race");
   const isBest=wpm>prevBest;
-  if(isBest){progress[kid].best.race=wpm;} progress[kid].stars+=Math.floor(wpm/10); saveProgress();
+  if(isBest){progress[kid].best.race=wpm;} saveProgress();
   sWin(); burst(50);
   const ov=document.createElement("div"); ov.className="overlay";
   ov.innerHTML=`<div class="card">
