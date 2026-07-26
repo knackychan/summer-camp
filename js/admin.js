@@ -24,6 +24,33 @@
   let browserNotifyEnabled=localStorage.getItem("sq-admin-notify")==="1";
   const silentRealtime=new Map();
 
+  const CHAT_KEY="sq-admin-chat-filters";
+  const CHAT_TYPES=[
+    ["ask","💬 Ask 求助"],
+    ["claim","🏅 Claim 隊長"],
+    ["pass","🎟 Pass 券"],
+    ["photo","📷 Photo 照片"],
+    ["system","⚙ System 系統"]
+  ];
+  /* System and photo rows are noise on a screen Papa watches all day, so they
+     start off. Ask/claim/pass are the ones that can need an answer. */
+  let chatFilters=(function(){
+    const fallback={kid:"all",types:["ask","claim","pass"],needs:false};
+    try{
+      const saved=JSON.parse(localStorage.getItem(CHAT_KEY)||"null");
+      if(!saved||typeof saved!=="object")return fallback;
+      return {
+        kid:saved.kid||"all",
+        types:Array.isArray(saved.types)?saved.types:fallback.types,
+        needs:!!saved.needs
+      };
+    }catch(e){return fallback;}
+  })();
+  function saveChatFilters(){
+    localStorage.setItem(CHAT_KEY,JSON.stringify(chatFilters));
+  }
+  let chatStuckToBottom=true, chatUnseen=0;
+
   const $=id=>document.getElementById(id);
   const show=(id,on)=>$(id).classList.toggle("hidden",!on);
   const kidName=id=>KIDS[id]?KIDS[id].name:id;
@@ -259,9 +286,7 @@
     renderGrants();
     renderActsToday();
     renderLedger();
-    renderAsks();
-    renderHelpClaims();
-    renderPasses();
+    renderConversation();
     renderProofs();
     renderHistory();
     renderPins();
@@ -654,45 +679,172 @@
     return client.storage.from("proofs").getPublicUrl(path).data.publicUrl;
   }
 
-  function renderAsks(){
-    const showArchived=$("showArchivedAsks").checked;
-    const archivedIds=archivedAskIds();
-    const visible=rows.asks.filter(a=>showArchived||!archivedIds.has(a.id));
-    const open=visible.filter(a=>!a.answered_at&&!archivedIds.has(a.id));
-    const answered=visible.filter(a=>a.answered_at&&!archivedIds.has(a.id));
-    const archived=visible.filter(a=>archivedIds.has(a.id));
-    $("askInbox").innerHTML=[...open,...answered,...archived].map(a=>`
-      <article class="ask-card ${archivedIds.has(a.id)?"is-archived":""}">
+  function chatStream(){
+    return SQChat.buildStream(
+      {asks:rows.asks,helpClaims:rows.helpClaims,passes:rows.passes,
+       photos:rows.photos,ticks:rows.ticks,ledger:rows.ledger,redos:rows.redos},
+      {today:today,archivedIds:archivedAskIds()}
+    );
+  }
+
+  function chatFilterChips(){
+    const kidBtns=[["all","All 全部"]].concat(Object.entries(KIDS).map(function(e){
+      return [e[0],e[1].name];
+    })).map(function(pair){
+      const on=chatFilters.kid===pair[0];
+      return `<button class="chip ${on?"is-on":""}" data-chatkid="${pair[0]}"
+        style="--kid-color:${KIDS[pair[0]]?KIDS[pair[0]].color:"var(--blue)"}"
+        aria-pressed="${on}">${esc(pair[1])}</button>`;
+    }).join("");
+    $("chatKidFilter").innerHTML=kidBtns;
+
+    const needsOn=chatFilters.needs;
+    const typeBtns=[`<button class="chip chip--needs ${needsOn?"is-on":""}"
+      data-chatneeds="1" aria-pressed="${needsOn}">⚡ Needs you 待處理</button>`]
+      .concat(CHAT_TYPES.map(function(pair){
+        const on=chatFilters.types.indexOf(pair[0])>=0;
+        return `<button class="chip ${on?"is-on":""} ${needsOn?"is-muted":""}"
+          data-chattype="${pair[0]}" aria-pressed="${on}">${esc(pair[1])}</button>`;
+      })).join("");
+    $("chatTypeFilter").innerHTML=typeBtns;
+
+    document.querySelectorAll("[data-chatkid]").forEach(function(b){
+      b.onclick=function(){chatFilters.kid=b.dataset.chatkid;saveChatFilters();renderConversation();};
+    });
+    document.querySelectorAll("[data-chattype]").forEach(function(b){
+      b.onclick=function(){
+        const t=b.dataset.chattype, i=chatFilters.types.indexOf(t);
+        if(i<0)chatFilters.types=chatFilters.types.concat([t]);
+        else chatFilters.types=chatFilters.types.filter(function(x){return x!==t;});
+        chatFilters.needs=false;
+        saveChatFilters();renderConversation();
+      };
+    });
+    $("chatTypeFilter").querySelector("[data-chatneeds]").onclick=function(){
+      chatFilters.needs=!chatFilters.needs;saveChatFilters();renderConversation();
+    };
+  }
+
+  function chatRowHtml(row){
+    const k=KIDS[row.kidId]||{name:row.kidId,color:"var(--blue)"};
+    const when=timeOnly(row.at);
+    if(row.type==="system"){
+      const label=row.meta.event==="tick"?`✓ ${blockTitle(row.meta.blockIdx)} ${blockTz(row.meta.blockIdx)}`
+        :row.meta.event==="star"?`${row.meta.delta>0?"+":""}${row.meta.delta} ⭐ ${row.body}`
+        :`↩ ${blockTitle(row.meta.blockIdx)} ${blockTz(row.meta.blockIdx)} — redo 再做一次`;
+      return `<div class="chat-sys">${when} · ${esc(k.name)} ${esc(label)}</div>`;
+    }
+    if(row.type==="reply"){
+      return `<article class="bubble bubble--papa">
+        <div class="bubble__meta">Papa 爸爸 · ${when}</div>
+        ${row.body?`<p>${esc(row.body)}</p>`:""}
+        ${row.audio?`<audio class="audio" controls src="${publicUrl(row.audio)}"></audio>`:""}
+      </article>`;
+    }
+    if(row.type==="photo"){
+      return `<article class="bubble bubble--kid" style="--kid-color:${k.color}">
+        <div class="bubble__meta">${esc(k.name)} · ${when} · 📷 ${esc(blockTitle(row.meta.blockIdx))}</div>
+        <img class="thumb" src="${proofUrl(row.meta.path)}" alt="Photo proof 照片證明">
+      </article>`;
+    }
+    if(row.type==="claim"){
+      const done=row.meta.status!=="requested";
+      return `<article class="bubble bubble--kid bubble--action" style="--kid-color:${k.color}">
+        <div class="bubble__meta">${esc(k.name)} · captain 隊長 · ${when}</div>
+        <p>Helped ${esc(kidName(row.meta.helped))} 幫忙${esc(kidName(row.meta.helped))} — ${esc(row.body)}</p>
+        ${done
+          ?`<p class="${row.meta.status==="approved"?"ok":"muted"}">${row.meta.status==="approved"?"Approved 已核准":"Denied 未核准"}</p>`
+          :`<div class="row"><button class="btn" data-helpok="${row.srcId}">✓ Approve +1 核准</button>
+             <button class="btn btn--danger" data-helpno="${row.srcId}">✕ Deny 拒絕</button></div>`}
+      </article>`;
+    }
+    if(row.type==="pass"){
+      const done=row.meta.status!=="requested";
+      const kindLabel=row.meta.kind==="golden"?"Golden 黃金":"Excused 請假";
+      return `<article class="bubble bubble--kid bubble--action" style="--kid-color:${k.color}">
+        <div class="bubble__meta">${esc(k.name)} · 🎟 ${kindLabel} · ${when}</div>
+        <p>${esc(blockTitle(row.meta.blockIdx))} ${esc(blockTz(row.meta.blockIdx))} — ${esc(row.body||"no reason 沒有原因")}</p>
+        ${done
+          ?`<p class="${row.meta.status==="granted"?"ok":"muted"}">${esc(row.meta.status)}</p>`
+          :`<div class="row"><button class="btn" data-passok="${row.srcId}">✓ Approve 核准</button>
+             <button class="btn btn--danger" data-passno="${row.srcId}">✕ Deny 拒絕</button></div>`}
+      </article>`;
+    }
+    /* type === "ask" */
+    return `<article class="bubble bubble--kid ${row.archived?"is-archived":""}" style="--kid-color:${k.color}">
+      <div class="bubble__meta">${esc(k.name)} · ${esc(row.meta.kind)} · ${when}</div>
+      <p>${esc(row.body||"Voice memo 語音訊息")}</p>
+      ${row.audio?`<audio class="audio" controls src="${publicUrl(row.audio)}"></audio>`:""}
+      ${row.needs?`<label class="field"><span>Answer 回覆</span>
+        <textarea class="input textarea" id="answer-${row.srcId}" placeholder="I can help after lunch. 午餐後我可以幫你。"></textarea></label>
         <div class="row">
-          <b>${kidName(a.kid_id)}</b>
-          <span class="pill">${esc(a.kind)} 類型</span>
-          <span class="pill">${fmt(a.created_at)}</span>
-          ${archivedIds.has(a.id)?`<span class="pill">archived 已封存</span>`
-            :a.answered_at?`<span class="pill ok">answered 已回覆</span>`:`<span class="pill gold">open 未回覆</span>`}
-        </div>
-        <p>${esc(a.body||"Voice memo 語音訊息")}</p>
-        ${a.audio_path?`<audio class="audio" controls src="${publicUrl(a.audio_path)}"></audio>`:""}
-        ${a.answer?`<p class="ok">Answer 回覆: ${esc(a.answer)}</p>`:""}
-        ${a.answer_audio_path?`<audio class="audio" controls src="${publicUrl(a.answer_audio_path)}"></audio>`:""}
-        ${!a.answered_at&&!archivedIds.has(a.id)?`<label class="field"><span>Answer 回覆</span>
-          <textarea class="input textarea" id="answer-${a.id}" placeholder="I can help after lunch. 午餐後我可以幫你。"></textarea></label>
-          <div class="row">
-            <button class="btn" data-answer="${a.id}">Send answer 送出回覆</button>
-            <button class="btn btn--secondary" data-rec="${a.id}">Record voice 錄語音</button>
-            <button class="btn btn--secondary" data-stop="${a.id}" disabled>Stop 停止</button>
-            <span class="message message--ok" id="recstatus-${a.id}"></span>
-          </div>`:""}
-        <div class="row inbox-actions">
-          ${archivedIds.has(a.id)
-            ?`<button class="btn btn--secondary" data-unarchiveask="${a.id}">Restore 還原</button>`
-            :`<button class="btn btn--secondary" data-archiveask="${a.id}">Archive 封存</button>`}
-        </div>
-      </article>`).join("")||`<p>No active asks. 沒有需要處理的求助。</p>`;
-    document.querySelectorAll("[data-answer]").forEach(b=>b.onclick=()=>answerAsk(b.dataset.answer));
-    document.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>startAnswerRecord(b.dataset.rec));
-    document.querySelectorAll("[data-stop]").forEach(b=>b.onclick=()=>stopAnswerRecord(b.dataset.stop));
-    document.querySelectorAll("[data-archiveask]").forEach(b=>b.onclick=()=>archiveAsk(b.dataset.archiveask,true));
-    document.querySelectorAll("[data-unarchiveask]").forEach(b=>b.onclick=()=>archiveAsk(b.dataset.unarchiveask,false));
+          <button class="btn" data-answer="${row.srcId}">Send 送出</button>
+          <button class="btn btn--secondary" data-rec="${row.srcId}">🎤 Record 錄音</button>
+          <button class="btn btn--secondary" data-stop="${row.srcId}" disabled>Stop 停止</button>
+          <span class="message message--ok" id="recstatus-${row.srcId}"></span>
+        </div>`:""}
+      <div class="row inbox-actions">
+        ${row.archived
+          ?`<button class="btn btn--secondary" data-unarchiveask="${row.srcId}">Restore 還原</button>`
+          :`<button class="btn btn--secondary" data-archiveask="${row.srcId}">Archive 封存</button>`}
+      </div>
+    </article>`;
+  }
+
+  function renderConversation(){
+    const box=$("chatStream");
+    const stream=chatStream();
+    chatFilterChips();
+
+    const badge=$("chatNeedsBadge");
+    const needs=SQChat.needsCount(stream);
+    badge.textContent=String(needs);
+    badge.classList.toggle("gold",needs>0);
+
+    const filters={
+      kid:chatFilters.kid,
+      types:chatFilters.types,
+      needs:chatFilters.needs,
+      archived:$("showArchivedAsks").checked
+    };
+    const visible=SQChat.filterStream(stream,filters);
+
+    const note=$("noteBody").value.trim();
+    $("chatPin").innerHTML=note
+      ?`<b>📌 Today 今天</b> ${esc(note)}`
+      :`<span class="muted">📌 No message for today yet 今天還沒有留言</span>`;
+
+    box.innerHTML=visible.length
+      ?visible.map(chatRowHtml).join("")
+      :`<p class="chat-empty">Nothing here 沒有訊息
+         <button class="btn btn--secondary" id="chatClearFilters">Clear filters 清除篩選</button></p>`;
+
+    const clear=$("chatClearFilters");
+    if(clear)clear.onclick=function(){
+      chatFilters={kid:"all",types:["ask","claim","pass"],needs:false};
+      saveChatFilters();renderConversation();
+    };
+
+    document.querySelectorAll("[data-answer]").forEach(function(b){b.onclick=function(){answerAsk(b.dataset.answer);};});
+    document.querySelectorAll("[data-rec]").forEach(function(b){b.onclick=function(){startAnswerRecord(b.dataset.rec);};});
+    document.querySelectorAll("[data-stop]").forEach(function(b){b.onclick=function(){stopAnswerRecord(b.dataset.stop);};});
+    document.querySelectorAll("[data-archiveask]").forEach(function(b){b.onclick=function(){archiveAsk(b.dataset.archiveask,true);};});
+    document.querySelectorAll("[data-unarchiveask]").forEach(function(b){b.onclick=function(){archiveAsk(b.dataset.unarchiveask,false);};});
+    document.querySelectorAll("[data-helpok]").forEach(function(b){b.onclick=function(){setHelpClaim(b.dataset.helpok,"approved");};});
+    document.querySelectorAll("[data-helpno]").forEach(function(b){b.onclick=function(){setHelpClaim(b.dataset.helpno,"denied");};});
+    document.querySelectorAll("[data-passok]").forEach(function(b){b.onclick=function(){setPass(b.dataset.passok,"granted");};});
+    document.querySelectorAll("[data-passno]").forEach(function(b){b.onclick=function(){setPass(b.dataset.passno,"denied");};});
+
+    /* Never yank the viewport out from under Papa mid-read: only auto-scroll if
+       he was already parked at the bottom. Otherwise offer a jump button. */
+    if(chatStuckToBottom){
+      box.scrollTop=box.scrollHeight;
+      chatUnseen=0;
+      show("chatJump",false);
+    }else{
+      chatUnseen=visible.length;
+      show("chatJump",true);
+    }
   }
 
   async function startAnswerRecord(id){
@@ -742,22 +894,6 @@
     await loadAll();
   }
 
-  function renderHelpClaims(){
-    const sorted=[...rows.helpClaims].sort((a,b)=>
-      (a.status==="requested"?0:1)-(b.status==="requested"?0:1) || new Date(b.created_at)-new Date(a.created_at)
-    );
-    $("helpClaims").innerHTML=sorted.length?`<table class="table"><thead><tr>
-      <th>Time 時間</th><th>Captain 隊長</th><th>Helped 幫忙對象</th><th>Status 狀態</th><th>Claim 申請內容</th><th></th>
-    </tr></thead><tbody>${sorted.map(c=>`<tr>
-      <td>${fmt(c.created_at)}</td><td>${kidName(c.captain_id)}</td><td>${kidName(c.helped_kid_id)}</td>
-      <td>${c.status==="approved"?"Approved 已核准":c.status==="denied"?"Denied 未核准":"Waiting 等待"}</td>
-      <td>${esc(c.body)}</td>
-      <td>${c.status==="requested"?`<button class="btn" data-helpok="${c.id}">Approve +1 核准 +1</button>
-        <button class="btn btn--danger" data-helpno="${c.id}">Deny 拒絕</button>`:""}</td>
-    </tr>`).join("")}</tbody></table>`:`<p>No captain claims. 還沒有隊長申請。</p>`;
-    document.querySelectorAll("[data-helpok]").forEach(b=>b.onclick=()=>setHelpClaim(b.dataset.helpok,"approved"));
-    document.querySelectorAll("[data-helpno]").forEach(b=>b.onclick=()=>setHelpClaim(b.dataset.helpno,"denied"));
-  }
   async function setHelpClaim(id,status){
     const claim=rows.helpClaims.find(c=>c.id===id);
     if(!claim)return;
@@ -777,18 +913,6 @@
     await loadAll();
   }
 
-  function renderPasses(){
-    $("passes").innerHTML=rows.passes.length?`<table class="table"><thead><tr>
-      <th>Time 時間</th><th>Kid 孩子</th><th>Block 格子</th><th>Kind 類型</th><th>Status 狀態</th><th>Reason 原因</th><th></th>
-    </tr></thead><tbody>${rows.passes.map(p=>`<tr>
-      <td>${fmt(p.created_at)}</td><td>${kidName(p.kid_id)}</td><td>${blockTitle(p.block_idx)}<br><span class="muted">${blockTz(p.block_idx)}</span></td>
-      <td>${p.kind==="golden"?"Golden 黃金":"Excused 請假"}</td><td>${esc(p.status)}</td><td>${esc(p.reason||"")}</td>
-      <td>${p.status==="requested"?`<button class="btn" data-passok="${p.id}">Approve 核准</button>
-        <button class="btn btn--danger" data-passno="${p.id}">Deny 拒絕</button>`:""}</td>
-    </tr>`).join("")}</tbody></table>`:`<p>No pass requests. 還沒有券申請。</p>`;
-    document.querySelectorAll("[data-passok]").forEach(b=>b.onclick=()=>setPass(b.dataset.passok,"granted"));
-    document.querySelectorAll("[data-passno]").forEach(b=>b.onclick=()=>setPass(b.dataset.passno,"denied"));
-  }
   async function setPass(id,status){
     const {error}=await client.from("passes").update({status,granted_by:session.user.id}).eq("id",id);
     if(error){writeFailed(error);return;}
@@ -967,6 +1091,26 @@
     });
   }
 
+  /* Papa-initiated message. kind='papa' with the text in `answer` so buildStream
+     renders it as a right-side bubble; `body` stays null so it is never mistaken
+     for a kid's question. Needs the "admin ask" INSERT policy (schema.sql v6). */
+  async function sendChatMessage(){
+    const body=$("chatBody").value.trim();
+    if(!body){$("chatBody").focus();return;}
+    const to=$("chatTo").value;
+    const targets=to==="all"?Object.keys(KIDS):[to];
+    const now=new Date().toISOString();
+    const payload=targets.map(function(kid){
+      return {kid_id:kid,kind:"papa",body:null,answer:body,answered_at:now};
+    });
+    const {error}=await client.from("asks").insert(payload);
+    if(error){writeFailed(error);return;}
+    $("chatBody").value="";
+    chatStuckToBottom=true;
+    toast("Message sent 訊息已送出",true);
+    await loadAll();
+  }
+
   function subscribeRealtime(){
     if(realtimeChannel)return;
     const live=table=>payload=>{
@@ -1003,7 +1147,19 @@
   $("resetAcceptedBtn").onclick=resetAcceptedDay;
   $("notifyEnableBtn").onclick=toggleBrowserNotifications;
   $("notifyClearBtn").onclick=()=>{notifyItems=[];renderNotifications();};
-  $("showArchivedAsks").onchange=renderAsks;
+  $("showArchivedAsks").onchange=renderConversation;
+  $("chatStream").onscroll=function(){
+    const box=$("chatStream");
+    chatStuckToBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
+    if(chatStuckToBottom)show("chatJump",false);
+  };
+  $("chatJump").onclick=function(){
+    const box=$("chatStream");
+    box.scrollTop=box.scrollHeight;
+    chatStuckToBottom=true;
+    show("chatJump",false);
+  };
+  $("chatSend").onclick=sendChatMessage;
   $("galleryBtn").onclick=openGallery;
   $("galleryPrev").onclick=()=>galleryStep(-1);
   $("galleryNext").onclick=()=>galleryStep(1);
