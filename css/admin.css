@@ -184,6 +184,15 @@ p {
   box-shadow: 0 0 0 3px rgba(183, 185, 214, .12);
 }
 
+.reschedkid.on {
+  outline: 2px solid var(--ok);
+  outline-offset: 2px;
+}
+
+.input--time {
+  width: auto;
+}
+
 .btn--danger {
   background: transparent;
   color: var(--bad);
@@ -397,4 +406,61 @@ p {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+/* Toast — surfaced write results (errors were silent before) */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: 90vw;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.toast--ok {
+  border-color: var(--ok);
+}
+
+.toast--error {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+/* Dinner gallery — evening slideshow of today's proof photos */
+.gallery {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  background: rgba(10, 8, 20, 0.96);
+}
+
+.gallery.hidden {
+  display: none;
+}
+
+.gallery img {
+  max-width: 92vw;
+  max-height: 70vh;
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  object-fit: contain;
+}
+
+.gallery p {
+  color: var(--ink);
+  font-size: 18px;
+  text-align: center;
 }

@@ -67,6 +67,23 @@
     </div>
 
     <section class="panel">
+      <h2 class="section-title">Reschedule today 調整今天時間</h2>
+      <p class="hint">Pick who it applies to — a kid's own move wins over All. 選擇對象——個人調整會蓋過全部。</p>
+      <div class="row" id="reschedKids">
+        <button class="btn btn--secondary reschedkid on" data-rk="all">All 全部</button>
+        <button class="btn btn--secondary reschedkid" data-rk="lucien">Lucien</button>
+        <button class="btn btn--secondary reschedkid" data-rk="lili">Lili</button>
+        <button class="btn btn--secondary reschedkid" data-rk="luis">Luis</button>
+      </div>
+      <div id="reschedList"></div>
+      <div class="row">
+        <button class="btn" id="reschedSaveBtn">Save moves 儲存調整</button>
+        <button class="btn btn--secondary" id="reschedResetBtn">Reset selection to normal 恢復原時間</button>
+      </div>
+      <p class="message message--ok" id="reschedStatus"></p>
+    </section>
+
+    <section class="panel">
       <h2 class="section-title">Ask inbox 求助收件匣</h2>
       <div id="askInbox"></div>
     </section>
@@ -119,6 +136,8 @@
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <script src="js/config.js"></script>
 <script src="js/day.js"></script>
+<script src="js/day-data.js"></script>
+<script src="js/time-core.js"></script>
 <script src="js/admin.js"></script>
 <script>
 if("serviceWorker" in navigator){

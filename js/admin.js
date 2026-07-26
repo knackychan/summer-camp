@@ -5,22 +5,19 @@
     lili:{name:"Lili",color:"#FF6FB5"},
     luis:{name:"Luis",color:"#4EA8FF"}
   };
-  const DAY=[
-    ["8:00","Wake up","起床"],["8:15","Breakfast","早餐"],["8:45","Skill block","技能時間"],
-    ["9:30","Reading","閱讀"],["10:00","Homework","暑假作業"],["11:15","Screen #1","螢幕#1"],
-    ["12:00","Lunch","午餐"],["12:45","Quiet hour","安靜時間"],["14:00","Project time","專題時間"],
-    ["15:45","Screen #2","螢幕#2"],["16:30","Free invent game","自由發明遊戲"],["17:15","Sport & move","運動時間"],
-    ["18:00","Tidy patrol","整理巡邏"],["18:30","Dinner","晚餐"],["19:30","Bath and bed","洗澡睡覺"],["✨","Photo mission","照片任務"]
-  ];
+  const DAY=window.SQ_DAY_DATA||[];
 
   let client=null, session=null, today="", tomorrow="";
   let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={}, adminPinFeedback={};
+  let overridesRaw={}, reschedKid="all";
 
   const $=id=>document.getElementById(id);
   const show=(id,on)=>$(id).classList.toggle("hidden",!on);
   const kidName=id=>KIDS[id]?KIDS[id].name:id;
+  const blockTitle=i=>(DAY[i]&&DAY[i].title)||"Block";
+  const blockTz=i=>(DAY[i]&&DAY[i].tz)||"";
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const fmt=ts=>new Date(ts).toLocaleString([],{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
 
@@ -66,7 +63,7 @@
 
   async function loadAll(){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -78,13 +75,18 @@
       client.from("kids").select("id,pin").order("id"),
       client.from("day_ticks").select("kid_id,day,block_idx").gte("day",start).lte("day",today),
       client.from("help_claims").select("*").order("created_at",{ascending:false}).limit(80),
-      client.from("family_settings").select("key,value")
+      client.from("family_settings").select("key,value"),
+      client.from("day_overrides").select("kid_id,block_idx,t").eq("day",today)
     ]);
     rows={
       ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[],
       passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[],helpClaims:helpClaims.data||[],
       familySettings:familySettings.data||[]
     };
+    overridesRaw={};
+    (overrides.data||[]).forEach(function(r){
+      (overridesRaw[r.kid_id]=overridesRaw[r.kid_id]||{})[r.block_idx]=r.t;
+    });
     $("noteBody").value=note.data&&note.data.body?note.data.body:"";
     renderAll();
   }
@@ -100,6 +102,7 @@
     renderHistory();
     renderPins();
     renderAdminPin();
+    renderResched();
   }
 
   function renderOverview(){
@@ -113,8 +116,8 @@
         <div class="progress"><div class="progress__fill" style="width:${done.size/DAY.length*100}%;background:${k.color}"></div></div>
         <h3>${done.size}/${DAY.length} blocks 格子</h3>
         <div class="blocks">${DAY.map((b,i)=>`<div class="block-row">
-          <span>${b[0]}</span><b class="${done.has(i)?"ok":"muted"}">${done.has(i)?"✓":"-"}</b>
-          <span>${b[1]}<br><span class="muted">${b[2]}</span></span>
+          <span>${b.t}</span><b class="${done.has(i)?"ok":"muted"}">${done.has(i)?"✓":"-"}</b>
+          <span>${b.title}<br><span class="muted">${b.tz}</span></span>
         </div>`).join("")}</div>
       </article>`;
     }).join("");
@@ -282,7 +285,7 @@
     $("passes").innerHTML=rows.passes.length?`<table class="table"><thead><tr>
       <th>Time 時間</th><th>Kid 孩子</th><th>Block 格子</th><th>Kind 類型</th><th>Status 狀態</th><th>Reason 原因</th><th></th>
     </tr></thead><tbody>${rows.passes.map(p=>`<tr>
-      <td>${fmt(p.created_at)}</td><td>${kidName(p.kid_id)}</td><td>${(DAY[p.block_idx]&&DAY[p.block_idx][1])||"-"}<br><span class="muted">${(DAY[p.block_idx]&&DAY[p.block_idx][2])||""}</span></td>
+      <td>${fmt(p.created_at)}</td><td>${kidName(p.kid_id)}</td><td>${blockTitle(p.block_idx)}<br><span class="muted">${blockTz(p.block_idx)}</span></td>
       <td>${p.kind==="golden"?"Golden 黃金":"Excused 請假"}</td><td>${esc(p.status)}</td><td>${esc(p.reason||"")}</td>
       <td>${p.status==="requested"?`<button class="btn" data-passok="${p.id}">Approve 核准</button>
         <button class="btn btn--danger" data-passno="${p.id}">Deny 拒絕</button>`:""}</td>
@@ -301,7 +304,7 @@
     $("proofs").innerHTML=rows.photos.length?`<div class="thumb-grid">${rows.photos.map(p=>`
       <article class="ask-card">
         <img class="thumb" src="${proofUrl(p.path)}" alt="Photo proof 照片證明">
-        <p>${kidName(p.kid_id)} · ${p.day} · ${(DAY[p.block_idx]&&DAY[p.block_idx][1])||"Block"}<br><span class="muted">${(DAY[p.block_idx]&&DAY[p.block_idx][2])||""}</span></p>
+        <p>${kidName(p.kid_id)} · ${p.day} · ${blockTitle(p.block_idx)}<br><span class="muted">${blockTz(p.block_idx)}</span></p>
       </article>`).join("")}</div>`:`<p>No proof photos yet. 還沒有照片證明。</p>`;
   }
 
@@ -311,7 +314,7 @@
     const p=galleryShots[galleryIdx];
     if(!p)return;
     $("galleryImg").src=proofUrl(p.path);
-    $("galleryCap").innerHTML=`<b>${kidName(p.kid_id)}</b> · ${(DAY[p.block_idx]&&DAY[p.block_idx][1])||"Photo"} <span class="muted">${(DAY[p.block_idx]&&DAY[p.block_idx][2])||""}</span> · ${galleryIdx+1}/${galleryShots.length}`;
+    $("galleryCap").innerHTML=`<b>${kidName(p.kid_id)}</b> · ${blockTitle(p.block_idx)} <span class="muted">${blockTz(p.block_idx)}</span> · ${galleryIdx+1}/${galleryShots.length}`;
   }
   function galleryStep(dir){
     galleryIdx=(galleryIdx+dir+galleryShots.length)%galleryShots.length;
@@ -340,6 +343,55 @@
         return `<span class="heat-cell" style="background:rgba(61,220,151,${Math.max(.08,pct)})">${c}</span>`;
       }).join("")}`).join("")}
     </div>`;
+  }
+
+  function reschedEffective(){
+    return reschedKid==="all"?(overridesRaw.all||{}):SQTime.resolveOverrides(overridesRaw,reschedKid);
+  }
+  function renderResched(){
+    const kids=document.querySelectorAll("#reschedKids .reschedkid");
+    kids.forEach(function(b){
+      b.classList.toggle("on",b.dataset.rk===reschedKid);
+      b.onclick=function(){reschedKid=b.dataset.rk;renderResched();};
+    });
+    const eff=reschedEffective(), own=overridesRaw[reschedKid]||{};
+    $("reschedList").innerHTML=SQTime.timedOrder(DAY,eff).map(function(x){
+      const b=DAY[x.i];
+      const tag=own[x.i]!=null?(reschedKid==="all"?"moved 已調整":"own move 個人調整")
+        :(reschedKid!=="all"&&(overridesRaw.all||{})[x.i]!=null?"family move 全家調整":"");
+      const hh=String(Math.floor(x.t/60)).padStart(2,"0"), mm=String(x.t%60).padStart(2,"0");
+      return `<div class="row resched-row">
+        <span class="pill">${b.icon} ${b.title} ${b.tz}</span>
+        <input class="input input--time" type="time" data-ri="${x.i}" value="${hh}:${mm}">
+        ${tag?`<span class="pill pill--ok">${tag}</span>`:""}
+      </div>`;
+    }).join("");
+  }
+  async function saveResched(){
+    const jobs=[], own=overridesRaw[reschedKid]||{};
+    document.querySelectorAll("#reschedList [data-ri]").forEach(function(inp){
+      const i=+inp.dataset.ri, v=inp.value;
+      if(!v)return;
+      const parts=v.split(":").map(Number), t=`${parts[0]}:${String(parts[1]).padStart(2,"0")}`;
+      const base=reschedKid==="all"?DAY[i].t:((overridesRaw.all||{})[i]!=null?(overridesRaw.all||{})[i]:DAY[i].t);
+      const cur=own[i]!=null?own[i]:base;
+      if(SQTime.parseMins(t)===SQTime.parseMins(cur))return;
+      if(SQTime.parseMins(t)===SQTime.parseMins(base)){
+        jobs.push(client.from("day_overrides").delete()
+          .eq("day",today).eq("block_idx",i).eq("kid_id",reschedKid));
+      }else{
+        jobs.push(client.from("day_overrides").upsert({day:today,block_idx:i,kid_id:reschedKid,t:t,updated_at:new Date().toISOString()}));
+      }
+    });
+    const results=await Promise.all(jobs);
+    const err=results.find(function(r){return r.error;});
+    $("reschedStatus").textContent=err?err.error.message:"Saved — tablets update live 已儲存 ✓";
+    await loadAll();
+  }
+  async function resetResched(){
+    const {error}=await client.from("day_overrides").delete().eq("day",today).eq("kid_id",reschedKid);
+    $("reschedStatus").textContent=error?error.message:"Back to normal 已恢復 ✓";
+    await loadAll();
   }
 
   function renderPins(){
@@ -441,6 +493,7 @@
       .on("postgres_changes",{event:"*",schema:"public",table:"photos"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"help_claims"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},loadAll)
+      .on("postgres_changes",{event:"*",schema:"public",table:"day_overrides"},loadAll)
       .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},loadAll)
       .subscribe();
   }
@@ -456,6 +509,8 @@
   };
   $("logoutBtn").onclick=async()=>{await client.auth.signOut();location.reload();};
   $("refreshBtn").onclick=loadAll;
+  $("reschedSaveBtn").onclick=saveResched;
+  $("reschedResetBtn").onclick=resetResched;
   $("galleryBtn").onclick=openGallery;
   $("galleryPrev").onclick=()=>galleryStep(-1);
   $("galleryNext").onclick=()=>galleryStep(1);

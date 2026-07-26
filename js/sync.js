@@ -87,6 +87,8 @@
       this.queue=loadJson(QUEUE_KEY,[]);
       this.kidPins=loadJson("sq:kidPins",{});
       this.adminPin=loadJson("sq:adminPin","");
+      const ov=loadJson("sq:dayOverrides",null);
+      this.dayOverridesRaw=ov&&ov.d===todayISO()?ov.map:{};
       this.passes=[];
       this.photos=[];
       this.helpClaims=[];
@@ -122,7 +124,7 @@
       const day=todayISO();
       const p=normalize(this.progress);
 
-      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings}]=await Promise.all([
+      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings},{data:overrides}]=await Promise.all([
         this.supabase.from("kids").select("id,pin"),
         this.supabase.from("day_ticks").select("kid_id,block_idx").eq("day",day),
         this.supabase.from("day_rolls").select("kid_id,block_idx,count").eq("day",day),
@@ -135,6 +137,7 @@
         this.supabase.from("photos").select("*").eq("day",day).order("created_at",{ascending:false}),
         this.supabase.from("help_claims").select("*").eq("day",day).order("created_at",{ascending:false}),
         this.supabase.from("family_settings").select("key,value"),
+        this.supabase.from("day_overrides").select("kid_id,block_idx,t").eq("day",day),
       ]);
 
       this.kidPins={};
@@ -147,6 +150,11 @@
       (famSettings||[]).forEach(r=>{this.familySettings[r.key]=r.value;});
       this.adminPin=this.familySettings.admin_pin||"";
       saveJson("sq:adminPin",this.adminPin);
+      this.dayOverridesRaw={};
+      (overrides||[]).forEach(r=>{
+        (this.dayOverridesRaw[r.kid_id]=this.dayOverridesRaw[r.kid_id]||{})[r.block_idx]=r.t;
+      });
+      saveJson("sq:dayOverrides",{d:day,map:this.dayOverridesRaw});
       KIDS.forEach(kid=>{
         p[kid].day={d:day,done:{},rr:{}};
         p[kid].actsDay={d:day,done:{}};
@@ -294,6 +302,18 @@
           kid_id:op.kid,stat:op.stat,value:op.value
         });
         if(error) throw error;
+      }else if(op.type==="override"){
+        if(op.t!=null){
+          const {error}=await this.supabase.from("day_overrides").upsert({
+            day:op.day,block_idx:op.blockIdx,kid_id:op.kidId||"all",t:op.t,
+            updated_at:new Date().toISOString()
+          });
+          if(error) throw error;
+        }else{
+          const {error}=await this.supabase.from("day_overrides")
+            .delete().eq("day",op.day).eq("block_idx",op.blockIdx).eq("kid_id",op.kidId||"all");
+          if(error) throw error;
+        }
       }
     }
 
@@ -303,6 +323,14 @@
     }
     async roll(kid,dayISO,blockIdx){
       this.enqueue({type:"roll",kid,day:dayISO,blockIdx,count:1});
+      await this.flush();
+    }
+    async setOverride(dayISO,blockIdx,t,kidId){
+      kidId=kidId||"all";
+      const bucket=this.dayOverridesRaw[kidId]=this.dayOverridesRaw[kidId]||{};
+      if(t!=null)bucket[blockIdx]=t; else delete bucket[blockIdx];
+      saveJson("sq:dayOverrides",{d:dayISO,map:this.dayOverridesRaw});
+      this.enqueue({type:"override",day:dayISO,blockIdx:blockIdx,t:t,kidId:kidId});
       await this.flush();
     }
     async addStars(kid,delta,reason){
@@ -375,6 +403,13 @@
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`passes-${Date.now()}`)
         .on("postgres_changes",{event:"*",schema:"public",table:"passes"},p=>cb(p.new||p.old))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
+    onOverrides(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`overrides-${Date.now()}`)
+        .on("postgres_changes",{event:"*",schema:"public",table:"day_overrides"},p=>cb(p.new||p.old))
         .subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }

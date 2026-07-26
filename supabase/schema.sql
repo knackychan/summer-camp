@@ -288,6 +288,52 @@ begin
   end if;
 end $$;
 
+-- Per-day block time overrides (reschedule). Base DAY plan lives in the client;
+-- kid_id 'all' = family-wide; a kid-specific row wins over 'all' for that kid.
+create table if not exists day_overrides (
+  day        date not null,
+  block_idx  int  not null,
+  kid_id     text not null default 'all',
+  t          text not null,
+  updated_at timestamptz default now(),
+  primary key (day, block_idx, kid_id)
+);
+alter table day_overrides enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'day_overrides' and policyname = 'read overrides'
+  ) then
+    create policy "read overrides" on day_overrides for select using (true);
+  end if;
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'day_overrides' and policyname = 'write overrides'
+  ) then
+    create policy "write overrides" on day_overrides for insert with check (true);
+  end if;
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'day_overrides' and policyname = 'update overrides'
+  ) then
+    create policy "update overrides" on day_overrides for update using (true) with check (true);
+  end if;
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'day_overrides' and policyname = 'delete overrides'
+  ) then
+    create policy "delete overrides" on day_overrides for delete using (true);
+  end if;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table day_overrides;
+exception when duplicate_object then null;
+end $$;
+
 -- Storage: create buckets 'voices' and 'proofs' (public read, anon insert) in Dashboard.
 -- Push for urgent asks: Edge Function on asks INSERT where kind='urgent'
 -- → POST to ntfy.sh/<family-topic> (or a Telegram bot). Free, no app needed.

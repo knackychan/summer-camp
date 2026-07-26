@@ -330,6 +330,7 @@ button:disabled{cursor:default}
 .shake{animation:pinshake .4s}
 @keyframes pinshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 .gameslocked #gameRow{display:none}
+.ptkid.on{background:var(--ok);color:#1c1436}
 </style>
 </head>
 <body>
@@ -351,6 +352,7 @@ button:disabled{cursor:default}
   <section id="hub" class="hidden">
     <div class="topbar">
       <button class="btn" id="hubBack">← Heroes</button>
+      <button class="btn small" id="papaBtn">🔧 Papa 爸爸</button>
       <div class="spacer"></div>
       <div class="hubstars" id="hubStars"></div>
     </div>
@@ -464,6 +466,7 @@ button:disabled{cursor:default}
 <script src="js/time-core.js"></script>
 <script src="js/lock-core.js"></script>
 <script src="js/pinpad.js"></script>
+<script src="js/papa-tools.js"></script>
 <script>
 /* ============ DATA ============ */
 const KIDS = {
@@ -859,6 +862,7 @@ async function loadProgress(){
     progress=store.progress;
     settings=store.settings;
     normalizeProgressShape();
+    refreshOverrides();
   }catch(e){normalizeProgressShape();}
 }
 async function saveProgress(){
@@ -1856,6 +1860,7 @@ function toggleMute(){sound=!sound;
   document.getElementById("muteHome").textContent="🔊 Sound: "+(sound?"On":"Off");}
 document.getElementById("mute").onclick=toggleMute;
 document.getElementById("muteHome").onclick=toggleMute;
+document.getElementById("papaBtn").onclick=function(){SQPapa.open();};
 
 /* ============ KID HUB ============ */
 let hubKid=null, actIdx=null, actTimerInt=null, actTimerLeft=0, actTimerTotal=0;
@@ -1878,6 +1883,19 @@ function gameLockState(){
   if(!st.locked)lockOverride=null;
   return st;
 }
+function refreshOverrides(){
+  dayOverrides=SQTime.resolveOverrides(store&&store.dayOverridesRaw,activeKid());
+}
+/* adapters for js/papa-tools.js */
+window.sqOverridesRaw=function(){return (store&&store.dayOverridesRaw)||{};};
+window.sqSetOverride=async function(i,t,kidId){
+  if(store&&store.setOverride)await store.setOverride(todayStr(),i,t,kidId);
+  refreshOverrides();
+};
+window.sqAfterOverrideChange=function(){
+  if(hubKid&&hubTab==="day")renderMyDay();
+  refreshLockUI();
+};
 function actsToday(id){
   const P=progress[id];
   if(!P.actsDay||P.actsDay.d!==todayStr()) P.actsDay={d:todayStr(),done:{}};
@@ -1890,7 +1908,7 @@ function showOnly(id){
 let hubTab="day";
 function openHub(id){
   stopArena(); stopActTimer();
-  hubKid=id; showOnly("hub"); renderHub();
+  hubKid=id; refreshOverrides(); showOnly("hub"); renderHub();
 }
 function dseed(str){let h=7;for(const c of str)h=(h*31+c.charCodeAt(0))>>>0;return h;}
 function dayState(id){
@@ -2468,6 +2486,18 @@ function setupRealtime(){
     if(!row||row.kid_id!==hubKid)return;
     await store.hydrate();
     if(hubTab==="day")renderMyDay();
+    refreshLockUI();
+  });
+  store.onOverrides(async row=>{
+    if(!row)return;
+    if(row.kid_id!=null&&row.block_idx!=null){
+      const bucket=store.dayOverridesRaw[row.kid_id]=store.dayOverridesRaw[row.kid_id]||{};
+      if(row.t!=null)bucket[row.block_idx]=row.t; else delete bucket[row.block_idx];
+    }else{
+      await store.hydrate();
+    }
+    refreshOverrides();
+    if(hubKid&&hubTab==="day")renderMyDay();
     refreshLockUI();
   });
   store.onHelpClaims(async row=>{
