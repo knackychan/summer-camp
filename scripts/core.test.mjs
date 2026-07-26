@@ -251,3 +251,50 @@ test("dailyThree returns the whole pool when fewer than three games are eligible
   const tiny = { TIERS: FAKE.TIERS, TIER_DEFAULT: FAKE.TIER_DEFAULT, GAMES: { a: FAKE.GAMES.a, b: FAKE.GAMES.b } };
   assert.deepEqual(SQBrainCore.dailyThree("lucien", "2026-07-27", {}, tiny).length, 2);
 });
+
+test("every game declares bilingual title, skill and at least one tier", () => {
+  const ids = Object.keys(SQBrainData.GAMES);
+  assert.ok(ids.length >= 1);
+  for (const id of ids) {
+    const g = SQBrainData.GAMES[id];
+    assert.equal(g.id, id, `${id}: id mismatch`);
+    assert.ok(g.icon, `${id}: missing icon`);
+    assert.ok(g.title && g.title[0] && g.title[1], `${id}: title must be [en, zh]`);
+    assert.ok(g.blurb && g.blurb[0] && g.blurb[1], `${id}: blurb must be [en, zh]`);
+    assert.ok(g.skill, `${id}: missing skill tag`);
+    const tiers = Object.keys(g.tiers);
+    assert.ok(tiers.length >= 1, `${id}: no tiers`);
+    for (const t of tiers) assert.ok(SQBrainData.TIERS.indexOf(t) >= 0, `${id}: bad tier ${t}`);
+  }
+});
+
+test("every tier generator produces a well-formed item", () => {
+  const rnd = SQBrainCore.mulberry32(1);
+  for (const id of Object.keys(SQBrainData.GAMES)) {
+    const g = SQBrainData.GAMES[id];
+    for (const t of Object.keys(g.tiers)) {
+      const cfg = g.tiers[t];
+      assert.ok(cfg.items > 0, `${id}.${t}: items must be > 0`);
+      assert.equal(typeof cfg.clock, "boolean", `${id}.${t}: clock must be boolean`);
+      assert.ok(["keypad", "choice", "grid", "type"].indexOf(cfg.pad) >= 0, `${id}.${t}: bad pad`);
+      for (let n = 0; n < 25; n++) {
+        const item = cfg.gen(rnd);
+        assert.ok(item.prompt && item.prompt.type, `${id}.${t}: item missing prompt.type`);
+        assert.equal(typeof item.answer, "string", `${id}.${t}: answer must be a string`);
+        assert.ok(item.answer.length > 0, `${id}.${t}: empty answer`);
+        if (cfg.pad === "choice") {
+          assert.ok(Array.isArray(item.choices), `${id}.${t}: choice pad needs choices`);
+          assert.ok(item.choices.indexOf(item.answer) >= 0, `${id}.${t}: answer not among choices`);
+          assert.equal(new Set(item.choices).size, item.choices.length, `${id}.${t}: duplicate choices`);
+        }
+      }
+    }
+  }
+});
+
+test("tot tiers never run a clock", () => {
+  for (const id of Object.keys(SQBrainData.GAMES)) {
+    const tot = SQBrainData.GAMES[id].tiers.tot;
+    if (tot) assert.equal(tot.clock, false, `${id}: tot tier must not be clocked`);
+  }
+});
