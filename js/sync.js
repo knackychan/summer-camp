@@ -215,11 +215,11 @@
       await this.flush();
     }
 
-    async save(progress,settings){
+    async save(progress,settings,starReasons){
       this.progress=normalize(progress);
       this.settings=settings;
       this.persistLocal();
-      if(this.supabase) this.enqueueDiff(this.last,this.progress);
+      if(this.supabase) this.enqueueDiff(this.last,this.progress,starReasons);
       this.last=clone(this.progress);
       await this.flush();
     }
@@ -229,8 +229,14 @@
       saveJson(QUEUE_KEY,this.queue);
     }
 
-    enqueueDiff(before,after){
+    enqueueDiff(before,after,starReasons){
       const day=todayISO();
+      const reasonsByKid={};
+      (starReasons||[]).forEach(r=>{
+        if(!r||!r.kid||!r.delta)return;
+        const list=reasonsByKid[r.kid]=reasonsByKid[r.kid]||[];
+        for(let i=0;i<r.delta;i++)list.push(r.reason||"App progress app進度");
+      });
       KIDS.forEach(kid=>{
         const a=after[kid], b=before[kid]||{};
         const ad=a.day&&a.day.d?a.day.d:day;
@@ -253,9 +259,21 @@
         });
 
         let delta=(a.stars||0)-(b.stars||0);
+        const starReasonsForKid=reasonsByKid[kid]||[];
         while(delta>0){
-          const chunk=Math.min(delta,3);
-          this.enqueue({type:"stars",kid,delta:chunk,reason:"app progress"});
+          if(!starReasonsForKid.length){
+            const chunk=Math.min(delta,3);
+            this.enqueue({type:"stars",kid,delta:chunk,reason:"App progress app進度"});
+            delta-=chunk;
+            continue;
+          }
+          const reason=starReasonsForKid.shift()||"App progress app進度";
+          let chunk=1;
+          while(chunk<delta&&starReasonsForKid[0]===reason){
+            starReasonsForKid.shift();
+            chunk++;
+          }
+          this.enqueue({type:"stars",kid,delta:chunk,reason});
           delta-=chunk;
         }
 

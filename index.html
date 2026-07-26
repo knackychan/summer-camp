@@ -974,6 +974,10 @@ let settings={
 
 /* ============ STORAGE ============ */
 let store=null;
+let pendingStarReasons=[];
+function noteStars(kidId,delta,reason){
+  pendingStarReasons.push({kid:kidId,delta:delta,reason:reason});
+}
 function normalizeProgressShape(){
   Object.keys(progress).forEach(k=>{const P=progress[k];
     if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0,city:0,dig:0};
@@ -994,7 +998,10 @@ async function loadProgress(){
   }catch(e){normalizeProgressShape();}
 }
 async function saveProgress(){
-  try{ if(store) await store.save(progress,settings); }catch(e){}
+  const reasons=pendingStarReasons;
+  pendingStarReasons=[];
+  try{ if(store) await store.save(progress,settings,reasons); }
+  catch(e){ pendingStarReasons=reasons.concat(pendingStarReasons); }
 }
 
 /* ============ SOUND ============ */
@@ -2667,6 +2674,14 @@ function canRerollMission(id,i){
   const b=DAY[i];
   return b&&b.kind==="mission"&&MISSIONS[b.pool][id].length>1;
 }
+function starReasonForBlock(id,i){
+  const b=DAY[i], mis=missionFor(id,i);
+  if(i===PRACTICE_IDX&&SQDrills.isPracticeDay(todayStr())){
+    const s=SQDrills.sessionFor(id,todayStr());
+    return `Practice 練習: ${s.drill.name[0]} / ${s.drill.name[1]}`;
+  }
+  return `My Day mission 我的任務: ${b.title} - ${mis[0]} / ${mis[1]}`;
+}
 function screenStatus(i,d){
   if(!String(DAY[i].title).includes("Screen"))return "";
   const needed=SQTime.neededBefore(DAY,dayOverrides,i);
@@ -2734,11 +2749,13 @@ function tickBlockDone(i){
   d2.done[i]=true;
   if(DAY[i].kind==="mission"){
     progress[hubKid].stars=(progress[hubKid].stars||0)+1;
+    noteStars(hubKid,1,starReasonForBlock(hubKid,i));
     if(DAY[i].pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
     sWin(); burst(16); star();
   } else { sGood(); }
   if(coveredCount(hubKid,d2)>=DAY.length){
     progress[hubKid].stars+=2; sWin(); burst(60); bigFloat("🌟");
+    noteStars(hubKid,2,"Day complete bonus 全部完成獎勵");
   }
   saveProgress(); renderMyDay(); renderHubHead(); refreshLockUI();
   const lo=document.getElementById("lockOverlay");
@@ -2856,6 +2873,7 @@ async function usePass(id,i){
   const d=dayState(hubKid); d.done[i]=true;
   if(coveredCount(hubKid,d)>=DAY.length){
     progress[hubKid].stars=(progress[hubKid].stars||0)+2; sWin(); burst(60); bigFloat("🌟");
+    noteStars(hubKid,2,"Day complete bonus 全部完成獎勵");
   }
   await saveProgress(); sGood(); await store.hydrate(); renderMyDay(); renderHubHead(); refreshLockUI();
 }
@@ -3044,6 +3062,7 @@ function renderAct(){
     if(actsToday(hubKid)[actIdx])return;
     actsToday(hubKid)[actIdx]=true;
     progress[hubKid].stars=(progress[hubKid].stars||0)+1;
+    noteStars(hubKid,1,`Activity 活動: ${BANK[actIdx].cat} - ${BANK[actIdx][hubKid]}`);
     if(g.type==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
     saveProgress(); sWin(); burst(30); star();
     renderAct();
@@ -3138,6 +3157,7 @@ function openLearn(key){
     if(actsToday(hubKid)[actIdx])return;
     actsToday(hubKid)[actIdx]=true;
     progress[hubKid].stars=(progress[hubKid].stars||0)+1;
+    noteStars(hubKid,1,`Learn guide 學習指南: ${g.title} / ${g.tz}`);
     saveProgress(); sWin(); burst(30); star();
     openLearn(key);
   };
