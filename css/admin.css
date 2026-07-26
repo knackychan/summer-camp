@@ -959,6 +959,55 @@ p {
   padding: 0 10px;
 }
 
+/* Grant stars, rail shape: identity on the left, four taps on the right. */
+.grant-panel .kid-grid,
+#grants {
+  display: block;
+}
+
+.grant-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: #151127;
+  border-left: 3px solid var(--kid-color, var(--blue));
+}
+
+.grant-row__who {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.grant-row__btns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.grant-row__btns .btn {
+  min-height: 44px;
+  padding: 0;
+  font-size: 16px;
+}
+
+.grant-danger {
+  margin-top: 8px;
+}
+
+.grant-danger > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
 /* 1400px: the left rail folds into the top of the centre column, the
    conversation rail survives — it is the one Papa watches all day. */
 @media (max-width: 1400px) {

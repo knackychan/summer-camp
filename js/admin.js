@@ -540,38 +540,45 @@
     await loadAll();
   }
 
+  /* Rail-shaped: one row per kid instead of three 260px cards. The reason field
+     is shared — Papa types once, then taps whichever kid it applies to. */
   function renderGrants(){
-    $("grants").innerHTML=Object.entries(KIDS).map(([id,k])=>`
-      <article class="kid-card" style="--kid-color:${k.color}">
-        <h3>${k.name}</h3>
-        <p class="grant-total"><span class="gold">⭐ ${(rows.totals.find(t=>t.kid_id===id)||{}).stars||0}</span> stars 星星</p>
-        <label class="field"><span>Reason 原因</span><input class="input" id="reason-${id}" placeholder="helped Lucien 幫Lucien"></label>
-        <div class="grant-actions">
-          <button class="btn btn--danger grant-big" data-grant="${id}" data-delta="-1">−<span>1 star<br>扣1顆</span></button>
-          <button class="btn grant-big" data-grant="${id}" data-delta="1">+<span>1 star<br>加1顆</span></button>
+    $("grants").innerHTML=Object.entries(KIDS).map(function(e){
+      const id=e[0], k=e[1];
+      const stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
+      return `<div class="grant-row" style="--kid-color:${k.color}">
+        <div class="grant-row__who">
+          <b>${esc(k.name)}</b>
+          <span class="gold">⭐ ${stars}</span>
         </div>
-        <div class="row grant-more">
+        <div class="grant-row__btns">
+          <button class="btn btn--danger" data-grant="${id}" data-delta="-1" title="Minus one star 扣1顆">−1</button>
+          <button class="btn" data-grant="${id}" data-delta="1" title="Plus one star 加1顆">+1</button>
           <button class="btn btn--secondary" data-grant="${id}" data-delta="2">+2</button>
           <button class="btn btn--secondary" data-grant="${id}" data-delta="3">+3</button>
         </div>
+      </div>`;
+    }).join("")+`
+      <label class="field"><span>Reason 原因</span>
+        <input class="input" id="grantReason" placeholder="helped Lucien 幫Lucien"></label>
+      <details class="grant-danger">
+        <summary>More 更多</summary>
         <div class="row">
-          <input class="input" id="custom-${id}" type="number" min="-10" max="10" value="1">
-          <button class="btn btn--secondary" data-custom="${id}">Custom 自訂</button>
+          ${Object.entries(KIDS).map(function(e){
+            return `<button class="btn btn--danger" data-resetstars="${e[0]}">Reset ${esc(e[1].name)} to 0 歸零</button>`;
+          }).join("")}
         </div>
-        <button class="btn btn--danger grant-reset" data-resetstars="${id}">Reset stars to 0 星星歸零</button>
-      </article>`).join("");
-    document.querySelectorAll("[data-grant]").forEach(b=>b.onclick=()=>grantStars(b.dataset.grant,+b.dataset.delta));
-    document.querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{
-      const id=b.dataset.custom;
-      const v=+$(`custom-${id}`).value||0;
-      if(!v)return;
-      grantStars(id,v);
+      </details>`;
+    document.querySelectorAll("[data-grant]").forEach(function(b){
+      b.onclick=function(){grantStars(b.dataset.grant,+b.dataset.delta);};
     });
-    document.querySelectorAll("[data-resetstars]").forEach(b=>b.onclick=()=>resetStars(b.dataset.resetstars));
+    document.querySelectorAll("[data-resetstars]").forEach(function(b){
+      b.onclick=function(){resetStars(b.dataset.resetstars);};
+    });
   }
 
   async function grantStars(kid,delta){
-    const input=$(`reason-${kid}`);
+    const input=$("grantReason");
     const reason=input.value.trim()||(delta>0?"Admin grant 手動加星星":"Admin correction 手動扣星星");
     const {error}=await client.from("stars_ledger").insert({kid_id:kid,delta,reason,source:"admin",granted_by:session.user.id});
     if(error){writeFailed(error);return;}
