@@ -68,8 +68,30 @@
     return picked;
   }
 
+  function buildRound(gameId,tier,rnd,override){
+    const data=cat(override);
+    const g=data.GAMES[gameId];
+    if(!g)throw new Error("unknown brain game: "+gameId);
+    const cfg=g.tiers[tier];
+    if(!cfg)throw new Error("game "+gameId+" has no tier "+tier);
+    const items=[];
+    for(let i=0;i<cfg.items;i++)items.push(cfg.gen(rnd));
+    return {gameId:gameId,tier:tier,pad:cfg.pad,clock:!!cfg.clock,items:items};
+  }
+
+  function scoreRound(ctx){
+    const items=ctx.items||[], answers=ctx.answers||[];
+    const correct=items.map(function(item,i){
+      const given=answers[i]==null?"":String(answers[i]).trim();
+      return given===String(item.answer).trim();
+    });
+    const score=correct.filter(function(c){return c;}).length;
+    return {score:score,total:items.length,ms:ctx.clock?(ctx.ms||0):0,correct:correct};
+  }
+
   const api={dseed:dseed,mulberry32:mulberry32,tierFor:tierFor,
-    eligibleGames:eligibleGames,dailyThree:dailyThree,seededShuffle:seededShuffle};
+    eligibleGames:eligibleGames,dailyThree:dailyThree,seededShuffle:seededShuffle,
+    buildRound:buildRound,scoreRound:scoreRound};
   if(typeof window!=="undefined")window.SQBrainCore=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

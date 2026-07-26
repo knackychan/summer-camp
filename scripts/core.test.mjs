@@ -298,3 +298,49 @@ test("tot tiers never run a clock", () => {
     if (tot) assert.equal(tot.clock, false, `${id}: tot tier must not be clocked`);
   }
 });
+
+test("buildRound produces the tier's item count and config", () => {
+  const round = SQBrainCore.buildRound("calc", "mid", SQBrainCore.mulberry32(9));
+  assert.equal(round.gameId, "calc");
+  assert.equal(round.tier, "mid");
+  assert.equal(round.pad, "keypad");
+  assert.equal(round.clock, true);
+  assert.equal(round.items.length, 20);
+  assert.equal(round.items.filter((i) => typeof i.answer === "string").length, 20);
+});
+
+test("buildRound on a tot tier is unclocked", () => {
+  const round = SQBrainCore.buildRound("calc", "tot", SQBrainCore.mulberry32(9));
+  assert.equal(round.clock, false);
+  assert.equal(round.pad, "choice");
+  assert.equal(round.items.length, 10);
+});
+
+test("buildRound throws on an unknown game or tier", () => {
+  assert.throws(() => SQBrainCore.buildRound("nope", "mid", SQBrainCore.mulberry32(1)));
+  assert.throws(() => SQBrainCore.buildRound("calc", "nope", SQBrainCore.mulberry32(1)));
+});
+
+test("scoreRound counts correct answers and keeps ms only when clocked", () => {
+  const items = [{ answer: "3" }, { answer: "5" }, { answer: "7" }];
+  const clocked = SQBrainCore.scoreRound({ items: items, answers: ["3", "4", "7"], ms: 12000, clock: true });
+  assert.equal(clocked.score, 2);
+  assert.equal(clocked.total, 3);
+  assert.equal(clocked.ms, 12000);
+  assert.deepEqual(clocked.correct, [true, false, true]);
+
+  const unclocked = SQBrainCore.scoreRound({ items: items, answers: ["3", "5", "7"], ms: 12000, clock: false });
+  assert.equal(unclocked.score, 3);
+  assert.equal(unclocked.ms, 0);
+});
+
+test("scoreRound compares answers as trimmed strings", () => {
+  const out = SQBrainCore.scoreRound({ items: [{ answer: "13" }], answers: [" 13 "], ms: 0, clock: false });
+  assert.equal(out.score, 1);
+});
+
+test("scoreRound treats a missing answer as wrong, never as a crash", () => {
+  const out = SQBrainCore.scoreRound({ items: [{ answer: "1" }, { answer: "2" }], answers: ["1"], ms: 0, clock: false });
+  assert.equal(out.score, 1);
+  assert.deepEqual(out.correct, [true, false]);
+});
