@@ -114,3 +114,68 @@ test("buildStream ignores ticks and photos from other days", () => {
   }), { today: TODAY });
   assert.deepEqual(stream, []);
 });
+
+const mixed = () => SQChat.buildStream(rowsWith({
+  asks: [{ id: "a1", kid_id: "lucien", kind: "question", body: "ask-lucien",
+           answer: null, answered_at: null, created_at: "2026-07-26T09:00:00Z" }],
+  helpClaims: [{ id: "c1", captain_id: "luis", helped_kid_id: "lili", day: TODAY,
+                 body: "claim-luis", status: "requested",
+                 created_at: "2026-07-26T10:00:00Z" }],
+  passes: [{ id: "p1", kid_id: "lili", kind: "golden", status: "granted",
+             block_idx: 3, reason: "pass-lili",
+             created_at: "2026-07-26T11:00:00Z" }],
+  ticks: [{ kid_id: "lili", day: TODAY, block_idx: 1,
+            created_at: "2026-07-26T12:00:00Z" }]
+}), { today: TODAY });
+
+test("filterStream with no filters returns everything", () => {
+  assert.equal(SQChat.filterStream(mixed(), {}).length, 4);
+});
+
+test("filterStream by kid keeps only that kid", () => {
+  const out = SQChat.filterStream(mixed(), { kid: "lili" });
+  assert.equal(out.every(r => r.kidId === "lili"), true);
+  assert.equal(out.length, 2);
+});
+
+test("filterStream kid 'all' is the same as no kid filter", () => {
+  assert.equal(SQChat.filterStream(mixed(), { kid: "all" }).length, 4);
+});
+
+test("filterStream by type keeps only the listed types", () => {
+  const out = SQChat.filterStream(mixed(), { types: ["ask", "claim"] });
+  assert.deepEqual(out.map(r => r.type), ["ask", "claim"]);
+});
+
+test("filterStream treats reply as part of the ask type", () => {
+  const stream = SQChat.buildStream(rowsWith({
+    asks: [{ id: "a1", kid_id: "lili", kind: "question", body: "q",
+             answer: "a", answered_at: "2026-07-26T09:30:00Z",
+             created_at: "2026-07-26T09:20:00Z" }]
+  }), { today: TODAY });
+  assert.equal(SQChat.filterStream(stream, { types: ["ask"] }).length, 2);
+});
+
+test("needs filter overrides both axes", () => {
+  const out = SQChat.filterStream(mixed(), { kid: "lili", types: ["system"], needs: true });
+  assert.equal(out.length, 2);
+  assert.equal(out.every(r => r.needs === true), true);
+});
+
+test("needsCount counts exactly what the needs filter returns", () => {
+  const stream = mixed();
+  assert.equal(SQChat.needsCount(stream), SQChat.filterStream(stream, { needs: true }).length);
+  assert.equal(SQChat.needsCount(stream), 2);
+});
+
+test("archived rows are hidden unless asked for", () => {
+  const rows = rowsWith({
+    asks: [{ id: "a1", kid_id: "lili", kind: "question", body: "old",
+             answer: null, answered_at: null, created_at: "2026-07-26T09:00:00Z" }]
+  });
+  const ctx = { today: TODAY, archivedIds: new Set(["a1"]) };
+  const stream = SQChat.buildStream(rows, ctx);
+  assert.equal(SQChat.filterStream(stream, {}).length, 0);
+  assert.equal(SQChat.filterStream(stream, { archived: true }).length, 1);
+  assert.equal(SQChat.needsCount(stream), 0);
+});

@@ -97,7 +97,31 @@
       .sort(function(x,y){return new Date(x.at)-new Date(y.at);});
   }
 
-  const api={buildStream:buildStream};
+  /* A Papa reply belongs to the same conversation as the ask that produced it,
+     so the 'ask' chip must keep both halves — filtering one away would leave
+     an answer with no question. */
+  const TYPE_GROUP={ask:"ask", reply:"ask", claim:"claim", pass:"pass", photo:"photo", system:"system"};
+
+  function filterStream(stream, filters){
+    const f=filters||{};
+    const wantArchived=!!f.archived;
+    const types=f.types&&f.types.length?f.types:null;
+    return (stream||[]).filter(function(row){
+      if(row.archived&&!wantArchived)return false;
+      if(f.needs)return row.needs===true;
+      if(f.kid&&f.kid!=="all"&&row.kidId!==f.kid)return false;
+      if(types&&types.indexOf(TYPE_GROUP[row.type])<0)return false;
+      return true;
+    });
+  }
+
+  function needsCount(stream){
+    return (stream||[]).filter(function(row){
+      return row.needs===true&&!row.archived;
+    }).length;
+  }
+
+  const api={buildStream:buildStream, filterStream:filterStream, needsCount:needsCount, TYPE_GROUP:TYPE_GROUP};
   if(typeof window!=="undefined")window.SQChat=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();
