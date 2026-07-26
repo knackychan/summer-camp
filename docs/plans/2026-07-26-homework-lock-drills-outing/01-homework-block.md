@@ -19,7 +19,7 @@
 **Files:**
 - Modify: `index.html` (inline script, data section before `/* finger map`)
 
-- [ ] **Step 1: Replace the 10:00 block in `const DAY=[...]`**
+- [x] **Step 1: Replace the 10:00 block in `const DAY=[...]`**
 
 Find this entry (search for `Create & build`):
 
@@ -35,7 +35,7 @@ Replace with:
 
 Note: `tz` deliberately has no `時間` suffix — `announceBlock` appends `時間到了`, and `暑假作業時間到了` reads correctly.
 
-- [ ] **Step 2: Add the `homework` pool to `const MISSIONS={...}`**
+- [x] **Step 2: Add the `homework` pool to `const MISSIONS={...}`**
 
 `MISSIONS` is an object of pools (`sport`, `desk`, `skill`, …), each with `lucien`/`lili`/`luis` arrays of `[en, zh]` pairs. Add this pool at the same level as the others (e.g. right after `skill:{...},`):
 
@@ -49,7 +49,7 @@ homework:{
 
 Do NOT delete the now-unused `desk` pool — check.mjs validates it and it may migrate into `project` later.
 
-- [ ] **Step 3: Hide the 🎲 reroll die for single-entry pools**
+- [x] **Step 3: Hide the 🎲 reroll die for single-entry pools**
 
 In `renderMyDay()`, find the reroll button line inside the `dbtns` div:
 
@@ -65,7 +65,7 @@ ${b.kind==="mission"&&!isDone&&MISSIONS[b.pool][hubKid].length>1?`<button class=
 
 (The surrounding buttons in `dbtns` may differ from what you expect — another agent adds pass/proof buttons there. Change only this one line.)
 
-- [ ] **Step 4: Remove the dead "Create & build" special case in `announceBlock`**
+- [x] **Step 4: Remove the dead "Create & build" special case in `announceBlock`**
 
 Current:
 
@@ -91,19 +91,19 @@ function announceBlock(i){
 
 (If slice 02 already landed, the guard reads `SQTime.effMins(DAY,dayOverrides,i)==null` instead of `blockMins(b)==null` — keep whatever guard is there, only change the `en`/`zh` lines.)
 
-- [ ] **Step 5: Run the check**
+- [x] **Step 5: Run the check**
 
 Run: `node scripts/check.mjs`
 Expected: `Summer Quest check passed: ...`
 
-- [ ] **Step 6: Manual smoke (browser, no config.js needed — local-only mode works)**
+- [x] **Step 6: Manual smoke (browser, no config.js needed — local-only mode works)**
 
 Open `index.html`, pick each kid → My Day:
 - 10:00 row shows `✏️ Homework 暑假作業` with that kid's mission text (Lucien: quiet work; Lili/Luis: homework), no 🎲 die.
 - Tick it → star fanfare fires (mission path), progress bar advances, un-tick works.
 - Other mission blocks still show their 🎲.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add index.html

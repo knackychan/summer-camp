@@ -7,7 +7,7 @@
   };
   const DAY=[
     ["8:00","Wake up","起床"],["8:15","Breakfast","早餐"],["8:45","Skill block","技能時間"],
-    ["9:30","Reading","閱讀"],["10:00","Create & build","創作與建造"],["11:15","Screen #1","螢幕#1"],
+    ["9:30","Reading","閱讀"],["10:00","Homework","暑假作業"],["11:15","Screen #1","螢幕#1"],
     ["12:00","Lunch","午餐"],["12:45","Quiet hour","安靜時間"],["14:00","Project time","專題時間"],
     ["15:45","Screen #2","螢幕#2"],["16:30","Free invent game","自由發明遊戲"],["17:15","Sport & move","運動時間"],
     ["18:00","Tidy patrol","整理巡邏"],["18:30","Dinner","晚餐"],["19:30","Bath and bed","洗澡睡覺"],["✨","Photo mission","照片任務"]

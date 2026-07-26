@@ -608,6 +608,11 @@ skill:{
  lili:[["Make toast and cut fruit with your kid knife 🍳", "用兒童刀做吐司、切水果 🍳"],["Read one page aloud to someone 📚", "大聲唸一頁書給別人聽 📚"],["Practice the ×2 table — ask AI to quiz you", "練習2的乘法表——請AI考你"],["Word Wizard 🧙: master 3 new words", "文字巫師 🧙：精通3個新單字"],["Tie your shoelaces 5 times, fast", "快速綁鞋帶5次"],["Write 3 neat sentences ✍", "寫3句工整的句子 ✍"],["Origami: one new model 🌸", "摺紙：一個新作品 🌸"],["Connect 4 or checkers with Luis ♟", "和Luis玩四連環或西洋跳棋 ♟"],["Practice reading the clock ⏰", "練習看時鐘 ⏰"]],
  luis:[["Cook simple eggs or a sandwich — and clean up 🍳", "煎蛋或做三明治——然後收拾乾淨 🍳"],["Times tables: pick a hard one and drill it", "乘法表：挑一個難的來練"],["Word Wizard Sentences 💬: master 3 sentences", "文字巫師句子 💬：精通3個句子"],["Word Racer 🚀: beat your WPM record", "文字競速 🚀：打破你的WPM紀錄"],["Chess: one game or 3 puzzles ♟", "西洋棋：一盤棋或3道謎題 ♟"],["Origami: work toward your hard model 🌸", "摺紙：挑戰你的困難作品 🌸"],["Plan tomorrow morning yourself ⏰", "自己規劃明天早上 ⏰"],["Typing: 5 minutes of home-row practice ⌨", "打字：5分鐘基準鍵練習 ⌨"],["Stop-motion: plan your 1-minute film 🎬", "停格動畫：規劃你的1分鐘影片 🎬"]],
 },
+homework:{
+ lucien:[["Quiet work — coloring, tracing or a puzzle 🎨", "安靜活動——著色、描寫或拼圖 🎨"]],
+ lili:[["Summer homework — one page, best effort ✏️", "暑假作業——寫一頁，盡力就好 ✏️"]],
+ luis:[["Summer homework — one page, then check it yourself ✏️", "暑假作業——寫一頁，然後自己檢查 ✏️"]],
+},
 };
 /* the day plan — from the Daily Rhythm sheet (EN + 中文) */
 const DAY=[
@@ -621,7 +626,7 @@ const DAY=[
  {t:"9:30",icon:"📚",title:"Reading — quiet & comfy",tz:"閱讀——安靜舒服",kind:"routine",
   txt:{lucien:"Picture books, or listen to a story",lili:"Read a page aloud to someone",luis:"Chapter book — 20 quiet minutes"},
   txtz:{lucien:"看圖畫書或聽故事",lili:"大聲唸一頁給別人聽",luis:"章節書——安靜20分鐘"}},
- {t:"10:00",icon:"🎨",title:"Create & build",tz:"創作與建造",kind:"mission",pool:"desk"},
+ {t:"10:00",icon:"✏️",title:"Homework",tz:"暑假作業",kind:"mission",pool:"homework"},
  {t:"11:15",icon:"📱",title:"Screen #1 — 45 min, earned",tz:"螢幕#1——45分鐘（要先賺到）",kind:"routine",
   txt:{lucien:"Only if your morning boxes are ticked ✓",lili:"Only if skill + reading are ticked ✓",luis:"Only if skill + reading are ticked ✓ — set your own timer"},
   txtz:{lucien:"早上的格子打勾才可以 ✓",lili:"技能＋閱讀打勾才可以 ✓",luis:"技能＋閱讀打勾 ✓——自己設定時器"}},
@@ -1881,6 +1886,10 @@ function missionFor(id,i){
   const rr=(dayState(id).rr[i]||0);
   return pool[(dseed(todayStr()+id+i)+rr)%pool.length];
 }
+function canRerollMission(id,i){
+  const b=DAY[i];
+  return b&&b.kind==="mission"&&MISSIONS[b.pool][id].length>1;
+}
 function screenStatus(i,d){
   if(!String(DAY[i].title).includes("Screen"))return "";
   const needed=DAY.map((_,idx)=>idx).filter(idx=>idx<i&&blockMins(DAY[idx])!=null);
@@ -1940,7 +1949,7 @@ function renderMyDay(){
         <div class="dbtns">
           <button class="btn small tick" data-done="${i}"
             style="${isDone?'background:var(--ok);color:#1c1436':''}">${isDone?"✓":"✓ 完成"}</button>
-          ${b.kind==="mission"&&!isDone?`<button class="btn small tick" data-rr="${i}">🎲</button>`:""}
+          ${!isDone&&canRerollMission(hubKid,i)?`<button class="btn small tick" data-rr="${i}">🎲</button>`:""}
           ${b.kind==="mission"&&!isDone&&!pass?`<button class="btn small tick" data-pass="${i}">🎟️</button>`:""}
           ${pass&&pass.status==="granted"&&!isDone?`<button class="btn small tick" data-usepass="${pass.id}" data-i="${i}">Use 使用</button>`:""}
           ${b.kind==="mission"&&isDone&&!proof?`<label class="btn small tick">📸<input type="file" accept="image/*" capture="environment" data-proof="${i}" hidden></label>`:""}
@@ -2019,8 +2028,8 @@ async function uploadProof(i,file){
 let lastTimelineBlock=null;
 function announceBlock(i){
   const b=DAY[i]; if(!b||blockMins(b)==null)return;
-  const en=b.title==="Create & build"?"Create & build time!":`${b.title.split("—")[0].trim()} time!`;
-  const zh=b.title==="Create & build"?"創作與建造時間到了":`${(b.tz||"").split("——")[0].split("（")[0].trim()}時間到了`;
+  const en=`${b.title.split("—")[0].trim()} time!`;
+  const zh=`${(b.tz||"").split("——")[0].split("（")[0].trim()}時間到了`;
   sWin(); say(en,"en-US"); setTimeout(()=>say(zh,"zh-TW",true),900);
 }
 function startTimelineWatcher(){
