@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const SQTime = require("../js/time-core.js");
 const SQLock = require("../js/lock-core.js");
+const SQDrills = require("../js/drills.js");
 
 const DAY = [
   { t: "8:00", title: "Wake", tz: "起床", kind: "routine", txtz: {} },
@@ -114,4 +115,38 @@ test("before first block: unlocked", () => {
 test("override moves the governing block", () => {
   assert.deepEqual(lock(10 * 60 + 30, {}, noPass, { 1: "15:00" }), { locked: true, blockIdx: 0 });
   assert.deepEqual(lock(10 * 60 + 30, { 0: true }, noPass, { 1: "15:00" }), { locked: false, blockIdx: null });
+});
+
+test("practice-day alternation is deterministic and roughly half", () => {
+  const days = ["2026-07-27","2026-07-28","2026-07-29","2026-07-30","2026-07-31","2026-08-01","2026-08-02","2026-08-03"];
+  const flags = days.map(d => SQDrills.isPracticeDay(d));
+  days.forEach((d, i) => assert.equal(SQDrills.isPracticeDay(d), flags[i]));
+  const yes = flags.filter(Boolean).length;
+  assert.ok(yes >= 2 && yes <= 6, `expected roughly half practice days, got ${yes}/8`);
+});
+
+test("sessionFor is deterministic per kid+date and respects DRILL_PLAN", () => {
+  for (const kid of ["lucien","lili","luis"]) {
+    const a = SQDrills.sessionFor(kid, "2026-07-28");
+    const b = SQDrills.sessionFor(kid, "2026-07-28");
+    assert.deepEqual(a, b);
+    assert.ok(SQDrills.DRILL_PLAN[kid].includes(a.discipline));
+    assert.ok(Array.isArray(a.drill.steps) && a.drill.steps.length >= 3);
+  }
+});
+
+test("rotation varies across dates", () => {
+  const picks = new Set(["2026-07-28","2026-07-30","2026-08-01","2026-08-03","2026-08-05","2026-08-07"]
+    .map(d => JSON.stringify(SQDrills.sessionFor("lili", d))));
+  assert.ok(picks.size >= 2, "same drill every practice day — rotation broken");
+});
+
+test("all drill steps are bilingual pairs", () => {
+  for (const [disc, drills] of Object.entries(SQDrills.DRILLS)) {
+    for (const drill of drills) {
+      assert.ok(drill.name[0] && drill.name[1], `${disc} drill missing bilingual name`);
+      for (const s of drill.steps)
+        assert.ok(Array.isArray(s) && s.length === 2 && s[0] && s[1], `${disc}/${drill.name[0]} step not [en,zh]`);
+    }
+  }
 });

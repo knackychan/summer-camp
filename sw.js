@@ -1,9 +1,16 @@
-const CACHE_NAME = "summer-quest-v4";
+const CACHE_NAME = "summer-quest-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./admin.html",
   "./css/admin.css",
+  "./js/day.js",
+  "./js/day-data.js",
+  "./js/time-core.js",
+  "./js/lock-core.js",
+  "./js/pinpad.js",
+  "./js/papa-tools.js",
+  "./js/drills.js",
   "./js/sync.js",
   "./js/admin.js",
   "./manifest.webmanifest",
@@ -13,7 +20,15 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => Promise.all(
+      APP_SHELL.map(url =>
+        fetch(url, {cache: "reload"})
+          .then(response => response.ok ? cache.put(url, response) : null)
+          .catch(() => null)
+      )
+    ))
+  );
   self.skipWaiting();
 });
 

@@ -17,7 +17,7 @@ const assertPair = (value, where) => {
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
-const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/time-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/sync.js", "js/admin.js", "sw.js"];
+const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/time-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/sync.js", "js/admin.js", "sw.js"];
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -123,6 +123,26 @@ return { ALL_WORDS, SENT, MISSIONS, BANK, ACT_GUIDE, BANK_POOL, DAY, PHOTO_POOL,
   });
 } catch (error) {
   fail("data load", error.message);
+}
+
+try {
+  const { createRequire } = await import("node:module");
+  const requireCjs = createRequire(import.meta.url);
+  const drills = requireCjs("../js/drills.js");
+  for (const kid of ["lucien", "lili", "luis"]) {
+    if (!Array.isArray(drills.DRILL_PLAN[kid]) || !drills.DRILL_PLAN[kid].length) {
+      fail("DRILLS", `DRILL_PLAN.${kid} missing`);
+    }
+    drills.DRILL_PLAN[kid].forEach(d => { if (!drills.DRILLS[d]) fail("DRILLS", `discipline ${d} not in DRILLS`); });
+  }
+  for (const [disc, list] of Object.entries(drills.DRILLS)) {
+    list.forEach((drill, di) => {
+      if (!drill.name || !drill.name[0] || !drill.name[1]) fail("DRILLS", `${disc}[${di}] name must be bilingual`);
+      drill.steps.forEach((s, si) => assertPair(s, `DRILLS.${disc}[${di}].steps[${si}]`));
+    });
+  }
+} catch (error) {
+  fail("DRILLS load", error.message);
 }
 
 try {

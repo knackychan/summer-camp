@@ -332,6 +332,11 @@ button:disabled{cursor:default}
 .gameslocked #gameRow{display:none}
 .ptkid.on{background:var(--ok);color:#1c1436}
 .ptblk.on{background:var(--ok);color:#1c1436}
+.drillcard{max-width:380px;text-align:center}
+.drilldots{letter-spacing:.25em;margin:8px 0;opacity:.85}
+.drillstep{font-size:1.25em;margin:14px 0;line-height:1.4}
+.metrow{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
+.metbpm.on{background:var(--ok);color:#1c1436}
 </style>
 </head>
 <body>
@@ -468,6 +473,7 @@ button:disabled{cursor:default}
 <script src="js/lock-core.js"></script>
 <script src="js/pinpad.js"></script>
 <script src="js/papa-tools.js"></script>
+<script src="js/drills.js"></script>
 <script>
 /* ============ DATA ============ */
 const KIDS = {
@@ -1869,6 +1875,7 @@ let hubKid=null, actIdx=null, actTimerInt=null, actTimerLeft=0, actTimerTotal=0;
 const todayStr=()=>SQ_DAY.iso();
 const nowMins=()=>SQ_DAY.nowMins();
 let dayOverrides={}; /* {blockIdx:"HH:MM"} — today only */
+const PRACTICE_IDX=DAY.findIndex(function(b){return b.pool==="boredom";});
 const effT=i=>dayOverrides[i]!=null?dayOverrides[i]:DAY[i].t;
 function timelineInfo(){return SQTime.timelineInfo(DAY,dayOverrides,nowMins());}
 /* games lock (design.md §2): coach, not cop — invite, never shame */
@@ -1974,6 +1981,22 @@ function coveredCount(id,d){
   });
   return n;
 }
+function tickBlockDone(i){
+  const d2=dayState(hubKid);
+  if(d2.done[i]){delete d2.done[i]; saveProgress(); renderMyDay(); refreshLockUI(); return;}
+  d2.done[i]=true;
+  if(DAY[i].kind==="mission"){
+    progress[hubKid].stars=(progress[hubKid].stars||0)+1;
+    if(DAY[i].pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
+    sWin(); burst(16); star();
+  } else { sGood(); }
+  if(coveredCount(hubKid,d2)>=DAY.length){
+    progress[hubKid].stars+=2; sWin(); burst(60); bigFloat("🌟");
+  }
+  saveProgress(); renderMyDay(); renderHubHead(); refreshLockUI();
+  const lo=document.getElementById("lockOverlay");
+  if(lo&&!gameLockState().locked)lo.remove();
+}
 function renderMyDay(){
   const d=dayState(hubKid), k=KIDS[hubKid], info=timelineInfo();
   const total=DAY.length, done=coveredCount(hubKid,d);
@@ -1985,6 +2008,7 @@ function renderMyDay(){
     SQTime.displayOrder(DAY,dayOverrides).map(i=>{
       const b=DAY[i];
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
+      const isPractice=i===PRACTICE_IDX&&SQDrills.isPracticeDay(todayStr());
       const pass=passFor(hubKid,i), proof=proofFor(hubKid,i);
       const outing=pass&&pass.kind==="outing";
       const rowState=outing?"done":isDone?"done":i===info.current?"now":i===info.next?"next":SQTime.effMins(DAY,dayOverrides,i)!=null&&SQTime.effMins(DAY,dayOverrides,i)<info.now?"past":"";
@@ -1992,9 +2016,12 @@ function renderMyDay(){
       return `<div class="dayrow ${b.kind} ${rowState}${excused?" excused":""}" data-row="${i}">
         <div class="dtime">${effT(i)}${dayOverrides[i]!=null?`<span class="movedflag">moved 已調整</span>`:""}</div>
         <div class="dmid">
-          <div class="dt-title">${b.icon} ${b.title}<span class="zht">${b.tz||""}</span></div>
-          <div class="dt-mis ${b.kind}">${b.kind==="mission"
-            ?`🎯 ${mis[0]}<span class="zhs">${mis[1]}</span>`
+          <div class="dt-title">${isPractice?"🎶 Practice":`${b.icon} ${b.title}`}<span class="zht">${isPractice?"練習時間":b.tz||""}</span></div>
+          <div class="dt-mis ${b.kind}">${isPractice
+            ?(()=>{const s=SQDrills.sessionFor(hubKid,todayStr());
+              return `🎶 Practice: ${s.drill.name[0]}<span class="zhs">練習：${s.drill.name[1]}</span>${!isDone&&!outing?`<button class="btn small" data-drill="1">▶ Start practice 開始練習</button>`:""}`;})()
+            :b.kind==="mission"
+              ?`🎯 ${mis[0]}<span class="zhs">${mis[1]}</span>`
             :`${b.txt?b.txt[hubKid]:""}<span class="zhs">${b.txtz?b.txtz[hubKid]:""}</span>`}
             ${screenStatus(i,d)}${timeFlag(i,isDone||outing,info)}
             ${pass?`<div class="passline">${passText(pass)}</div>`:""}
@@ -2017,20 +2044,7 @@ function renderMyDay(){
     if(row&&!row.classList.contains("done")) row.scrollIntoView({block:"center",behavior:"smooth"});
   },80);
   document.querySelectorAll("#dayList [data-done]").forEach(btn=>btn.onclick=()=>{
-    const i=+btn.dataset.done, d2=dayState(hubKid);
-    if(d2.done[i]){delete d2.done[i]; saveProgress(); renderMyDay(); refreshLockUI(); return;} /* un-tick allowed */
-    d2.done[i]=true;
-    if(DAY[i].kind==="mission"){
-      progress[hubKid].stars=(progress[hubKid].stars||0)+1;
-      if(DAY[i].pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
-      sWin(); burst(16); star();
-    } else { sGood(); }
-    if(coveredCount(hubKid,d2)>=DAY.length){
-      progress[hubKid].stars+=2; sWin(); burst(60); bigFloat("🌟");
-    }
-    saveProgress(); renderMyDay(); renderHubHead(); refreshLockUI();
-    const lo=document.getElementById("lockOverlay");
-    if(lo&&!gameLockState().locked)lo.remove();
+    tickBlockDone(+btn.dataset.done);
   });
   document.querySelectorAll("#dayList [data-rr]").forEach(btn=>btn.onclick=()=>{
     const i=+btn.dataset.rr, d2=dayState(hubKid);
@@ -2039,6 +2053,12 @@ function renderMyDay(){
   document.querySelectorAll("#dayList [data-pass]").forEach(btn=>btn.onclick=()=>requestPass(+btn.dataset.pass));
   document.querySelectorAll("#dayList [data-usepass]").forEach(btn=>btn.onclick=()=>usePass(btn.dataset.usepass,+btn.dataset.i));
   document.querySelectorAll("#dayList [data-proof]").forEach(inp=>inp.onchange=()=>uploadProof(+inp.dataset.proof,inp.files[0]));
+  document.querySelectorAll("#dayList [data-drill]").forEach(btn=>btn.onclick=()=>{
+    SQDrills.openSession(hubKid,todayStr(),{
+      say:function(pair){say(pair[0],"en-US");setTimeout(function(){say(pair[1],"zh-TW",true);},1200);},
+      onFinish:function(){sWin();burst(30);if(!dayState(hubKid).done[PRACTICE_IDX])tickBlockDone(PRACTICE_IDX);}
+    });
+  });
 }
 async function requestPass(i){
   if(!store||!store.supabase){sBad();return;}
@@ -2089,6 +2109,10 @@ async function uploadProof(i,file){
 let lastTimelineBlock=null;
 function announceBlock(i){
   const b=DAY[i]; if(!b||SQTime.effMins(DAY,dayOverrides,i)==null)return;
+  if(i===PRACTICE_IDX&&SQDrills.isPracticeDay(todayStr())){
+    sWin(); say("Practice time!","en-US"); setTimeout(function(){say("練習時間到了","zh-TW",true);},900);
+    return;
+  }
   const en=`${b.title.split("—")[0].trim()} time!`;
   const zh=`${(b.tz||"").split("——")[0].split("（")[0].trim()}時間到了`;
   sWin(); say(en,"en-US"); setTimeout(()=>say(zh,"zh-TW",true),900);
