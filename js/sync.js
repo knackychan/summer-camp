@@ -65,6 +65,7 @@
     p.best.orc=p.best.orc||0;
     p.best.shop=p.best.shop||0;
     p.best.city=p.best.city||0;
+    p.best.dig=p.best.dig||0;
     p.vocab=p.vocab||{};
     p.missions=p.missions||0;
     p.day=p.day||{d:"",done:{},rr:{}};
@@ -179,7 +180,7 @@
       (vocab||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].vocab[r.word_key]=r.box||0;});
       (stats||[]).forEach(r=>{
         ensureKid(p,r.kid_id);
-        if(["balloon","race","orc","shop","city"].includes(r.stat)) p[r.kid_id].best[r.stat]=r.value||0;
+        if(["balloon","race","orc","shop","city","dig"].includes(r.stat)) p[r.kid_id].best[r.stat]=r.value||0;
         if(r.stat==="missions") p[r.kid_id].missions=r.value||0;
       });
       this.papaNote=note&&note.body?note.body:"";
@@ -257,7 +258,7 @@
         });
 
         const ab=a.best||{}, bb=b.best||{};
-        ["balloon","race","orc","shop","city"].forEach(stat=>{
+        ["balloon","race","orc","shop","city","dig"].forEach(stat=>{
           if((ab[stat]||0)!==(bb[stat]||0)) this.enqueue({type:"stat",kid,stat,value:ab[stat]||0});
         });
         if((a.missions||0)!==(b.missions||0)) this.enqueue({type:"stat",kid,stat:"missions",value:a.missions||0});
