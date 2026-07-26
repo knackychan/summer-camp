@@ -198,3 +198,56 @@ test("mulberry32 is deterministic and in range", () => {
     assert.ok(v >= 0 && v < 1);
   }
 });
+
+/* a fake catalogue so these tests never break when real game content changes */
+const FAKE = {
+  TIERS: ["tot", "mid", "hard"],
+  TIER_DEFAULT: { lucien: "tot", lili: "mid", luis: "hard" },
+  GAMES: {
+    a: { id: "a", skill: "math",      tiers: { tot: {}, mid: {}, hard: {} } },
+    b: { id: "b", skill: "memory",    tiers: { tot: {}, mid: {}, hard: {} } },
+    c: { id: "c", skill: "attention", tiers: { tot: {}, mid: {}, hard: {} } },
+    d: { id: "d", skill: "math",      tiers: { mid: {}, hard: {} } },
+    e: { id: "e", skill: "logic",     tiers: { mid: {}, hard: {} } },
+  },
+};
+
+test("eligibleGames drops games with no tier for that kid", () => {
+  assert.deepEqual(SQBrainCore.eligibleGames("lucien", {}, FAKE), ["a", "b", "c"]);
+  assert.deepEqual(SQBrainCore.eligibleGames("lili", {}, FAKE), ["a", "b", "c", "d", "e"]);
+});
+
+test("eligibleGames follows an admin tier override", () => {
+  assert.deepEqual(
+    SQBrainCore.eligibleGames("lili", { brain_tier_lili: "tot" }, FAKE),
+    ["a", "b", "c"]
+  );
+});
+
+test("dailyThree is deterministic for the same kid and date", () => {
+  const one = SQBrainCore.dailyThree("lili", "2026-07-27", {}, FAKE);
+  const two = SQBrainCore.dailyThree("lili", "2026-07-27", {}, FAKE);
+  assert.deepEqual(one, two);
+  assert.equal(one.length, 3);
+  assert.equal(new Set(one).size, 3);
+});
+
+test("dailyThree differs by kid and by date", () => {
+  const lili = SQBrainCore.dailyThree("lili", "2026-07-27", {}, FAKE);
+  const luis = SQBrainCore.dailyThree("luis", "2026-07-27", {}, FAKE);
+  const next = SQBrainCore.dailyThree("lili", "2026-07-28", {}, FAKE);
+  assert.ok(lili.join() !== luis.join() || lili.join() !== next.join());
+});
+
+test("dailyThree prefers three different skills when it can", () => {
+  for (const day of ["2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-08-01"]) {
+    const trio = SQBrainCore.dailyThree("luis", day, {}, FAKE);
+    const skills = trio.map((id) => FAKE.GAMES[id].skill);
+    assert.equal(new Set(skills).size, 3, `${day} gave ${skills.join("/")}`);
+  }
+});
+
+test("dailyThree returns the whole pool when fewer than three games are eligible", () => {
+  const tiny = { TIERS: FAKE.TIERS, TIER_DEFAULT: FAKE.TIER_DEFAULT, GAMES: { a: FAKE.GAMES.a, b: FAKE.GAMES.b } };
+  assert.deepEqual(SQBrainCore.dailyThree("lucien", "2026-07-27", {}, tiny).length, 2);
+});

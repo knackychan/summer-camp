@@ -18,14 +18,58 @@
     };
   }
 
-  function tierFor(kid,settings){
+  function cat(override){return override?override:D;}
+
+  function tierForIn(kid,settings,data){
     const raw=settings&&settings["brain_tier_"+kid];
-    if(raw&&D.TIERS.indexOf(raw)>=0)return raw;
-    const def=D.TIER_DEFAULT[kid];
+    if(raw&&data.TIERS.indexOf(raw)>=0)return raw;
+    const def=data.TIER_DEFAULT[kid];
     return def?def:"mid";
   }
+  function tierFor(kid,settings,override){return tierForIn(kid,settings,cat(override));}
 
-  const api={dseed:dseed,mulberry32:mulberry32,tierFor:tierFor};
+  function eligibleGames(kid,settings,override){
+    const data=cat(override), tier=tierForIn(kid,settings,data);
+    return Object.keys(data.GAMES).filter(function(id){
+      const g=data.GAMES[id];
+      return !!(g&&g.tiers&&g.tiers[tier]);
+    });
+  }
+
+  /* shuffle a copy with the seeded PRNG — never mutates the input */
+  function seededShuffle(list,rnd){
+    const out=list.slice();
+    for(let i=out.length-1;i>0;i--){
+      const j=Math.floor(rnd()*(i+1));
+      const tmp=out[i]; out[i]=out[j]; out[j]=tmp;
+    }
+    return out;
+  }
+
+  /* Three distinct games, same on every tablet, offline (design.md §6).
+     Pass one: take a game only if its skill tag is new, so a day is never
+     three arithmetic games. Pass two: fill any shortfall, tags may repeat. */
+  function dailyThree(kid,dateStr,settings,override){
+    const data=cat(override);
+    const pool=eligibleGames(kid,settings,override);
+    if(pool.length<=3)return pool;
+    const order=seededShuffle(pool,mulberry32(dseed("brain"+dateStr+kid)));
+    const picked=[], seen={};
+    for(const id of order){
+      if(picked.length===3)break;
+      const skill=data.GAMES[id].skill;
+      if(seen[skill])continue;
+      seen[skill]=true; picked.push(id);
+    }
+    for(const id of order){
+      if(picked.length===3)break;
+      if(picked.indexOf(id)<0)picked.push(id);
+    }
+    return picked;
+  }
+
+  const api={dseed:dseed,mulberry32:mulberry32,tierFor:tierFor,
+    eligibleGames:eligibleGames,dailyThree:dailyThree,seededShuffle:seededShuffle};
   if(typeof window!=="undefined")window.SQBrainCore=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();
