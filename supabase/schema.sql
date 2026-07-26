@@ -92,6 +92,13 @@ alter table vocab_mastery enable row level security;
 alter table game_stats    enable row level security;
 
 -- read for everyone (family app: URL is the perimeter, PIN is the lock)
+drop policy if exists "read kids"    on kids;
+drop policy if exists "read ticks"   on day_ticks;
+drop policy if exists "read rolls"   on day_rolls;
+drop policy if exists "read ledger"  on stars_ledger;
+drop policy if exists "read acts"    on act_done;
+drop policy if exists "read vocab"   on vocab_mastery;
+drop policy if exists "read stats"   on game_stats;
 create policy "read kids"    on kids          for select using (true);
 create policy "read ticks"   on day_ticks     for select using (true);
 create policy "read rolls"   on day_rolls     for select using (true);
@@ -101,6 +108,13 @@ create policy "read vocab"   on vocab_mastery for select using (true);
 create policy "read stats"   on game_stats    for select using (true);
 
 -- kid-device writes (anon): only 'app' source, small positive deltas
+drop policy if exists "kid tick"   on day_ticks;
+drop policy if exists "kid untick" on day_ticks;
+drop policy if exists "kid roll"   on day_rolls;
+drop policy if exists "kid star"   on stars_ledger;
+drop policy if exists "kid act"    on act_done;
+drop policy if exists "kid vocab"  on vocab_mastery;
+drop policy if exists "kid stats"  on game_stats;
 create policy "kid tick"   on day_ticks    for insert with check (true);
 create policy "kid untick" on day_ticks    for delete using (true);
 create policy "kid roll"   on day_rolls    for all    using (true) with check (true);
@@ -111,6 +125,9 @@ create policy "kid vocab"  on vocab_mastery for all   using (true) with check (t
 create policy "kid stats"  on game_stats   for all    using (true) with check (true);
 
 -- admin (any authenticated user = Papa's account): full ledger power
+drop policy if exists "admin star" on stars_ledger;
+drop policy if exists "admin fix"  on stars_ledger;
+drop policy if exists "admin pins" on kids;
 create policy "admin star" on stars_ledger for insert to authenticated
   with check (source = 'admin');
 create policy "admin fix"  on stars_ledger for delete to authenticated using (true);
@@ -235,6 +252,22 @@ alter table photos     enable row level security;
 alter table search_log enable row level security;
 alter table help_claims enable row level security;
 
+drop policy if exists "read notes"   on papa_notes;
+drop policy if exists "admin notes"  on papa_notes;
+drop policy if exists "read asks"    on asks;
+drop policy if exists "kid ask"      on asks;
+drop policy if exists "admin answer" on asks;
+drop policy if exists "read passes"  on passes;
+drop policy if exists "kid request"  on passes;
+drop policy if exists "kid spend"    on passes;
+drop policy if exists "admin passes" on passes;
+drop policy if exists "read photos"  on photos;
+drop policy if exists "kid photo"    on photos;
+drop policy if exists "read search"  on search_log;
+drop policy if exists "kid search"   on search_log;
+drop policy if exists "read help claims"  on help_claims;
+drop policy if exists "kid help claim"    on help_claims;
+drop policy if exists "admin help claims" on help_claims;
 create policy "read notes"   on papa_notes for select using (true);
 create policy "admin notes"  on papa_notes for all to authenticated using (true) with check (true);
 create policy "read asks"    on asks   for select using (true);
