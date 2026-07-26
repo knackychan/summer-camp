@@ -489,7 +489,7 @@ git commit -m "feat(brain): add Sign Finder and Color Words"
 - Modify: `js/brain-data.js`
 - Test: `scripts/core.test.mjs`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 test("Number Cruncher's answer equals the real count in the field", () => {
@@ -542,12 +542,12 @@ test("Change Maker tot compares two coins and names the bigger one", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test scripts/core.test.mjs`
 Expected: FAIL — `unknown brain game: crunch`
 
-- [ ] **Step 3: Implement in `js/brain-data.js`**
+- [x] **Step 3: Implement in `js/brain-data.js`**
 
 ```js
   /* ---- 5. Number Cruncher 數一數 ---- */
@@ -655,12 +655,12 @@ Add to `GAMES`:
     },
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `node --test scripts/core.test.mjs && node scripts/check.mjs`
 Expected: PASS both.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add js/brain-data.js scripts/core.test.mjs

@@ -436,3 +436,52 @@ test("Color Words tot uses swatches and never a written word", () => {
     assert.ok(item.say && item.say[0] && item.say[1]);
   }
 });
+
+test("Number Cruncher's answer equals the real count in the field", () => {
+  const rnd = SQBrainCore.mulberry32(7);
+  for (const tier of ["tot", "mid", "hard"]) {
+    const round = SQBrainCore.buildRound("crunch", tier, rnd);
+    for (const item of round.items) {
+      const actual = item.prompt.glyphs.filter((g) => g === item.prompt.target).length;
+      assert.equal(Number(item.answer), actual);
+      assert.ok(actual >= 1, "never ask for a count of zero");
+    }
+  }
+});
+
+test("Time Lapse answers are valid 12-hour clock strings", () => {
+  const rnd = SQBrainCore.mulberry32(13);
+  for (const tier of ["tot", "mid", "hard"]) {
+    const round = SQBrainCore.buildRound("clock", tier, rnd);
+    for (const item of round.items) {
+      assert.match(item.answer, /^([1-9]|1[0-2]):[0-5][0-9]$/);
+      assert.ok(item.prompt.h >= 1 && item.prompt.h <= 12);
+      assert.ok(item.prompt.m >= 0 && item.prompt.m <= 59);
+      assert.ok(item.choices.indexOf(item.answer) >= 0);
+    }
+  }
+});
+
+test("Time Lapse tot only shows whole hours", () => {
+  const round = SQBrainCore.buildRound("clock", "tot", SQBrainCore.mulberry32(2));
+  for (const item of round.items) assert.equal(item.prompt.m, 0);
+});
+
+test("Change Maker never asks for negative change", () => {
+  const rnd = SQBrainCore.mulberry32(17);
+  for (const tier of ["mid", "hard"]) {
+    const round = SQBrainCore.buildRound("change", tier, rnd);
+    for (const item of round.items) {
+      assert.ok(item.prompt.paid > item.prompt.price);
+      assert.equal(Number(item.answer), item.prompt.paid - item.prompt.price);
+    }
+  }
+});
+
+test("Change Maker tot compares two coins and names the bigger one", () => {
+  const round = SQBrainCore.buildRound("change", "tot", SQBrainCore.mulberry32(4));
+  for (const item of round.items) {
+    assert.equal(item.choices.length, 2);
+    assert.equal(item.answer, String(Math.max(Number(item.choices[0]), Number(item.choices[1]))));
+  }
+});

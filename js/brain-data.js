@@ -124,6 +124,78 @@
     };
   }
 
+  /* ---- 5. Number Cruncher 數一數 ---- */
+  const CRUNCH_ANIMALS=["🐶","🐱","🐟","🐦","🐸","🐝"];
+  function crunchItem(rnd,total,digits){
+    const set=digits?["0","1","2","3","4","5","6","7","8","9"]:CRUNCH_ANIMALS;
+    const target=pick(rnd,set);
+    const count=intBetween(rnd,2,Math.max(3,Math.floor(total/4)));
+    const others=set.filter(function(g){return g!==target;});
+    const glyphs=[];
+    for(let i=0;i<count;i++)glyphs.push(target);
+    while(glyphs.length<total)glyphs.push(pick(rnd,others));
+    return {
+      prompt:{type:"countfield",glyphs:shuffleWith(rnd,glyphs),target:target,
+        en:"How many "+target+" ?",zh:"有幾個 "+target+" ？"},
+      say:["How many do you count?","數數看有幾個？"],
+      answer:String(count),
+      choices:numChoices(rnd,count,4,2)
+    };
+  }
+
+  /* ---- 6. Time Lapse 時鐘 ---- */
+  function hhmm(h,m){h=((h-1)%12+12)%12+1;return h+":"+(m<10?"0":"")+m;}
+  function clockItem(rnd,step,addMin){
+    const h=intBetween(rnd,1,12), m=step===0?0:intBetween(rnd,0,Math.floor(59/step))*step;
+    const total=h*60+m+addMin;
+    const ah=Math.floor(total/60), am=total%60;
+    const answer=hhmm(ah,am);
+    const wrong=[hhmm(ah+1,am),hhmm(ah,(am+15)%60),hhmm(ah-1,am),hhmm(ah,(am+30)%60)]
+      .filter(function(v){return v!==answer;});
+    return {
+      prompt:{type:"clockface",h:h,m:m,
+        en:addMin?"What time in "+addMin+" minutes?":"What time is it?",
+        zh:addMin?addMin+"分鐘後是幾點？":"現在幾點？"},
+      say:[addMin?"What time in "+addMin+" minutes?":"What time is it?",
+        addMin?addMin+"分鐘後是幾點？":"現在幾點？"],
+      answer:answer,
+      choices:shuffleWith(rnd,[answer].concat(shuffleWith(rnd,wrong).slice(0,3)))
+    };
+  }
+
+  /* ---- 7. Change Maker 找零錢 (NT$) ---- */
+  const COINS=[1,5,10,50];
+  const NOTES=[100,500];
+  function moneyArt(n){
+    /* a readable pile: notes then coins, biggest first */
+    let left=n, out=[];
+    NOTES.concat(COINS).sort(function(a,b){return b-a;}).forEach(function(v){
+      while(left>=v){out.push(v>=100?"💵"+v:"🪙"+v);left-=v;}
+    });
+    return out.join(" ");
+  }
+  function changeTot(rnd){
+    let a=pick(rnd,COINS), b=pick(rnd,COINS);
+    while(b===a)b=pick(rnd,COINS);
+    const big=Math.max(a,b);
+    return {
+      prompt:{type:"money",art:"🪙"+a+"   🪙"+b,
+        en:"Which is worth more?",zh:"哪個比較多錢？"},
+      say:["Which is worth more?","哪個比較多錢？"],
+      answer:String(big), choices:shuffleWith(rnd,[String(a),String(b)])
+    };
+  }
+  function changeItem(rnd,maxPrice,payOptions){
+    const price=intBetween(rnd,3,maxPrice);
+    const paid=pick(rnd,payOptions.filter(function(p){return p>price;}));
+    return {
+      prompt:{type:"money",price:price,paid:paid,art:moneyArt(paid),
+        en:"It costs NT$"+price+". You pay NT$"+paid+". Change?",
+        zh:"東西 NT$"+price+"，你付 NT$"+paid+"，找多少？"},
+      answer:String(paid-price)
+    };
+  }
+
   const GAMES={
     calc:{
       id:"calc", icon:"➕", skill:"math",
@@ -151,6 +223,33 @@
         tot :{items:10,clock:false,pad:"choice",gen:stroopTot},
         mid :{items:20,clock:true, pad:"choice",gen:function(r){return stroopWord(r,false);}},
         hard:{items:20,clock:true, pad:"choice",gen:function(r){return stroopWord(r,r()<0.5);}}
+      }
+    },
+    crunch:{
+      id:"crunch", icon:"🔍", skill:"attention",
+      title:["Number Cruncher","數一數"], blurb:["Count them fast","快快數一數"],
+      tiers:{
+        tot :{items:8, clock:false,pad:"choice",gen:function(r){return crunchItem(r,8,false);}},
+        mid :{items:10,clock:true, pad:"keypad",gen:function(r){return crunchItem(r,30,true);}},
+        hard:{items:10,clock:true, pad:"keypad",gen:function(r){return crunchItem(r,60,true);}}
+      }
+    },
+    clock:{
+      id:"clock", icon:"🕐", skill:"logic",
+      title:["Time Lapse","時鐘"], blurb:["Read the clock","看時鐘"],
+      tiers:{
+        tot :{items:8, clock:false,pad:"choice",gen:function(r){return clockItem(r,0,0);}},
+        mid :{items:10,clock:true, pad:"choice",gen:function(r){return clockItem(r,5,0);}},
+        hard:{items:10,clock:true, pad:"choice",gen:function(r){return clockItem(r,5,pick(r,[20,40,45,90]));}}
+      }
+    },
+    change:{
+      id:"change", icon:"💱", skill:"money",
+      title:["Change Maker","找零錢"], blurb:["Count the change","算找零"],
+      tiers:{
+        tot :{items:8, clock:false,pad:"choice",gen:changeTot},
+        mid :{items:10,clock:true, pad:"keypad",gen:function(r){return changeItem(r,45,[50,100]);}},
+        hard:{items:10,clock:true, pad:"keypad",gen:function(r){return changeItem(r,480,[500,1000]);}}
       }
     }
   };
