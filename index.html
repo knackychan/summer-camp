@@ -149,7 +149,7 @@ body{
 @media(prefers-reduced-motion:reduce){.orc .fig{animation:none}}
 
 /* ---------- CITY DRIVE ---------- */
-.cd-wrap{position:relative;height:min(52vh,430px);border-radius:16px;overflow:hidden;
+.cd-wrap{position:relative;width:100%;height:min(52vh,430px);border-radius:16px;overflow:hidden;
   border:2px solid var(--line);margin-top:6px;touch-action:none}
 .cd-wrap canvas{position:absolute;inset:0;width:100%;height:100%}
 .cd-prompt{position:absolute;top:6px;left:50%;transform:translateX(-50%);max-width:92%;
@@ -1537,7 +1537,139 @@ function machinesInput(ch){
 }
 
 /* ---- MODE: CITY DRIVE (free-roam knowledge missions) ---- */
-function initCity(){}
+const CT=48, CITY_W=26, CITY_H=20;
+const CITY_MAP=[
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"RRRRRRRRRRRRRRRRRRRRRRRRRR",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"RRRRRRRRRRRRRRRRRRRRRRRRRR",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGWWWGGGGRGGGGGGGGRGGG",
+"GGGRGGWWWGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"RRRRRRRRRRRRRRRRRRRRRRRRRR",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG",
+"GGGRGGGGGGGGGRGGGGGGGGRGGG"];
+const CITY_TREES=[[8,0],[20,6],[24,7],[1,9],[17,11],[4,18],[11,19]];
+/* 2×2-tile plots; ids match ALL_WORDS entries; door = adjacent road tile */
+const CITY_B=[
+ {id:"school",  em:"🏫", x:5, y:1,  door:[5,3]},
+ {id:"zoo",     em:"🦁", x:15,y:1,  door:[15,3]},
+ {id:"market",  em:"🛒", x:23,y:1,  door:[23,3]},
+ {id:"hospital",em:"🏥", x:5, y:4,  door:[5,3]},
+ {id:"farm",    em:"🚜", x:1, y:4,  door:[3,4]},
+ {id:"park",    em:"🌳", x:11,y:5,  door:[13,5]},
+ {id:"castle",  em:"🏰", x:15,y:8,  door:[15,10]},
+ {id:"church",  em:"⛪", x:9, y:11, door:[9,10]},
+ {id:"hotel",   em:"🏨", x:19,y:11, door:[19,10]},
+ {id:"museum",  em:"🖼️", x:5, y:14, door:[5,16]},
+ {id:"police",  em:"👮", x:23,y:13, door:[22,13]},
+ {id:"h1", em:"🏠", x:9, y:17, door:[9,16],  house:true},
+ {id:"h2", em:"🏠", x:15,y:17, door:[15,16], house:true},
+ {id:"h3", em:"🏠", x:19,y:17, door:[19,16], house:true}];
+const CITY_PLOT=["#e8b04b","#d96f6f","#7fb0e0","#b48ede","#8fcf7a","#e0995f","#c9c9d9"];
+function cityWord(id){
+  for(let i=0;i<ALL_WORDS.length;i++) if(ALL_WORDS[i][0]===id) return ALL_WORDS[i];
+  return [id,"❓","",""];
+}
+function cityTile(px,py){
+  const x=Math.floor(px/CT), y=Math.floor(py/CT);
+  if(x<0||y<0||x>=CITY_W||y>=CITY_H) return "X";
+  for(let i=0;i<CITY_B.length;i++){const b=CITY_B[i];
+    if(x>=b.x&&x<b.x+2&&y>=b.y&&y<b.y+2) return "B";}
+  return CITY_MAP[y].charAt(x);
+}
+function doorXY(b){ return {x:b.door[0]*CT+CT/2, y:b.door[1]*CT+CT/2}; }
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function cityDraw(){
+  const ctx=state.ctx, vw=state.vw, vh=state.vh, car=state.car;
+  const camX=Math.max(0,Math.min(car.x-vw/2,CITY_W*CT-vw));
+  const camY=Math.max(0,Math.min(car.y-vh/2,CITY_H*CT-vh));
+  ctx.save(); ctx.clearRect(0,0,vw,vh); ctx.translate(-camX,-camY);
+  const x0=Math.floor(camX/CT), x1=Math.min(CITY_W-1,Math.ceil((camX+vw)/CT));
+  const y0=Math.floor(camY/CT), y1=Math.min(CITY_H-1,Math.ceil((camY+vh)/CT));
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+    const c=CITY_MAP[y].charAt(x);
+    ctx.fillStyle=c==="R"?"#4c4c58":c==="W"?"#4EA8FF":((x+y)%2?"#57a05a":"#5daa60");
+    ctx.fillRect(x*CT,y*CT,CT,CT);
+    if(c==="R"){
+      ctx.fillStyle="rgba(255,255,255,.55)";
+      if(x>0&&x<CITY_W-1&&CITY_MAP[y].charAt(x-1)==="R"&&CITY_MAP[y].charAt(x+1)==="R")
+        ctx.fillRect(x*CT+8,y*CT+CT/2-1,CT-16,2);
+      if(y>0&&y<CITY_H-1&&CITY_MAP[y-1].charAt(x)==="R"&&CITY_MAP[y+1].charAt(x)==="R")
+        ctx.fillRect(x*CT+CT/2-1,y*CT+8,2,CT-16);
+    }
+  }
+  ctx.font="28px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  CITY_TREES.forEach(t=>ctx.fillText("🌳",t[0]*CT+CT/2,t[1]*CT+CT/2));
+  CITY_B.forEach((b,i)=>{
+    ctx.fillStyle=CITY_PLOT[i%CITY_PLOT.length];
+    rr(ctx,b.x*CT+3,b.y*CT+3,CT*2-6,CT*2-6,10); ctx.fill();
+    ctx.font="40px serif"; ctx.fillText(b.em,b.x*CT+CT,b.y*CT+CT);
+    if(state.signs&&state.signs[b.id]!=null){
+      ctx.fillStyle="#fff"; rr(ctx,b.x*CT+CT-22,b.y*CT-14,44,24,6); ctx.fill();
+      ctx.fillStyle="#1c1436"; ctx.font="700 15px Fredoka,sans-serif";
+      ctx.fillText(String(state.signs[b.id]),b.x*CT+CT,b.y*CT-2);
+    }
+  });
+  const m=state.m;
+  if(m&&!m.done){
+    const goal=(m.kind==="taxi"&&!m.picked)?m.pickup:m.target;
+    if(goal){
+      const d=doorXY(goal), pulse=6+4*Math.sin(performance.now()/220);
+      ctx.strokeStyle="#FFC93C"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(d.x,d.y,20+pulse,0,Math.PI*2); ctx.stroke();
+      ctx.font="26px serif"; ctx.fillText("📍",d.x,d.y-34-pulse);
+    }
+    if(m.kind==="taxi"&&!m.picked){const d=doorXY(m.pickup);ctx.font="26px serif";ctx.fillText("🙋",d.x+18,d.y-14);}
+    if(m.kind==="letters") m.spots.forEach((s,i)=>{
+      if(i<m.i) return;
+      ctx.globalAlpha=i===m.i?1:.35;
+      ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(s.x,s.y,16,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#1c1436"; ctx.font="700 18px Fredoka,sans-serif"; ctx.fillText(s.ch,s.x,s.y+1);
+      ctx.globalAlpha=1;
+    });
+  }
+  ctx.save(); ctx.translate(car.x,car.y); ctx.rotate(car.h);
+  ctx.fillStyle=KIDS[kid].raw; rr(ctx,-17,-10,34,20,6); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.75)"; rr(ctx,-4,-7,12,14,3); ctx.fill();
+  ctx.fillStyle="#222"; ctx.fillRect(-14,-13,10,4); ctx.fillRect(4,-13,10,4);
+  ctx.fillRect(-14,9,10,4); ctx.fillRect(4,9,10,4);
+  ctx.restore(); ctx.restore();
+}
+function initCity(){
+  state={score:0,mn:0,m:null,signs:null,running:true,raf:null,timer:null,
+    keys:{l:false,r:false,g:false},
+    car:{x:13*CT+CT/2,y:10*CT+CT/2,h:0,v:0}};
+  document.getElementById("stage").innerHTML=
+    `<div class="cd-wrap" id="cdWrap">
+       <canvas id="cityCv"></canvas>
+       <div class="cd-prompt" id="cdPrompt"></div>
+       <div class="cd-btn cd-l" id="cdL">◀</div>
+       <div class="cd-btn cd-r" id="cdR">▶</div>
+       <div class="cd-btn cd-gas" id="cdGas">⚡</div>
+     </div>
+     <div class="msg" id="msg"></div>`;
+  const wrap=document.getElementById("cdWrap"), cv=document.getElementById("cityCv");
+  const dpr=window.devicePixelRatio||1;
+  state.vw=wrap.clientWidth; state.vh=wrap.clientHeight;
+  cv.width=state.vw*dpr; cv.height=state.vh*dpr;
+  state.ctx=cv.getContext("2d"); state.ctx.scale(dpr,dpr);
+  cityDraw();
+}
 
 /* ---- MODE: WORD WIZARD (vocab) ---- */
 const vLevel=()=>settings.vocab.levels[kid]||"copy";
