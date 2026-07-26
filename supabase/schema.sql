@@ -117,6 +117,23 @@ create policy "admin fix"  on stars_ledger for delete to authenticated using (tr
 create policy "admin pins" on kids         for update to authenticated using (true);
 
 -- Realtime: enable on day_ticks + stars_ledger in Dashboard → Database → Replication
+do $$
+begin
+  alter publication supabase_realtime add table day_ticks;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table stars_ledger;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table asks;
+exception when duplicate_object then null;
+end $$;
 
 
 -- ============================================================
@@ -199,3 +216,35 @@ create policy "kid search"   on search_log for insert with check (true);
 -- Storage: create buckets 'voices' and 'proofs' (public read, anon insert) in Dashboard.
 -- Push for urgent asks: Edge Function on asks INSERT where kind='urgent'
 -- → POST to ntfy.sh/<family-topic> (or a Telegram bot). Free, no app needed.
+
+-- P1 storage for ask-channel voice memos.
+insert into storage.buckets (id, name, public)
+values ('voices', 'voices', true)
+on conflict (id) do update set public = true;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'voices public read'
+  ) then
+    create policy "voices public read" on storage.objects
+      for select using (bucket_id = 'voices');
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'voices anon insert'
+  ) then
+    create policy "voices anon insert" on storage.objects
+      for insert to anon with check (bucket_id = 'voices');
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'voices auth insert'
+  ) then
+    create policy "voices auth insert" on storage.objects
+      for insert to authenticated with check (bucket_id = 'voices');
+  end if;
+end $$;

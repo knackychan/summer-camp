@@ -279,7 +279,30 @@
       this.enqueue({type:"stat",kid,stat,value});
       await this.flush();
     }
-    onStars(){ return ()=>{}; }
+    async createAsk(kid,kind,body,audioBlob){
+      if(!this.supabase) return {error:new Error("Sync is offline")};
+      let audio_path=null;
+      if(audioBlob){
+        audio_path=`asks/${kid}-${Date.now()}.webm`;
+        const up=await this.supabase.storage.from("voices").upload(audio_path,audioBlob,{contentType:"audio/webm",upsert:false});
+        if(up.error) return up;
+      }
+      return this.supabase.from("asks").insert({kid_id:kid,kind,body:body||null,audio_path});
+    }
+    onStars(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`stars-${Date.now()}`)
+        .on("postgres_changes",{event:"INSERT",schema:"public",table:"stars_ledger"},p=>cb(p.new))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
+    onAsks(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`asks-${Date.now()}`)
+        .on("postgres_changes",{event:"*",schema:"public",table:"asks"},p=>cb(p.new||p.old))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
   }
 
   window.SyncStore=SyncStore;

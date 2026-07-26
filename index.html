@@ -271,6 +271,14 @@ button:disabled{cursor:default}
 .screenflag.locked{color:#B7B9D6}
 .notehero{background:rgba(78,168,255,.16);border:2px solid rgba(78,168,255,.35);border-radius:16px;
   padding:12px 14px;margin-bottom:12px;font-weight:800;color:var(--ink);white-space:pre-wrap;text-align:left}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:99px;
+  background:var(--bad);color:white;font-size:12px;font-weight:900;margin-left:4px;padding:0 6px}
+.asklist{display:grid;gap:10px;margin-top:12px}
+.askcard{background:rgba(0,0,0,.2);border:2px solid var(--line);border-radius:16px;padding:12px;text-align:left}
+.askcard.open{border-color:var(--gold)}
+.askcard.answered{border-color:var(--ok)}
+.askmeta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-weight:800;font-size:12px}
+.askaudio{width:100%;max-width:320px;margin-top:8px}
 .dayrow .dbtns{display:flex;flex-direction:column;gap:6px}
 .dayrow .btn.tick{padding:8px 12px;font-size:15px}
 .dayrow.mission{border-left:5px solid var(--gold)}
@@ -329,6 +337,7 @@ button:disabled{cursor:default}
       <button class="chip" data-t="games">🎮 Games 遊戲</button>
       <button class="chip" data-t="acts">🏕️ Activities 活動</button>
       <button class="chip" data-t="learn">🧭 Learn 學習</button>
+      <button class="chip" data-t="ask">💬 Ask 求助<span class="badge hidden" id="askBadge">0</span></button>
     </div>
     <div id="tab-day">
       <div class="dayprog"><div class="dayfill" id="dayFill"></div><span id="dayTxt"></span></div>
@@ -359,6 +368,23 @@ button:disabled{cursor:default}
         <h3>✨ Magic search words <span class="zhs" style="font-size:14px">神奇搜尋字</span></h3>
         <div class="kidtabs" id="magicWords"></div>
       </div>
+    </div>
+    <div id="tab-ask" class="hidden">
+      <div class="bigcard">
+        <h3>💬 Ask Papa <span class="zhs" style="font-size:14px">問爸爸或求助</span></h3>
+        <div class="kidtabs" id="askCanned"></div>
+        <input class="qinput" id="askText" placeholder="Type your question 輸入你的問題" maxlength="180">
+        <div class="vrow">
+          <button class="btn" id="askSend">Send question 送出問題</button>
+          <button class="btn small" id="askUrgent">Urgent 緊急</button>
+        </div>
+        <div class="vrow">
+          <button class="btn small" id="askRec">🎙️ Record voice 錄語音</button>
+          <button class="btn small" id="askStop" disabled>Stop 停止</button>
+        </div>
+        <div class="tipline" id="askStatus">Papa will see this in the admin inbox · 爸爸會在管理頁看到</div>
+      </div>
+      <div class="asklist" id="askList"></div>
     </div>
   </section>
 
@@ -1931,8 +1957,10 @@ function renderHub(){
   document.getElementById("tab-games").classList.toggle("hidden",hubTab!=="games");
   document.getElementById("tab-acts").classList.toggle("hidden",hubTab!=="acts");
   document.getElementById("tab-learn").classList.toggle("hidden",hubTab!=="learn");
+  document.getElementById("tab-ask").classList.toggle("hidden",hubTab!=="ask");
   if(hubTab==="learn") renderLearn();
   if(hubTab==="day") renderMyDay();
+  if(hubTab==="ask") renderAsk();
   /* games — the kid's own game first */
   const order=[k.level,...Object.keys(LEVELS).filter(l=>l!==k.level)];
   document.getElementById("gameRow").innerHTML=order.map(l=>
@@ -1950,6 +1978,7 @@ function renderHub(){
       <p>${b[hubKid]}<span class="zhs">${b.z[hubKid]}</span></p></button>`).join("");
   document.querySelectorAll("#actGrid .actcard").forEach(c=>
     c.onclick=()=>openAct(+c.dataset.i));
+  updateAskBadge();
 }
 function openAct(i){
   actIdx=i; showOnly("act"); renderAct();
@@ -2104,6 +2133,123 @@ function openLearn(key){
   };
 }
 
+/* ============ ASK TAB ============ */
+const ASK_CANNED=[
+  ["I am stuck","我卡住了"],
+  ["Please call me","請打電話給我"],
+  ["Can you help after lunch?","午餐後可以幫我嗎？"],
+  ["I feel sick","我不舒服"],
+  ["I finished and need a check","我完成了，需要檢查"]
+];
+let askRows=[], askRecorder=null, askChunks=[];
+const escHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+function askSeenKey(id){return `sq:askSeen:${id}`;}
+function askAudioUrl(path){return store&&store.supabase&&path?store.supabase.storage.from("voices").getPublicUrl(path).data.publicUrl:"";}
+async function fetchAsks(id){
+  if(!store||!store.supabase) return [];
+  const {data}=await store.supabase.from("asks").select("*").eq("kid_id",id).order("created_at",{ascending:false}).limit(20);
+  return data||[];
+}
+async function updateAskBadge(){
+  if(!hubKid||!store||!store.supabase)return;
+  const rows=await fetchAsks(hubKid);
+  const seen=localStorage.getItem(askSeenKey(hubKid))||"";
+  const count=rows.filter(a=>a.answered_at&&a.answered_at>seen).length;
+  const badge=document.getElementById("askBadge");
+  if(!badge)return;
+  badge.textContent=count;
+  badge.classList.toggle("hidden",count===0);
+}
+async function renderAsk(){
+  const status=document.getElementById("askStatus");
+  const canned=document.getElementById("askCanned");
+  canned.innerHTML=ASK_CANNED.map(([en,zh],i)=>
+    `<button class="chip" data-canned="${i}">${en}<span class="zhs" style="display:inline">${zh}</span></button>`).join("");
+  canned.querySelectorAll("[data-canned]").forEach(b=>b.onclick=()=>{
+    const [en,zh]=ASK_CANNED[+b.dataset.canned];
+    sendAsk("canned",`${en} / ${zh}`);
+  });
+  document.getElementById("askSend").onclick=()=>sendAsk("question",document.getElementById("askText").value.trim());
+  document.getElementById("askUrgent").onclick=()=>sendAsk("urgent",document.getElementById("askText").value.trim());
+  document.getElementById("askRec").onclick=startAskRecord;
+  document.getElementById("askStop").onclick=stopAskRecord;
+  if(!store||!store.supabase){
+    status.textContent="Sync is not configured yet · 尚未設定同步";
+    document.getElementById("askList").innerHTML="";
+    return;
+  }
+  askRows=await fetchAsks(hubKid);
+  localStorage.setItem(askSeenKey(hubKid),new Date().toISOString());
+  updateAskBadge();
+  document.getElementById("askList").innerHTML=askRows.map(a=>`
+    <article class="askcard ${a.answered_at?'answered':'open'}">
+      <div class="askmeta">
+        <span>${a.kind==="urgent"?"Urgent 緊急":a.kind==="canned"?"Quick ask 快速求助":"Question 問題"}</span>
+        <span>${new Date(a.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>
+        <span>${a.answered_at?"Answered 已回覆":"Waiting 等爸爸"}</span>
+      </div>
+      <p>${escHtml(a.body||"Voice memo 語音訊息")}</p>
+      ${a.audio_path?`<audio class="askaudio" controls src="${askAudioUrl(a.audio_path)}"></audio>`:""}
+      ${a.answer?`<p class="ok"><b>Papa 爸爸:</b> ${escHtml(a.answer)}</p>`:""}
+      ${a.answer_audio_path?`<audio class="askaudio" controls src="${askAudioUrl(a.answer_audio_path)}"></audio>`:""}
+    </article>`).join("")||`<div class="tipline">No asks yet · 還沒有求助</div>`;
+}
+async function sendAsk(kind,body){
+  const status=document.getElementById("askStatus");
+  if(!store||!store.supabase){sBad();status.textContent="Sync is not ready · 同步還沒準備好";return;}
+  const audioBlob=askChunks.length?new Blob(askChunks,{type:"audio/webm"}):null;
+  if(!body&&!audioBlob){sBad();document.getElementById("askText").focus();return;}
+  status.textContent="Sending 送出中...";
+  const {error}=await store.createAsk(hubKid,kind,body,audioBlob);
+  if(error){sBad();status.textContent=error.message;return;}
+  if(kind==="urgent") pingNtfy(body||`${KIDS[hubKid].name} sent a voice memo 語音訊息`);
+  askChunks=[]; document.getElementById("askText").value="";
+  status.textContent="Sent 已送出";
+  sGood(); await renderAsk();
+}
+async function pingNtfy(body){
+  const topic=window.SQ_CONFIG&&SQ_CONFIG.NTFY_TOPIC;
+  if(!topic)return;
+  try{await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`,{method:"POST",mode:"no-cors",
+    body:`Summer Quest urgent ask from ${KIDS[hubKid].name}: ${body}`});}catch(e){}
+}
+async function startAskRecord(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    askChunks=[];
+    askRecorder=new MediaRecorder(stream);
+    askRecorder.ondataavailable=e=>{if(e.data.size)askChunks.push(e.data);};
+    askRecorder.onstop=()=>stream.getTracks().forEach(t=>t.stop());
+    askRecorder.start();
+    document.getElementById("askRec").disabled=true;
+    document.getElementById("askStop").disabled=false;
+    document.getElementById("askStatus").textContent="Recording 錄音中";
+  }catch(e){
+    sBad(); document.getElementById("askStatus").textContent="Microphone is not available · 麥克風不能使用";
+  }
+}
+function stopAskRecord(){
+  if(!askRecorder)return;
+  askRecorder.stop(); askRecorder=null;
+  document.getElementById("askRec").disabled=false;
+  document.getElementById("askStop").disabled=true;
+  document.getElementById("askStatus").textContent="Voice ready 語音準備好了";
+}
+function setupRealtime(){
+  if(!store)return;
+  store.onStars(row=>{
+    if(!row||row.source!=="admin")return;
+    if(progress[row.kid_id]) progress[row.kid_id].stars=(progress[row.kid_id].stars||0)+(row.delta||0);
+    if(row.kid_id===(hubKid||kid)){bigFloat("🌟");sWin();}
+    if(hubKid)renderHubHead(); else renderHome();
+  });
+  store.onAsks(row=>{
+    if(!row||row.kid_id!==hubKid)return;
+    updateAskBadge();
+    if(hubTab==="ask")renderAsk();
+  });
+}
+
 /* ============ BOOT ============ */
-(async()=>{ await loadProgress(); renderHome(); startTimelineWatcher(); })();
+(async()=>{ await loadProgress(); renderHome(); setupRealtime(); startTimelineWatcher(); })();
 </script>

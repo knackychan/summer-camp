@@ -1,0 +1,239 @@
+(function(){
+  const CDN="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+  const KIDS={
+    lucien:{name:"Lucien",color:"#3DDC97"},
+    lili:{name:"Lili",color:"#FF6FB5"},
+    luis:{name:"Luis",color:"#4EA8FF"}
+  };
+  const DAY=[
+    ["8:00","Wake up","起床"],["8:15","Breakfast","早餐"],["8:45","Skill block","技能時間"],
+    ["9:30","Reading","閱讀"],["10:00","Create & build","創作與建造"],["11:15","Screen #1","螢幕#1"],
+    ["12:00","Lunch","午餐"],["12:45","Quiet hour","安靜時間"],["14:00","Project time","專題時間"],
+    ["15:45","Screen #2","螢幕#2"],["16:30","Free invent game","自由發明遊戲"],["17:15","Sport & move","運動時間"],
+    ["18:00","Tidy patrol","整理巡邏"],["18:30","Dinner","晚餐"],["19:30","Bath and bed","洗澡睡覺"],["✨","Photo mission","照片任務"]
+  ];
+
+  let client=null, session=null, today="", tomorrow="";
+  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[]};
+  let answerRecord=null, answerChunks=[], answerAskId=null;
+
+  const $=id=>document.getElementById(id);
+  const show=(id,on)=>$(id).classList.toggle("hidden",!on);
+  const kidName=id=>KIDS[id]?KIDS[id].name:id;
+  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  const fmt=ts=>new Date(ts).toLocaleString([],{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
+
+  function loadScript(src){
+    return new Promise((resolve,reject)=>{
+      const s=document.createElement("script");
+      s.src=src; s.onload=resolve; s.onerror=reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  function dayISO(offset=0){
+    const d=new Date(Date.now()+offset*86400000);
+    const p=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Taipei",year:"numeric",month:"2-digit",day:"2-digit"})
+      .formatToParts(d).reduce((a,x)=>(a[x.type]=x.value,a),{});
+    return `${p.year}-${p.month}-${p.day}`;
+  }
+
+  async function init(){
+    if(!window.SQ_CONFIG||!SQ_CONFIG.SUPABASE_URL||!SQ_CONFIG.SUPABASE_ANON_KEY) return;
+    show("configState",false);
+    await loadScript(CDN);
+    client=supabase.createClient(SQ_CONFIG.SUPABASE_URL,SQ_CONFIG.SUPABASE_ANON_KEY);
+    const res=await client.auth.getSession();
+    session=res.data.session;
+    if(session) openDashboard(); else show("login",true);
+  }
+
+  async function openDashboard(){
+    show("login",false); show("dash",true); show("logoutBtn",true);
+    today=dayISO(0); tomorrow=dayISO(1);
+    $("todayLabel").textContent=`Today 今天 ${today}`;
+    $("noteDay").textContent=`Tomorrow 明天 ${tomorrow}`;
+    await loadAll();
+    subscribeRealtime();
+  }
+
+  async function loadAll(){
+    const [ticks,totals,stats,ledger,asks,note]=await Promise.all([
+      client.from("day_ticks").select("*").eq("day",today),
+      client.from("star_totals").select("*"),
+      client.from("game_stats").select("*").eq("stat","missions"),
+      client.from("stars_ledger").select("*").order("created_at",{ascending:false}).limit(30),
+      client.from("asks").select("*").order("created_at",{ascending:false}).limit(40),
+      client.from("papa_notes").select("body").eq("day",tomorrow).maybeSingle()
+    ]);
+    rows={ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[]};
+    $("noteBody").value=note.data&&note.data.body?note.data.body:"";
+    renderAll();
+  }
+
+  function renderAll(){
+    renderOverview();
+    renderGrants();
+    renderLedger();
+    renderAsks();
+  }
+
+  function renderOverview(){
+    $("overview").innerHTML=Object.entries(KIDS).map(([id,k])=>{
+      const done=new Set(rows.ticks.filter(t=>t.kid_id===id).map(t=>t.block_idx));
+      const stars=(rows.totals.find(t=>t.kid_id===id)||{}).stars||0;
+      const missions=(rows.stats.find(s=>s.kid_id===id)||{}).value||0;
+      return `<article class="kid-card" style="border-left-color:${k.color}">
+        <h2 class="card-title">${k.name}</h2>
+        <p><span class="gold">${stars}</span> stars 星星 · ${missions} photo missions 照片任務</p>
+        <div class="progress"><div class="progress__fill" style="width:${done.size/DAY.length*100}%;background:${k.color}"></div></div>
+        <h3>${done.size}/${DAY.length} blocks 格子</h3>
+        <div class="blocks">${DAY.map((b,i)=>`<div class="block-row">
+          <span>${b[0]}</span><b class="${done.has(i)?"ok":"muted"}">${done.has(i)?"✓":"-"}</b>
+          <span>${b[1]}<br><span class="muted">${b[2]}</span></span>
+        </div>`).join("")}</div>
+      </article>`;
+    }).join("");
+  }
+
+  function renderGrants(){
+    $("grants").innerHTML=Object.entries(KIDS).map(([id,k])=>`
+      <article class="kid-card" style="border-left-color:${k.color}">
+        <h3>${k.name}</h3>
+        <label class="field"><span>Reason 原因</span><input class="input" id="reason-${id}" placeholder="helped Lucien 幫Lucien"></label>
+        <div class="row">
+          <button class="btn" data-grant="${id}" data-delta="1">+1</button>
+          <button class="btn" data-grant="${id}" data-delta="2">+2</button>
+          <button class="btn" data-grant="${id}" data-delta="3">+3</button>
+        </div>
+        <div class="row">
+          <input class="input" id="custom-${id}" type="number" min="1" max="10" value="1">
+          <button class="btn btn--secondary" data-custom="${id}">Custom 自訂</button>
+        </div>
+      </article>`).join("");
+    document.querySelectorAll("[data-grant]").forEach(b=>b.onclick=()=>grantStars(b.dataset.grant,+b.dataset.delta));
+    document.querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{
+      const id=b.dataset.custom;
+      grantStars(id,+$(`custom-${id}`).value||1);
+    });
+  }
+
+  async function grantStars(kid,delta){
+    const input=$(`reason-${kid}`);
+    const reason=input.value.trim();
+    if(!reason){input.focus();return;}
+    await client.from("stars_ledger").insert({kid_id:kid,delta,reason,source:"admin",granted_by:session.user.id});
+    input.value="";
+    await loadAll();
+  }
+
+  function renderLedger(){
+    $("ledger").innerHTML=`<table class="table"><thead><tr>
+      <th>Time 時間</th><th>Kid 孩子</th><th>Delta 星</th><th>Reason 原因</th><th>Source 來源</th><th></th>
+    </tr></thead><tbody>${rows.ledger.map(r=>`<tr>
+      <td>${fmt(r.created_at)}</td><td>${kidName(r.kid_id)}</td><td>${r.delta>0?"+":""}${r.delta}</td>
+      <td>${esc(r.reason)}</td><td>${esc(r.source)}</td>
+      <td>${r.source==="admin"?`<button class="btn btn--danger" data-delstar="${r.id}">Undo 復原</button>`:""}</td>
+    </tr>`).join("")}</tbody></table>`;
+    document.querySelectorAll("[data-delstar]").forEach(b=>b.onclick=async()=>{
+      await client.from("stars_ledger").delete().eq("id",b.dataset.delstar);
+      await loadAll();
+    });
+  }
+
+  function publicUrl(path){
+    if(!path) return "";
+    return client.storage.from("voices").getPublicUrl(path).data.publicUrl;
+  }
+
+  function renderAsks(){
+    const open=rows.asks.filter(a=>!a.answered_at);
+    const answered=rows.asks.filter(a=>a.answered_at);
+    $("askInbox").innerHTML=[...open,...answered].map(a=>`
+      <article class="ask-card">
+        <div class="row">
+          <b>${kidName(a.kid_id)}</b>
+          <span class="pill">${esc(a.kind)} 類型</span>
+          <span class="pill">${fmt(a.created_at)}</span>
+          ${a.answered_at?`<span class="pill ok">answered 已回覆</span>`:`<span class="pill gold">open 未回覆</span>`}
+        </div>
+        <p>${esc(a.body||"Voice memo 語音訊息")}</p>
+        ${a.audio_path?`<audio class="audio" controls src="${publicUrl(a.audio_path)}"></audio>`:""}
+        ${a.answer?`<p class="ok">Answer 回覆: ${esc(a.answer)}</p>`:""}
+        ${a.answer_audio_path?`<audio class="audio" controls src="${publicUrl(a.answer_audio_path)}"></audio>`:""}
+        ${!a.answered_at?`<label class="field"><span>Answer 回覆</span>
+          <textarea class="input textarea" id="answer-${a.id}" placeholder="I can help after lunch. 午餐後我可以幫你。"></textarea></label>
+          <div class="row">
+            <button class="btn" data-answer="${a.id}">Send answer 送出回覆</button>
+            <button class="btn btn--secondary" data-rec="${a.id}">Record voice 錄語音</button>
+            <button class="btn btn--secondary" data-stop="${a.id}" disabled>Stop 停止</button>
+            <span class="message message--ok" id="recstatus-${a.id}"></span>
+          </div>`:""}
+      </article>`).join("")||`<p>No asks yet. 還沒有求助。</p>`;
+    document.querySelectorAll("[data-answer]").forEach(b=>b.onclick=()=>answerAsk(b.dataset.answer));
+    document.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>startAnswerRecord(b.dataset.rec));
+    document.querySelectorAll("[data-stop]").forEach(b=>b.onclick=()=>stopAnswerRecord(b.dataset.stop));
+  }
+
+  async function startAnswerRecord(id){
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    answerAskId=id; answerChunks=[];
+    answerRecord=new MediaRecorder(stream);
+    answerRecord.ondataavailable=e=>{if(e.data.size) answerChunks.push(e.data);};
+    answerRecord.onstop=()=>stream.getTracks().forEach(t=>t.stop());
+    answerRecord.start();
+    document.querySelector(`[data-rec="${id}"]`).disabled=true;
+    document.querySelector(`[data-stop="${id}"]`).disabled=false;
+    $(`recstatus-${id}`).textContent="Recording 錄音中";
+  }
+
+  function stopAnswerRecord(id){
+    if(answerRecord&&answerAskId===id){
+      answerRecord.stop();
+      $(`recstatus-${id}`).textContent="Ready 準備好了";
+    }
+  }
+
+  async function answerAsk(id){
+    const body=$(`answer-${id}`).value.trim();
+    let answer_audio_path=null;
+    if(answerAskId===id&&answerChunks.length){
+      const blob=new Blob(answerChunks,{type:"audio/webm"});
+      answer_audio_path=`answers/${id}-${Date.now()}.webm`;
+      await client.storage.from("voices").upload(answer_audio_path,blob,{contentType:"audio/webm",upsert:false});
+      answerAskId=null; answerChunks=[];
+    }
+    if(!body&&!answer_audio_path){$(`answer-${id}`).focus();return;}
+    await client.from("asks").update({answer:body||null,answer_audio_path,answered_at:new Date().toISOString()}).eq("id",id);
+    await loadAll();
+  }
+
+  function subscribeRealtime(){
+    client.channel("p1-admin")
+      .on("postgres_changes",{event:"*",schema:"public",table:"day_ticks"},loadAll)
+      .on("postgres_changes",{event:"*",schema:"public",table:"stars_ledger"},loadAll)
+      .on("postgres_changes",{event:"*",schema:"public",table:"asks"},loadAll)
+      .subscribe();
+  }
+
+  $("loginBtn").onclick=async()=>{
+    $("loginErr").textContent="";
+    const email=$("email").value.trim();
+    const password=$("password").value;
+    const {data,error}=await client.auth.signInWithPassword({email,password});
+    if(error){$("loginErr").textContent=error.message;return;}
+    session=data.session;
+    openDashboard();
+  };
+  $("logoutBtn").onclick=async()=>{await client.auth.signOut();location.reload();};
+  $("refreshBtn").onclick=loadAll;
+  $("saveNoteBtn").onclick=async()=>{
+    const body=$("noteBody").value.trim();
+    const status=$("noteStatus");
+    status.textContent="";
+    if(!body){status.textContent="Write a bilingual message first. 請先寫雙語留言。";return;}
+    const {error}=await client.from("papa_notes").upsert({day:tomorrow,body});
+    status.textContent=error?error.message:"Saved 儲存好了";
+  };
+  init().catch(e=>{$("configState").querySelector("p").textContent=e.message;});
+})();
