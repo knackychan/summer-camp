@@ -150,14 +150,18 @@
       this.passes=passes||[];
       this.photos=photos||[];
       this.helpClaims=helpClaims||[];
-      this.familySettings={};
-      (famSettings||[]).forEach(r=>{this.familySettings[r.key]=r.value;});
+      if(Array.isArray(famSettings)){
+        this.familySettings={};
+        famSettings.forEach(r=>{this.familySettings[r.key]=r.value;});
+        saveJson("sq:famSettings",this.familySettings);
+      }
       this.adminPin=this.familySettings.admin_pin||"";
       saveJson("sq:adminPin",this.adminPin);
-      saveJson("sq:famSettings",this.familySettings);
-      this.redos={};
-      (redos||[]).forEach(r=>{(this.redos[r.kid_id]=this.redos[r.kid_id]||{})[r.block_idx]=r.note||"";});
-      saveJson("sq:redos",{d:day,map:this.redos});
+      if(Array.isArray(redos)){
+        this.redos={};
+        redos.forEach(r=>{(this.redos[r.kid_id]=this.redos[r.kid_id]||{})[r.block_idx]=r.note||"";});
+        saveJson("sq:redos",{d:day,map:this.redos});
+      }
       this.dayOverridesRaw={};
       (overrides||[]).forEach(r=>{
         (this.dayOverridesRaw[r.kid_id]=this.dayOverridesRaw[r.kid_id]||{})[r.block_idx]=r.t;
