@@ -212,6 +212,13 @@
         }
       });
 
+      /* Server is now the truth for this device: re-baseline the diff. Without this,
+         an admin correction (revoked star, un-ticked activity) leaves `last` holding
+         the pre-correction values, so redoing the activity looks like "no change" and
+         never syncs — and an admin star grant gets counted a second time. */
+      this.last=clone(this.progress);
+      this.persistLocal();
+
       await this.flush();
     }
 
