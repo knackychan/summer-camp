@@ -34,8 +34,62 @@ p {
 }
 
 .app-shell {
-  max-width: 1480px;
+  max-width: 1800px;
   margin: 0 auto;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 380px;
+  grid-template-areas:
+    "top    top    top"
+    "left   center right";
+  gap: 14px;
+  align-items: start;
+}
+
+.app-top {
+  grid-area: top;
+}
+
+.col-center {
+  grid-area: center;
+  min-width: 0;
+}
+
+.rail--left {
+  grid-area: left;
+}
+
+.rail--right {
+  grid-area: right;
+}
+
+/* Rails stay put while the centre column scrolls the page. They get their own
+   scrollbar only when their content is taller than the viewport. */
+.rail {
+  position: sticky;
+  top: 14px;
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Panels inside a rail lose the outer vertical margin — the flex gap owns spacing. */
+.rail .panel {
+  margin: 0;
+}
+
+/* Login and config are centre-only; the rails render nothing until #dash shows. */
+.app-shell.is-locked {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "top"
+    "center";
+}
+
+.app-shell.is-locked .rail {
+  display: none;
 }
 
 .app-top,
@@ -705,6 +759,114 @@ p {
   place-items: center;
   color: var(--ink);
   font-size: 11px;
+}
+
+/* Cold panels — closed by default, count badge on the summary so a shut fold
+   still reports something. <details> is used on purpose: keyboard- and
+   screen-reader-correct with zero JavaScript. */
+.fold {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 700;
+  list-style: none;
+  min-height: 52px;
+}
+
+.fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold > summary::before {
+  content: "▸";
+  color: var(--muted);
+  transition: transform .15s ease;
+}
+
+.fold[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.fold > summary:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+
+.fold__count {
+  margin-left: auto;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #151127;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fold__body {
+  padding: 0 16px 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fold > summary::before {
+    transition: none;
+  }
+}
+
+/* 1400px: the left rail folds into the top of the centre column, the
+   conversation rail survives — it is the one Papa watches all day. */
+@media (max-width: 1400px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-areas:
+      "top    top"
+      "left   right"
+      "center right";
+  }
+
+  .rail--left {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .rail--left > .panel {
+    flex: 1 1 260px;
+  }
+}
+
+/* 1080px: everything stacks. Rails unstick — this is the pre-slice behaviour. */
+@media (max-width: 1080px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "top"
+      "left"
+      "right"
+      "center";
+  }
+
+  .rail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    flex-direction: column;
+  }
+
+  .rail--left {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 860px) {
