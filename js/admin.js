@@ -175,6 +175,8 @@
 
   async function openDashboard(){
     show("login",false); show("dash",true); show("logoutBtn",true);
+    show("railLeft",true); show("railRight",true);
+    $("shell").classList.remove("is-locked");
     today=dayISO(0);
     $("todayLabel").textContent=`Today 今天 ${today}`;
     $("noteDay").textContent=`Today 今天 ${today}`;
