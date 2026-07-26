@@ -458,3 +458,45 @@ begin
       for insert to authenticated with check (bucket_id = 'proofs');
   end if;
 end $$;
+
+-- ============================================================
+-- v4 additions — admin controls (plan 2026-07-26, slice 08)
+-- ============================================================
+
+-- Blocks Papa sent back for a redo ("not finished yet") — invite, never shame.
+-- Rows expire naturally with the day (all queries filter by day).
+create table if not exists day_redos (
+  kid_id     text not null references kids(id),
+  day        date not null,
+  block_idx  int  not null,
+  note       text not null default '',
+  created_at timestamptz default now(),
+  primary key (kid_id, day, block_idx)
+);
+alter table day_redos enable row level security;
+
+do $$
+begin
+  execute 'drop policy if exists "read redos" on public.day_redos';
+  execute 'drop policy if exists "admin redos" on public.day_redos';
+  execute 'drop policy if exists "kid applock clear" on public.family_settings';
+
+  execute 'create policy "read redos" on public.day_redos for select using (true)';
+  execute 'create policy "admin redos" on public.day_redos for all to authenticated using (true) with check (true)';
+
+  -- Kid-device (anon) may only CLEAR an app-pause flag (Papa PIN pad on the tablet).
+  -- It can set value to '''' — never set a pause, never touch other keys.
+  execute 'create policy "kid applock clear" on public.family_settings for update using (key like ''applock_%'') with check (key like ''applock_%'' and value = '''')';
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table day_redos;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table family_settings;
+exception when duplicate_object then null;
+end $$;
