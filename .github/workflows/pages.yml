@@ -1,0 +1,53 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create browser config
+        shell: bash
+        env:
+          SQ_SUPABASE_URL: ${{ secrets.SQ_SUPABASE_URL }}
+          SQ_SUPABASE_ANON_KEY: ${{ secrets.SQ_SUPABASE_ANON_KEY }}
+          SQ_NTFY_TOPIC: ${{ secrets.SQ_NTFY_TOPIC }}
+        run: |
+          if [ -z "$SQ_SUPABASE_URL" ] || [ -z "$SQ_SUPABASE_ANON_KEY" ]; then
+            echo "Missing SQ_SUPABASE_URL or SQ_SUPABASE_ANON_KEY repository secret." >&2
+            exit 1
+          fi
+          node <<'NODE'
+          const fs = require("fs");
+          const config = {
+            SUPABASE_URL: process.env.SQ_SUPABASE_URL,
+            SUPABASE_ANON_KEY: process.env.SQ_SUPABASE_ANON_KEY,
+            FAMILY_TZ: "Asia/Taipei",
+            NTFY_TOPIC: process.env.SQ_NTFY_TOPIC || ""
+          };
+          fs.writeFileSync("js/config.js", `window.SQ_CONFIG = ${JSON.stringify(config, null, 2)};\n`);
+          NODE
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

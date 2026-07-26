@@ -16,4 +16,10 @@ node scripts/check.mjs
 
 ## Deploy
 
-Deploy the repository root as a static site with GitHub Pages or Vercel. No build step is required.
+For GitHub Pages, use the included GitHub Actions workflow. Add repository secrets:
+
+- `SQ_SUPABASE_URL`
+- `SQ_SUPABASE_ANON_KEY`
+- `SQ_NTFY_TOPIC` optional
+
+Then set Pages source to **GitHub Actions**. The workflow writes `js/config.js` during deployment; the file stays uncommitted locally.
