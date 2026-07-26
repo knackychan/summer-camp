@@ -9,6 +9,7 @@
       <h3>🔧 Papa tools 爸爸工具</h3>
       <div class="vrow">
         <button class="btn" id="ptResched">⏰ Reschedule today 調整今天時間</button>
+        <button class="btn" id="ptOuting">🚶 Outing 出遊</button>
         <button class="btn small" id="ptClose">Close 關閉</button>
       </div>
       <div id="ptBody"></div>
@@ -16,6 +17,7 @@
     document.body.appendChild(o);
     o.querySelector("#ptClose").onclick=function(){o.remove();};
     o.querySelector("#ptResched").onclick=function(){resched(o.querySelector("#ptBody"),"all");};
+    o.querySelector("#ptOuting").onclick=function(){outing(o.querySelector("#ptBody"));};
   }
   function resched(el,scope){
     const raw=window.sqOverridesRaw();
@@ -49,6 +51,31 @@
         await window.sqSetOverride(i,clear?null:t,scope);
       }
       el.querySelector("#ptMsg").textContent="Saved — syncs when online 已儲存";
+      window.sqAfterOverrideChange();
+    };
+  }
+  function outing(el){
+    const blocks=window.SQTime.timedOrder(window.SQ_DAY_DATA,window.SQTime.resolveOverrides(window.sqOverridesRaw(),null));
+    el.innerHTML=`<p>Which blocks are we out for? 我們出門的時段？</p>
+      <div class="vrow" style="flex-wrap:wrap">${blocks.map(function(x){
+        const b=window.SQ_DAY_DATA[x.i];
+        return `<button class="btn small ptblk" data-oi="${x.i}">${b.icon} ${b.t}</button>`;
+      }).join("")}</div>
+      <label class="vrow"><input type="checkbox" id="ptCredited" checked> Blocks still earn stars ⭐ 出遊也算完成、得星星</label>
+      <button class="btn" id="ptOutGo">Mark outing 標記出遊</button>
+      <div class="tipline" id="ptMsg"></div>`;
+    const sel=new Set();
+    el.querySelectorAll(".ptblk").forEach(function(b){
+      b.onclick=function(){
+        const i=+b.dataset.oi;
+        if(sel.has(i))sel.delete(i); else sel.add(i);
+        b.classList.toggle("on",sel.has(i));
+      };
+    });
+    el.querySelector("#ptOutGo").onclick=async function(){
+      if(!sel.size){el.querySelector("#ptMsg").textContent="Pick blocks first 先選時段";return;}
+      await window.sqSetOuting(Array.from(sel),el.querySelector("#ptCredited").checked);
+      el.querySelector("#ptMsg").textContent="Marked — enjoy! 已標記，玩得開心！";
       window.sqAfterOverrideChange();
     };
   }

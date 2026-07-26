@@ -12,6 +12,7 @@
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={}, adminPinFeedback={};
   let overridesRaw={}, reschedKid="all";
+  const outingSel=new Set();
 
   const $=id=>document.getElementById(id);
   const show=(id,on)=>$(id).classList.toggle("hidden",!on);
@@ -103,6 +104,7 @@
     renderPins();
     renderAdminPin();
     renderResched();
+    renderOutingBlocks();
   }
 
   function renderOverview(){
@@ -394,6 +396,40 @@
     await loadAll();
   }
 
+  function renderOutingBlocks(){
+    $("outingBlocks").innerHTML=SQTime.timedOrder(DAY,SQTime.resolveOverrides(overridesRaw,null)).map(function(x){
+      const b=DAY[x.i];
+      return `<button class="btn btn--secondary outblk ${outingSel.has(x.i)?"on":""}" data-oi="${x.i}">${b.icon} ${b.t} ${b.title}</button>`;
+    }).join("");
+    document.querySelectorAll(".outblk").forEach(function(btn){
+      btn.onclick=function(){
+        const i=+btn.dataset.oi;
+        if(outingSel.has(i))outingSel.delete(i); else outingSel.add(i);
+        renderOutingBlocks();
+      };
+    });
+  }
+  async function markOuting(){
+    if(!outingSel.size){$("outingStatus").textContent="Pick blocks first 先選時段";return;}
+    const credited=$("outingCredited").checked, kids=["lucien","lili","luis"], passRows=[], stars=[];
+    kids.forEach(function(k){
+      outingSel.forEach(function(i){
+        passRows.push({kid_id:k,kind:"outing",status:"granted",day:today,block_idx:i,reason:"Family outing 家庭出遊",credited:credited,granted_by:session.user.id});
+        if(credited)stars.push({kid_id:k,delta:1,reason:"Outing 出遊",source:"admin",granted_by:session.user.id});
+      });
+    });
+    const r1=await client.from("passes").insert(passRows);
+    const r2=stars.length?await client.from("stars_ledger").insert(stars):{error:null};
+    const err=r1.error||r2.error;
+    $("outingStatus").textContent=err?err.message:"Marked 已標記 ✓";
+    if(!err){outingSel.clear();await loadAll();}
+  }
+  async function clearOuting(){
+    const {error}=await client.from("passes").delete().eq("day",today).eq("kind","outing");
+    $("outingStatus").textContent=error?error.message:"Cleared 已取消 ✓";
+    if(!error)await loadAll();
+  }
+
   function renderPins(){
     $("pinSettings").innerHTML=Object.entries(KIDS).map(([id,k])=>{
       const row=rows.kids.find(x=>x.id===id)||{};
@@ -511,6 +547,8 @@
   $("refreshBtn").onclick=loadAll;
   $("reschedSaveBtn").onclick=saveResched;
   $("reschedResetBtn").onclick=resetResched;
+  $("outingGoBtn").onclick=markOuting;
+  $("outingClearBtn").onclick=clearOuting;
   $("galleryBtn").onclick=openGallery;
   $("galleryPrev").onclick=()=>galleryStep(-1);
   $("galleryNext").onclick=()=>galleryStep(1);

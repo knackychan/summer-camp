@@ -331,6 +331,7 @@ button:disabled{cursor:default}
 @keyframes pinshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 .gameslocked #gameRow{display:none}
 .ptkid.on{background:var(--ok);color:#1c1436}
+.ptblk.on{background:var(--ok);color:#1c1436}
 </style>
 </head>
 <body>
@@ -1896,6 +1897,12 @@ window.sqAfterOverrideChange=function(){
   if(hubKid&&hubTab==="day")renderMyDay();
   refreshLockUI();
 };
+window.sqSetOuting=async function(blockIdxs,credited){
+  if(store&&store.setOuting)
+    await store.setOuting(["lucien","lili","luis"],todayStr(),blockIdxs,credited,"Family outing 家庭出遊");
+  if(hubKid&&hubTab==="day")renderMyDay();
+  refreshLockUI();
+};
 function actsToday(id){
   const P=progress[id];
   if(!P.actsDay||P.actsDay.d!==todayStr()) P.actsDay={d:todayStr(),done:{}};
@@ -1929,7 +1936,7 @@ function canRerollMission(id,i){
 function screenStatus(i,d){
   if(!String(DAY[i].title).includes("Screen"))return "";
   const needed=SQTime.neededBefore(DAY,dayOverrides,i);
-  const earned=needed.every(idx=>d.done[idx]);
+  const earned=needed.every(idx=>d.done[idx]||passOkFor(hubKid,idx));
   return earned
     ? `<span class="screenflag">🔓 Earned screen window 螢幕時間已解鎖</span>`
     : `<span class="screenflag locked">🔒 Tick earlier boxes first 先完成前面的格子</span>`;
@@ -1946,6 +1953,7 @@ function proofUrl(path){
 }
 function passText(p){
   if(!p)return "";
+  if(p.kind==="outing")return `🚶 Family outing 家庭出遊${p.credited?" ⭐":""}`;
   const kind=p.kind==="golden"?"🎟️ Golden pass 黃金券":"🤝 Excused pass 請假券";
   if(p.status==="requested")return `${kind} requested 已申請`;
   if(p.status==="granted")return `${kind} approved 已核准`;
@@ -1959,9 +1967,16 @@ function timeFlag(i,isDone,info){
   if(SQTime.effMins(DAY,dayOverrides,i)<info.now)return `<span class="timeflag">You can still start! 還來得及開始！</span>`;
   return "";
 }
+function coveredCount(id,d){
+  let n=Object.keys(d.done).length;
+  DAY.forEach(function(b,i){
+    if(!d.done[i]&&passFor(id,i,["granted","spent"]))n++;
+  });
+  return n;
+}
 function renderMyDay(){
   const d=dayState(hubKid), k=KIDS[hubKid], info=timelineInfo();
-  const total=DAY.length, done=Object.keys(d.done).length;
+  const total=DAY.length, done=coveredCount(hubKid,d);
   document.getElementById("dayFill").style.width=(done/total*100)+"%";
   document.getElementById("dayTxt").textContent=done+" / "+total+(done>=total?"  — DAY COMPLETE! 全部完成！🌟":"");
   const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${escHtml(store.papaNote)}</div>`:"";
@@ -1971,7 +1986,8 @@ function renderMyDay(){
       const b=DAY[i];
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
       const pass=passFor(hubKid,i), proof=proofFor(hubKid,i);
-      const rowState=isDone?"done":i===info.current?"now":i===info.next?"next":SQTime.effMins(DAY,dayOverrides,i)!=null&&SQTime.effMins(DAY,dayOverrides,i)<info.now?"past":"";
+      const outing=pass&&pass.kind==="outing";
+      const rowState=outing?"done":isDone?"done":i===info.current?"now":i===info.next?"next":SQTime.effMins(DAY,dayOverrides,i)!=null&&SQTime.effMins(DAY,dayOverrides,i)<info.now?"past":"";
       const excused=pass&&pass.kind==="excused"&&pass.status==="spent";
       return `<div class="dayrow ${b.kind} ${rowState}${excused?" excused":""}" data-row="${i}">
         <div class="dtime">${effT(i)}${dayOverrides[i]!=null?`<span class="movedflag">moved 已調整</span>`:""}</div>
@@ -1980,17 +1996,19 @@ function renderMyDay(){
           <div class="dt-mis ${b.kind}">${b.kind==="mission"
             ?`🎯 ${mis[0]}<span class="zhs">${mis[1]}</span>`
             :`${b.txt?b.txt[hubKid]:""}<span class="zhs">${b.txtz?b.txtz[hubKid]:""}</span>`}
-            ${screenStatus(i,d)}${timeFlag(i,isDone,info)}
+            ${screenStatus(i,d)}${timeFlag(i,isDone||outing,info)}
             ${pass?`<div class="passline">${passText(pass)}</div>`:""}
             ${proof?`<img class="proofthumb" src="${proofUrl(proof.path)}" alt="Photo proof 照片證明">`:""}</div>
         </div>
-        <div class="dbtns">
+        <div class="dbtns">${outing?"":
+          `
           <button class="btn small tick" data-done="${i}"
             style="${isDone?'background:var(--ok);color:#1c1436':''}">${isDone?(excused?"🤝":"✓"):"✓ 完成"}</button>
           ${!isDone&&canRerollMission(hubKid,i)?`<button class="btn small tick" data-rr="${i}">🎲</button>`:""}
           ${b.kind==="mission"&&!isDone&&!pass?`<button class="btn small tick" data-pass="${i}">🎟️</button>`:""}
           ${pass&&pass.status==="granted"&&!isDone?`<button class="btn small tick" data-usepass="${pass.id}" data-i="${i}">Use 使用</button>`:""}
           ${b.kind==="mission"&&isDone&&!proof?`<label class="btn small tick">📸<input type="file" accept="image/*" capture="environment" data-proof="${i}" hidden></label>`:""}
+          `}
         </div>
       </div>`;
     }).join("");
@@ -2007,7 +2025,7 @@ function renderMyDay(){
       if(DAY[i].pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
       sWin(); burst(16); star();
     } else { sGood(); }
-    if(Object.keys(d2.done).length>=DAY.length){
+    if(coveredCount(hubKid,d2)>=DAY.length){
       progress[hubKid].stars+=2; sWin(); burst(60); bigFloat("🌟");
     }
     saveProgress(); renderMyDay(); renderHubHead(); refreshLockUI();
@@ -2057,7 +2075,7 @@ async function usePass(id,i){
   const {error}=await store.spendPass(id,todayStr(),i);
   if(error){sBad();return;}
   const d=dayState(hubKid); d.done[i]=true;
-  if(Object.keys(d.done).length>=DAY.length){
+  if(coveredCount(hubKid,d)>=DAY.length){
     progress[hubKid].stars=(progress[hubKid].stars||0)+2; sWin(); burst(60); bigFloat("🌟");
   }
   await saveProgress(); sGood(); await store.hydrate(); renderMyDay(); renderHubHead(); refreshLockUI();

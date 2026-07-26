@@ -184,7 +184,8 @@ p {
   box-shadow: 0 0 0 3px rgba(183, 185, 214, .12);
 }
 
-.reschedkid.on {
+.reschedkid.on,
+.outblk.on {
   outline: 2px solid var(--ok);
   outline-offset: 2px;
 }

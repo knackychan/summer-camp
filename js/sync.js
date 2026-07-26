@@ -314,6 +314,13 @@
             .delete().eq("day",op.day).eq("block_idx",op.blockIdx).eq("kid_id",op.kidId||"all");
           if(error) throw error;
         }
+      }else if(op.type==="outingBlock"){
+        const {error}=await this.supabase.from("passes").insert({
+          id:op.id,kid_id:op.kid,kind:"outing",status:"granted",
+          day:op.day,block_idx:op.blockIdx,reason:op.reason||"Family outing 家庭出遊",
+          credited:!!op.credited
+        });
+        if(error&&error.code!=="23505") throw error;
       }
     }
 
@@ -362,6 +369,14 @@
     async requestPass(kid,kind,day,blockIdx,reason){
       if(!this.supabase) return {error:new Error("Sync is offline")};
       return this.supabase.from("passes").insert({kid_id:kid,kind,status:"requested",day,block_idx:blockIdx,reason});
+    }
+    async setOuting(kids,dayISO,blockIdxs,credited,reason){
+      kids.forEach(kid=>blockIdxs.forEach(blockIdx=>{
+        this.enqueue({type:"outingBlock",kid:kid,day:dayISO,blockIdx:blockIdx,credited:credited,reason:reason});
+        this.passes.unshift({kid_id:kid,kind:"outing",status:"granted",day:dayISO,block_idx:blockIdx,credited:!!credited,reason:reason});
+        if(credited)this.enqueue({type:"stars",kid:kid,delta:1,reason:"Outing 出遊"});
+      }));
+      await this.flush();
     }
     async spendPass(id,day,blockIdx){
       if(!this.supabase) return {error:new Error("Sync is offline")};

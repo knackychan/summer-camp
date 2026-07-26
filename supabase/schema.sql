@@ -334,6 +334,29 @@ begin
 exception when duplicate_object then null;
 end $$;
 
+-- Outing mode: bulk 'outing' passes over a block range (design.md §3).
+-- credited=true → each block earns its star; false → excused, no stars.
+alter table passes add column if not exists credited boolean not null default true;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'passes' and policyname = 'outing toggle'
+  ) then
+    create policy "outing toggle" on passes for insert
+      with check (kind = 'outing' and status = 'granted');
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'passes' and policyname = 'outing undo'
+  ) then
+    create policy "outing undo" on passes for delete
+      using (kind = 'outing');
+  end if;
+end $$;
+
 -- Storage: create buckets 'voices' and 'proofs' (public read, anon insert) in Dashboard.
 -- Push for urgent asks: Edge Function on asks INSERT where kind='urgent'
 -- → POST to ntfy.sh/<family-topic> (or a Telegram bot). Free, no app needed.
