@@ -571,3 +571,19 @@ begin
   alter publication supabase_realtime add table act_done;
 exception when duplicate_object then null;
 end $$;
+
+-- ============================================================
+-- v6 addition — Papa can start a conversation, not only answer one
+-- (admin conversation rail, plan 2026-07-26, slice 13)
+-- ============================================================
+-- Before this, "admin answer" gave the authenticated admin UPDATE only, so
+-- Papa could reply to a kid's ask but never send the first message. Papa-sent
+-- rows use kind='papa' with the text in `answer` and `body` null; asks.kind is
+-- plain text with no check constraint, so no migration is needed. RLS policies
+-- are OR'd, so the kid-facing "kid ask" check (answer is null) does not block
+-- this one.
+do $$
+begin
+  execute 'drop policy if exists "admin ask" on public.asks';
+  execute 'create policy "admin ask" on public.asks for insert to authenticated with check (true)';
+end $$;
