@@ -19,14 +19,14 @@ Line numbers refer to `index.html` at plan time; anchor on quoted code, not numb
 **Files:**
 - Modify: `index.html` (`LEVELS` ~line 505, `startGame` ~line 1083, `handleInput` ~line 1746, `keydown` listener ~line 1887)
 
-- [ ] **Step 1: Add the `city` entry to `LEVELS`** (after the `machines` line):
+- [x] **Step 1: Add the `city` entry to `LEVELS`** (after the `machines` line):
 
 ```js
   machines:{icon:"🚜", title:"Big Machines", tz:"大機器",   blurb:"Race, dig & fly"},
   city:   {icon:"🏙️", title:"City Drive", tz:"城市開車",    blurb:"Drive & deliver"},
 ```
 
-- [ ] **Step 2: Dispatch in `startGame`.** Change
+- [x] **Step 2: Dispatch in `startGame`.** Change
 
 ```js
   else if(lvl==="machines") initMachines();
@@ -41,7 +41,7 @@ to
   else initOrc();
 ```
 
-- [ ] **Step 3: Hide keyboard + legend.** In `startGame`, directly after `buildKeyboard();` add:
+- [x] **Step 3: Hide keyboard + legend.** In `startGame`, directly after `buildKeyboard();` add:
 
 ```js
   const noKb=(lvl==="city");
@@ -51,14 +51,14 @@ to
 
 (Slice 02 widens the condition to `lvl==="city"||lvl==="dig"`.)
 
-- [ ] **Step 4: Guard `handleInput`.** After the `machines` line add:
+- [x] **Step 4: Guard `handleInput`.** After the `machines` line add:
 
 ```js
   if(level==="machines"){ machinesInput(ch); return; }
   if(level==="city") return;
 ```
 
-- [ ] **Step 5: Held arrow keys.** In the global `keydown` listener, after the Escape check, add:
+- [x] **Step 5: Held arrow keys.** In the global `keydown` listener, after the Escape check, add:
 
 ```js
   if(level==="city"&&state.keys){
@@ -79,16 +79,16 @@ addEventListener("keyup",e=>{
 });
 ```
 
-- [ ] **Step 6: Temporary stub** so the file stays runnable until Task 4 (replaced there). Place after `machinesInput` (~line 1515), before the WORD WIZARD section:
+- [x] **Step 6: Temporary stub** so the file stays runnable until Task 4 (replaced there). Place after `machinesInput` (~line 1515), before the WORD WIZARD section:
 
 ```js
 /* ---- MODE: CITY DRIVE (free-roam knowledge missions) ---- */
 function initCity(){}
 ```
 
-- [ ] **Step 7: Verify** — `node scripts/check.mjs` green. Open `index.html` → any kid → Games: 🏙️ City Drive chip appears; clicking it shows an empty stage, no console errors, keyboard hidden.
+- [x] **Step 7: Verify** — `node scripts/check.mjs` green. Open `index.html` → any kid → Games: 🏙️ City Drive chip appears; clicking it shows an empty stage, no console errors, keyboard hidden.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add index.html
@@ -102,7 +102,7 @@ git commit -m "feat(city): level registry, dispatch and input wiring"
 **Files:**
 - Modify: `index.html` (style block — add after the `/* ---------- ORC ATTACK ---------- */` rules)
 
-- [ ] **Step 1: Add the styles:**
+- [x] **Step 1: Add the styles:**
 
 ```css
 /* ---------- CITY DRIVE ---------- */
@@ -122,9 +122,9 @@ git commit -m "feat(city): level registry, dispatch and input wiring"
   border-color:var(--ok,#3DDC97)}
 ```
 
-- [ ] **Step 2: Verify** — `node scripts/check.mjs` green.
+- [x] **Step 2: Verify** — `node scripts/check.mjs` green.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add index.html
@@ -138,7 +138,7 @@ git commit -m "feat(city): map viewport, prompt and control styles"
 **Files:**
 - Modify: `index.html` — extend the Task 1 stub area
 
-- [ ] **Step 1: Add world data + helpers above `initCity`:**
+- [x] **Step 1: Add world data + helpers above `initCity`:**
 
 ```js
 /* ---- MODE: CITY DRIVE (free-roam knowledge missions) ---- */
@@ -201,7 +201,7 @@ function rr(ctx,x,y,w,h,r){
 }
 ```
 
-- [ ] **Step 2: Add the renderer:**
+- [x] **Step 2: Add the renderer:**
 
 ```js
 function cityDraw(){
@@ -262,7 +262,7 @@ function cityDraw(){
 }
 ```
 
-- [ ] **Step 3: Minimal `initCity` to see the scene** (replaced fully in Task 4 — only `state` + stage + one draw for now):
+- [x] **Step 3: Minimal `initCity` to see the scene** (replaced fully in Task 4 — only `state` + stage + one draw for now):
 
 ```js
 function initCity(){
@@ -287,9 +287,9 @@ function initCity(){
 }
 ```
 
-- [ ] **Step 4: Verify** — `node scripts/check.mjs` green. Open City Drive: carpet city renders (roads with dashes, pond, colored plots with emoji, trees), car visible at the center crossing.
+- [x] **Step 4: Verify** — `node scripts/check.mjs` green. Open City Drive: carpet city renders (roads with dashes, pond, colored plots with emoji, trees), car visible at the center crossing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add index.html
@@ -303,7 +303,7 @@ git commit -m "feat(city): tile world, buildings and canvas renderer"
 **Files:**
 - Modify: `index.html` — extend `initCity`, add loop functions
 
-- [ ] **Step 1: Extend `initCity`.** After the canvas setup lines and before `cityDraw();`, add control listeners, age params and the loop/timer start:
+- [x] **Step 1: Extend `initCity`.** After the canvas setup lines and before `cityDraw();`, add control listeners, age params and the loop/timer start:
 
 ```js
   const hold=(id,key)=>{
@@ -326,7 +326,7 @@ git commit -m "feat(city): tile world, buildings and canvas renderer"
 
 (and keep the final `cityDraw();` call — first frame before the loop.)
 
-- [ ] **Step 2: Add loop + physics:**
+- [x] **Step 2: Add loop + physics:**
 
 ```js
 function cityHud(){
@@ -364,7 +364,7 @@ function cityTick(){
 }
 ```
 
-- [ ] **Step 3: Temporary stubs** so the file runs until Task 5 (replaced there):
+- [x] **Step 3: Temporary stubs** so the file runs until Task 5 (replaced there):
 
 ```js
 function cityMission(){}
@@ -373,9 +373,9 @@ function finishCity(){}
 function cityPrompt(html){const el=document.getElementById("cdPrompt");if(el)el.innerHTML=html;}
 ```
 
-- [ ] **Step 4: Verify** — `check.mjs` green. Drive around with arrows and with touch buttons (DevTools touch emulation): car accelerates, turns, slows on grass, bounces softly off buildings/pond/edges; camera follows; Lucien has no GAS button and cruises by himself; Escape exits cleanly.
+- [x] **Step 4: Verify** — `check.mjs` green. Drive around with arrows and with touch buttons (DevTools touch emulation): car accelerates, turns, slows on grass, bounces softly off buildings/pond/edges; camera follows; Lucien has no GAS button and cruises by himself; Escape exits cleanly.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add index.html
@@ -389,7 +389,7 @@ git commit -m "feat(city): arcade physics, held controls and camera loop"
 **Files:**
 - Modify: `index.html` — replace the Task 4 stubs (`cityMission`, `cityArrive`, `finishCity`)
 
-- [ ] **Step 1: Question maker + mission generator:**
+- [x] **Step 1: Question maker + mission generator:**
 
 ```js
 function cityMathQ(age){
@@ -461,7 +461,7 @@ function cityMission(){
 }
 ```
 
-- [ ] **Step 2: Arrival / progress checks + completion:**
+- [x] **Step 2: Arrival / progress checks + completion:**
 
 ```js
 function cityArrive(){
@@ -529,13 +529,13 @@ function finishCity(){
 
 Note: best updates on **every** completion (`cityComplete`), so Lucien's untimed session never loses a best; `finishCity` only runs for the timed kids.
 
-- [ ] **Step 3: Verify** — `check.mjs` green, then per kid:
+- [x] **Step 3: Verify** — `check.mjs` green, then per kid:
   - Luis: deliver → taxi → place rotation; wrong house parks give the bilingual hint; taxi needs pickup then drop-off.
   - Lili: place/deliver alternation, math within 20.
   - Lucien: place (easy buildings) / letter-hunt alternation; letters collect in order only; no timer shown.
   - Timed kids reach 0 s → overlay; "Drive again" restarts; best survives reload.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add index.html
@@ -551,7 +551,7 @@ git commit -m "feat(city): knowledge missions (place, deliver, taxi, letters)"
 - Test: `scripts/sync.test.mjs` (Test 1, ~lines 68–76)
 - Modify: `js/sync.js` (`ensureKid` ~line 63, `hydrate` ~line 169, `enqueueDiff` ~line 247)
 
-- [ ] **Step 1 (index.html):**
+- [x] **Step 1 (index.html):**
 
 ```js
 const newProg=()=>({stars:0,best:{balloon:0,race:0,orc:0,shop:0,city:0},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
@@ -565,7 +565,7 @@ and in `normalizeProgressShape`:
     if(P.best.city==null)P.best.city=0;
 ```
 
-- [ ] **Step 2: Write the failing test.** In Test 1 of `scripts/sync.test.mjs`, after `after.lili.best.race = 42;` add:
+- [x] **Step 2: Write the failing test.** In Test 1 of `scripts/sync.test.mjs`, after `after.lili.best.race = 42;` add:
 
 ```js
   after.lili.best.city = 7;
@@ -577,12 +577,12 @@ and change the expected types to include a second `stat`:
   assert.deepEqual(types, ["actDone", "roll", "stars", "stars", "stat", "stat", "tick", "vocab"]);
 ```
 
-- [ ] **Step 3: Run it to make sure it fails.**
+- [x] **Step 3: Run it to make sure it fails.**
 
 Run: `node scripts/sync.test.mjs`
 Expected: FAIL (deepEqual mismatch — only one `stat` op) because `city` isn't in the whitelists yet.
 
-- [ ] **Step 4: Implement in `js/sync.js`.**
+- [x] **Step 4: Implement in `js/sync.js`.**
 
 `ensureKid` — after `p.best.shop=p.best.shop||0;`:
 
@@ -602,12 +602,12 @@ Expected: FAIL (deepEqual mismatch — only one `stat` op) because `city` isn't 
         ["balloon","race","orc","shop","city"].forEach(stat=>{
 ```
 
-- [ ] **Step 5: Run tests to verify they pass.**
+- [x] **Step 5: Run tests to verify they pass.**
 
 Run: `node scripts/sync.test.mjs` → both `ok -` lines.
 Run: `node scripts/check.mjs` → green (re-runs sync tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add index.html js/sync.js scripts/sync.test.mjs
@@ -618,11 +618,11 @@ git commit -m "feat(city): sync best_city through game_stats"
 
 ### Task 7: Slice verification (DONE WHEN)
 
-- [ ] `node scripts/check.mjs` green.
-- [ ] Touch emulation: two-thumb play works (steer left thumb + GAS right thumb simultaneously — distinct pointers).
-- [ ] All three kids: mission mix matches the design table; every prompt bilingual; audio speaks EN (+FR for vocab words).
-- [ ] Wrong choices never punish: wrong house = hint only, wrong letter = ignored, off-road = slow only.
+- [x] `node scripts/check.mjs` green.
+- [x] Touch emulation: two-thumb play works (steer left thumb + GAS right thumb simultaneously — distinct pointers).
+- [x] All three kids: mission mix matches the design table; every prompt bilingual; audio speaks EN (+FR for vocab words).
+- [x] Wrong choices never punish: wrong house = hint only, wrong letter = ignored, off-road = slow only.
 - [ ] With `js/config.js` + online: set a new best, reload → Best hydrates; Supabase `game_stats` has a `city` row.
-- [ ] Wifi off: fully playable, best persists locally.
-- [ ] During an unticked activity block, opening City Drive shows the lock overlay (inherited).
-- [ ] Escape / ← mid-run: no console errors, rAF and interval cleared (`stopArena`).
+- [x] Wifi off: fully playable, best persists locally.
+- [x] During an unticked activity block, opening City Drive shows the lock overlay (inherited).
+- [x] Escape / ← mid-run: no console errors, rAF and interval cleared (`stopArena`).
