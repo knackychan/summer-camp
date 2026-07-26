@@ -87,6 +87,9 @@
       this.queue=loadJson(QUEUE_KEY,[]);
       this.kidPins=loadJson("sq:kidPins",{});
       this.adminPin=loadJson("sq:adminPin","");
+      this.familySettings=loadJson("sq:famSettings",{});
+      const cachedRedos=loadJson("sq:redos",{d:null,map:{}});
+      this.redos=cachedRedos.d===todayISO()?cachedRedos.map:{};
       const ov=loadJson("sq:dayOverrides",null);
       this.dayOverridesRaw=ov&&ov.d===todayISO()?ov.map:{};
       this.passes=[];
@@ -124,7 +127,7 @@
       const day=todayISO();
       const p=normalize(this.progress);
 
-      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings},{data:overrides}]=await Promise.all([
+      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings},{data:overrides},{data:redos}]=await Promise.all([
         this.supabase.from("kids").select("id,pin"),
         this.supabase.from("day_ticks").select("kid_id,block_idx").eq("day",day),
         this.supabase.from("day_rolls").select("kid_id,block_idx,count").eq("day",day),
@@ -138,6 +141,7 @@
         this.supabase.from("help_claims").select("*").eq("day",day).order("created_at",{ascending:false}),
         this.supabase.from("family_settings").select("key,value"),
         this.supabase.from("day_overrides").select("kid_id,block_idx,t").eq("day",day),
+        this.supabase.from("day_redos").select("kid_id,block_idx,note").eq("day",day),
       ]);
 
       this.kidPins={};
@@ -150,6 +154,10 @@
       (famSettings||[]).forEach(r=>{this.familySettings[r.key]=r.value;});
       this.adminPin=this.familySettings.admin_pin||"";
       saveJson("sq:adminPin",this.adminPin);
+      saveJson("sq:famSettings",this.familySettings);
+      this.redos={};
+      (redos||[]).forEach(r=>{(this.redos[r.kid_id]=this.redos[r.kid_id]||{})[r.block_idx]=r.note||"";});
+      saveJson("sq:redos",{d:day,map:this.redos});
       this.dayOverridesRaw={};
       (overrides||[]).forEach(r=>{
         (this.dayOverridesRaw[r.kid_id]=this.dayOverridesRaw[r.kid_id]||{})[r.block_idx]=r.t;
@@ -321,6 +329,11 @@
           credited:!!op.credited
         });
         if(error&&error.code!=="23505") throw error;
+      }else if(op.type==="famset"){
+        /* update, not upsert — anon RLS only allows clearing applock_* keys */
+        const {error}=await this.supabase.from("family_settings")
+          .update({value:op.value,updated_at:new Date().toISOString()}).eq("key",op.key);
+        if(error) throw error;
       }
     }
 
@@ -338,6 +351,12 @@
       if(t!=null)bucket[blockIdx]=t; else delete bucket[blockIdx];
       saveJson("sq:dayOverrides",{d:dayISO,map:this.dayOverridesRaw});
       this.enqueue({type:"override",day:dayISO,blockIdx:blockIdx,t:t,kidId:kidId});
+      await this.flush();
+    }
+    async setFamilySetting(key,value){
+      this.familySettings[key]=value;
+      saveJson("sq:famSettings",this.familySettings);
+      this.enqueue({type:"famset",key,value});
       await this.flush();
     }
     async addStars(kid,delta,reason){
@@ -425,6 +444,20 @@
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`overrides-${Date.now()}`)
         .on("postgres_changes",{event:"*",schema:"public",table:"day_overrides"},p=>cb(p.new||p.old))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
+    onRedos(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`redos-${Date.now()}`)
+        .on("postgres_changes",{event:"*",schema:"public",table:"day_redos"},p=>cb(p.new||p.old))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
+    onFamilySettings(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`famset-${Date.now()}`)
+        .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},p=>cb(p.new||p.old))
         .subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }
