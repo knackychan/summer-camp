@@ -1081,6 +1081,7 @@ function renderSetbar(){
 
 /* ============ GAME FLOW ============ */
 function startGame(id,lvl){
+  if(hubKid&&appLockReason(hubKid)){refreshAppLock();return;}
   const ls=gameLockState();
   if(ls.locked){showLockOverlay(ls.blockIdx);return;}
   stopArena();
@@ -1858,6 +1859,39 @@ function showLockOverlay(blockIdx){
       onOk:function(){lockOverride={day:todayStr(),blockIdx:blockIdx};o.remove();refreshLockUI();}});
   };
 }
+/* ---- Papa app pause (design.md §8): calm, never blames ---- */
+function appLockReason(id){
+  const v=store&&store.familySettings&&store.familySettings["applock_"+id];
+  return v?v:null;
+}
+function refreshAppLock(){
+  let o=document.getElementById("appLockOverlay");
+  if(!hubKid||!appLockReason(hubKid)){if(o)o.remove();return;}
+  if(!document.getElementById("game").classList.contains("hidden")){
+    stopArena(); showOnly("hub"); saveAppPlace("hub"); renderHub(); return;
+  }
+  if(o)return;
+  o=document.createElement("div");
+  o.className="overlay";o.id="appLockOverlay";
+  o.innerHTML=`<div class="card" style="text-align:center;max-width:340px">
+    <div style="font-size:2.2em">😌</div>
+    <h3>Time for a break 休息一下</h3>
+    <p>Papa paused the app for now. Talk to him when you're ready! 爸爸暫停了app，準備好了就去找他吧！</p>
+    <div class="vrow">
+      <button class="btn" id="appLockHome">🏠 Home 回首頁</button>
+      <button class="btn small" id="appLockPapa">🔧 Papa 爸爸</button>
+    </div>
+  </div>`;
+  document.body.appendChild(o);
+  o.querySelector("#appLockHome").onclick=()=>{o.remove();goHome();};
+  o.querySelector("#appLockPapa").onclick=()=>{
+    SQPin.show({title:"Resume app 恢復使用",onOk:async()=>{
+      await store.setFamilySetting("applock_"+hubKid,"");
+      const ov=document.getElementById("appLockOverlay");
+      if(ov)ov.remove();
+    }});
+  };
+}
 /* confetti */
 const cvs=document.getElementById("confetti"),ctx=cvs.getContext("2d");
 let parts=[]; let fxRaf=null;
@@ -1915,7 +1949,10 @@ function passOkFor(id,i){return !!(id&&passFor(id,i,["granted","spent"]));}
 function gameLockState(){
   const id=activeKid();
   const done=id?dayState(id).done:{};
-  const st=SQLock.computeLock({day:DAY,overrides:dayOverrides,now:nowMins(),done:done,passOk:function(i){return passOkFor(id,i);}});
+  const st=SQLock.computeLock({
+    day:DAY,overrides:dayOverrides,now:nowMins(),done:done,passOk:function(i){return passOkFor(id,i);},
+    redos:(id&&store&&store.redos&&store.redos[id])||{},
+  });
   if(st.locked&&lockOverride&&lockOverride.day===todayStr()&&lockOverride.blockIdx===st.blockIdx)
     return {locked:false,blockIdx:null};
   if(!st.locked)lockOverride=null;
@@ -1981,6 +2018,10 @@ function screenStatus(i,d){
 function passFor(id,i,statuses){
   const wanted=statuses||["requested","granted","spent","denied"];
   return ((store&&store.passes)||[]).find(p=>p.kid_id===id&&p.day===todayStr()&&p.block_idx===i&&wanted.includes(p.status));
+}
+function redoNote(i){
+  const m=store&&store.redos&&store.redos[hubKid];
+  return m&&(i in m)?m[i]:null;
 }
 function proofFor(id,i){
   return ((store&&store.photos)||[]).find(p=>p.kid_id===id&&p.day===todayStr()&&p.block_idx===i);
@@ -2055,6 +2096,7 @@ function renderMyDay(){
             :`${b.txt?b.txt[hubKid]:""}<span class="zhs">${b.txtz?b.txtz[hubKid]:""}</span>`}
             ${screenStatus(i,d)}${timeFlag(i,isDone||outing,info)}
             ${pass?`<div class="passline">${passText(pass)}</div>`:""}
+            ${!isDone&&redoNote(i)!=null?`<div class="passline">💪 Papa asked: please finish this one 爸爸請你再完成${redoNote(i)?` — ${escHtml(redoNote(i))}`:""}</div>`:""}
             ${(rowState==="now"||rowState==="next")&&!isDone&&!outing&&b.tips?`<div class="dt-guide">${b.tips.map(s=>`<div class="dt-tip">▸ ${s[0]}<span class="zhs">${s[1]}</span></div>`).join("")}</div>`:""}
             ${proof?`<img class="proofthumb" src="${proofUrl(proof.path)}" alt="Photo proof 照片證明">`:""}</div>
         </div>
@@ -2179,6 +2221,7 @@ function startTimelineWatcher(){
     if(ls.locked&&!document.getElementById("game").classList.contains("hidden")){
       goHome(); showLockOverlay(ls.blockIdx);
     }
+    refreshAppLock();
     if(hubKid&&hubTab==="games")refreshLockUI();
   };
   tick(); setInterval(tick,5000);
@@ -2232,6 +2275,7 @@ function renderHub(){
   document.querySelectorAll("#actGrid .actcard").forEach(c=>
     c.onclick=()=>openAct(+c.dataset.i));
   updateAskBadge();
+  refreshAppLock();
 }
 function refreshLockUI(){
   const tab=document.getElementById("tab-games");
@@ -2565,7 +2609,7 @@ function setupRealtime(){
   store.onStars(row=>{
     if(!row||row.source!=="admin")return;
     if(progress[row.kid_id]) progress[row.kid_id].stars=(progress[row.kid_id].stars||0)+(row.delta||0);
-    if(row.kid_id===(hubKid||kid)){bigFloat("🌟");sWin();}
+    if(row.kid_id===(hubKid||kid)&&row.delta>0){bigFloat("🌟");sWin();}
     if(hubKid)renderHubHead(); else renderHome();
   });
   store.onAsks(row=>{
@@ -2590,6 +2634,20 @@ function setupRealtime(){
     refreshOverrides();
     if(hubKid&&hubTab==="day")renderMyDay();
     refreshLockUI();
+  });
+  store.onRedos(async row=>{
+    if(!row)return;
+    await store.hydrate();
+    if(hubKid&&hubTab==="day")renderMyDay();
+    if(hubKid)renderHubHead();
+    refreshLockUI();
+  });
+  store.onFamilySettings(row=>{
+    if(!row||!row.key)return;
+    store.familySettings[row.key]=row.value;
+    localStorage.setItem("sq:famSettings",JSON.stringify(store.familySettings));
+    if(row.key==="admin_pin")localStorage.setItem("sq:adminPin",JSON.stringify(row.value||""));
+    refreshAppLock();
   });
   store.onHelpClaims(async row=>{
     if(!row||hubKid!=="luis")return;
