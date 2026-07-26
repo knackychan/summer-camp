@@ -537,3 +537,23 @@ test("Word Memory tot taps the missing emoji instead of typing", () => {
     assert.ok(item.prompt.words.indexOf(item.answer) >= 0);
   }
 });
+
+test("Math Recall asks for the previous answer and gives item 0 away", () => {
+  for (const tier of ["tot", "mid", "hard"]) {
+    const round = SQBrainCore.buildRound("recall", tier, SQBrainCore.mulberry32(41));
+    assert.equal(round.items[0].worth, 0, `${tier}: first item must be a freebie`);
+    for (let i = 1; i < round.items.length; i++) {
+      assert.equal(round.items[i].answer, round.items[i - 1].shown,
+        `${tier}: item ${i} must ask for item ${i - 1}'s value`);
+    }
+  }
+});
+
+test("Math Recall's freebie accepts anything", () => {
+  const round = SQBrainCore.buildRound("recall", "mid", SQBrainCore.mulberry32(41));
+  const out = SQBrainCore.scoreRound({
+    items: round.items.slice(0, 1), answers: [""], ms: 0, clock: false,
+  });
+  assert.equal(out.total, 0);
+  assert.equal(out.score, 0);
+});

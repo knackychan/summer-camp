@@ -252,6 +252,38 @@
     };
   }
 
+  /* ---- 9. Math Recall 記憶計算 ----
+     Each screen shows a new sum but asks for the PREVIOUS one's value.
+     Items depend on each other, so this tier builds the whole array. */
+  function recallBuild(rnd,cfg){
+    const out=[];
+    for(let i=0;i<cfg.items;i++){
+      let shown, en, zh;
+      if(cfg.mode==="number"){
+        shown=String(intBetween(rnd,1,9));
+        en="Remember: "+shown; zh="記住："+shown;
+      }else{
+        const big=cfg.mode==="big";
+        const a=intBetween(rnd,big?11:2,big?49:9), b=intBetween(rnd,big?11:2,big?49:9);
+        shown=String(a+b); en=a+" + "+b+" = ?"; zh=a+" + "+b+" = ?";
+      }
+      const first=i===0;
+      const item={
+        shown:shown,
+        prompt:{type:"text",
+          en:first?en+"  (just remember it)":en+"  ← now answer the PREVIOUS one",
+          zh:first?en+"（先記住）":en+"  ← 回答「上一題」"},
+        say:first?["Just remember this one","先記住這一題"]:["Answer the one before","回答上一題"],
+        answer:first?"":out[i-1].shown,
+        worth:first?0:1
+      };
+      if(cfg.pad==="choice")item.choices=numChoices(rnd,Number(item.answer||shown),4,3);
+      if(first)item.grade=function(){return 0;};
+      out.push(item);
+    }
+    return out;
+  }
+
   const GAMES={
     calc:{
       id:"calc", icon:"➕", skill:"math",
@@ -324,6 +356,15 @@
         tot :{items:5,clock:false,pad:"choice",gen:wordMemTot},
         mid :{items:1,clock:true, pad:"type",gen:function(r){return wordMemItem(r,8,45000);}},
         hard:{items:1,clock:true, pad:"type",gen:function(r){return wordMemItem(r,12,60000);}}
+      }
+    },
+    recall:{
+      id:"recall", icon:"🔁", skill:"memory",
+      title:["Math Recall","記憶計算"], blurb:["Answer the one before","回答上一題"],
+      tiers:{
+        tot :{items:6, clock:false,pad:"choice",mode:"number",build:recallBuild},
+        mid :{items:10,clock:true, pad:"keypad",mode:"small", build:recallBuild},
+        hard:{items:10,clock:true, pad:"keypad",mode:"big",   build:recallBuild}
       }
     }
   };

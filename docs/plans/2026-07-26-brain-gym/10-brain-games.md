@@ -913,7 +913,7 @@ The one game whose items depend on each other, so it uses the tier-level `build`
 - Modify: `js/brain-data.js`
 - Test: `scripts/core.test.mjs`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 test("Math Recall asks for the previous answer and gives item 0 away", () => {
@@ -937,12 +937,12 @@ test("Math Recall's freebie accepts anything", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test scripts/core.test.mjs`
 Expected: FAIL — `unknown brain game: recall`
 
-- [ ] **Step 3: Implement in `js/brain-data.js`**
+- [x] **Step 3: Implement in `js/brain-data.js`**
 
 ```js
   /* ---- 9. Math Recall 記憶計算 ----
@@ -992,12 +992,12 @@ Add to `GAMES`:
     },
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `node --test scripts/core.test.mjs && node scripts/check.mjs`
 Expected: PASS both.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add js/brain-data.js scripts/core.test.mjs
