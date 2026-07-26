@@ -165,8 +165,8 @@ body{
   border-color:var(--ok,#3DDC97)}
 
 /* ---------- DIG SITE ---------- */
-.dg-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-width:520px;margin:10px auto 0}
-.dg-cell{position:relative;aspect-ratio:1;background:#3a3160;border:2px solid var(--line);
+.dg-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;max-width:520px;margin:10px auto 0}
+.dg-cell{position:relative;min-height:clamp(44px,16vw,94px);aspect-ratio:1;background:#3a3160;border:2px solid var(--line);
   border-radius:10px;display:flex;align-items:center;justify-content:center}
 .dg-cell.ex{border-color:var(--gold);box-shadow:0 0 10px rgba(255,201,60,.4)}
 .dg-rock{position:relative;font-size:clamp(22px,5vw,34px)}
@@ -1875,7 +1875,7 @@ function finishCity(){
     <button class="btn small" id="ovhome" style="margin-left:8px">Heroes</button>
   </div>`;
   document.body.appendChild(ov);
-  ov.querySelector("#again").onclick=()=>{ov.remove();initCity();};
+  ov.querySelector("#again").onclick=()=>{ov.remove();startGame(kid,"city");};
   ov.querySelector("#ovhome").onclick=()=>{ov.remove();goHome();};
 }
 
@@ -2031,7 +2031,7 @@ function finishDig(){
     <button class="btn small" id="ovhome" style="margin-left:8px">Heroes</button>
   </div>`;
   document.body.appendChild(ov);
-  ov.querySelector("#again").onclick=()=>{ov.remove();initDig();};
+  ov.querySelector("#again").onclick=()=>{ov.remove();startGame(kid,"dig");};
   ov.querySelector("#ovhome").onclick=()=>{ov.remove();goHome();};
 }
 
@@ -2570,7 +2570,7 @@ function proofUrl(path){
 }
 function passText(p){
   if(!p)return "";
-  if(p.kind==="outing")return `🚶 Family outing 家庭出遊${p.credited?" ⭐":""}`;
+  if(p.kind==="outing")return `🚶 ${escHtml(p.reason||"Family outing 家庭出遊")}${p.credited?" ⭐":""}`;
   const kind=p.kind==="golden"?"🎟️ Golden pass 黃金券":"🤝 Excused pass 請假券";
   if(p.status==="requested")return `${kind} requested 已申請`;
   if(p.status==="granted")return `${kind} approved 已核准`;
