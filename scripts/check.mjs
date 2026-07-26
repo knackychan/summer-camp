@@ -14,6 +14,7 @@ const assertPair = (value, where) => {
 };
 
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
+const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -113,6 +114,30 @@ return { ALL_WORDS, SENT, MISSIONS, BANK, ACT_GUIDE, BANK_POOL, DAY, PHOTO_POOL,
 }
 
 try {
+  const manifestUrl = new URL("manifest.webmanifest", root);
+  const manifest = JSON.parse(readFileSync(manifestUrl, "utf8"));
+  if (manifest.name !== "Summer Quest") fail("manifest", "name must be Summer Quest");
+  if (manifest.display !== "standalone") fail("manifest", "display must be standalone");
+  if (!manifest.start_url) fail("manifest", "missing start_url");
+  const icons = Array.isArray(manifest.icons) ? manifest.icons : [];
+  if (!icons.length) fail("manifest", "missing icons");
+  icons.forEach((icon, i) => {
+    if (!icon.src || !existsSync(new URL(icon.src, root))) {
+      fail("manifest", `icon ${i} missing file ${icon.src || ""}`);
+    }
+  });
+  if (!existsSync(new URL("sw.js", root))) fail("pwa", "missing sw.js");
+  if (!indexHtml.includes('rel="manifest"') || !adminHtml.includes('rel="manifest"')) {
+    fail("pwa", "index/admin must link manifest");
+  }
+  if (!indexHtml.includes("serviceWorker") || !adminHtml.includes("serviceWorker")) {
+    fail("pwa", "index/admin must register service worker");
+  }
+} catch (error) {
+  fail("pwa", error.message);
+}
+
+try {
   const tracked = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })
     .split(/\r?\n/)
     .filter(Boolean);
@@ -120,10 +145,12 @@ try {
   const jwtPattern = ["e", "y", "J"].join("");
   const allowedServiceRoleFiles = new Set([".claude/commands/ship.md", "CLAUDE.md", "js/config.example.js"]);
   const allowedJwtFiles = new Set([".claude/commands/ship.md"]);
+  const textLike = /\.(css|html|js|json|md|mjs|sql|svg|txt|webmanifest|yml)$/i;
   for (const file of tracked) {
     const normalizedFile = file.replaceAll("\\", "/");
     const fileUrl = new URL(file, root);
     if (!existsSync(fileUrl)) continue;
+    if (!textLike.test(normalizedFile)) continue;
     const text = readFileSync(fileUrl, "utf8");
     if (text.includes(jwtPattern) && !allowedJwtFiles.has(normalizedFile)) {
       fail("secrets", `${file} contains JWT prefix ${jwtPattern}`);

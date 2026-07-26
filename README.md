@@ -8,6 +8,10 @@ Open `index.html` directly in a browser. The app works in local-only mode when `
 
 For Supabase sync, copy `js/config.example.js` to `js/config.js` and fill in the project URL and anon key.
 
+## Install On Tablets
+
+Open the live site in the tablet browser, then use **Add to Home Screen** / **Install app**. The installed app caches the kid app shell for offline launch; admin still needs network for login and live data.
+
 ## Verify
 
 ```sh

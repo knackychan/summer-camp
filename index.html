@@ -1,6 +1,12 @@
 <!-- SUMMER QUEST — games, missions & the daily plan for Lucien (4), Lili (7) & Luis (9). Self-contained, offline. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#201A40">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Summer Quest">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 <title>Summer Quest</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap');
@@ -2370,5 +2376,8 @@ function setupRealtime(){
 }
 
 /* ============ BOOT ============ */
+if("serviceWorker" in navigator){
+  addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
 (async()=>{ await loadProgress(); renderHome(); setupRealtime(); startTimelineWatcher(); })();
 </script>
