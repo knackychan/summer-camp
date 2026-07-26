@@ -217,7 +217,44 @@
     renderAll();
   }
 
+  /* Cold panels remember whether Papa left them open. One localStorage key holds
+     an array of the open fold names, so adding a fold later needs no migration. */
+  const FOLD_KEY="sq-admin-folds";
+  function openFolds(){
+    try{
+      const raw=JSON.parse(localStorage.getItem(FOLD_KEY)||"[]");
+      return new Set(Array.isArray(raw)?raw:[]);
+    }catch(e){return new Set();}
+  }
+  function bindFolds(){
+    const open=openFolds();
+    document.querySelectorAll("[data-fold]").forEach(function(el){
+      el.open=open.has(el.dataset.fold);
+      el.ontoggle=function(){
+        const set=openFolds();
+        if(el.open)set.add(el.dataset.fold); else set.delete(el.dataset.fold);
+        localStorage.setItem(FOLD_KEY,JSON.stringify([...set]));
+      };
+    });
+  }
+  function renderFoldCounts(){
+    const counts={
+      Acts:rows.acts.length,
+      Proofs:rows.photos.length,
+      History:rows.history.length,
+      Ledger:rows.ledger.length,
+      Settings:rows.kids.filter(function(k){return k.pin;}).length
+    };
+    Object.keys(counts).forEach(function(name){
+      const el=$("foldCount"+name);
+      if(!el)return;
+      const n=counts[name];
+      el.textContent=name==="Settings"?`${n} PIN${n===1?"":"s"} 密碼`:String(n);
+    });
+  }
+
   function renderAll(){
+    renderFoldCounts();
     renderOverview();
     renderGrants();
     renderActsToday();
@@ -985,5 +1022,6 @@
     const {error}=await client.from("papa_notes").upsert({day:today,body});
     status.textContent=error?error.message:"Saved 儲存好了";
   };
+  bindFolds();
   init().catch(e=>{show("configState",true);$("configState").querySelector("p").textContent=e.message;});
 })();
