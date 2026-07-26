@@ -8,7 +8,7 @@
   const DAY=window.SQ_DAY_DATA||[];
 
   let client=null, session=null, today="", tomorrow="";
-  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[]};
+  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={}, adminPinFeedback={};
   let overridesRaw={}, reschedKid="all";
@@ -64,7 +64,7 @@
 
   async function loadAll(){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -77,12 +77,13 @@
       client.from("day_ticks").select("kid_id,day,block_idx").gte("day",start).lte("day",today),
       client.from("help_claims").select("*").order("created_at",{ascending:false}).limit(80),
       client.from("family_settings").select("key,value"),
-      client.from("day_overrides").select("kid_id,block_idx,t").eq("day",today)
+      client.from("day_overrides").select("kid_id,block_idx,t").eq("day",today),
+      client.from("day_redos").select("*").eq("day",today)
     ]);
     rows={
       ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[],
       passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[],helpClaims:helpClaims.data||[],
-      familySettings:familySettings.data||[]
+      familySettings:familySettings.data||[],redos:redos.data||[]
     };
     overridesRaw={};
     (overrides.data||[]).forEach(function(r){
@@ -103,6 +104,7 @@
     renderHistory();
     renderPins();
     renderAdminPin();
+    renderAppLocks();
     renderResched();
     renderOutingBlocks();
   }
@@ -110,6 +112,7 @@
   function renderOverview(){
     $("overview").innerHTML=Object.entries(KIDS).map(([id,k])=>{
       const done=new Set(rows.ticks.filter(t=>t.kid_id===id).map(t=>t.block_idx));
+      const redo=new Set(rows.redos.filter(r=>r.kid_id===id).map(r=>r.block_idx));
       const stars=(rows.totals.find(t=>t.kid_id===id)||{}).stars||0;
       const missions=(rows.stats.find(s=>s.kid_id===id)||{}).value||0;
       return `<article class="kid-card" style="--kid-color:${k.color}">
@@ -118,11 +121,38 @@
         <div class="progress"><div class="progress__fill" style="width:${done.size/DAY.length*100}%;background:${k.color}"></div></div>
         <h3>${done.size}/${DAY.length} blocks 格子</h3>
         <div class="blocks">${DAY.map((b,i)=>`<div class="block-row">
-          <span>${b.t}</span><b class="${done.has(i)?"ok":"muted"}">${done.has(i)?"✓":"-"}</b>
-          <span>${b.title}<br><span class="muted">${b.tz}</span></span>
+          <span>${b.t}</span><b class="${done.has(i)?"ok":"muted"}">${done.has(i)?"✓":redo.has(i)?"↩︎":"-"}</b>
+          <span>${b.title}<br><span class="muted">${b.tz}</span>
+            ${done.has(i)?`<br><button class="btn btn--secondary" data-sendback="${id}:${i}">↩︎ Send back 退回</button>`
+              :redo.has(i)?`<br><span class="muted">waiting redo 等待再做</span>`:""}</span>
         </div>`).join("")}</div>
       </article>`;
     }).join("");
+    document.querySelectorAll("[data-sendback]").forEach(b=>b.onclick=async()=>{
+      const [kid,iStr]=b.dataset.sendback.split(":"), i=+iStr;
+      const titleZh=`${DAY[i].title} ${DAY[i].tz||""}`.trim();
+      if(!confirm(`Send "${titleZh}" back to ${kidName(kid)} for a redo? 退回請${kidName(kid)}再做一次？`))return;
+      const note=prompt("Note for the kid (optional) 給孩子的留言（可留空）","")||"";
+      const day=today;
+      /* refund what the tick earned, through the ledger (never edit totals) */
+      const refunds=[];
+      if(DAY[i].kind==="mission")
+        refunds.push({kid_id:kid,delta:-1,reason:`Sent back 退回: ${titleZh}`,source:"admin",granted_by:session.user.id});
+      const kidDone=rows.ticks.filter(t=>t.kid_id===kid).map(t=>t.block_idx);
+      const passIdx=rows.passes.filter(p=>p.kid_id===kid&&["granted","spent"].includes(p.status)).map(p=>p.block_idx);
+      if(new Set([...kidDone,...passIdx]).size>=DAY.length)
+        refunds.push({kid_id:kid,delta:-2,reason:"Day-complete bonus undone 全天完成獎勵取消",source:"admin",granted_by:session.user.id});
+      const r1=await client.from("day_ticks").delete().eq("kid_id",kid).eq("day",day).eq("block_idx",i);
+      if(r1.error){writeFailed(r1.error);return;}
+      const r2=await client.from("day_redos").upsert({kid_id:kid,day:day,block_idx:i,note});
+      if(r2.error){writeFailed(r2.error);return;}
+      if(refunds.length){
+        const r3=await client.from("stars_ledger").insert(refunds);
+        if(r3.error){writeFailed(r3.error);return;}
+      }
+      toast(`Sent back 退回 ↩︎ ${kidName(kid)} — ${titleZh}`,true);
+      await loadAll();
+    });
   }
 
   function renderGrants(){
@@ -131,19 +161,22 @@
         <h3>${k.name}</h3>
         <label class="field"><span>Reason 原因</span><input class="input" id="reason-${id}" placeholder="helped Lucien 幫Lucien"></label>
         <div class="row">
+          <button class="btn btn--danger" data-grant="${id}" data-delta="-1">−1</button>
           <button class="btn" data-grant="${id}" data-delta="1">+1</button>
           <button class="btn" data-grant="${id}" data-delta="2">+2</button>
           <button class="btn" data-grant="${id}" data-delta="3">+3</button>
         </div>
         <div class="row">
-          <input class="input" id="custom-${id}" type="number" min="1" max="10" value="1">
+          <input class="input" id="custom-${id}" type="number" min="-10" max="10" value="1">
           <button class="btn btn--secondary" data-custom="${id}">Custom 自訂</button>
         </div>
       </article>`).join("");
     document.querySelectorAll("[data-grant]").forEach(b=>b.onclick=()=>grantStars(b.dataset.grant,+b.dataset.delta));
     document.querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{
       const id=b.dataset.custom;
-      grantStars(id,+$(`custom-${id}`).value||1);
+      const v=+$(`custom-${id}`).value||0;
+      if(!v)return;
+      grantStars(id,v);
     });
   }
 
@@ -153,7 +186,7 @@
     if(!reason){input.focus();return;}
     const {error}=await client.from("stars_ledger").insert({kid_id:kid,delta,reason,source:"admin",granted_by:session.user.id});
     if(error){writeFailed(error);return;}
-    toast(`+${delta} ⭐ ${kidName(kid)} — saved 已儲存`,true);
+    toast(`${delta>0?"+":""}${delta} ⭐ ${kidName(kid)} — saved 已儲存`,true);
     input.value="";
     await loadAll();
   }
@@ -520,6 +553,26 @@
     renderAdminPin();
   }
 
+  function renderAppLocks(){
+    const fs=Object.fromEntries(rows.familySettings.map(r=>[r.key,r.value]));
+    $("applocks").innerHTML=Object.entries(KIDS).map(([id,k])=>{
+      const paused=(fs["applock_"+id]||"")!=="";
+      return `<article class="kid-card" style="--kid-color:${k.color}">
+        <h3>${k.name} ${paused?"⏸ paused 已暫停":""}</h3>
+        <button class="btn ${paused?"":"btn--danger"}" data-applock="${id}" data-paused="${paused?1:0}">
+          ${paused?"Resume 恢復":"Pause 暫停"}</button>
+      </article>`;
+    }).join("");
+    document.querySelectorAll("[data-applock]").forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.applock, paused=b.dataset.paused==="1";
+      const value=paused?"":(prompt("Reason (optional) 原因（可留空）","")||"1");
+      const {error}=await client.from("family_settings").upsert({key:"applock_"+id,value,updated_at:new Date().toISOString()});
+      if(error){writeFailed(error);return;}
+      toast(paused?"Resumed 已恢復 ▶":"Paused 已暫停 ⏸",true);
+      await loadAll();
+    });
+  }
+
   function subscribeRealtime(){
     client.channel("p1-admin")
       .on("postgres_changes",{event:"*",schema:"public",table:"day_ticks"},loadAll)
@@ -530,6 +583,7 @@
       .on("postgres_changes",{event:"*",schema:"public",table:"help_claims"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"day_overrides"},loadAll)
+      .on("postgres_changes",{event:"*",schema:"public",table:"day_redos"},loadAll)
       .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},loadAll)
       .subscribe();
   }
