@@ -546,6 +546,9 @@ button:disabled{cursor:default}
 <script src="js/pinpad.js"></script>
 <script src="js/papa-tools.js"></script>
 <script src="js/drills.js"></script>
+<script src="js/brain-data.js"></script>
+<script src="js/brain-core.js"></script>
+<script src="js/brain-ui.js"></script>
 <script>
 /* ============ DATA ============ */
 const KIDS = {
@@ -563,6 +566,7 @@ const LEVELS = {
   race:   {icon:"🚀", title:"Word Racer", tz:"文字競速",      blurb:"Type fast for a score"},
   orc:    {icon:"⚔️", title:"Orc Attack", tz:"半獸人來襲",      blurb:"Type to defend the hero"},
   vocab:  {icon:"🧙", title:"Word Wizard", tz:"文字巫師",     blurb:"Learn English words"},
+  calc:   {icon:"➕", title:"Calculations", tz:"計算",      blurb:"Quick sums", brain:true},
 };
 /* English / emoji / French word packs */
 const VOCAB={
@@ -1156,6 +1160,7 @@ function startGame(id,lvl){
   document.querySelectorAll("#levelChips .chip").forEach(c=>
     c.onclick=()=>startGame(id,c.dataset.l));
   renderSetbar();
+  if(LEVELS[lvl].brain){ startBrain(lvl); return; }
   if(lvl==="hunt") initHunt();
   else if(lvl==="home") initHome();
   else if(lvl==="race") initRace();
@@ -1165,6 +1170,46 @@ function startGame(id,lvl){
   else if(lvl==="city") initCity();
   else if(lvl==="dig") initDig();
   else initOrc();
+}
+/* Brain Gym round (design.md §8). Bests live in progress[kid].best.brain_<id>. */
+function startBrain(gameId){
+  const k=kid, settings=(store&&store.familySettings)||{};
+  const tier=SQBrainCore.tierFor(k,settings);
+  SQBrain.openRound({
+    gameId:gameId, tier:tier, kid:k,
+    say:function(pair){say(pair[0],"en-US");setTimeout(function(){say(pair[1],"zh-TW",true);},1200);},
+    onFinish:function(res){ finishBrain(k,res); }
+  });
+}
+function finishBrain(k,res){
+  const p=progress[k];
+  const bestKey="brain_"+res.gameId, msKey=bestKey+"_ms";
+  const prev=p.best[bestKey]||0;
+  const better=res.score>prev||(res.score===prev&&res.ms>0&&(p.best[msKey]||0)>0&&res.ms<p.best[msKey]);
+  if(better){
+    p.best[bestKey]=res.score;
+    if(res.ms>0)p.best[msKey]=res.ms;
+    saveProgress();
+    if(store)store.setStat(k,bestKey,res.score);
+    if(store&&res.ms>0)store.setStat(k,msKey,res.ms);
+  }
+  showBrainResult(res,better);
+}
+function showBrainResult(res,better){
+  const o=document.createElement("div");
+  o.className="overlay"; o.id="brainResult";
+  o.innerHTML=`<div class="card braincard">
+    <div style="font-size:2.4em">${better?"🌟":"👏"}</div>
+    <h3>${res.score} / ${res.total}${res.ms?" · "+SQBrain.fmtMs(res.ms):""}</h3>
+    <p>${better?"New best! 新紀錄！":"Nice work! 做得好！"}</p>
+    <div class="vrow">
+      <button class="btn" id="brAgain">Again 再一次</button>
+      <button class="btn small" id="brDone">Done 完成</button>
+    </div></div>`;
+  document.body.appendChild(o);
+  o.querySelector("#brAgain").onclick=function(){o.remove();startBrain(res.gameId);};
+  o.querySelector("#brDone").onclick=function(){o.remove();goHome();};
+  if(better)burst(24);
 }
 function stopArena(){
   if(state.raf) cancelAnimationFrame(state.raf);
