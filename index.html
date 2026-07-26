@@ -1729,13 +1729,17 @@ function cityLoop(now){
   if(state.auto||k.g) car.v=Math.min(car.v+300*dt,cap);
   else car.v*=Math.pow(0.15,dt);
   if(car.v>cap) car.v=cap;
-  if(car.v>5){
+  if(Math.abs(car.v)>5){   /* steer while backing off a wall too, never lock up */
     const dir=(k.l?-1:0)+(k.r?1:0);
-    car.h+=dir*2.6*dt*(0.45+0.55*Math.min(car.v/state.vmax,1));
+    car.h+=dir*2.6*dt*(0.45+0.55*Math.min(Math.abs(car.v)/state.vmax,1));
   }
   const nx=car.x+Math.cos(car.h)*car.v*dt, ny=car.y+Math.sin(car.h)*car.v*dt;
-  const ahead=cityTile(nx+Math.cos(car.h)*14,ny+Math.sin(car.h)*14);
-  if(ahead==="B"||ahead==="W"||ahead==="X"){ car.v*=-0.3; }
+  const reach=car.v<0?-14:14;   /* probe where the car is going, not always forward */
+  const ahead=cityTile(nx+Math.cos(car.h)*reach,ny+Math.sin(car.h)*reach);
+  if(ahead==="B"||ahead==="W"||ahead==="X"){
+    /* bounce away from the way we were going, hard enough to unstick and keep steering alive */
+    car.v=(car.v<0?1:-1)*Math.max(Math.abs(car.v)*0.3,40);
+  }
   else { car.x=nx; car.y=ny; }
   cityArrive();
   cityDraw();
