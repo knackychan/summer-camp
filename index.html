@@ -571,6 +571,7 @@ button:disabled{cursor:default}
 <script src="js/day.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/day-data.js"></script>
+<script src="js/act-data.js"></script>
 <script src="js/time-core.js"></script>
 <script src="js/lock-core.js"></script>
 <script src="js/pinpad.js"></script>
@@ -689,41 +690,7 @@ if(typeof SQBrainData!=="undefined")SQBrainData.setWordPool(Object.keys(VOCAB).r
 },[]).filter(function(w){return /^[a-z]+$/.test(w);}));
 const ALL_WORDS=Object.values(VOCAB).reduce((all,p)=>all.concat(p.words),[]);
 /* ---- SUMMER CAMP data (from summer_schedule_kids.xlsx: Activity Bank + Photo Missions) ---- */
-const BANK=[
- {icon:"🤸",cat:"Roof gym — motricity",catz:"屋頂健身房——動作力",
-  lucien:"Animal walks, forward rolls, balance line, throw balls in a basket",lili:"Obstacle course, jump rope, cartwheels, light-dumbbell circuit",luis:"Timed circuit: push-ups, plank, farmer carry, rowing intervals",
-  z:{lucien:"動物走、前滾翻、平衡線、丟球進籃",lili:"障礙賽、跳繩、側手翻、輕啞鈴循環",luis:"計時循環：伏地挺身、撐體、農夫走路、划船"}},
- {icon:"🥊",cat:"Boxing bag",catz:"拳擊沙包",
-  lucien:"Push & catch the bag (with a grown-up)",lili:"2×1 min jab-cross, adult nearby",luis:"3×2 min combos + footwork, adult nearby",
-  z:{lucien:"推推接接沙包（大人陪）",lili:"2×1分鐘刺拳直拳，大人在旁",luis:"3×2分鐘連擊＋步法，大人在旁"}},
- {icon:"⚽",cat:"Outdoor (evening, when cool)",catz:"戶外（傍晚涼快時）",
-  lucien:"Trike, chase games, mini goals",lili:"Bike, football passing, basketball, badminton",luis:"Bike distance, football drills, 1v1 basketball",
-  z:{lucien:"三輪車、追逐遊戲、小球門",lili:"腳踏車、足球傳球、籃球、羽球",luis:"騎遠程、足球訓練、1對1籃球"}},
- {icon:"🎨",cat:"Desk — creative",catz:"桌上創作",
-  lucien:"Colouring, play-dough, big puzzles, stickers",lili:"Drawing challenges, origami, beads, comics",luis:"Sketching, models, journal/comics, chapter books",
-  z:{lucien:"著色、黏土、大拼圖、貼紙",lili:"畫畫挑戰、摺紙、串珠、漫畫",luis:"素描、模型、日記漫畫、章節書"}},
- {icon:"✂️",cat:"Weekly craft project",catz:"每週手作",
-  lucien:"Handprint art, pasta necklaces, paper animals",lili:"Paper planes, bracelets, salt dough",luis:"Cardboard marble run, sewing, stop-motion",
-  z:{lucien:"手印畫、麵條項鍊、紙動物",lili:"紙飛機、手鍊、鹽麵團",luis:"紙板彈珠軌道、縫紉、停格動畫"}},
- {icon:"📸",cat:"Photo & video missions",catz:"照片影片任務",
-  lucien:"Snap 5 favourite things (with help)",lili:"This week's photo theme — find & shoot 10",luis:"Photo theme + a technique, edit & make an album",
-  z:{lucien:"拍5樣最愛的東西（有人幫忙）",lili:"本週主題——找到並拍10張",luis:"主題＋一個技巧，編輯做成相簿"}},
- {icon:"💻",cat:"Computer, AI & web (grown-up OK)",catz:"電腦、AI與網路（大人同意）",
-  lucien:"Look up animals with a buddy",lili:"Search your 'question of the day', ask AI to explain",luis:"Research a topic, AI study buddy, make a slideshow",
-  z:{lucien:"和夥伴查動物圖片",lili:"查「今日問題」，請AI解釋",luis:"研究主題、AI學習夥伴、做投影片"}},
- {icon:"🧠",cat:"Boredom → creativity",catz:"無聊→創意",
-  lucien:"Box of random objects to invent games with",lili:"Invent a game and teach it tonight",luis:"Weekly project: build or invent, present at dinner",
-  z:{lucien:"用雜物箱發明遊戲",lili:"發明遊戲，今晚教大家",luis:"每週計畫：建造或發明，晚餐發表"}},
- {icon:"🧹",cat:"House help (extra stars)",catz:"家事幫手（加星星）",
-  lucien:"Pair socks, clothes in drawer, toys away",lili:"Fold laundry, tidy wardrobe by type, sweep",luis:"Fold laundry, vacuum, help cook",
-  z:{lucien:"配襪子、衣服入櫃、收玩具",lili:"摺衣、整理衣櫃、掃地",luis:"摺衣、吸地、幫忙煮飯"}},
- {icon:"🕺",cat:"Active screen (heat backup)",catz:"活力螢幕（太熱備案）",
-  lucien:"Cosmic Kids Yoga, dance videos",lili:"GoNoodle, Just Dance Now, kids workout videos",luis:"Just Dance Now, HIIT or boxing follow-along",
-  z:{lucien:"Cosmic Kids瑜伽、舞蹈影片",lili:"GoNoodle、Just Dance、兒童運動影片",luis:"Just Dance、HIIT或拳擊跟練"}},
- {icon:"⛏️",cat:"Minecraft missions",catz:"Minecraft任務",
-  lucien:"Build together with the big kids",lili:"A house with a garden, a zoo, a castle",luis:"Working farm, redstone door, recreate our home",
-  z:{lucien:"和哥哥姊姊一起蓋",lili:"有花園的房子、動物園、城堡",luis:"運作農場、紅石門、重現我們家"}},
-];
+const BANK=window.SQ_ACT_DATA;  /* js/act-data.js — shared with admin.html */
 /* concrete daily missions per category per kid */
 const MISSIONS={
 gym:{

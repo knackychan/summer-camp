@@ -808,3 +808,13 @@ p {
   font-size: 18px;
   text-align: center;
 }
+
+/* Activities ticked today — one revocable row per activity star */
+.act-row {
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+}
+.act-row > div { flex: 1; min-width: 160px; }
+.act-row .compact-copy { margin: 2px 0 0; }

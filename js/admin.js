@@ -6,6 +6,7 @@
     luis:{name:"Luis",color:"#4EA8FF"}
   };
   const DAY=window.SQ_DAY_DATA||[];
+  const BANK=window.SQ_ACT_DATA||[];
   const LOCK_CATS=[
     ["games","Games 遊戲"],
     ["acts","Activities 活動"],
@@ -15,7 +16,7 @@
   ];
 
   let client=null, session=null, today="", realtimeChannel=null;
-  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[]};
+  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[],acts:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={}, adminPinFeedback={};
   let overridesRaw={}, dragState=null;
@@ -184,7 +185,7 @@
 
   async function loadAll(){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -198,12 +199,13 @@
       client.from("help_claims").select("*").order("created_at",{ascending:false}).limit(80),
       client.from("family_settings").select("key,value"),
       client.from("day_overrides").select("kid_id,block_idx,t").eq("day",today),
-      client.from("day_redos").select("*").eq("day",today)
+      client.from("day_redos").select("*").eq("day",today),
+      client.from("act_done").select("*").eq("day",today)
     ]);
     rows={
       ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[],
       passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[],helpClaims:helpClaims.data||[],
-      familySettings:familySettings.data||[],redos:redos.data||[]
+      familySettings:familySettings.data||[],redos:redos.data||[],acts:acts.data||[]
     };
     overridesRaw={};
     (overrides.data||[]).forEach(function(r){
@@ -216,6 +218,7 @@
   function renderAll(){
     renderOverview();
     renderGrants();
+    renderActsToday();
     renderLedger();
     renderAsks();
     renderHelpClaims();
@@ -525,18 +528,80 @@
     await loadAll();
   }
 
+  /* Activities a kid ticked today. Each tick granted exactly 1 ⭐ (index.html actDone),
+     so revoking is always −1 plus deleting the act_done row — the tablet re-hydrates
+     actsDay.done from act_done, so the activity goes back to un-ticked and re-earnable. */
+  const actLabel=i=>BANK[i]?`${BANK[i].icon} ${BANK[i].cat} ${BANK[i].catz}`:`Activity 活動 #${i}`;
+  const actDetail=(i,kid)=>BANK[i]?`${BANK[i][kid]||""} ${(BANK[i].z&&BANK[i].z[kid])||""}`.trim():"";
+
+  function renderActsToday(){
+    $("actsToday").innerHTML=Object.entries(KIDS).map(([id,k])=>{
+      const mine=rows.acts.filter(a=>a.kid_id===id).sort((a,b)=>a.act_idx-b.act_idx);
+      const list=mine.length
+        ? mine.map(a=>`<div class="row act-row">
+            <div>
+              <b>${esc(actLabel(a.act_idx))}</b>
+              <p class="compact-copy">${esc(actDetail(a.act_idx,id))}</p>
+            </div>
+            <button class="btn btn--danger" data-revokeact="${id}" data-acti="${a.act_idx}">Revoke ⭐ 收回</button>
+          </div>`).join("")
+        : `<p class="compact-copy">Nothing ticked yet today 今天還沒有勾選活動</p>`;
+      return `<article class="kid-card" style="--kid-color:${k.color}">
+        <h3>${k.name}</h3>
+        <p class="compact-copy">${mine.length} activity star${mine.length===1?"":"s"} today 今天的活動星星</p>
+        ${list}
+      </article>`;
+    }).join("");
+    document.querySelectorAll("[data-revokeact]").forEach(b=>b.onclick=()=>revokeAct(b.dataset.revokeact,+b.dataset.acti));
+  }
+
+  async function revokeAct(kid,i){
+    if(!confirm(`Revoke ${kidName(kid)}'s star for "${actLabel(i)}"? It goes back to un-ticked so it can be done for real today.\n收回${kidName(kid)}這個活動的星星？活動會變回未完成，今天可以真的做完再拿一次。`))return;
+    /* .select() so we can tell "deleted" from "RLS silently matched 0 rows" —
+       without the "admin unact" policy the delete is a no-op with no error. */
+    const del=await client.from("act_done").delete().eq("kid_id",kid).eq("day",today).eq("act_idx",i).select();
+    if(del.error){writeFailed(del.error);return;}
+    if(!del.data||!del.data.length){
+      toast("Could not un-tick — re-run supabase/schema.sql 無法取消勾選——請重跑 schema.sql");
+      return;
+    }
+    const {error}=await client.from("stars_ledger").insert({
+      kid_id:kid,delta:-1,reason:`Activity revoked 收回活動星星: ${BANK[i]?BANK[i].cat:"#"+i}`,
+      source:"admin",granted_by:session.user.id
+    });
+    if(error){writeFailed(error);await loadAll();return;}
+    toast(`Revoked — ${kidName(kid)} can redo it today 已收回，今天可以重做`,true);
+    await loadAll();
+  }
+
   function renderLedger(){
     $("ledger").innerHTML=`<table class="table"><thead><tr>
       <th>Time 時間</th><th>Kid 孩子</th><th>Delta 星</th><th>Reason 原因</th><th>Source 來源</th><th></th>
     </tr></thead><tbody>${rows.ledger.map(r=>`<tr>
       <td>${fmt(r.created_at)}</td><td>${kidName(r.kid_id)}</td><td>${r.delta>0?"+":""}${r.delta}</td>
       <td>${esc(r.reason)}</td><td>${esc(r.source)}</td>
-      <td>${r.source==="admin"?`<button class="btn btn--danger" data-delstar="${r.id}">Undo 復原</button>`:""}</td>
+      <td>${r.source==="admin"
+        ?`<button class="btn btn--danger" data-delstar="${r.id}">Undo 復原</button>`
+        :(r.delta>0?`<button class="btn btn--danger" data-revokestar="${r.id}">Revoke 收回</button>`:"")}</td>
     </tr>`).join("")}</tbody></table>`;
     document.querySelectorAll("[data-delstar]").forEach(b=>b.onclick=async()=>{
       const {error}=await client.from("stars_ledger").delete().eq("id",b.dataset.delstar);
       if(error){writeFailed(error);return;}
       toast("Grant undone 已復原",true);
+      await loadAll();
+    });
+    /* App-earned rows are the kid's own history — never deleted. Revoking adds a
+       matching negative admin row, so the ledger still shows what happened and why. */
+    document.querySelectorAll("[data-revokestar]").forEach(b=>b.onclick=async()=>{
+      const r=rows.ledger.find(x=>x.id===b.dataset.revokestar);
+      if(!r)return;
+      if(!confirm(`Revoke ${r.delta} ⭐ from ${kidName(r.kid_id)} — "${r.reason}"?\n收回${kidName(r.kid_id)}的${r.delta}顆星星？`))return;
+      const {error}=await client.from("stars_ledger").insert({
+        kid_id:r.kid_id,delta:-r.delta,reason:`Revoked 收回: ${r.reason}`,
+        source:"admin",granted_by:session.user.id
+      });
+      if(error){writeFailed(error);return;}
+      toast(`−${r.delta} ⭐ ${kidName(r.kid_id)} — revoked 已收回`,true);
       await loadAll();
     });
   }
@@ -880,6 +945,7 @@
       .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},live("family_settings"))
       .on("postgres_changes",{event:"*",schema:"public",table:"day_overrides"},live("day_overrides"))
       .on("postgres_changes",{event:"*",schema:"public",table:"day_redos"},live("day_redos"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"act_done"},live("act_done"))
       .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},live("kids"))
       .subscribe();
   }

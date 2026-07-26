@@ -554,3 +554,20 @@ begin
   alter publication supabase_realtime add table brain_done;
 exception when duplicate_object then null;
 end $$;
+
+-- ============================================================
+-- v3 addition — Papa can revoke a bogus activity star
+-- (kid ticked "house help" without doing it: take the star back
+--  AND un-tick it, so they can do it for real and earn it again today)
+-- ============================================================
+do $$
+begin
+  execute 'drop policy if exists "admin unact" on public.act_done';
+  execute 'create policy "admin unact" on public.act_done for delete to authenticated using (true)';
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table act_done;
+exception when duplicate_object then null;
+end $$;
