@@ -1008,6 +1008,49 @@ p {
   align-items: center;
 }
 
+/* Recent ledger strip — its own scroll so a busy morning cannot push App locks
+   off the rail. */
+.ledger-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 26vh;
+  overflow-y: auto;
+}
+
+.ledger-row {
+  display: grid;
+  grid-template-columns: auto 34px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: #151127;
+  border-left: 3px solid var(--kid-color, var(--blue));
+  font-size: 12px;
+}
+
+.ledger-row__delta {
+  font-weight: 700;
+  text-align: right;
+}
+
+.ledger-row__why {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ledger-row .btn {
+  min-height: 30px;
+  min-width: 34px;
+  padding: 0;
+}
+
+.bad {
+  color: var(--bad);
+}
+
 /* 1400px: the left rail folds into the top of the centre column, the
    conversation rail survives — it is the one Papa watches all day. */
 @media (max-width: 1400px) {

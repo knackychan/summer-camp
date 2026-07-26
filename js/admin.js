@@ -286,6 +286,8 @@
     renderGrants();
     renderActsToday();
     renderLedger();
+    renderLedgerRecent();
+    bindLedgerActions();
     renderConversation();
     renderProofs();
     renderHistory();
@@ -645,36 +647,63 @@
     await loadAll();
   }
 
+  function ledgerActionsHtml(r){
+    /* Admin grants are Papa's own rows: hard-delete is honest. App-earned rows
+       are the kid's history — revoking inserts a matching negative row instead,
+       so the ledger still shows what happened and why. */
+    if(r.source==="admin")return `<button class="btn btn--danger" data-delstar="${r.id}" title="Undo 復原">⟲</button>`;
+    return r.delta>0?`<button class="btn btn--danger" data-revokestar="${r.id}" title="Revoke 收回">⟲</button>`:"";
+  }
+
+  function bindLedgerActions(){
+    document.querySelectorAll("[data-delstar]").forEach(function(b){
+      b.onclick=async function(){
+        const {error}=await client.from("stars_ledger").delete().eq("id",b.dataset.delstar);
+        if(error){writeFailed(error);return;}
+        toast("Grant undone 已復原",true);
+        await loadAll();
+      };
+    });
+    document.querySelectorAll("[data-revokestar]").forEach(function(b){
+      b.onclick=async function(){
+        const r=rows.ledger.find(function(x){return x.id===b.dataset.revokestar;});
+        if(!r)return;
+        if(!confirm(`Revoke ${r.delta} ⭐ from ${kidName(r.kid_id)} — "${r.reason}"?\n收回${kidName(r.kid_id)}的${r.delta}顆星星？`))return;
+        const {error}=await client.from("stars_ledger").insert({
+          kid_id:r.kid_id,delta:-r.delta,reason:`Revoked 收回: ${r.reason}`,
+          source:"admin",granted_by:session.user.id
+        });
+        if(error){writeFailed(error);return;}
+        toast(`−${r.delta} ⭐ ${kidName(r.kid_id)} — revoked 已收回`,true);
+        await loadAll();
+      };
+    });
+  }
+
   function renderLedger(){
     $("ledger").innerHTML=`<table class="table"><thead><tr>
       <th>Time 時間</th><th>Kid 孩子</th><th>Delta 星</th><th>Reason 原因</th><th>Source 來源</th><th></th>
-    </tr></thead><tbody>${rows.ledger.map(r=>`<tr>
+    </tr></thead><tbody>${rows.ledger.map(function(r){return `<tr>
       <td>${fmt(r.created_at)}</td><td>${kidName(r.kid_id)}</td><td>${r.delta>0?"+":""}${r.delta}</td>
       <td>${esc(r.reason)}</td><td>${esc(r.source)}</td>
-      <td>${r.source==="admin"
-        ?`<button class="btn btn--danger" data-delstar="${r.id}">Undo 復原</button>`
-        :(r.delta>0?`<button class="btn btn--danger" data-revokestar="${r.id}">Revoke 收回</button>`:"")}</td>
-    </tr>`).join("")}</tbody></table>`;
-    document.querySelectorAll("[data-delstar]").forEach(b=>b.onclick=async()=>{
-      const {error}=await client.from("stars_ledger").delete().eq("id",b.dataset.delstar);
-      if(error){writeFailed(error);return;}
-      toast("Grant undone 已復原",true);
-      await loadAll();
-    });
-    /* App-earned rows are the kid's own history — never deleted. Revoking adds a
-       matching negative admin row, so the ledger still shows what happened and why. */
-    document.querySelectorAll("[data-revokestar]").forEach(b=>b.onclick=async()=>{
-      const r=rows.ledger.find(x=>x.id===b.dataset.revokestar);
-      if(!r)return;
-      if(!confirm(`Revoke ${r.delta} ⭐ from ${kidName(r.kid_id)} — "${r.reason}"?\n收回${kidName(r.kid_id)}的${r.delta}顆星星？`))return;
-      const {error}=await client.from("stars_ledger").insert({
-        kid_id:r.kid_id,delta:-r.delta,reason:`Revoked 收回: ${r.reason}`,
-        source:"admin",granted_by:session.user.id
-      });
-      if(error){writeFailed(error);return;}
-      toast(`−${r.delta} ⭐ ${kidName(r.kid_id)} — revoked 已收回`,true);
-      await loadAll();
-    });
+      <td>${ledgerActionsHtml(r)}</td>
+    </tr>`;}).join("")}</tbody></table>`;
+  }
+
+  /* Rail view: confirmation, not audit. Last 8 rows so Papa can see a grant land
+     and undo a mis-tap without leaving the rail. Full history lives in the
+     centre Ledger fold. */
+  function renderLedgerRecent(){
+    const recent=rows.ledger.slice(0,8);
+    $("ledgerRecent").innerHTML=recent.length?recent.map(function(r){
+      const k=KIDS[r.kid_id]||{name:r.kid_id,color:"var(--blue)"};
+      return `<div class="ledger-row" style="--kid-color:${k.color}">
+        <span class="muted">${timeOnly(r.created_at)}</span>
+        <span class="ledger-row__delta ${r.delta>0?"gold":"bad"}">${r.delta>0?"+":""}${r.delta}</span>
+        <span class="ledger-row__why"><b>${esc(k.name)}</b> ${esc(r.reason)}</span>
+        ${ledgerActionsHtml(r)}
+      </div>`;
+    }).join(""):`<p class="compact-copy">No stars yet today 今天還沒有星星</p>`;
   }
 
   function publicUrl(path){
@@ -1167,6 +1196,12 @@
     show("chatJump",false);
   };
   $("chatSend").onclick=sendChatMessage;
+  $("ledgerAllBtn").onclick=function(){
+    const fold=document.querySelector('[data-fold="ledger"]');
+    if(!fold)return;
+    fold.open=true;
+    fold.scrollIntoView({behavior:"smooth",block:"start"});
+  };
   $("galleryBtn").onclick=openGallery;
   $("galleryPrev").onclick=()=>galleryStep(-1);
   $("galleryNext").onclick=()=>galleryStep(1);
