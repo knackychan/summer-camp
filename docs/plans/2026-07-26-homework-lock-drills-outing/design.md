@@ -12,13 +12,13 @@ Decisions recorded here were confirmed explicitly by Papa; implementers should n
 
 ## 1. Homework block (slice 01)
 
-- One **fixed morning block**, same slot for all 3 kids, **replacing** an existing morning block. Day progress stays `x/16`; no day-complete logic changes.
-- Content differs per kid: Luis (9) and Lili (7) get summer homework 暑假作業; Lucien (4) gets quiet work (coloring / tracing / puzzle) so all tablets show the same schedule shape.
-- Tick = done, earns a star like any other block. Bilingual labels required (e.g. "Homework time 寫作業時間").
-- This is a **DAY-data-only** change plus optional guide steps. It can ship immediately, independent of tiers.
-- Open at implementation time: *which* morning block is replaced and the exact time. Implementer proposes from current DAY data; Papa confirms.
+- One **fixed morning block**, same slot for all 3 kids, **replacing the 10:00 "Create & build" block** (Papa's pick, 2026-07-26). Day progress stays `x/16`; no day-complete logic changes.
+- Implemented as a **mission block with a new `homework` pool** so the tick awards a star through the existing mission machinery. Content differs per kid: Luis (9) and Lili (7) get summer homework 暑假作業; Lucien (4) gets quiet work (coloring / tracing / puzzle) so all tablets show the same schedule shape.
+- Single-entry mission pools hide the 🎲 reroll die (small render tweak).
+- The unused `desk` mission pool stays in the data (harmless; may migrate into `project` later).
+- This is a **DAY-data-only** change plus small render/announce tweaks. It can ship immediately, independent of tiers.
 
-## 2. Activity-time lock — hybrid (slice 02)
+## 2. Activity-time lock — hybrid (slice 03)
 
 **Stance change:** the CLAUDE.md non-negotiable "no screen-time enforcement (indicate only)" is amended by Papa's decision: **games are blocked during scheduled activity blocks**. Everything else remains indicate-only, and the coach-not-cop tone stands (the lock invites, never shames).
 
@@ -39,7 +39,7 @@ The clock stays the authority: the schedule is a rhythm, not a stopwatch, and re
 - **Lock persistence:** if the previous activity block is unticked, the games lock persists into the following block(s) until it is ticked — *except* when the current block is itself an activity, in which case the current activity governs the lock. The lock overlay names the unfinished block. Passes, outing mode, and the Papa PIN override clear it as usual.
 - No "extend block" button, no auto-shift. Rejected for complexity and predictability loss.
 
-## 3. Outing mode (slice 03)
+## 3. Outing mode (slice 05)
 
 Covers "we were out all morning" — visit, walk, trip. Kid is not at fault; amber "you can still start!" is the wrong message and the lock must not fire.
 
@@ -48,26 +48,54 @@ Covers "we were out all morning" — visit, walk, trip. Kid is not at fault; amb
 - **Stars:** Papa picks per outing at toggle time — **credited** (each block earns its star; a walk is a real activity; this is the default) or **excused** (no star, like a sick pass). Day-complete stays reachable either way.
 - Lock is suspended for outing blocks. Implementation rides on the P2 pass lifecycle (an outing is effectively a bulk pass over a range).
 
-## 4. Practice drills — dance & piano (slice 04, future)
+## 4. Practice drills — dance & piano (slice 06, future)
 
 Lili takes ballet; there is a piano in the kids' room. Guided practice mode, reusing existing infrastructure (ACT_GUIDE-style bilingual steps, Web Speech announcements, date-seeded rotation, stars ledger, proofs bucket).
 
 - A drill = ordered list of `[en, zh]` steps (e.g. "Plié ×10 蹲步十次", "C scale ×5 C大調音階五次").
 - **Kid-paced: no per-step timers.** Papa's explicit call — timers stress the kids and make them rush past content. Kid taps "next"; the app speaks each step aloud bilingually.
 - Optional **metronome** button on piano steps (Web Audio oscillator, no dependency).
-- Drills rotate date-seeded like mission pools. Per-kid assignment (Lili: ballet + piano; others as Papa decides) — configurable, not hardcoded.
+- Drills rotate date-seeded like mission pools. Per-kid assignment (Lili: ballet + piano; Luis: piano; Lucien: rhythm/movement) — configurable in data, not hardcoded in logic.
+- **Slot (Papa's pick, 2026-07-26):** the 16:30 "Free — invent your own game" block **alternates date-seeded** with "Practice 練習" — both survive at half frequency, `x/16` unchanged.
 - Completing a session ticks the practice block and earns a star through the ledger. Photo/video proof via the existing `proofs` bucket is a later option, not in scope for the first version.
 - Drill content starts client-side and seeded (P0 style); admin editing of drill lists comes later with its own table.
 - **Priority: after P2**, alongside P3 work.
+
+## 5. Reschedule blocks (slice 04) — added 2026-07-26
+
+Papa (or Maman's change of plans, relayed by Papa) can **move any block to a different time, today only**.
+
+- Scope: **all kids at once** (schedule keeps one shape family-wide), from **admin.html and from any tablet via the Papa PIN pad** (offline-queued). Overrides reset automatically tomorrow — the base DAY plan is never edited.
+- Data: `day_overrides` table `(day, block_idx, t)`; tablets hydrate + realtime-subscribe. Client keeps `dayOverrides = {blockIdx: "HH:MM"}` for today.
+- **Everything follows effective time**: timeline current/next, announcements, amber "still can start", screen-earned prerequisites (a block moved *after* a screen block stops being its prerequisite), the activity lock, and My Day row order (rows sort by effective time). This is why slice 02 extracts a shared time core first.
+- Moved rows show a small "moved 已調整" flag. No shame states.
+
+## 6. Module architecture (shared components — keep it clean)
+
+Rule for all slices: **data stays in one place, behavior lives in small shared modules with injected dependencies, UI stays in the page that owns it.** No copy-pasted schedule logic between index.html and admin.html — that's how spaghetti starts.
+
+| Module | Owns | Used by |
+|--------|------|---------|
+| `js/day-data.js` | the `DAY` array (single source; classic script exposing a global + `module.exports` for tests/check) | index.html, admin.html, check.mjs |
+| `js/time-core.js` (`SQTime`) | pure time math: `parseMins`, `effMins`, `timedOrder`, `timelineInfo`, `neededBefore`, `displayOrder` — all take `(day, overrides, …)` args, no globals, node-testable | index.html, admin.html, lock-core, tests |
+| `js/lock-core.js` (`SQLock`) | pure lock decision `computeLock({day, overrides, now, done, passOk})` → `{locked, blockIdx}` — no DOM | index.html, tests |
+| `js/pinpad.js` (`SQPin`) | the 4-digit Papa PIN pad overlay (one component, one look) | lock overlay, papa-tools |
+| `js/papa-tools.js` (`SQPapa`) | tablet-side Papa menu behind the PIN: unlock, reschedule, outing | index.html |
+| `js/drills.js` (`SQDrills`) | drill data + seeded rotation + practice-day alternation + practice UI + metronome | index.html, check.mjs, tests |
+| `scripts/core.test.mjs` | `node:test` suite over the pure modules; wired into `check.mjs` | /check |
+
+`index.html` keeps: game code, remaining data constants (check.mjs contract), thin wrappers that feed globals (`DAY`, `dayOverrides`, `nowMins()`) into the modules. `sync.js` gains ops (`override`, `outingBlock`) and hydration for `family_settings` + `day_overrides` following its existing queue pattern.
 
 ## Ship order
 
 | Slice | Feature | Depends on | When |
 |-------|---------|-----------|------|
 | 01 | Homework block | nothing (DAY data) | now |
-| 02 | Activity lock + PIN override | P0 live timeline | after P0 |
-| 03 | Outing mode | P2 pass lifecycle | with/after P2 |
-| 04 | Practice drills | nothing hard; effort-gated | P3 era |
+| 02 | Day-core refactor (day-data + time-core + tests) | nothing (pure refactor) | now, before 03/04 |
+| 03 | Activity lock + admin PIN + pinpad | slice 02; GPT's P2 passes landed | after P2 |
+| 04 | Reschedule blocks + papa-tools | slice 02, 03 (pinpad) | after 03 |
+| 05 | Outing mode | slice 03/04 (pinpad, papa-tools), P2 pass lifecycle | after 04 |
+| 06 | Practice drills | slice 01 landed (schedule stable); 02 helpful | P3 era |
 
 ## Non-goals
 
