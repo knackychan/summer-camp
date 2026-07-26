@@ -1,11 +1,16 @@
-/* SQLock — pure games-lock decision. */
+/* SQLock — pure games-lock decision.
+   - a redo-flagged block (Papa send-back) that is unticked/unpassed locks first, regardless of time */
 (function(){
   const SQT=typeof window!=="undefined"?window.SQTime:require("./time-core.js");
   function isScreenBlock(b){return String((b&&b.title)||"").includes("Screen");}
   function computeLock(ctx){
-    const past=SQT.timedOrder(ctx.day,ctx.overrides||{}).filter(function(x){return x.t<=ctx.now;});
-    const free=function(i){return !!(ctx.done&&ctx.done[i])||!!(ctx.passOk&&ctx.passOk(i));};
-    const verdict=function(i){return free(i)?{locked:false,blockIdx:null}:{locked:true,blockIdx:i};};
+    const free=i=>!!(ctx.done&&ctx.done[i])||!!(ctx.passOk&&ctx.passOk(i));
+    const verdict=i=>free(i)?{locked:false,blockIdx:null}:{locked:true,blockIdx:i};
+    /* Papa send-back (design.md §8): an unticked redo block locks regardless of the clock */
+    for(const k of Object.keys(ctx.redos||{})){
+      if(!free(+k))return {locked:true,blockIdx:+k};
+    }
+    const past=SQT.timedOrder(ctx.day,ctx.overrides||{}).filter(x=>x.t<=ctx.now);
     if(!past.length)return {locked:false,blockIdx:null};
     const cur=past[past.length-1];
     if(!isScreenBlock(ctx.day[cur.i]))return verdict(cur.i);

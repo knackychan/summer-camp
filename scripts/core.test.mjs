@@ -83,8 +83,8 @@ const LDAY = [
   { t: "✨", title: "Bonus", tz: "加碼" },
 ];
 const noPass = () => false;
-const lock = (now, done, passOk = noPass, overrides = {}) =>
-  SQLock.computeLock({ day: LDAY, overrides, now, done, passOk });
+const lock = (now, done, passOk = noPass, overrides = {}, redos = {}) =>
+  SQLock.computeLock({ day: LDAY, overrides, now, done, passOk, redos });
 
 test("locked during unticked activity block", () => {
   assert.deepEqual(lock(10 * 60 + 30, {}), { locked: true, blockIdx: 1 });
@@ -115,6 +115,24 @@ test("before first block: unlocked", () => {
 test("override moves the governing block", () => {
   assert.deepEqual(lock(10 * 60 + 30, {}, noPass, { 1: "15:00" }), { locked: true, blockIdx: 0 });
   assert.deepEqual(lock(10 * 60 + 30, { 0: true }, noPass, { 1: "15:00" }), { locked: false, blockIdx: null });
+});
+
+test("redo block locks games regardless of clock", () => {
+  // 6:00 — before any block, normally unlocked; redo flag on homework forces the lock
+  assert.deepEqual(lock(6 * 60, {}, noPass, {}, { 1: true }), { locked: true, blockIdx: 1 });
+});
+
+test("re-ticked redo block unlocks", () => {
+  assert.deepEqual(lock(6 * 60, { 1: true }, noPass, {}, { 1: true }), { locked: false, blockIdx: null });
+});
+
+test("pass on redo block unlocks", () => {
+  assert.deepEqual(lock(6 * 60, {}, i => i === 1, {}, { 1: true }), { locked: false, blockIdx: null });
+});
+
+test("redo lock outranks current-block verdict", () => {
+  // 12:10 lunch current+ticked, homework redo-flagged and unticked → locked by homework
+  assert.deepEqual(lock(12 * 60 + 10, { 3: true }, noPass, {}, { 1: true }), { locked: true, blockIdx: 1 });
 });
 
 test("practice-day alternation is deterministic and roughly half", () => {
