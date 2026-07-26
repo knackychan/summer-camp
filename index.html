@@ -1702,13 +1702,11 @@ function initCity(){
   };
   hold("cdL","l"); hold("cdR","r"); hold("cdGas","g");
   const age=KIDS[kid].age;
-  state.auto=age<=5;                       /* Lucien: auto-cruise, steer only */
-  state.vmax=age<=5?120:age<=8?190:220;
-  if(state.auto) document.getElementById("cdGas").style.display="none";
-  state.time=state.auto?-1:180;            /* -1 = untimed free play */
+  state.vmax=age<=5?120:age<=8?190:220;    /* every kid drives with GAS (Papa 2026-07-26) */
+  state.time=age<=5?-1:180;                /* -1 = untimed free play for the youngest */
   cityMission();
   cityHud();
-  if(!state.auto) state.timer=setInterval(cityTick,1000);
+  if(state.time>=0) state.timer=setInterval(cityTick,1000);
   state.last=performance.now();
   state.raf=requestAnimationFrame(cityLoop);
   cityDraw();
@@ -1726,7 +1724,7 @@ function cityLoop(now){
   const car=state.car, k=state.keys;
   const onGrass=cityTile(car.x,car.y)==="G";
   const cap=onGrass?state.vmax*0.45:state.vmax;
-  if(state.auto||k.g) car.v=Math.min(car.v+300*dt,cap);
+  if(k.g) car.v=Math.min(car.v+300*dt,cap);
   else car.v*=Math.pow(0.15,dt);
   if(car.v>cap) car.v=cap;
   if(Math.abs(car.v)>5){   /* steer while backing off a wall too, never lock up */

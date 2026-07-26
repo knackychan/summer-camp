@@ -2,6 +2,7 @@
 
 **Status: approved by Papa 2026-07-26 (chat). Planning only — implementation not started.**
 **Rev 2 (same day): Papa replaced the lane-gate racer with a free-roam city driving game (play-carpet style, see reference screenshot in chat).**
+**Rev 3 (same day, after playtest): Papa dropped Lucien's auto-cruise — all three kids get the same ◀ ▶ + GAS controls. Lucien still plays untimed (no clock, no finish overlay); only the auto-throttle is gone.**
 
 ## What
 
@@ -24,7 +25,7 @@ Existing "Big Machines" (Lucien's typing level) is untouched.
 |---|---|---|
 | Concept | Free-roam city car (replaces earlier lane-gate racer idea) + Dig Site | Papa wants real navigation + physics, carpet-city feel |
 | Players | All 3 kids | Difficulty derived from `KIDS[kid].age`, no settings UI |
-| Controls | ◀ ▶ steer buttons (left thumb) + GAS button (right thumb); Arrow keys on laptop. Lucien: car auto-cruises slowly, steer only, no GAS button | Age-adaptive; big touch targets |
+| Controls | ◀ ▶ steer buttons (left thumb) + GAS button (right thumb); Arrow keys on laptop. **All three kids, incl. Lucien** — see rev 3 | Age-adaptive; big touch targets |
 | Missions | All four: math deliveries, find-the-place vocab, letter hunt (Lucien), taxi sentences (Luis/Lili) | Papa picked all |
 | Rewards | Best-score only (`best.city`, `best.dig` in `game_stats`) | No star inflation, no RLS change |
 
