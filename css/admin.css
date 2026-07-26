@@ -253,6 +253,39 @@ p {
   margin-top: 6px;
 }
 
+.thumb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #151127;
+}
+
+.heatmap {
+  display: grid;
+  grid-template-columns: 90px repeat(14, minmax(28px, 1fr));
+  gap: 4px;
+  align-items: center;
+  overflow-x: auto;
+}
+
+.heat-cell {
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  font-size: 11px;
+}
+
 @media (max-width: 860px) {
   .kid-grid,
   .layout-two {

@@ -279,6 +279,9 @@ button:disabled{cursor:default}
 .askcard.answered{border-color:var(--ok)}
 .askmeta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-weight:800;font-size:12px}
 .askaudio{width:100%;max-width:320px;margin-top:8px}
+.pininput{font-family:'Fredoka';font-size:28px;text-align:center;letter-spacing:6px;max-width:180px}
+.proofthumb{max-width:160px;max-height:120px;border-radius:12px;border:2px solid var(--line);margin-top:6px}
+.passline{font-size:12px;font-weight:900;color:var(--gold);margin-top:6px}
 .dayrow .dbtns{display:flex;flex-direction:column;gap:6px}
 .dayrow .btn.tick{padding:8px 12px;font-size:15px}
 .dayrow.mission{border-left:5px solid var(--gold)}
@@ -893,9 +896,35 @@ function renderHome(){
       <div class="mode">${LEVELS[k.level].icon} ${LEVELS[k.level].title}</div>
       <div class="stats"><span>⭐ <b>${p.stars||0}</b> stars</span>
         <span>🏁 best <b>${heroBest(id)}</b></span></div>`;
-    b.onclick=()=>openHub(id);
+    b.onclick=()=>selectKid(id);
     box.appendChild(b);
   });
+}
+function selectKid(id){
+  const pin=(store&&store.kidPins&&store.kidPins[id])||((JSON.parse(localStorage.getItem("sq:kidPins")||"{}"))[id]);
+  if(!pin||localStorage.getItem("sq:kid")===id){localStorage.setItem("sq:kid",id);openHub(id);return;}
+  showPin(id,pin);
+}
+function showPin(id,pin){
+  const o=document.createElement("div");
+  o.className="overlay";
+  o.innerHTML=`<div class="card">
+    <h3>${KIDS[id].name}</h3>
+    <p>Enter PIN 輸入密碼</p>
+    <input class="qinput pininput" id="pinTry" inputmode="numeric" maxlength="4" autocomplete="off">
+    <div class="vrow">
+      <button class="btn" id="pinGo">Open 打開</button>
+      <button class="btn small" id="pinCancel">Cancel 取消</button>
+    </div>
+    <div class="tipline" id="pinMsg"></div>
+  </div>`;
+  document.body.appendChild(o);
+  const input=o.querySelector("#pinTry"); input.focus();
+  o.querySelector("#pinGo").onclick=()=>{
+    if(input.value===pin){localStorage.setItem("sq:kid",id);o.remove();openHub(id);return;}
+    sBad(); o.querySelector("#pinMsg").textContent="Try again 再試一次"; input.value=""; input.focus();
+  };
+  o.querySelector("#pinCancel").onclick=()=>o.remove();
 }
 
 /* ============ KEYBOARD ============ */
@@ -1860,6 +1889,24 @@ function screenStatus(i,d){
     ? `<span class="screenflag">🔓 Earned screen window 螢幕時間已解鎖</span>`
     : `<span class="screenflag locked">🔒 Tick earlier boxes first 先完成前面的格子</span>`;
 }
+function passFor(id,i,statuses){
+  const wanted=statuses||["requested","granted","spent","denied"];
+  return ((store&&store.passes)||[]).find(p=>p.kid_id===id&&p.day===todayStr()&&p.block_idx===i&&wanted.includes(p.status));
+}
+function proofFor(id,i){
+  return ((store&&store.photos)||[]).find(p=>p.kid_id===id&&p.day===todayStr()&&p.block_idx===i);
+}
+function proofUrl(path){
+  return store&&store.supabase&&path?store.supabase.storage.from("proofs").getPublicUrl(path).data.publicUrl:"";
+}
+function passText(p){
+  if(!p)return "";
+  const kind=p.kind==="golden"?"Golden pass 黃金券":"Excused pass 請假券";
+  if(p.status==="requested")return `${kind} requested 已申請`;
+  if(p.status==="granted")return `${kind} approved 已核准`;
+  if(p.status==="spent")return `${kind} used 已使用`;
+  return `${kind} denied 未核准`;
+}
 function timeFlag(i,isDone,info){
   if(isDone||blockMins(DAY[i])==null)return "";
   if(i===info.current)return `<span class="timeflag">Now 現在</span>`;
@@ -1877,6 +1924,7 @@ function renderMyDay(){
     note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div>`+
     DAY.map((b,i)=>{
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
+      const pass=passFor(hubKid,i), proof=proofFor(hubKid,i);
       const rowState=isDone?"done":i===info.current?"now":i===info.next?"next":blockMins(b)!=null&&blockMins(b)<info.now?"past":"";
       return `<div class="dayrow ${b.kind} ${rowState}" data-row="${i}">
         <div class="dtime">${b.t}</div>
@@ -1885,12 +1933,17 @@ function renderMyDay(){
           <div class="dt-mis ${b.kind}">${b.kind==="mission"
             ?`🎯 ${mis[0]}<span class="zhs">${mis[1]}</span>`
             :`${b.txt?b.txt[hubKid]:""}<span class="zhs">${b.txtz?b.txtz[hubKid]:""}</span>`}
-            ${screenStatus(i,d)}${timeFlag(i,isDone,info)}</div>
+            ${screenStatus(i,d)}${timeFlag(i,isDone,info)}
+            ${pass?`<div class="passline">${passText(pass)}</div>`:""}
+            ${proof?`<img class="proofthumb" src="${proofUrl(proof.path)}" alt="Photo proof 照片證明">`:""}</div>
         </div>
         <div class="dbtns">
           <button class="btn small tick" data-done="${i}"
             style="${isDone?'background:var(--ok);color:#1c1436':''}">${isDone?"✓":"✓ 完成"}</button>
           ${b.kind==="mission"&&!isDone?`<button class="btn small tick" data-rr="${i}">🎲</button>`:""}
+          ${b.kind==="mission"&&!isDone&&!pass?`<button class="btn small tick" data-pass="${i}">🎟️</button>`:""}
+          ${pass&&pass.status==="granted"&&!isDone?`<button class="btn small tick" data-usepass="${pass.id}" data-i="${i}">Use 使用</button>`:""}
+          ${b.kind==="mission"&&isDone&&!proof?`<label class="btn small tick">📸<input type="file" accept="image/*" capture="environment" data-proof="${i}" hidden></label>`:""}
         </div>
       </div>`;
     }).join("");
@@ -1916,6 +1969,52 @@ function renderMyDay(){
     const i=+btn.dataset.rr, d2=dayState(hubKid);
     d2.rr[i]=(d2.rr[i]||0)+1; saveProgress(); sGood(); renderMyDay();
   });
+  document.querySelectorAll("#dayList [data-pass]").forEach(btn=>btn.onclick=()=>requestPass(+btn.dataset.pass));
+  document.querySelectorAll("#dayList [data-usepass]").forEach(btn=>btn.onclick=()=>usePass(btn.dataset.usepass,+btn.dataset.i));
+  document.querySelectorAll("#dayList [data-proof]").forEach(inp=>inp.onchange=()=>uploadProof(+inp.dataset.proof,inp.files[0]));
+}
+async function requestPass(i){
+  if(!store||!store.supabase){sBad();return;}
+  const o=document.createElement("div");
+  o.className="overlay";
+  o.innerHTML=`<div class="card">
+    <h3>Pass request 申請券</h3>
+    <p>${DAY[i].title}<span class="zhs">${DAY[i].tz}</span></p>
+    <div class="vrow">
+      <button class="btn" data-kind="excused">Excused 請假</button>
+      <button class="btn small" data-kind="golden">Golden 黃金</button>
+    </div>
+    <input class="qinput" id="passReason" placeholder="Reason 原因" maxlength="120">
+    <div class="vrow">
+      <button class="btn" id="passSend">Send 送出</button>
+      <button class="btn small" id="passCancel">Cancel 取消</button>
+    </div>
+    <div class="tipline" id="passMsg"></div>
+  </div>`;
+  document.body.appendChild(o);
+  let kind="excused";
+  o.querySelectorAll("[data-kind]").forEach(b=>b.onclick=()=>{kind=b.dataset.kind;sGood();});
+  o.querySelector("#passCancel").onclick=()=>o.remove();
+  o.querySelector("#passSend").onclick=async()=>{
+    const reason=o.querySelector("#passReason").value.trim();
+    if(!reason){o.querySelector("#passReason").focus();return;}
+    const {error}=await store.requestPass(hubKid,kind,todayStr(),i,reason);
+    if(error){sBad();o.querySelector("#passMsg").textContent=error.message;return;}
+    o.remove(); sGood(); await store.hydrate(); renderMyDay();
+  };
+  o.querySelector("#passReason").focus();
+}
+async function usePass(id,i){
+  const {error}=await store.spendPass(id,todayStr(),i);
+  if(error){sBad();return;}
+  const d=dayState(hubKid); d.done[i]=true;
+  await saveProgress(); sGood(); await store.hydrate(); renderMyDay(); renderHubHead();
+}
+async function uploadProof(i,file){
+  if(!file||!store||!store.supabase)return;
+  const {error}=await store.uploadProof(hubKid,todayStr(),i,file);
+  if(error){sBad();return;}
+  sWin(); await store.hydrate(); renderMyDay();
 }
 let lastTimelineBlock=null;
 function announceBlock(i){
@@ -2106,6 +2205,7 @@ function qbCompose(){
 }
 function qbGo(base){
   const q=qbQuery(); if(!q){sBad();return;}
+  if(store) store.logSearch(hubKid,q,base.includes("kiddle")?"kiddle":"google");
   sGood(); window.open(base+encodeURIComponent(q),"_blank");
 }
 function openLearn(key){
@@ -2247,6 +2347,16 @@ function setupRealtime(){
     if(!row||row.kid_id!==hubKid)return;
     updateAskBadge();
     if(hubTab==="ask")renderAsk();
+  });
+  store.onPasses(async row=>{
+    if(!row||row.kid_id!==hubKid)return;
+    await store.hydrate();
+    if(hubTab==="day")renderMyDay();
+  });
+  store.onKids(row=>{
+    if(!row||!row.id)return;
+    if(row.pin)store.kidPins[row.id]=row.pin; else delete store.kidPins[row.id];
+    localStorage.setItem("sq:kidPins",JSON.stringify(store.kidPins));
   });
 }
 

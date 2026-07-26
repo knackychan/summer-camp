@@ -14,7 +14,7 @@
   ];
 
   let client=null, session=null, today="", tomorrow="";
-  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[]};
+  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
 
   const $=id=>document.getElementById(id);
@@ -58,15 +58,23 @@
   }
 
   async function loadAll(){
-    const [ticks,totals,stats,ledger,asks,note]=await Promise.all([
+    const start=dayISO(-13);
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
       client.from("stars_ledger").select("*").order("created_at",{ascending:false}).limit(30),
       client.from("asks").select("*").order("created_at",{ascending:false}).limit(40),
-      client.from("papa_notes").select("body").eq("day",tomorrow).maybeSingle()
+      client.from("papa_notes").select("body").eq("day",tomorrow).maybeSingle(),
+      client.from("passes").select("*").order("created_at",{ascending:false}).limit(80),
+      client.from("photos").select("*").order("created_at",{ascending:false}).limit(80),
+      client.from("kids").select("id,pin").order("id"),
+      client.from("day_ticks").select("kid_id,day,block_idx").gte("day",start).lte("day",today)
     ]);
-    rows={ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[]};
+    rows={
+      ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[],
+      passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[]
+    };
     $("noteBody").value=note.data&&note.data.body?note.data.body:"";
     renderAll();
   }
@@ -76,6 +84,10 @@
     renderGrants();
     renderLedger();
     renderAsks();
+    renderPasses();
+    renderProofs();
+    renderHistory();
+    renderPins();
   }
 
   function renderOverview(){
@@ -145,6 +157,10 @@
     if(!path) return "";
     return client.storage.from("voices").getPublicUrl(path).data.publicUrl;
   }
+  function proofUrl(path){
+    if(!path) return "";
+    return client.storage.from("proofs").getPublicUrl(path).data.publicUrl;
+  }
 
   function renderAsks(){
     const open=rows.asks.filter(a=>!a.answered_at);
@@ -208,11 +224,74 @@
     await loadAll();
   }
 
+  function renderPasses(){
+    $("passes").innerHTML=rows.passes.length?`<table class="table"><thead><tr>
+      <th>Time 時間</th><th>Kid 孩子</th><th>Block 格子</th><th>Kind 類型</th><th>Status 狀態</th><th>Reason 原因</th><th></th>
+    </tr></thead><tbody>${rows.passes.map(p=>`<tr>
+      <td>${fmt(p.created_at)}</td><td>${kidName(p.kid_id)}</td><td>${DAY[p.block_idx]?.[1]||"-"}<br><span class="muted">${DAY[p.block_idx]?.[2]||""}</span></td>
+      <td>${p.kind==="golden"?"Golden 黃金":"Excused 請假"}</td><td>${esc(p.status)}</td><td>${esc(p.reason||"")}</td>
+      <td>${p.status==="requested"?`<button class="btn" data-passok="${p.id}">Approve 核准</button>
+        <button class="btn btn--danger" data-passno="${p.id}">Deny 拒絕</button>`:""}</td>
+    </tr>`).join("")}</tbody></table>`:`<p>No pass requests. 還沒有券申請。</p>`;
+    document.querySelectorAll("[data-passok]").forEach(b=>b.onclick=()=>setPass(b.dataset.passok,"granted"));
+    document.querySelectorAll("[data-passno]").forEach(b=>b.onclick=()=>setPass(b.dataset.passno,"denied"));
+  }
+  async function setPass(id,status){
+    await client.from("passes").update({status,granted_by:session.user.id}).eq("id",id);
+    await loadAll();
+  }
+
+  function renderProofs(){
+    $("proofs").innerHTML=rows.photos.length?`<div class="thumb-grid">${rows.photos.map(p=>`
+      <article class="ask-card">
+        <img class="thumb" src="${proofUrl(p.path)}" alt="Photo proof 照片證明">
+        <p>${kidName(p.kid_id)} · ${p.day} · ${DAY[p.block_idx]?.[1]||"Block"}<br><span class="muted">${DAY[p.block_idx]?.[2]||""}</span></p>
+      </article>`).join("")}</div>`:`<p>No proof photos yet. 還沒有照片證明。</p>`;
+  }
+
+  function renderHistory(){
+    const days=Array.from({length:14},(_,i)=>dayISO(i-13));
+    const counts=new Map();
+    rows.history.forEach(r=>counts.set(`${r.kid_id}:${r.day}`,(counts.get(`${r.kid_id}:${r.day}`)||0)+1));
+    $("history").innerHTML=`<div class="heatmap">
+      <span></span>${days.map(d=>`<span class="muted">${d.slice(5)}</span>`).join("")}
+      ${Object.entries(KIDS).map(([id,k])=>`<b>${k.name}</b>${days.map(d=>{
+        const c=counts.get(`${id}:${d}`)||0, pct=c/DAY.length;
+        return `<span class="heat-cell" style="background:rgba(61,220,151,${Math.max(.08,pct)})">${c}</span>`;
+      }).join("")}`).join("")}
+    </div>`;
+  }
+
+  function renderPins(){
+    $("pinSettings").innerHTML=Object.entries(KIDS).map(([id,k])=>{
+      const row=rows.kids.find(x=>x.id===id)||{};
+      return `<article class="kid-card" style="border-left-color:${k.color}">
+        <h3>${k.name}</h3>
+        <label class="field"><span>PIN 密碼</span><input class="input" id="pin-${id}" inputmode="numeric" maxlength="4" value="${esc(row.pin||"")}" placeholder="optional 選填"></label>
+        <div class="row">
+          <button class="btn" data-pin="${id}">Save 儲存</button>
+          <button class="btn btn--secondary" data-clearpin="${id}">Clear 清除</button>
+        </div>
+      </article>`;
+    }).join("");
+    document.querySelectorAll("[data-pin]").forEach(b=>b.onclick=()=>savePin(b.dataset.pin,false));
+    document.querySelectorAll("[data-clearpin]").forEach(b=>b.onclick=()=>savePin(b.dataset.clearpin,true));
+  }
+  async function savePin(id,clear){
+    const value=clear?null:$(`pin-${id}`).value.trim();
+    if(value&&!/^[0-9]{4}$/.test(value)){$(`pin-${id}`).focus();return;}
+    await client.from("kids").update({pin:value||null}).eq("id",id);
+    await loadAll();
+  }
+
   function subscribeRealtime(){
     client.channel("p1-admin")
       .on("postgres_changes",{event:"*",schema:"public",table:"day_ticks"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"stars_ledger"},loadAll)
       .on("postgres_changes",{event:"*",schema:"public",table:"asks"},loadAll)
+      .on("postgres_changes",{event:"*",schema:"public",table:"passes"},loadAll)
+      .on("postgres_changes",{event:"*",schema:"public",table:"photos"},loadAll)
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},loadAll)
       .subscribe();
   }
 

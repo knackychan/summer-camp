@@ -135,6 +135,24 @@ begin
 exception when duplicate_object then null;
 end $$;
 
+do $$
+begin
+  alter publication supabase_realtime add table passes;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table photos;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table kids;
+exception when duplicate_object then null;
+end $$;
+
 
 -- ============================================================
 -- v2 additions — assistance features (brainstorm 2026-07-26)
@@ -246,5 +264,37 @@ begin
   ) then
     create policy "voices auth insert" on storage.objects
       for insert to authenticated with check (bucket_id = 'voices');
+  end if;
+end $$;
+
+-- P2 storage for photo proof uploads and dinner gallery.
+insert into storage.buckets (id, name, public)
+values ('proofs', 'proofs', true)
+on conflict (id) do update set public = true;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'proofs public read'
+  ) then
+    create policy "proofs public read" on storage.objects
+      for select using (bucket_id = 'proofs');
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'proofs anon insert'
+  ) then
+    create policy "proofs anon insert" on storage.objects
+      for insert to anon with check (bucket_id = 'proofs');
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'proofs auth insert'
+  ) then
+    create policy "proofs auth insert" on storage.objects
+      for insert to authenticated with check (bucket_id = 'proofs');
   end if;
 end $$;

@@ -83,6 +83,9 @@
       this.progress=normalize(seed.progress);
       this.settings=seed.settings;
       this.queue=loadJson(QUEUE_KEY,[]);
+      this.kidPins=loadJson("sq:kidPins",{});
+      this.passes=[];
+      this.photos=[];
       this.last=clone(this.progress);
       this.flushTimer=null;
     }
@@ -115,7 +118,8 @@
       const day=todayISO();
       const p=normalize(this.progress);
 
-      const [{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note}]=await Promise.all([
+      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos}]=await Promise.all([
+        this.supabase.from("kids").select("id,pin"),
         this.supabase.from("day_ticks").select("kid_id,block_idx").eq("day",day),
         this.supabase.from("day_rolls").select("kid_id,block_idx,count").eq("day",day),
         this.supabase.from("act_done").select("kid_id,act_idx").eq("day",day),
@@ -123,8 +127,15 @@
         this.supabase.from("vocab_mastery").select("kid_id,word_key,box"),
         this.supabase.from("game_stats").select("kid_id,stat,value"),
         this.supabase.from("papa_notes").select("body").eq("day",day).maybeSingle(),
+        this.supabase.from("passes").select("*").or(`day.is.null,day.eq.${day}`).order("created_at",{ascending:false}),
+        this.supabase.from("photos").select("*").eq("day",day).order("created_at",{ascending:false}),
       ]);
 
+      this.kidPins={};
+      (kids||[]).forEach(r=>{if(r.pin)this.kidPins[r.id]=r.pin;});
+      saveJson("sq:kidPins",this.kidPins);
+      this.passes=passes||[];
+      this.photos=photos||[];
       KIDS.forEach(kid=>{
         p[kid].day={d:day,done:{},rr:{}};
         p[kid].actsDay={d:day,done:{}};
@@ -289,6 +300,26 @@
       }
       return this.supabase.from("asks").insert({kid_id:kid,kind,body:body||null,audio_path});
     }
+    async requestPass(kid,kind,day,blockIdx,reason){
+      if(!this.supabase) return {error:new Error("Sync is offline")};
+      return this.supabase.from("passes").insert({kid_id:kid,kind,status:"requested",day,block_idx:blockIdx,reason});
+    }
+    async spendPass(id,day,blockIdx){
+      if(!this.supabase) return {error:new Error("Sync is offline")};
+      return this.supabase.from("passes").update({status:"spent",day,block_idx:blockIdx}).eq("id",id);
+    }
+    async uploadProof(kid,day,blockIdx,file){
+      if(!this.supabase) return {error:new Error("Sync is offline")};
+      const ext=(file.name&&file.name.split(".").pop())||"jpg";
+      const path=`${kid}/${day}-${blockIdx}-${Date.now()}.${ext}`;
+      const up=await this.supabase.storage.from("proofs").upload(path,file,{contentType:file.type||"image/jpeg",upsert:false});
+      if(up.error) return up;
+      return this.supabase.from("photos").insert({kid_id:kid,day,block_idx:blockIdx,path});
+    }
+    async logSearch(kid,query,engine){
+      if(!this.supabase||!query) return;
+      await this.supabase.from("search_log").insert({kid_id:kid,query,engine});
+    }
     onStars(cb){
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`stars-${Date.now()}`)
@@ -300,6 +331,20 @@
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`asks-${Date.now()}`)
         .on("postgres_changes",{event:"*",schema:"public",table:"asks"},p=>cb(p.new||p.old))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
+    onPasses(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`passes-${Date.now()}`)
+        .on("postgres_changes",{event:"*",schema:"public",table:"passes"},p=>cb(p.new||p.old))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
+    onKids(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`kids-${Date.now()}`)
+        .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},p=>cb(p.new))
         .subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }
