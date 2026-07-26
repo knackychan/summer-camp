@@ -1,0 +1,2034 @@
+<!-- SUMMER QUEST — games, missions & the daily plan for Lucien (4), Lili (7) & Luis (9). Self-contained, offline. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Summer Quest</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+:root{
+  --bg:#201A40; --bg2:#2A2350; --panel:#332B66; --panel2:#3D3475;
+  --ink:#F3F0FF; --muted:#A79FD6; --line:#4A4090;
+  --lucien:#3DDC97; --lili:#FF6FB5; --luis:#4EA8FF;
+  --gold:#FFC93C; --ok:#4ADE80; --bad:#FF6B6B;
+  /* finger zone colours */
+  --f-lp:#F87171; --f-lr:#FB923C; --f-lm:#FBBF24; --f-li:#A3E635;
+  --f-ri:#34D399; --f-rm:#38BDF8; --f-rr:#A78BFA; --f-rp:#F472B6; --f-th:#8B84C0;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{touch-action:manipulation}
+html,body{height:100%}
+body{
+  font-family:'Nunito',system-ui,sans-serif;
+  background:radial-gradient(1200px 600px at 50% -10%, #2E2660 0%, var(--bg) 60%);
+  color:var(--ink); min-height:100%;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+.wrap{max-width:1000px;margin:0 auto;padding:20px 16px 40px}
+.font-d{font-family:'Fredoka',system-ui,sans-serif}
+
+/* ---------- HOME ---------- */
+.brand{text-align:center;margin:14px 0 6px}
+.brand h1{font-family:'Fredoka';font-weight:700;font-size:clamp(40px,9vw,72px);letter-spacing:.5px;
+  background:linear-gradient(90deg,var(--lucien),var(--luis),var(--lili));
+  -webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+.brand p{color:var(--muted);font-weight:700;margin-top:2px;font-size:clamp(14px,2.4vw,18px)}
+.heroes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px}
+@media(max-width:640px){.heroes{grid-template-columns:1fr}}
+.hero{position:relative;border:none;cursor:pointer;text-align:left;color:var(--ink);
+  background:var(--panel);border-radius:22px;padding:20px 18px 18px;overflow:hidden;
+  box-shadow:0 8px 0 rgba(0,0,0,.25);transition:transform .12s, box-shadow .12s;font-family:inherit}
+.hero:hover{transform:translateY(-4px);box-shadow:0 12px 0 rgba(0,0,0,.25)}
+.hero:active{transform:translateY(2px);box-shadow:0 4px 0 rgba(0,0,0,.25)}
+.hero .glow{position:absolute;inset:-40% -20% auto auto;width:180px;height:180px;border-radius:50%;
+  filter:blur(28px);opacity:.55}
+.hero .av{font-size:52px;line-height:1}
+.hero h2{font-family:'Fredoka';font-weight:600;font-size:26px;margin-top:8px}
+.hero .age{color:var(--muted);font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px}
+.hero .mode{margin-top:12px;font-weight:800;font-size:15px}
+.hero .stats{margin-top:12px;display:flex;gap:14px;color:var(--muted);font-weight:800;font-size:13px}
+.hero .stats b{color:var(--ink)}
+.hero:focus-visible{outline:3px solid #fff;outline-offset:3px}
+
+/* ---------- GAME SHELL ---------- */
+.hidden{display:none!important}
+.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 16px}
+.btn{font-family:'Fredoka';font-weight:600;border:none;cursor:pointer;border-radius:14px;
+  padding:10px 16px;font-size:16px;color:var(--ink);background:var(--panel);
+  box-shadow:0 4px 0 rgba(0,0,0,.25);transition:transform .1s}
+.btn:hover{filter:brightness(1.08)} .btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.btn.small{padding:8px 12px;font-size:14px}
+.spacer{flex:1}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:'Fredoka';font-weight:600;font-size:14px;border:2px solid var(--line);background:transparent;
+  color:var(--muted);border-radius:999px;padding:6px 14px;cursor:pointer}
+.chip.on{color:#1c1436;border-color:transparent}
+.hud{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
+.stat{background:var(--panel);border-radius:16px;padding:10px 16px;min-width:92px;text-align:center;
+  border:2px solid transparent}
+.stat .k{color:var(--muted);font-weight:800;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+.stat .v{font-family:'Fredoka';font-weight:700;font-size:26px;line-height:1.1}
+
+/* ---------- SETTINGS BAR (arena modes) ---------- */
+.setbar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:center;
+  background:var(--panel);border-radius:18px;padding:10px 16px;margin-bottom:14px;border:2px solid var(--line)}
+.setbar .grp{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:var(--muted)}
+.setbar .grp .val{font-family:'Fredoka';font-weight:700;font-size:16px;color:var(--ink);min-width:22px;text-align:center}
+.setbar input[type=range]{-webkit-appearance:none;appearance:none;width:110px;height:8px;border-radius:99px;
+  background:var(--line);outline:none;cursor:pointer}
+.setbar input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;
+  border-radius:50%;background:var(--gold);box-shadow:0 2px 0 rgba(0,0,0,.3);cursor:pointer}
+.setbar input[type=range]::-moz-range-thumb{width:22px;height:22px;border:none;
+  border-radius:50%;background:var(--gold);box-shadow:0 2px 0 rgba(0,0,0,.3);cursor:pointer}
+.setbar .dchips{display:flex;gap:6px}
+
+/* ---------- STAGE ---------- */
+.stage{background:linear-gradient(180deg,var(--bg2),var(--panel));border-radius:26px;
+  padding:26px 20px;text-align:center;position:relative;overflow:hidden;min-height:190px;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;border:2px solid var(--line)}
+.stage.arena{display:block;padding:0;height:min(52vh,420px);min-height:320px;text-align:left}
+.arena-msg{position:absolute;left:50%;top:12px;transform:translateX(-50%);color:var(--muted);
+  font-weight:800;font-size:14px;z-index:5;pointer-events:none;white-space:nowrap;text-align:center}
+.cue{color:var(--muted);font-weight:800;font-size:15px;margin-bottom:10px;min-height:20px}
+.bigletter{font-family:'Fredoka';font-weight:700;font-size:clamp(90px,22vw,150px);line-height:1}
+.picword{font-family:'Fredoka';font-weight:600;font-size:26px;margin-top:4px}
+.picword .em{font-size:40px;display:block}
+.word{font-family:'Fredoka';font-weight:600;font-size:clamp(34px,8vw,62px);letter-spacing:2px;line-height:1.15}
+.word .done{color:var(--ok)} .word .cur{border-bottom:6px solid var(--gold)}
+.word .todo{color:var(--muted)} .word .bad{color:var(--bad)}
+.word-em{font-size:44px;margin-bottom:4px}
+.msg{margin-top:12px;font-weight:800;color:var(--muted);min-height:22px}
+.stage.flash-ok{animation:fok .3s} .stage.flash-bad{animation:fbad .3s}
+@keyframes fok{0%{background:rgba(74,222,128,.25)}100%{}}
+@keyframes fbad{0%,60%{transform:translateX(-6px)}30%,90%{transform:translateX(6px)}100%{transform:none}}
+
+/* ---------- BALLOON POP ---------- */
+.balloon{position:absolute;display:flex;flex-direction:column;align-items:center;will-change:transform;z-index:3}
+.balloon .bl{position:relative;width:clamp(52px,9vw,68px);height:clamp(62px,11vw,80px);
+  border-radius:50% 50% 47% 47% / 55% 55% 45% 45%;
+  display:flex;align-items:center;justify-content:center;font-family:'Fredoka';font-weight:700;
+  font-size:clamp(24px,5vw,32px);color:#1c1436;
+  box-shadow:inset -9px -12px 0 rgba(0,0,0,.14), 0 3px 0 rgba(0,0,0,.18)}
+.balloon .bl::after{content:"";position:absolute;top:12%;left:22%;width:14px;height:20px;border-radius:50%;
+  background:rgba(255,255,255,.45);transform:rotate(-18deg)}
+.balloon .knot{width:10px;height:8px;border-radius:0 0 6px 6px;margin-top:-2px}
+.balloon .str{width:2px;height:26px;background:rgba(255,255,255,.45);border-radius:2px}
+.balloon.popfx{animation:bpop .28s forwards}
+@keyframes bpop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(0);opacity:0}}
+.balloon.byefx{animation:bbye .5s forwards}
+@keyframes bbye{to{transform:translateY(-70px) scale(.7);opacity:0}}
+
+/* ---------- ORC ATTACK ---------- */
+.hero-fig{position:absolute;left:14px;bottom:0;top:0;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;z-index:4;pointer-events:none}
+.hero-fig .fig{font-size:clamp(44px,8vw,60px);transform:scaleX(-1);filter:drop-shadow(0 4px 0 rgba(0,0,0,.3))}
+.hero-fig.hit .fig{animation:hshake .4s}
+@keyframes hshake{0%,100%{transform:scaleX(-1) rotate(0)}25%{transform:scaleX(-1) rotate(-12deg)}
+  75%{transform:scaleX(-1) rotate(12deg)}}
+.orc{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;will-change:transform;z-index:3}
+.orc .fig{font-size:clamp(34px,6.5vw,46px);filter:drop-shadow(0 3px 0 rgba(0,0,0,.3));
+  animation:owalk .5s infinite alternate ease-in-out}
+@keyframes owalk{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-4px) rotate(3deg)}}
+.orc .tag{font-family:'Fredoka';font-weight:700;font-size:clamp(15px,3vw,19px);letter-spacing:1px;
+  background:rgba(16,10,36,.75);border:2px solid var(--line);border-radius:10px;padding:2px 8px;white-space:nowrap}
+.orc .tag .done{color:var(--ok)} .orc .tag .todo{color:var(--ink)}
+.orc.locked .tag{border-color:var(--gold);box-shadow:0 0 10px rgba(255,201,60,.5)}
+.orc.diefx{animation:odie .3s forwards}
+@keyframes odie{0%{transform:scale(1);filter:none}100%{transform:scale(.1) rotate(180deg);opacity:0}}
+.zap{position:absolute;height:4px;background:linear-gradient(90deg,#fff,var(--gold));border-radius:4px;
+  z-index:2;transform-origin:left center;animation:zapfx .18s forwards;pointer-events:none}
+@keyframes zapfx{from{opacity:1}to{opacity:0}}
+@media(prefers-reduced-motion:reduce){.orc .fig{animation:none}}
+
+/* ---------- WORD WIZARD ---------- */
+.vfr{font-family:'Fredoka';font-weight:600;font-size:24px;color:var(--gold);margin-top:2px}
+.vzh{font-family:'Fredoka';font-weight:500;font-size:19px;color:var(--muted);margin-top:2px}
+.vbubble .vzh{margin-top:4px;font-size:17px}
+.vrow{margin-top:14px;display:flex;gap:8px;justify-content:center}
+.vshelf{margin-top:12px;font-size:24px;letter-spacing:5px;min-height:30px;opacity:.95}
+.vshelf .lbl{font-size:12px;letter-spacing:1px;color:var(--muted);font-weight:800;display:block;margin-bottom:2px}
+.word .hintl{color:var(--gold)}
+.vbubble{background:var(--panel2);border:2px solid var(--line);border-radius:18px;padding:10px 18px;
+  font-family:'Fredoka';font-weight:600;font-size:26px;margin:8px 0 4px;display:inline-block}
+.pbar{width:min(70%,320px);height:14px;background:rgba(0,0,0,.3);border-radius:99px;margin:10px auto 6px;
+  overflow:hidden;border:2px solid var(--line)}
+.pfill{height:100%;background:var(--ok);border-radius:99px}
+
+/* ---------- KEYBOARD ---------- */
+.kbwrap{margin-top:18px}
+.legend{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;
+  color:var(--muted);font-weight:800;font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.dot{width:12px;height:12px;border-radius:4px;display:inline-block}
+.kb{display:flex;flex-direction:column;gap:8px;align-items:center;user-select:none}
+.krow{display:flex;gap:8px;justify-content:center}
+.key{width:clamp(30px,7.2vw,52px);height:clamp(38px,8vw,52px);border-radius:12px;
+  display:flex;align-items:center;justify-content:center;font-family:'Fredoka';font-weight:600;
+  font-size:clamp(14px,3.4vw,20px);color:#20183f;position:relative;cursor:pointer;
+  box-shadow:0 4px 0 rgba(0,0,0,.28);transition:transform .06s,filter .06s;opacity:.92}
+.key.space{width:clamp(150px,40vw,320px)}
+.key.pressed{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.28);filter:brightness(.9)}
+.key.target{opacity:1;animation:pulse 1s infinite;outline:3px solid #fff;z-index:2}
+@keyframes pulse{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@media(prefers-reduced-motion:reduce){.key.target{animation:none}}
+
+/* ---------- TABLET (coarse pointer) ---------- */
+@media(pointer:coarse){
+  .btn{padding:13px 20px;font-size:17px}
+  .btn.small{padding:11px 15px;font-size:15px}
+  .chip{padding:10px 16px;font-size:15px}
+  .key{height:clamp(46px,6.8vw,60px);width:clamp(34px,8vw,58px);font-size:clamp(16px,3.6vw,22px)}
+  .key.space{width:clamp(180px,44vw,360px)}
+  .setbar input[type=range]{width:150px;height:10px}
+  .setbar input[type=range]::-webkit-slider-thumb{width:28px;height:28px}
+  .setbar input[type=range]::-moz-range-thumb{width:28px;height:28px}
+  .vrow .btn{padding:14px 22px}
+}
+@media(min-width:600px) and (max-width:1100px){
+  .wrap{max-width:920px;padding:16px 20px 40px}
+  .stage.arena{height:min(46vh,440px)}
+}
+
+/* ---------- CAMP ---------- */
+.camprow{display:grid;grid-template-columns:1fr;gap:12px;margin-top:18px}
+.campbtn{font-family:'Fredoka';font-weight:600;font-size:20px;border:none;cursor:pointer;color:var(--ink);
+  background:linear-gradient(135deg,#2E5E4E,#3D7A5F);border-radius:22px;padding:18px;
+  box-shadow:0 8px 0 rgba(0,0,0,.25);text-align:left}
+.campbtn:active{transform:translateY(3px);box-shadow:0 4px 0 rgba(0,0,0,.25)}
+.campbtn small{display:block;font-family:'Nunito';font-weight:700;font-size:13px;color:#BFE3CF;margin-top:4px}
+.kidtabs{display:flex;gap:8px;justify-content:center;margin:10px 0 16px;flex-wrap:wrap}
+.bigcard{background:var(--panel);border:2px solid var(--line);border-radius:22px;padding:20px;margin-bottom:14px;
+  text-align:center}
+.bigcard h3{font-family:'Fredoka';font-weight:600;font-size:22px;margin-bottom:8px}
+.bigcard .res{font-family:'Fredoka';font-weight:600;font-size:clamp(19px,4vw,26px);min-height:34px;margin:8px 0}
+.bigcard .res .em{font-size:44px;display:block;margin-bottom:6px}
+.bigcard .fr{color:var(--gold);font-size:16px;font-weight:700;margin-bottom:4px}
+.bigcard .sub{color:var(--muted);font-weight:800;font-size:13px}
+.bankgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.bankcard{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:14px 16px;text-align:left}
+.bankcard .bt{font-family:'Fredoka';font-weight:600;font-size:17px;margin-bottom:6px}
+.bankcard p{color:var(--muted);font-weight:700;font-size:14px;line-height:1.45}
+.tipline{color:var(--muted);font-weight:700;font-size:13px;text-align:center;margin:14px 0 4px}
+
+/* ---------- KID HUB ---------- */
+.hubhead{display:flex;align-items:center;gap:14px;margin:6px 0 14px}
+.hubhead .av{font-size:58px}
+.hubhead h2{font-family:'Fredoka';font-weight:600;font-size:30px}
+.hubhead p{color:var(--muted);font-weight:800}
+.hubstars .starpill{font-family:'Fredoka';font-weight:600;background:var(--panel);
+  border:2px solid var(--line);border-radius:999px;padding:8px 16px;font-size:17px}
+.hsec{font-family:'Fredoka';font-weight:600;font-size:19px;color:var(--muted);margin:16px 0 10px}
+.gamerow{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.gamecard{position:relative;font-family:inherit;border:2px solid var(--line);background:var(--panel);
+  color:var(--ink);border-radius:18px;padding:14px 12px;cursor:pointer;text-align:center;
+  box-shadow:0 5px 0 rgba(0,0,0,.22)}
+.gamecard:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.22)}
+.gamecard .gi{font-size:34px;display:block}
+.gamecard b{font-family:'Fredoka';font-weight:600;display:block;margin-top:4px}
+.gamecard small{color:var(--muted);font-weight:700;font-size:12px}
+.gamecard .favtag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+  font-family:'Fredoka';font-weight:600;font-size:10px;letter-spacing:1px;background:var(--gold);
+  color:#1c1436;border-radius:99px;padding:2px 10px}
+.actcard{cursor:pointer;font-family:inherit;color:var(--ink);width:100%}
+.actcard:active{transform:translateY(2px)}
+.actcard.donetoday{opacity:.75;border-color:var(--ok)}
+.donetag{font-size:12px;color:var(--ok);font-weight:800;margin-left:6px}
+.actmine{background:rgba(0,0,0,.2);border-left:4px solid;border-radius:10px;
+  padding:10px 12px;font-weight:700;color:var(--ink);margin:10px 0 14px}
+.steps{display:flex;flex-direction:column;gap:10px}
+.step{display:flex;gap:10px;align-items:flex-start;font-weight:700;color:var(--ink);line-height:1.4}
+.step .sn{flex:0 0 26px;height:26px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:'Fredoka';font-weight:700;color:#1c1436;font-size:14px}
+.qinput{width:100%;max-width:420px;font-family:'Fredoka';font-weight:500;font-size:17px;
+  background:rgba(0,0,0,.25);border:2px solid var(--line);border-radius:14px;color:var(--ink);
+  padding:12px 14px;margin:8px 0;outline:none}
+.qinput:focus{border-color:var(--gold)}
+.qout{font-family:'Fredoka';font-weight:600;font-size:clamp(18px,4vw,24px);color:var(--gold)}
+.timerbig{font-family:'Fredoka';font-weight:700;font-size:64px;margin:6px 0}
+button:disabled{cursor:default}
+
+/* ---------- MY DAY ---------- */
+.dayprog{position:relative;height:30px;background:var(--panel);border:2px solid var(--line);
+  border-radius:99px;overflow:hidden;margin-bottom:14px}
+.dayfill{position:absolute;inset:0;width:0%;background:linear-gradient(90deg,var(--lucien),var(--gold));
+  transition:width .4s;border-radius:99px}
+.dayprog span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:'Fredoka';font-weight:600;font-size:14px;color:var(--ink);text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.daylist{display:flex;flex-direction:column;gap:10px}
+.dayrow{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:2px solid var(--line);
+  border-radius:16px;padding:12px 14px}
+.dayrow.done{border-color:var(--ok);opacity:.72}
+.dayrow.done .dt-title{text-decoration:line-through}
+.dayrow .dtime{flex:0 0 52px;font-family:'Fredoka';font-weight:700;font-size:14px;color:var(--gold);
+  text-align:center;padding-top:3px}
+.dayrow .dmid{flex:1;min-width:0}
+.dayrow .dt-title{font-family:'Fredoka';font-weight:600;font-size:16px}
+.dayrow .dt-mis{color:var(--ink);font-weight:700;font-size:14px;margin-top:3px;line-height:1.4}
+.dayrow .dt-mis.routine{color:var(--muted)}
+.dayrow .dbtns{display:flex;flex-direction:column;gap:6px}
+.dayrow .btn.tick{padding:8px 12px;font-size:15px}
+.dayrow.mission{border-left:5px solid var(--gold)}
+.zhs{display:block;font-size:12.5px;color:var(--muted);font-weight:700;margin-top:2px}
+.dt-title .zht{font-size:12px;color:var(--muted);font-weight:700;margin-left:6px}
+.dayhero{background:linear-gradient(135deg,#2E5E4E,#3D7A5F);border-radius:18px;padding:14px 16px;
+  font-weight:800;color:#DFF3E7;margin-bottom:12px;text-align:center;font-size:15px}
+
+/* ---------- BIG MACHINES ---------- */
+.mch-track{position:relative;width:min(92%,560px);height:74px;margin:14px auto 4px;
+  border-bottom:5px dashed var(--line)}
+.mch-car{position:absolute;bottom:2px;font-size:52px;transition:left .25s ease;transform:scaleX(-1)}
+.mch-flag{position:absolute;right:0;bottom:2px;font-size:44px}
+.mch-row{font-size:clamp(34px,7vw,46px);letter-spacing:6px;margin:8px 0;min-height:52px}
+.mch-lift{display:inline-block;transition:transform .9s ease-in,opacity .9s}
+.mch-lift.up{transform:translateY(-160px);opacity:0}
+.mch-digger{display:inline-block;font-size:52px;transition:transform .3s}
+.mch-digger.dig{animation:digga .5s}
+@keyframes digga{0%,100%{transform:rotate(0)}50%{transform:rotate(-16deg) translateY(6px)}}
+
+/* confetti + finish */
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+.overlay{position:fixed;inset:0;background:rgba(20,14,40,.82);display:flex;align-items:center;
+  justify-content:center;z-index:40;padding:20px}
+.card{background:var(--panel);border-radius:26px;padding:30px 26px;text-align:center;max-width:420px;width:100%;
+  border:2px solid var(--line);box-shadow:0 14px 0 rgba(0,0,0,.3)}
+.card h3{font-family:'Fredoka';font-weight:700;font-size:34px;margin-bottom:6px}
+.card .big{font-family:'Fredoka';font-weight:700;font-size:64px;line-height:1;margin:8px 0}
+.card p{color:var(--muted);font-weight:800;margin:6px 0 18px}
+.mute{margin-left:auto}
+</style>
+
+<div class="wrap">
+  <!-- HOME -->
+  <section id="home">
+    <div class="brand">
+      <h1 class="font-d">SUMMER QUEST</h1>
+      <p>Pick your hero — your day is waiting! ☀️</p>
+    </div>
+    <div class="heroes" id="heroes"></div>
+    <div style="text-align:center;margin-top:22px">
+      <button class="btn small" id="muteHome">🔊 Sound: On</button>
+    </div>
+  </section>
+
+  <!-- KID HUB -->
+  <section id="hub" class="hidden">
+    <div class="topbar">
+      <button class="btn" id="hubBack">← Heroes</button>
+      <div class="spacer"></div>
+      <div class="hubstars" id="hubStars"></div>
+    </div>
+    <div class="hubhead" id="hubHead"></div>
+    <div class="kidtabs" id="hubTabs">
+      <button class="chip" data-t="day">📅 My Day 我的一天</button>
+      <button class="chip" data-t="games">🎮 Games 遊戲</button>
+      <button class="chip" data-t="acts">🏕️ Activities 活動</button>
+      <button class="chip" data-t="learn">🧭 Learn 學習</button>
+    </div>
+    <div id="tab-day">
+      <div class="dayprog"><div class="dayfill" id="dayFill"></div><span id="dayTxt"></span></div>
+      <div class="daylist" id="dayList"></div>
+    </div>
+    <div id="tab-games" class="hidden">
+      <div class="gamerow" id="gameRow"></div>
+    </div>
+    <div id="tab-acts" class="hidden">
+      <div class="bankgrid" id="actGrid"></div>
+      <div class="tipline">✓ Finish an activity to earn a star — once per day · 完成活動得一顆星——每天每項一次 ⭐</div>
+    </div>
+    <div id="tab-learn" class="hidden">
+      <div class="bigcard">
+        <h3>🔍 Question Builder <span class="zhs" style="font-size:14px">問題產生器——學會怎麼搜尋</span></h3>
+        <div class="kidtabs" id="qbStarters"></div>
+        <div class="kidtabs" id="qbTopics"></div>
+        <input class="qinput" id="qbInput" placeholder="…or type your own topic 或自己輸入主題" maxlength="60">
+        <div class="res" id="qbOut"><span class="sub">Pick a starter + a topic 選一個開頭＋一個主題</span></div>
+        <div class="vrow">
+          <button class="btn" id="qbKiddle">🔍 Search on Kiddle (kids)</button>
+          <button class="btn small" id="qbGoogle">Google</button>
+        </div>
+        <div class="tipline">🧑‍🦱 Grown-up nearby for the web — always · 上網一定要有大人在旁邊</div>
+      </div>
+      <div class="bankgrid" id="learnGrid"></div>
+      <div class="bigcard">
+        <h3>✨ Magic search words <span class="zhs" style="font-size:14px">神奇搜尋字</span></h3>
+        <div class="kidtabs" id="magicWords"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACTIVITY DETAIL -->
+  <section id="act" class="hidden">
+    <div class="topbar">
+      <button class="btn" id="actBack">← Activities</button>
+      <div class="spacer"></div>
+    </div>
+    <div id="actBody"></div>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" class="hidden">
+    <div class="topbar">
+      <button class="btn" id="back">← Heroes</button>
+      <div class="chips" id="levelChips"></div>
+      <div class="spacer"></div>
+      <button class="btn small mute" id="mute">🔊</button>
+    </div>
+    <div class="setbar hidden" id="setbar"></div>
+    <div class="hud" id="hud"></div>
+    <div class="stage" id="stage"></div>
+    <div class="kbwrap">
+      <div class="legend" id="legend"></div>
+      <div class="kb" id="kb"></div>
+    </div>
+  </section>
+</div>
+<canvas id="confetti"></canvas>
+
+<script>
+/* ============ DATA ============ */
+const KIDS = {
+  lucien:{name:"Lucien", age:4, av:"🐨", color:"var(--lucien)", raw:"#3DDC97", level:"machines"},
+  lili:  {name:"Lili",   age:7, av:"🦄", color:"var(--lili)",   raw:"#FF6FB5", level:"home"},
+  luis:  {name:"Luis",   age:9, av:"🚀", color:"var(--luis)",   raw:"#4EA8FF", level:"orc"},
+};
+const LEVELS = {
+  machines:{icon:"🚜", title:"Big Machines", tz:"大機器",   blurb:"Race, dig & fly"},
+  balloon:{icon:"🎈", title:"Balloon Pop", tz:"戳氣球",     blurb:"Pop balloons with keys"},
+  hunt:   {icon:"🔎", title:"Key Hunt", tz:"找按鍵",        blurb:"Find the glowing key"},
+  home:   {icon:"🎯", title:"Home Row", tz:"基準鍵",        blurb:"Learn your fingers"},
+  race:   {icon:"🚀", title:"Word Racer", tz:"文字競速",      blurb:"Type fast for a score"},
+  orc:    {icon:"⚔️", title:"Orc Attack", tz:"半獸人來襲",      blurb:"Type to defend the hero"},
+  vocab:  {icon:"🧙", title:"Word Wizard", tz:"文字巫師",     blurb:"Learn English words"},
+};
+/* English / emoji / French word packs */
+const VOCAB={
+ animals:{icon:"🐾",name:"Animals",words:[["cat","🐱","le chat","貓"],["dog","🐶","le chien","狗"],["fish","🐟","le poisson","魚"],["bird","🐦","l'oiseau","鳥"],["horse","🐴","le cheval","馬"],["rabbit","🐰","le lapin","兔子"],["bear","🐻","l'ours","熊"],["lion","🦁","le lion","獅子"],["monkey","🐵","le singe","猴子"],["elephant","🐘","l'éléphant","大象"],["butterfly","🦋","le papillon","蝴蝶"],["frog","🐸","la grenouille","青蛙"],["sheep","🐑","le mouton","綿羊"],["pig","🐷","le cochon","豬"],["duck","🦆","le canard","鴨子"]]},
+ food:{icon:"🍎",name:"Food",words:[["apple","🍎","la pomme","蘋果"],["bread","🍞","le pain","麵包"],["milk","🥛","le lait","牛奶"],["egg","🥚","l'œuf","蛋"],["cheese","🧀","le fromage","起司"],["rice","🍚","le riz","米飯"],["cake","🍰","le gâteau","蛋糕"],["banana","🍌","la banane","香蕉"],["orange","🍊","l'orange","柳橙"],["water","💧","l'eau","水"],["juice","🧃","le jus","果汁"],["soup","🍲","la soupe","湯"],["chicken","🍗","le poulet","雞肉"],["carrot","🥕","la carotte","紅蘿蔔"],["strawberry","🍓","la fraise","草莓"]]},
+ colors:{icon:"🎨",name:"Colors",words:[["red","🔴","rouge","紅色"],["blue","🔵","bleu","藍色"],["green","🟢","vert","綠色"],["yellow","🟡","jaune","黃色"],["black","⚫","noir","黑色"],["white","⚪","blanc","白色"],["pink","🌸","rose","粉紅色"],["purple","🟣","violet","紫色"],["brown","🟤","marron","棕色"],["grey","🌫️","gris","灰色"]]},
+ body:{icon:"🖐️",name:"Body",words:[["hand","✋","la main","手"],["foot","🦶","le pied","腳"],["eye","👁️","l'œil","眼睛"],["ear","👂","l'oreille","耳朵"],["nose","👃","le nez","鼻子"],["mouth","👄","la bouche","嘴巴"],["arm","💪","le bras","手臂"],["leg","🦵","la jambe","腿"],["tooth","🦷","la dent","牙齒"],["head","🙂","la tête","頭"],["finger","☝️","le doigt","手指"],["hair","💇","les cheveux","頭髮"]]},
+ house:{icon:"🏠",name:"House",words:[["house","🏠","la maison","房子"],["door","🚪","la porte","門"],["window","🪟","la fenêtre","窗戶"],["bed","🛏️","le lit","床"],["chair","🪑","la chaise","椅子"],["kitchen","🍳","la cuisine","廚房"],["garden","🌷","le jardin","花園"],["key","🔑","la clé","鑰匙"],["lamp","💡","la lampe","燈"],["book","📚","le livre","書"],["clock","🕐","l'horloge","時鐘"],["cup","☕","la tasse","杯子"],["spoon","🥄","la cuillère","湯匙"]]},
+ school:{icon:"🎒",name:"School",words:[["school","🏫","l'école","學校"],["pen","🖊️","le stylo","原子筆"],["pencil","✏️","le crayon","鉛筆"],["paper","📄","le papier","紙"],["bag","🎒","le sac","書包"],["teacher","🧑‍🏫","le professeur","老師"],["friend","🧑‍🤝‍🧑","l'ami","朋友"],["music","🎵","la musique","音樂"],["game","🎮","le jeu","遊戲"],["ball","⚽","le ballon","球"],["number","🔢","le nombre","數字"],["letter","✉️","la lettre","信"]]},
+ daily:{icon:"🌞",name:"Daily Life",words:[["morning","🌅","le matin","早上"],["night","🌃","la nuit","夜晚"],["today","📅","aujourd'hui","今天"],["breakfast","🥐","le petit-déjeuner","早餐"],["lunch","🥪","le déjeuner","午餐"],["dinner","🍽️","le dîner","晚餐"],["sleep","😴","dormir","睡覺"],["eat","😋","manger","吃"],["drink","🥤","boire","喝"],["play","🎲","jouer","玩"],["work","💼","le travail","工作"],["shop","🛒","le magasin","商店"],["money","💰","l'argent","錢"],["phone","📱","le téléphone","手機"],["car","🚗","la voiture","汽車"],["bus","🚌","le bus","公車"],["walk","🚶","marcher","走路"],["bath","🛁","le bain","洗澡"],["clothes","👕","les vêtements","衣服"],["shoes","👟","les chaussures","鞋子"]]},
+ chat:{icon:"💬",name:"Chat",words:[["hello","🙋","bonjour","你好"],["goodbye","👋","au revoir","再見"],["good night","🌙","bonne nuit","晚安"],["please","🙏","s'il te plaît","請"],["thank you","💐","merci","謝謝"],["yes","✅","oui","是"],["no","❌","non","不是"],["sorry","😔","pardon","對不起"],["welcome","🤗","bienvenue","歡迎"],["ok","👌","d'accord","好的"],["happy","😊","content","開心"],["sad","😢","triste","難過"],["tired","🥱","fatigué","累"],["hungry","🍽️","j'ai faim","肚子餓"],["thirsty","🥤","j'ai soif","口渴"],["see you","👀","à bientôt","待會見"],["help","🆘","à l'aide","幫幫我"],["love","❤️","l'amour","愛"]]},
+ verbs:{icon:"🏃",name:"Verbs",words:[["run","🏃","courir","跑"],["jump","🦘","sauter","跳"],["swim","🏊","nager","游泳"],["read","📖","lire","閱讀"],["write","✍️","écrire","寫"],["sing","🎤","chanter","唱歌"],["dance","💃","danser","跳舞"],["open","🔓","ouvrir","打開"],["close","🔒","fermer","關閉"],["give","🎁","donner","給"],["take","🤲","prendre","拿"],["look","👀","regarder","看"],["listen","🎧","écouter","聽"],["speak","🗣️","parler","說話"],["wash","🧼","laver","洗"],["cook","👨‍🍳","cuisiner","煮飯"],["draw","🖍️","dessiner","畫畫"],["fly","🕊️","voler","飛"],["drive","🚗","conduire","開車"],["buy","🛍️","acheter","買"],["wait","⏳","attendre","等待"],["smile","😁","sourire","微笑"],["cry","😭","pleurer","哭"],["laugh","🤣","rire","笑"],["think","🤔","penser","想"],["know","🧠","savoir","知道"],["want","🙌","vouloir","想要"],["need","❗","avoir besoin","需要"],["like","👍","aimer bien","喜歡"],["go","➡️","aller","去"],["come","🫴","venir","來"],["make","🛠️","faire","做"],["find","🔍","trouver","找到"],["sit","🪑","s'asseoir","坐"],["stand","🧍","se lever","站"]]},
+ family:{icon:"👨‍👩‍👧",name:"Family",words:[["mother","👩","la mère","媽媽"],["father","👨","le père","爸爸"],["brother","👦","le frère","兄弟"],["sister","👧","la sœur","姊妹"],["baby","👶","le bébé","寶寶"],["grandma","👵","la mamie","奶奶"],["grandpa","👴","le papi","爺爺"],["family","👨‍👩‍👧‍👦","la famille","家人"],["boy","🧒","le garçon","男孩"],["girl","👧","la fille","女孩"],["man","👨‍🦱","l'homme","男人"],["woman","👩‍🦰","la femme","女人"],["child","🧒","l'enfant","小孩"],["uncle","🙎‍♂️","l'oncle","叔叔"],["aunt","🙎‍♀️","la tante","阿姨"],["cousin","🧑","le cousin","表親"]]},
+ weather:{icon:"⛅",name:"Weather & Time",words:[["hot","🥵","chaud","熱"],["cold","🥶","froid","冷"],["warm","🌡️","tiède","溫暖"],["cloud","☁️","le nuage","雲"],["storm","⛈️","l'orage","暴風雨"],["ice","🧊","la glace","冰"],["spring","🌱","le printemps","春天"],["summer","🏖️","l'été","夏天"],["autumn","🍂","l'automne","秋天"],["winter","⛄","l'hiver","冬天"],["week","🗓️","la semaine","星期"],["month","📆","le mois","月"],["year","🎆","l'année","年"],["hour","⏰","l'heure","小時"],["minute","⏱️","la minute","分鐘"],["time","🕰️","le temps","時間"],["day","🌞","le jour","白天"],["evening","🌆","le soir","傍晚"]]},
+ animals2:{icon:"🦁",name:"More Animals",words:[["tiger","🐯","le tigre","老虎"],["wolf","🐺","le loup","狼"],["fox","🦊","le renard","狐狸"],["snake","🐍","le serpent","蛇"],["mouse","🐭","la souris","老鼠"],["cow","🐮","la vache","牛"],["goat","🐐","la chèvre","山羊"],["bee","🐝","l'abeille","蜜蜂"],["ant","🐜","la fourmi","螞蟻"],["shark","🦈","le requin","鯊魚"],["whale","🐋","la baleine","鯨魚"],["turtle","🐢","la tortue","烏龜"],["penguin","🐧","le pingouin","企鵝"],["owl","🦉","le hibou","貓頭鷹"],["spider","🕷️","l'araignée","蜘蛛"],["crab","🦀","le crabe","螃蟹"],["deer","🦌","le cerf","鹿"],["camel","🐪","le chameau","駱駝"],["panda","🐼","le panda","熊貓"]]},
+ food2:{icon:"🍕",name:"More Food",words:[["tomato","🍅","la tomate","番茄"],["potato","🥔","la pomme de terre","馬鈴薯"],["salad","🥗","la salade","沙拉"],["pasta","🍝","les pâtes","義大利麵"],["pizza","🍕","la pizza","披薩"],["tea","🍵","le thé","茶"],["coffee","☕","le café","咖啡"],["sugar","🍬","le sucre","糖"],["salt","🧂","le sel","鹽"],["butter","🧈","le beurre","奶油"],["honey","🍯","le miel","蜂蜜"],["jam","🫙","la confiture","果醬"],["cookie","🍪","le biscuit","餅乾"],["ice cream","🍦","la glace","冰淇淋"],["lemon","🍋","le citron","檸檬"],["peach","🍑","la pêche","桃子"],["grapes","🍇","le raisin","葡萄"],["corn","🌽","le maïs","玉米"],["nut","🥜","la noix","堅果"]]},
+ places:{icon:"🏙️",name:"Places",words:[["park","🌳","le parc","公園"],["street","🛣️","la rue","街道"],["city","🏙️","la ville","城市"],["village","🏘️","le village","村莊"],["beach","🏖️","la plage","海灘"],["farm","🚜","la ferme","農場"],["zoo","🦓","le zoo","動物園"],["hospital","🏥","l'hôpital","醫院"],["police","👮","la police","警察"],["airport","✈️","l'aéroport","機場"],["train","🚆","le train","火車"],["plane","🛩️","l'avion","飛機"],["boat","⛵","le bateau","船"],["bike","🚲","le vélo","腳踏車"],["bridge","🌉","le pont","橋"],["castle","🏰","le château","城堡"],["church","⛪","l'église","教堂"],["market","🛒","le marché","市場"],["hotel","🏨","l'hôtel","飯店"],["museum","🖼️","le musée","博物館"]]},
+ adjectives:{icon:"✨",name:"Adjectives",words:[["small","🐜","petit","小"],["tall","🦒","grand","高"],["short","📏","court","短"],["long","🐍","long","長"],["fast","🐆","rapide","快"],["slow","🐌","lent","慢"],["new","🆕","nouveau","新"],["old","🏺","vieux","舊"],["young","🌱","jeune","年輕"],["clean","🧽","propre","乾淨"],["dirty","🐷","sale","髒"],["easy","😌","facile","簡單"],["hard","🪨","difficile","困難"],["full","🈵","plein","滿"],["empty","🕳️","vide","空"],["strong","💪","fort","強壯"],["funny","🤡","drôle","好笑"],["kind","💗","gentil","親切"],["quiet","🤫","calme","安靜"],["loud","📢","bruyant","大聲"],["pretty","🌺","joli","漂亮"],["beautiful","🦚","beau","美麗"],["rich","🤑","riche","有錢"],["early","🌄","tôt","早"],["late","🌜","tard","晚"]]},
+ numbers:{icon:"🔢",name:"Numbers",words:[["one","1️⃣","un","一"],["two","2️⃣","deux","二"],["three","3️⃣","trois","三"],["four","4️⃣","quatre","四"],["five","5️⃣","cinq","五"],["six","6️⃣","six","六"],["seven","7️⃣","sept","七"],["eight","8️⃣","huit","八"],["nine","9️⃣","neuf","九"],["ten","🔟","dix","十"],["twenty","🔢","vingt","二十"],["hundred","💯","cent","一百"]]},
+ nature:{icon:"🌳",name:"Nature",words:[["sun","☀️","le soleil","太陽"],["moon","🌙","la lune","月亮"],["star","⭐","l'étoile","星星"],["tree","🌳","l'arbre","樹"],["flower","🌸","la fleur","花"],["rain","🌧️","la pluie","雨"],["snow","❄️","la neige","雪"],["wind","💨","le vent","風"],["sea","🌊","la mer","海"],["mountain","⛰️","la montagne","山"],["sky","🌤️","le ciel","天空"],["river","🏞️","la rivière","河"],["leaf","🍃","la feuille","葉子"],["fire","🔥","le feu","火"]]},
+ clothes:{icon:"👕",name:"Clothes",words:[["shirt","👔","la chemise","襯衫"],["pants","👖","le pantalon","褲子"],["dress","👗","la robe","洋裝"],["jacket","🧥","la veste","外套"],["coat","🧥","le manteau","大衣"],["socks","🧦","les chaussettes","襪子"],["gloves","🧤","les gants","手套"],["scarf","🧣","l'écharpe","圍巾"],["hat","🎩","le chapeau","帽子"],["cap","🧢","la casquette","鴨舌帽"],["boots","🥾","les bottes","靴子"],["pajamas","🛌","le pyjama","睡衣"],["sweater","🧶","le pull","毛衣"],["shorts","🩳","le short","短褲"],["tie","👔","la cravate","領帶"],["ring","💍","la bague","戒指"],["glasses","👓","les lunettes","眼鏡"],["umbrella","☂️","le parapluie","雨傘"],["button","🔘","le bouton","鈕扣"],["swimsuit","🩱","le maillot de bain","泳衣"],["crown","👑","la couronne","皇冠"]]},
+ sports:{icon:"🏅",name:"Sports",words:[["football","⚽","le football","足球"],["basketball","🏀","le basket","籃球"],["tennis","🎾","le tennis","網球"],["baseball","⚾","le baseball","棒球"],["badminton","🏸","le badminton","羽球"],["ping pong","🏓","le ping-pong","桌球"],["golf","⛳","le golf","高爾夫"],["race","🏁","la course","比賽"],["team","👥","l'équipe","隊伍"],["win","🏆","gagner","贏"],["lose","😞","perdre","輸"],["goal","🥅","le but","進球"],["medal","🥇","la médaille","獎牌"],["coach","📣","l'entraîneur","教練"],["skate","⛸️","patiner","溜冰"],["ski","🎿","skier","滑雪"],["surf","🏄","surfer","衝浪"],["climb","🧗","grimper","爬"],["throw","🤾","lancer","丟"],["catch","🤲","attraper","接住"],["kick","🥋","donner un coup de pied","踢"],["score","🎯","le score","得分"],["player","⛹️","le joueur","球員"]]},
+ artmusic:{icon:"🎨",name:"Art & Music",words:[["piano","🎹","le piano","鋼琴"],["guitar","🎸","la guitare","吉他"],["drum","🥁","le tambour","鼓"],["violin","🎻","le violon","小提琴"],["song","🎶","la chanson","歌"],["paint","🎨","peindre","畫"],["brush","🖌️","le pinceau","畫筆"],["artist","🧑‍🎨","l'artiste","藝術家"],["photo","📷","la photo","照片"],["movie","🎬","le film","電影"],["story","📖","l'histoire","故事"],["band","🎺","le groupe","樂團"],["concert","🎤","le concert","演唱會"],["theater","🎭","le théâtre","劇院"],["camera","📹","la caméra","攝影機"],["radio","📻","la radio","收音機"],["television","📺","la télévision","電視"],["cartoon","🎞️","le dessin animé","卡通"],["flute","🪈","la flûte","長笛"],["trumpet","🎺","la trompette","小號"]]},
+ things:{icon:"🔧",name:"Everyday Things",words:[["hammer","🔨","le marteau","鎚子"],["scissors","✂️","les ciseaux","剪刀"],["rope","🪢","la corde","繩子"],["box","📦","la boîte","盒子"],["bottle","🍼","la bouteille","瓶子"],["glass","🥛","le verre","玻璃杯"],["plate","🍽️","l'assiette","盤子"],["bowl","🥣","le bol","碗"],["knife","🔪","le couteau","刀子"],["fork","🍴","la fourchette","叉子"],["basket","🧺","le panier","籃子"],["bucket","🪣","le seau","水桶"],["soap","🧼","le savon","肥皂"],["mirror","🪞","le miroir","鏡子"],["toothbrush","🪥","la brosse à dents","牙刷"],["ladder","🪜","l'échelle","梯子"],["candle","🕯️","la bougie","蠟燭"],["balloon","🎈","le ballon","氣球"],["kite","🪁","le cerf-volant","風箏"],["toy","🧸","le jouet","玩具"],["doll","🎎","la poupée","娃娃"],["blanket","🛌","la couverture","毯子"],["pillow","🛏️","l'oreiller","枕頭"],["map","🗺️","la carte","地圖"],["flag","🚩","le drapeau","旗子"],["bell","🔔","la cloche","鈴鐺"]]},
+ nature2:{icon:"🌋",name:"Wild Nature",words:[["volcano","🌋","le volcan","火山"],["island","🏝️","l'île","島"],["desert","🏜️","le désert","沙漠"],["forest","🌲","la forêt","森林"],["cave","🕳️","la grotte","洞穴"],["hill","🌄","la colline","小山"],["lake","🏞️","le lac","湖"],["wave","🌊","la vague","海浪"],["sand","🏖️","le sable","沙子"],["stone","🪨","la pierre","石頭"],["grass","🌿","l'herbe","草"],["plant","🪴","la plante","植物"],["branch","🪵","la branche","樹枝"],["seed","🌰","la graine","種子"],["rainbow","🌈","l'arc-en-ciel","彩虹"],["lightning","⚡","l'éclair","閃電"],["thunder","🌩️","le tonnerre","打雷"],["fog","🌫️","le brouillard","霧"],["sunrise","🌅","le lever du soleil","日出"],["sunset","🌇","le coucher du soleil","日落"],["shadow","🌑","l'ombre","影子"],["air","🎐","l'air","空氣"],["earth","🌍","la Terre","地球"],["world","🌎","le monde","世界"],["space","🌌","l'espace","太空"],["rocket","🚀","la fusée","火箭"],["planet","🪐","la planète","行星"]]},
+ animals3:{icon:"🐣",name:"Even More Animals",words:[["eagle","🦅","l'aigle","老鷹"],["parrot","🦜","le perroquet","鸚鵡"],["swan","🦢","le cygne","天鵝"],["peacock","🦚","le paon","孔雀"],["flamingo","🦩","le flamant rose","紅鶴"],["dolphin","🐬","le dauphin","海豚"],["octopus","🐙","la pieuvre","章魚"],["starfish","🌟","l'étoile de mer","海星"],["seal","🦭","le phoque","海豹"],["bat","🦇","la chauve-souris","蝙蝠"],["hedgehog","🦔","le hérisson","刺蝟"],["squirrel","🐿️","l'écureuil","松鼠"],["kangaroo","🦘","le kangourou","袋鼠"],["koala","🐨","le koala","無尾熊"],["zebra","🦓","le zèbre","斑馬"],["giraffe","🦒","la girafe","長頸鹿"],["hippo","🦛","l'hippopotame","河馬"],["rhino","🦏","le rhinocéros","犀牛"],["gorilla","🦍","le gorille","大猩猩"],["chick","🐤","le poussin","小雞"],["puppy","🐕","le chiot","小狗"],["kitten","🐈","le chaton","小貓"],["lamb","🐑","l'agneau","小羊"],["worm","🪱","le ver","蟲"],["snail","🐌","l'escargot","蝸牛"],["ladybug","🐞","la coccinelle","瓢蟲"],["beetle","🪲","le scarabée","甲蟲"],["crocodile","🐊","le crocodile","鱷魚"],["hamster","🐹","le hamster","倉鼠"],["dragon","🐉","le dragon","龍"]]},
+ food3:{icon:"🥟",name:"Yummy Food",words:[["noodles","🍜","les nouilles","麵"],["dumpling","🥟","le ravioli chinois","水餃"],["sandwich","🥪","le sandwich","三明治"],["hamburger","🍔","le hamburger","漢堡"],["hot dog","🌭","le hot-dog","熱狗"],["fries","🍟","les frites","薯條"],["popcorn","🍿","le pop-corn","爆米花"],["chocolate","🍫","le chocolat","巧克力"],["candy","🍭","le bonbon","糖果"],["yogurt","🥛","le yaourt","優格"],["cereal","🥣","les céréales","麥片"],["pancake","🥞","le pancake","鬆餅"],["toast","🍞","le toast","吐司"],["mango","🥭","la mangue","芒果"],["watermelon","🍉","la pastèque","西瓜"],["pineapple","🍍","l'ananas","鳳梨"],["coconut","🥥","la noix de coco","椰子"],["cherry","🍒","la cerise","櫻桃"],["pear","🍐","la poire","梨子"],["kiwi","🥝","le kiwi","奇異果"],["onion","🧅","l'oignon","洋蔥"],["garlic","🧄","l'ail","大蒜"],["mushroom","🍄","le champignon","香菇"],["cucumber","🥒","le concombre","小黃瓜"],["pumpkin","🎃","la citrouille","南瓜"],["tofu","🍢","le tofu","豆腐"],["bubble tea","🧋","le bubble tea","珍珠奶茶"],["sushi","🍣","le sushi","壽司"],["avocado","🥑","l'avocat","酪梨"]]},
+ verbs2:{icon:"🤸",name:"More Verbs",words:[["push","👐","pousser","推"],["pull","🧲","tirer","拉"],["carry","🏋️","porter","搬"],["hold","🤝","tenir","拿著"],["drop","⬇️","laisser tomber","掉"],["turn","🔄","tourner","轉"],["stop","🛑","arrêter","停"],["start","▶️","commencer","開始"],["move","🚚","bouger","移動"],["cut","✂️","couper","切"],["mix","🌀","mélanger","攪拌"],["pour","🚰","verser","倒"],["bake","🧁","cuire au four","烤"],["taste","👅","goûter","嚐"],["smell","👃","sentir","聞"],["touch","👆","toucher","摸"],["hear","👂","entendre","聽到"],["watch","👁️","observer","觀看"],["ask","❓","demander","問"],["answer","💬","répondre","回答"],["tell","🗨️","raconter","告訴"],["say","💭","dire","說"],["call","📞","appeler","打電話"],["meet","🙌","rencontrer","見面"],["visit","🏛️","visiter","拜訪"],["travel","🧳","voyager","旅行"],["learn","🎓","apprendre","學習"],["teach","🧑‍🏫","enseigner","教"],["study","📝","étudier","讀書"],["count","🔢","compter","數"],["spell","🔤","épeler","拼字"],["remember","🧠","se souvenir","記得"],["forget","❔","oublier","忘記"],["choose","☑️","choisir","選擇"],["share","🤲","partager","分享"],["try","🎯","essayer","試試看"],["use","🛠️","utiliser","使用"],["show","🪧","montrer","展示"],["hide","🙈","se cacher","躲"]]},
+ adjectives2:{icon:"🌈",name:"More Adjectives",words:[["big","🐘","gros","大"],["good","👍","bon","好"],["bad","👎","mauvais","壞"],["nice","😊","sympa","友善"],["angry","😠","fâché","生氣"],["scared","😱","effrayé","害怕"],["brave","🦸","courageux","勇敢"],["shy","😳","timide","害羞"],["smart","🤓","intelligent","聰明"],["silly","🤪","bête","傻"],["wet","💦","mouillé","濕"],["dry","🌵","sec","乾"],["soft","🧸","doux","軟"],["heavy","🏋️","lourd","重"],["light","🪶","léger","輕"],["dark","🌑","sombre","暗"],["bright","🔆","lumineux","亮"],["sweet","🍬","sucré","甜"],["sour","🍋","acide","酸"],["salty","🧂","salé","鹹"],["spicy","🌶️","épicé","辣"],["delicious","🤤","délicieux","好吃"],["sick","🤒","malade","生病"],["healthy","💚","en bonne santé","健康"],["safe","🛡️","sûr","安全"],["dangerous","⚠️","dangereux","危險"],["same","👯","pareil","一樣"],["different","🔀","différent","不同"],["first","1️⃣","premier","第一"],["last","🏁","dernier","最後"],["next","⏭️","prochain","下一個"],["favorite","💖","préféré","最喜歡的"],["ready","🚦","prêt","準備好"],["busy","🐝","occupé","忙"],["free","🕊️","libre","自由"],["deep","🤿","profond","深"],["high","🎈","haut","很高"],["low","🔽","bas","低"],["round","⭕","rond","圓"],["flat","🥞","plat","平"]]},
+ school2:{icon:"💻",name:"School & Tech",words:[["computer","💻","l'ordinateur","電腦"],["tablet","📱","la tablette","平板"],["screen","🖥️","l'écran","螢幕"],["internet","🌐","l'internet","網路"],["robot","🤖","le robot","機器人"],["science","🔬","la science","科學"],["math","➕","les maths","數學"],["history","🏺","l'histoire","歷史"],["word","🔠","le mot","單字"],["sentence","📃","la phrase","句子"],["question","❓","la question","問題"],["name","🏷️","le nom","名字"],["test","📊","le contrôle","考試"],["homework","📓","les devoirs","功課"],["lesson","📖","la leçon","課"],["class","👩‍🏫","la classe","班級"],["desk","🗄️","le bureau","書桌"],["board","📋","le tableau","黑板"],["glue","🧴","la colle","膠水"],["tape","📼","le scotch","膠帶"],["ruler","📏","la règle","尺"],["eraser","🧽","la gomme","橡皮擦"],["crayon","🖍️","le crayon de couleur","蠟筆"],["notebook","📔","le cahier","筆記本"],["dictionary","📕","le dictionnaire","字典"]]},
+ body2:{icon:"🦴",name:"Body & Health",words:[["shoulder","🤷","l'épaule","肩膀"],["knee","🦵","le genou","膝蓋"],["elbow","🦾","le coude","手肘"],["back","🔙","le dos","背"],["neck","🦒","le cou","脖子"],["face","😶","le visage","臉"],["cheek","☺️","la joue","臉頰"],["chin","🧔","le menton","下巴"],["lips","💋","les lèvres","嘴唇"],["tongue","👅","la langue","舌頭"],["throat","😮","la gorge","喉嚨"],["skin","🧴","la peau","皮膚"],["bone","🦴","l'os","骨頭"],["blood","🩸","le sang","血"],["heart","🫀","le cœur","心臟"],["brain","🧠","le cerveau","大腦"],["muscle","💪","le muscle","肌肉"],["medicine","💊","le médicament","藥"],["fever","🌡️","la fièvre","發燒"],["cough","😷","la toux","咳嗽"]]},
+ magic:{icon:"🪄",name:"Magic & Fun",words:[["hope","🌠","l'espoir","希望"],["dream","💤","le rêve","夢"],["idea","💡","l'idée","點子"],["fun","🎉","amusant","好玩"],["joke","😂","la blague","笑話"],["party","🥳","la fête","派對"],["gift","🎁","le cadeau","禮物"],["birthday","🎂","l'anniversaire","生日"],["surprise","🎊","la surprise","驚喜"],["secret","🤫","le secret","祕密"],["luck","🍀","la chance","幸運"],["magic","🪄","la magie","魔法"],["monster","👹","le monstre","怪獸"],["ghost","👻","le fantôme","鬼"],["king","🤴","le roi","國王"],["queen","👸","la reine","皇后"],["prince","🤴","le prince","王子"],["princess","👸","la princesse","公主"],["knight","🛡️","le chevalier","騎士"],["fairy","🧚","la fée","仙女"],["wizard","🧙","le magicien","巫師"],["pirate","🏴‍☠️","le pirate","海盜"],["hero","🦸","le héros","英雄"],["angel","😇","l'ange","天使"],["giant","🗿","le géant","巨人"],["clown","🤡","le clown","小丑"],["treasure","💎","le trésor","寶藏"],["adventure","🧭","l'aventure","冒險"]]},
+ jobs:{icon:"👷",name:"Jobs",words:[["doctor","🧑‍⚕️","le docteur","醫生"],["nurse","👩‍⚕️","l'infirmière","護理師"],["farmer","🧑‍🌾","le fermier","農夫"],["chef","👨‍🍳","le chef","廚師"],["driver","🚕","le chauffeur","司機"],["pilot","🧑‍✈️","le pilote","機師"],["singer","🎤","le chanteur","歌手"],["dancer","🩰","le danseur","舞者"],["painter","👨‍🎨","le peintre","畫家"],["writer","✒️","l'écrivain","作家"],["dentist","🦷","le dentiste","牙醫"],["vet","🐕‍🦺","le vétérinaire","獸醫"],["firefighter","🧑‍🚒","le pompier","消防員"],["builder","👷","le constructeur","建築工人"],["baker","🥖","le boulanger","麵包師"],["waiter","🤵","le serveur","服務生"],["soldier","💂","le soldat","軍人"],["scientist","🧑‍🔬","le scientifique","科學家"],["actor","🎭","l'acteur","演員"],["president","🏛️","le président","總統"]]},
+};
+/* sentences for the 💬 Sentences level — typed in lowercase, no punctuation */
+const SENT=[
+ ["i want water","💧","je veux de l'eau","我想要水"],
+ ["i like pizza","🍕","j'aime la pizza","我喜歡披薩"],
+ ["she likes cats","🐱","elle aime les chats","她喜歡貓"],
+ ["he plays football","⚽","il joue au foot","他踢足球"],
+ ["we go to school","🏫","nous allons à l'école","我們去上學"],
+ ["i can swim","🏊","je sais nager","我會游泳"],
+ ["the dog is big","🐶","le chien est grand","這隻狗很大"],
+ ["the cat is small","🐈","le chat est petit","這隻貓很小"],
+ ["i am happy","😊","je suis content","我很開心"],
+ ["i am hungry","🍽️","j'ai faim","我肚子餓"],
+ ["my name is luis","🚀","je m'appelle luis","我叫 Luis"],
+ ["my name is lili","🦄","je m'appelle lili","我叫 Lili"],
+ ["my name is lucien","🐨","je m'appelle lucien","我叫 Lucien"],
+ ["it is raining","🌧️","il pleut","下雨了"],
+ ["the sun is yellow","☀️","le soleil est jaune","太陽是黃色的"],
+ ["i love my family","❤️","j'aime ma famille","我愛我的家人"],
+ ["we eat breakfast","🥐","nous prenons le petit-déjeuner","我們吃早餐"],
+ ["she reads a book","📚","elle lit un livre","她在看書"],
+ ["he drinks milk","🥛","il boit du lait","他喝牛奶"],
+ ["they play in the park","🌳","ils jouent au parc","他們在公園玩"],
+ ["i go to bed","🛏️","je vais au lit","我去睡覺"],
+ ["open the door","🚪","ouvre la porte","打開門"],
+ ["close the window","🪟","ferme la fenêtre","關上窗戶"],
+ ["come here","👋","viens ici","過來這裡"],
+ ["look at me","👀","regarde-moi","看我"],
+ ["i do not know","🤷","je ne sais pas","我不知道"],
+ ["where is the bus","🚌","où est le bus","公車在哪裡"],
+ ["what is your name","🙋","comment tu t'appelles","你叫什麼名字"],
+ ["how are you","🙂","comment ça va","你好嗎"],
+ ["how old are you","🎂","quel âge as-tu","你幾歲"],
+ ["do you like pizza","🧀","aimes-tu la pizza","你喜歡披薩嗎"],
+ ["can you help me","🆘","peux-tu m'aider","你可以幫我嗎"],
+ ["what time is it","🕐","quelle heure est-il","現在幾點"],
+ ["where do you live","🏠","où habites-tu","你住在哪裡"],
+ ["what is this","❓","qu'est-ce que c'est","這是什麼"],
+ ["who is it","👤","qui est-ce","是誰"],
+ ["can i play","🎮","je peux jouer","我可以玩嗎"],
+ ["do you want water","🚰","veux-tu de l'eau","你要喝水嗎"],
+ ["where is my bag","🎒","où est mon sac","我的書包在哪裡"],
+ ["why are you sad","😢","pourquoi es-tu triste","你為什麼難過"],
+ ["when do we eat","🥄","quand mange-t-on","我們什麼時候吃飯"],
+];
+const ALL_WORDS=Object.values(VOCAB).flatMap(p=>p.words);
+/* ---- SUMMER CAMP data (from summer_schedule_kids.xlsx: Activity Bank + Photo Missions) ---- */
+const BANK=[
+ {icon:"🤸",cat:"Roof gym — motricity",catz:"屋頂健身房——動作力",
+  lucien:"Animal walks, forward rolls, balance line, throw balls in a basket",lili:"Obstacle course, jump rope, cartwheels, light-dumbbell circuit",luis:"Timed circuit: push-ups, plank, farmer carry, rowing intervals",
+  z:{lucien:"動物走、前滾翻、平衡線、丟球進籃",lili:"障礙賽、跳繩、側手翻、輕啞鈴循環",luis:"計時循環：伏地挺身、撐體、農夫走路、划船"}},
+ {icon:"🥊",cat:"Boxing bag",catz:"拳擊沙包",
+  lucien:"Push & catch the bag (with a grown-up)",lili:"2×1 min jab-cross, adult nearby",luis:"3×2 min combos + footwork, adult nearby",
+  z:{lucien:"推推接接沙包（大人陪）",lili:"2×1分鐘刺拳直拳，大人在旁",luis:"3×2分鐘連擊＋步法，大人在旁"}},
+ {icon:"⚽",cat:"Outdoor (evening, when cool)",catz:"戶外（傍晚涼快時）",
+  lucien:"Trike, chase games, mini goals",lili:"Bike, football passing, basketball, badminton",luis:"Bike distance, football drills, 1v1 basketball",
+  z:{lucien:"三輪車、追逐遊戲、小球門",lili:"腳踏車、足球傳球、籃球、羽球",luis:"騎遠程、足球訓練、1對1籃球"}},
+ {icon:"🎨",cat:"Desk — creative",catz:"桌上創作",
+  lucien:"Colouring, play-dough, big puzzles, stickers",lili:"Drawing challenges, origami, beads, comics",luis:"Sketching, models, journal/comics, chapter books",
+  z:{lucien:"著色、黏土、大拼圖、貼紙",lili:"畫畫挑戰、摺紙、串珠、漫畫",luis:"素描、模型、日記漫畫、章節書"}},
+ {icon:"✂️",cat:"Weekly craft project",catz:"每週手作",
+  lucien:"Handprint art, pasta necklaces, paper animals",lili:"Paper planes, bracelets, salt dough",luis:"Cardboard marble run, sewing, stop-motion",
+  z:{lucien:"手印畫、麵條項鍊、紙動物",lili:"紙飛機、手鍊、鹽麵團",luis:"紙板彈珠軌道、縫紉、停格動畫"}},
+ {icon:"📸",cat:"Photo & video missions",catz:"照片影片任務",
+  lucien:"Snap 5 favourite things (with help)",lili:"This week's photo theme — find & shoot 10",luis:"Photo theme + a technique, edit & make an album",
+  z:{lucien:"拍5樣最愛的東西（有人幫忙）",lili:"本週主題——找到並拍10張",luis:"主題＋一個技巧，編輯做成相簿"}},
+ {icon:"💻",cat:"Computer, AI & web (grown-up OK)",catz:"電腦、AI與網路（大人同意）",
+  lucien:"Look up animals with a buddy",lili:"Search your 'question of the day', ask AI to explain",luis:"Research a topic, AI study buddy, make a slideshow",
+  z:{lucien:"和夥伴查動物圖片",lili:"查「今日問題」，請AI解釋",luis:"研究主題、AI學習夥伴、做投影片"}},
+ {icon:"🧠",cat:"Boredom → creativity",catz:"無聊→創意",
+  lucien:"Box of random objects to invent games with",lili:"Invent a game and teach it tonight",luis:"Weekly project: build or invent, present at dinner",
+  z:{lucien:"用雜物箱發明遊戲",lili:"發明遊戲，今晚教大家",luis:"每週計畫：建造或發明，晚餐發表"}},
+ {icon:"🧹",cat:"House help (extra stars)",catz:"家事幫手（加星星）",
+  lucien:"Pair socks, clothes in drawer, toys away",lili:"Fold laundry, tidy wardrobe by type, sweep",luis:"Fold laundry, vacuum, help cook",
+  z:{lucien:"配襪子、衣服入櫃、收玩具",lili:"摺衣、整理衣櫃、掃地",luis:"摺衣、吸地、幫忙煮飯"}},
+ {icon:"🕺",cat:"Active screen (heat backup)",catz:"活力螢幕（太熱備案）",
+  lucien:"Cosmic Kids Yoga, dance videos",lili:"GoNoodle, Just Dance Now, kids workout videos",luis:"Just Dance Now, HIIT or boxing follow-along",
+  z:{lucien:"Cosmic Kids瑜伽、舞蹈影片",lili:"GoNoodle、Just Dance、兒童運動影片",luis:"Just Dance、HIIT或拳擊跟練"}},
+ {icon:"⛏️",cat:"Minecraft missions",catz:"Minecraft任務",
+  lucien:"Build together with the big kids",lili:"A house with a garden, a zoo, a castle",luis:"Working farm, redstone door, recreate our home",
+  z:{lucien:"和哥哥姊姊一起蓋",lili:"有花園的房子、動物園、城堡",luis:"運作農場、紅石門、重現我們家"}},
+];
+/* concrete daily missions per category per kid */
+const MISSIONS={
+gym:{
+ lucien:[["Do 10 frog jumps 🐸", "跳10下青蛙跳 🐸"],["Walk the balance line 3 times without falling", "走平衡線3次不掉下來"],["Bear-walk across the roof and back", "熊爬走過屋頂再回來"],["Throw 5 balls into the basket from 3 steps away", "站遠3步，把5顆球丟進籃子"],["Do 3 forward rolls on the mat", "在墊子上前滾翻3次"],["Hop like a kangaroo 10 times on each foot", "像袋鼠一樣，每隻腳跳10下"],["Crab-walk from one wall to the other", "螃蟹走從這面牆到那面牆"],["Freeze like a statue for 20 seconds — 3 times", "當雕像不動20秒，做3次"]],
+ lili:[["Build an obstacle course, then beat it 3 times", "蓋一個障礙賽道，然後挑戰3次"],["Jump rope: 30 jumps without stopping", "跳繩30下不停"],["Cartwheel practice: 5 tries each side", "側手翻練習：左右各試5次"],["Light-dumbbell circuit: 8 curls + 8 presses, twice", "輕啞鈴循環：彎舉8下＋推舉8下，做2輪"],["Stand on one leg 20 seconds — each leg", "單腳站20秒——兩腳都要"],["Hopscotch: 5 full rounds", "跳房子：完整5輪"],["10 knee push-ups + a 20-second plank", "跪姿伏地挺身10下＋撐體20秒"],["Skip around the roof 3 laps", "繞屋頂跳著走3圈"]],
+ luis:[["Circuit ×3: 10 push-ups, 30s plank, farmer carry", "循環3輪：伏地挺身10下、撐體30秒、農夫走路"],["Rowing intervals: 3×1 minute, rest 30s", "划船間歇：3×1分鐘，休息30秒"],["Agility ladder: 5 different footwork patterns", "敏捷梯：5種不同步伐"],["50 jump ropes, then attempt a double-under", "跳繩50下，再挑戰一次雙迴旋"],["Plank challenge: beat yesterday's time", "撐體挑戰：打破昨天的紀錄"],["20 squats + 10 lunges each leg, twice", "深蹲20下＋每腿弓步10下，做2輪"],["Cartwheel practice: 10 attempts, film your best one", "側手翻練習10次，錄下最棒的一次"]],
+},
+boxing:{
+ lucien:[["Push the bag and catch it 10 times", "推沙包再接住，做10次"],["Copy 5 slow punches with a grown-up", "跟大人慢慢打5拳"],["Dodge left, dodge right — 10 times", "往左閃、往右閃——10次"],["Tap the bag softly: 20 taps, alternating hands", "輕拍沙包20下，左右手輪流"]],
+ lili:[["2 rounds of 1 minute: jab–cross", "2回合各1分鐘：刺拳–直拳"],["Footwork: step in, punch, step out — 10 times", "步法：進、出拳、退——10次"],["Jab-only round: how many in 1 minute?", "只出刺拳：1分鐘能打幾下？"],["Shadow-box 1 minute in front of the mirror", "對著鏡子影子拳擊1分鐘"]],
+ luis:[["3×2 min: jab–cross–hook + footwork", "3×2分鐘：刺拳–直拳–勾拳＋步法"],["1 min body shots, then 1 min head-height", "1分鐘只打身體，再1分鐘打頭部高度"],["Invent a 3-punch combo and drill it 20 times", "自創3拳連擊，練20次"],["Footwork round: circle the bag without stopping", "步法回合：繞著沙包不停移動"]],
+},
+outdoor:{
+ lucien:[["Ride your trike 3 laps", "騎三輪車3圈"],["Kick the ball into the mini goal 5 times", "把球踢進小球門5次"],["Chase game: 3 rounds with a sibling", "和哥哥姊姊玩追逐3回合"],["Throw and catch with a big sibling 10 times", "和哥哥姊姊丟接球10次"]],
+ lili:[["Bike 10 minutes without stopping", "騎腳踏車10分鐘不停"],["Football: 20 passes without a miss", "足球傳球20次不失誤"],["Basketball: score 5 baskets", "籃球投進5球"],["Badminton: beat your longest-rally record", "羽球：打破你的最長對打紀錄"],["Jump rope outside: 30 in a row", "在外面跳繩連續30下"]],
+ luis:[["Bike a longer loop — use your hand signals", "騎一段更長的路——記得打手勢"],["Football: 10 juggles, then shooting practice", "足球顛球10下，然後練射門"],["1v1 basketball to 10 points", "1對1籃球，先到10分"],["Basketball layups: 10 each side", "上籃：左右各10次"],["Sprint ladder: 5 sprints, walk back to rest", "衝刺梯：衝刺5趟，走回來休息"]],
+},
+desk:{
+ lucien:[["Colour a whole picture inside the lines", "整張圖著色不塗出線"],["Play-dough: make 3 animals", "黏土做3隻動物"],["Finish a big puzzle", "完成一個大拼圖"],["Sticker scene: tell a story with stickers", "用貼紙拼出一個故事"],["Draw your family and name everyone", "畫你的家人，寫上名字"]],
+ lili:[["Drawing challenge: draw today's animal from a book", "畫畫挑戰：照著書畫今天的動物"],["Origami: fold one new model", "摺紙：摺一個新作品"],["Make a bead bracelet", "做一條串珠手鍊"],["Draw a 6-panel comic about your morning", "畫6格漫畫，畫你的早上"],["Follow one 'learn to draw' step", "照著「學畫畫」步驟畫一次"]],
+ luis:[["Sketch one subject for 20 minutes (hands, faces…)", "素描一個主題20分鐘（手、臉…）"],["Journal: write today's paragraph", "日記：寫今天的一段"],["Draw a full comic page — 6 panels", "畫一整頁6格漫畫"],["Design an invention on paper, label the parts", "在紙上設計一個發明，標出零件"],["Read your chapter book 20 minutes — note 3 events", "讀章節書20分鐘——記下3件事"]],
+},
+craft:{
+ lucien:[["Handprint art: make a handprint animal", "手印畫：做一隻手印動物"],["Pasta necklace for someone you love", "做一條義大利麵項鍊送給你愛的人"],["Fold and decorate a paper animal", "摺一隻紙動物並裝飾"]],
+ lili:[["Paper plane contest: build 3 designs and test them", "紙飛機比賽：做3種設計來試飛"],["Salt dough: make and bake one shape", "鹽麵團：做一個形狀並烤好"],["Finish a bracelet for a sibling", "完成一條送兄弟姊妹的手鍊"]],
+ luis:[["Marble run: add one new cardboard section", "彈珠軌道：加一段新的紙板軌道"],["Stop-motion: shoot 10 seconds of animation", "停格動畫：拍10秒"],["Sewing: 10 neat stitches in a straight line", "縫紉：縫10針直線"]],
+},
+computer:{
+ lucien:[["Look up 3 animal pictures with your buddy — pick a favourite", "和夥伴一起查3張動物圖片——選一張最喜歡的"],["Ask the AI for a silly story about an excavator 🚜", "請AI講一個挖土機的搞笑故事 🚜"],["Draw a picture in the paint app", "用畫圖軟體畫一張圖"],["Ask 'why is the sky blue?' with a grown-up and listen", "和大人一起問「天空為什麼是藍色？」然後聽答案"]],
+ lili:[["Search your question of the day — tell one fact at dinner", "查今天的問題——晚餐時說一件新知識"],["Ask AI to explain something you don't understand", "請AI解釋一件你不懂的事"],["Ask AI to quiz you: 5 questions about animals", "請AI出題考你：5題動物問題"],["Make a 1-slide 'All About Me'", "做一頁「關於我」的投影片"],["Paint a picture on the computer", "在電腦上畫一張圖"]],
+ luis:[["Research a topic: 3 sources → 3 facts in YOUR own words", "研究一個主題：3個來源→用自己的話寫3個事實"],["AI study buddy: get quizzed on times tables", "AI學習夥伴：考你乘法表"],["Ask AI to check your writing — then check IT for mistakes", "請AI檢查你的作文——再檢查它有沒有錯"],["Scratch: make something move on screen", "Scratch：讓東西在螢幕上動起來"],["Build 3 slides about a topic you love", "做3頁你最愛主題的投影片"]],
+},
+boredom:{
+ lucien:[["Pick 3 random objects and invent a game", "隨便挑3個東西，發明一個遊戲"],["Build the tallest tower you can — then knock it down", "蓋一座最高的塔——然後推倒它"],["Make an obstacle path for your toy cars", "幫玩具車做一條障礙路線"]],
+ lili:[["Invent a game with rules — teach it tonight", "發明一個有規則的遊戲——今晚教大家"],["Make a treasure hunt for Lucien", "幫Lucien做一個尋寶遊戲"],["Build a cushion fort and give it a name", "用抱枕蓋堡壘，幫它取名字"]],
+ luis:[["Invent a game all three of you can play — teach it tonight", "發明一個三個人都能玩的遊戲——今晚教大家"],["Design a treasure hunt with 5 clues", "設計一個有5條線索的尋寶遊戲"],["Start a weekly project: plan it on paper first", "開始一個本週計畫：先在紙上規劃"]],
+},
+house:{
+ lucien:[["Pair all the clean socks", "把乾淨的襪子全部配對"],["Put every toy back in its box", "把每個玩具放回它的盒子"],["Water the plants with the small can", "用小澆水壺幫植物澆水"],["Put your clothes in the right drawer", "把衣服放進對的抽屜"]],
+ lili:[["Fold the shirts-and-shorts pile", "摺好上衣和短褲那疊"],["Tidy your wardrobe by type", "照類型整理你的衣櫃"],["Sweep one room completely", "把一個房間掃乾淨"],["Set the table extra-nicely tonight", "今晚把餐桌擺得特別漂亮"]],
+ luis:[["Run a full fold-and-put-away laundry cycle", "完成一輪摺衣＋收衣"],["Vacuum one room properly", "把一個房間吸乾淨"],["Help prep dinner: wash and cut (kid-safe)", "幫忙備晚餐：洗菜切菜（安全刀具）"],["Tidy one shared space completely", "把一個公共空間整理乾淨"]],
+},
+activescreen:{
+ lucien:[["One Cosmic Kids Yoga adventure — the whole thing", "完整跟完一集Cosmic Kids瑜伽"],["Dance video: copy every move", "舞蹈影片：每個動作都跟著做"],["Animal dance: freeze when the music stops", "動物舞：音樂停就定格"]],
+ lili:[["One GoNoodle video at full energy", "全力跟完一支GoNoodle影片"],["Just Dance: 2 songs, full effort", "Just Dance：2首歌，全力以赴"],["Follow a whole kids workout video", "跟完一整支兒童運動影片"]],
+ luis:[["Just Dance: 3 songs, no stopping", "Just Dance：3首歌不休息"],["One full HIIT follow-along", "完整跟完一支HIIT影片"],["Boxing follow-along, then 1 min shadow-box", "拳擊跟練影片，再影子拳擊1分鐘"]],
+},
+minecraft:{
+ lucien:[["Build with the big kids — add a door and a window", "和哥哥姊姊一起蓋——加一扇門和一扇窗"],["Plant a little garden in the game", "在遊戲裡種一個小花園"],["Build a tiny house for an animal", "幫小動物蓋一間小房子"]],
+ lili:[["Build a house with a garden", "蓋一間有花園的房子"],["Start your zoo: 2 enclosures", "開始你的動物園：2個圍欄"],["Add a tower to your castle", "幫你的城堡加一座塔"]],
+ luis:[["Working farm: crops + one animal pen", "運作的農場：農作物＋一個動物圍欄"],["Redstone door that opens and closes", "會開關的紅石門"],["Recreate one room of our home", "重現我們家的一個房間"]],
+},
+skill:{
+ lucien:[["Practice pouring cereal & spreading butter 🍳", "練習倒麥片和塗奶油 🍳"],["Get fully dressed by yourself — shoes too 👟", "自己穿好全部衣服——鞋子也是 👟"],["Count to 30 out loud — fingers allowed", "大聲數到30——可以用手指"],["Play Big Machines 🚜 and get 10 wins", "玩「大機器」🚜 拿10次勝利"],["Word Wizard 🧙: learn 2 new words", "文字巫師 🧙：學2個新單字"],["Write your name in big letters ✍", "用大大的字寫你的名字 ✍"],["Sort the laundry into colours", "把衣服按顏色分類"],["Fold 2 simple origami", "摺2個簡單摺紙"],["Memory game with a buddy ♟", "和夥伴玩記憶遊戲 ♟"]],
+ lili:[["Make toast and cut fruit with your kid knife 🍳", "用兒童刀做吐司、切水果 🍳"],["Read one page aloud to someone 📚", "大聲唸一頁書給別人聽 📚"],["Practice the ×2 table — ask AI to quiz you", "練習2的乘法表——請AI考你"],["Word Wizard 🧙: master 3 new words", "文字巫師 🧙：精通3個新單字"],["Tie your shoelaces 5 times, fast", "快速綁鞋帶5次"],["Write 3 neat sentences ✍", "寫3句工整的句子 ✍"],["Origami: one new model 🌸", "摺紙：一個新作品 🌸"],["Connect 4 or checkers with Luis ♟", "和Luis玩四連環或西洋跳棋 ♟"],["Practice reading the clock ⏰", "練習看時鐘 ⏰"]],
+ luis:[["Cook simple eggs or a sandwich — and clean up 🍳", "煎蛋或做三明治——然後收拾乾淨 🍳"],["Times tables: pick a hard one and drill it", "乘法表：挑一個難的來練"],["Word Wizard Sentences 💬: master 3 sentences", "文字巫師句子 💬：精通3個句子"],["Word Racer 🚀: beat your WPM record", "文字競速 🚀：打破你的WPM紀錄"],["Chess: one game or 3 puzzles ♟", "西洋棋：一盤棋或3道謎題 ♟"],["Origami: work toward your hard model 🌸", "摺紙：挑戰你的困難作品 🌸"],["Plan tomorrow morning yourself ⏰", "自己規劃明天早上 ⏰"],["Typing: 5 minutes of home-row practice ⌨", "打字：5分鐘基準鍵練習 ⌨"],["Stop-motion: plan your 1-minute film 🎬", "停格動畫：規劃你的1分鐘影片 🎬"]],
+},
+};
+/* the day plan — from the Daily Rhythm sheet (EN + 中文) */
+const DAY=[
+ {t:"8:00",icon:"☀️",title:"Wake up — dress & make your bed",tz:"起床——穿衣、鋪床",kind:"routine",
+  txt:{lucien:"Dress and shoes — a buddy helps",lili:"Dress, hair, make your bed",luis:"Open the windows — captain the morning"},
+  txtz:{lucien:"穿衣穿鞋——夥伴幫忙",lili:"穿衣、梳頭、鋪床",luis:"開窗——當早晨的隊長"}},
+ {t:"8:15",icon:"🥐",title:"Breakfast + kitchen job",tz:"早餐＋廚房工作",kind:"routine",
+  txt:{lucien:"Carry your bowl, help set the table",lili:"Do your chore of the week",luis:"Do your chore of the week"},
+  txtz:{lucien:"端碗、幫忙擺餐桌",lili:"做本週家事",luis:"做本週家事"}},
+ {t:"8:45",icon:"🎯",title:"Skill block",tz:"技能時間",kind:"mission",pool:"skill"},
+ {t:"9:30",icon:"📚",title:"Reading — quiet & comfy",tz:"閱讀——安靜舒服",kind:"routine",
+  txt:{lucien:"Picture books, or listen to a story",lili:"Read a page aloud to someone",luis:"Chapter book — 20 quiet minutes"},
+  txtz:{lucien:"看圖畫書或聽故事",lili:"大聲唸一頁給別人聽",luis:"章節書——安靜20分鐘"}},
+ {t:"10:00",icon:"🎨",title:"Create & build",tz:"創作與建造",kind:"mission",pool:"desk"},
+ {t:"11:15",icon:"📱",title:"Screen #1 — 45 min, earned",tz:"螢幕#1——45分鐘（要先賺到）",kind:"routine",
+  txt:{lucien:"Only if your morning boxes are ticked ✓",lili:"Only if skill + reading are ticked ✓",luis:"Only if skill + reading are ticked ✓ — set your own timer"},
+  txtz:{lucien:"早上的格子打勾才可以 ✓",lili:"技能＋閱讀打勾才可以 ✓",luis:"技能＋閱讀打勾 ✓——自己設定時器"}},
+ {t:"12:00",icon:"🍽",title:"Lunch + kitchen job",tz:"午餐＋廚房工作",kind:"routine",
+  txt:{lucien:"Napkins, carry your plate",lili:"Chore of the week",luis:"Chore of the week"},
+  txtz:{lucien:"餐巾、端自己的盤子",lili:"本週家事",luis:"本週家事"}},
+ {t:"12:45",icon:"🤫",title:"Quiet hour — peak heat",tz:"安靜時間——最熱的時候",kind:"routine",
+  txt:{lucien:"Nap time 😴",lili:"Rest or audiobook",luis:"Read or a quiet hobby"},
+  txtz:{lucien:"午睡 😴",lili:"休息或聽有聲書",luis:"閱讀或安靜的嗜好"}},
+ {t:"14:00",icon:"🧩",title:"Project time",tz:"專題時間",kind:"mission",pool:"project"},
+ {t:"15:45",icon:"📱",title:"Screen #2 — 45 min, earned",tz:"螢幕#2——45分鐘（要先賺到）",kind:"routine",
+  txt:{lucien:"Boxes ticked ✓ then videos or a game",lili:"Boxes ticked ✓ then Minecraft or a game",luis:"Boxes ticked ✓ then Minecraft or a game"},
+  txtz:{lucien:"格子打勾✓再看影片或玩遊戲",lili:"格子打勾✓再玩Minecraft或遊戲",luis:"格子打勾✓再玩Minecraft或遊戲"}},
+ {t:"16:30",icon:"🧠",title:"Free — invent your own game",tz:"自由——發明你自己的遊戲",kind:"mission",pool:"boredom"},
+ {t:"17:15",icon:"⚽",title:"Sport & move (when it cools)",tz:"運動時間（涼快時）",kind:"mission",pool:"sport"},
+ {t:"18:00",icon:"🧹",title:"Tidy patrol + house help",tz:"整理巡邏＋家事幫手",kind:"mission",pool:"house"},
+ {t:"18:30",icon:"🍽",title:"Dinner + kitchen job",tz:"晚餐＋廚房工作",kind:"routine",
+  txt:{lucien:"Carry your plate",lili:"Chore of the week",luis:"Chore + help cook"},
+  txtz:{lucien:"端你的盤子",lili:"本週家事",luis:"家事＋幫忙煮飯"}},
+ {t:"19:30",icon:"🌙",title:"Bath, family game, bed",tz:"洗澡、家庭遊戲、睡覺",kind:"routine",
+  txt:{lucien:"Bed 20:30",lili:"Lights out 21:00",luis:"Lights out 21:15"},
+  txtz:{lucien:"8點30分睡覺",lili:"9點熄燈",luis:"9點15分熄燈"}},
+ {t:"✨",icon:"📸",title:"Bonus — photo mission of the day",tz:"加碼——今日照片任務",kind:"mission",pool:"photo"},
+];
+
+/* 🧭 LEARN — learning-to-learn guides (EN + 中文) */
+const LEARN_GUIDES={
+know:{icon:"🔎",title:"I want to KNOW something",tz:"我想「知道」一件事",
+ lucien:[["Pick your question with your buddy","和夥伴一起選一個問題"],
+  ["Ask a big sibling or grown-up to type it","請哥哥姊姊或大人幫你打字"],
+  ["Look at the pictures together","一起看圖片"],
+  ["Say out loud what you see","大聲說出你看到什麼"],
+  ["Tell everyone at dinner!","晚餐時告訴大家！"]],
+ lili:[["Write your question in your notebook","把你的問題寫在筆記本"],
+  ["Turn it into search words — 'why sky blue', not a whole sentence","變成搜尋關鍵字——「天空 為什麼 藍色」，不用整句"],
+  ["Search with a grown-up nearby (Kiddle is best)","有大人在旁邊時搜尋（用Kiddle最好）"],
+  ["Look at 2 pages — do they say the same thing?","看2個網頁——它們說的一樣嗎？"],
+  ["Write ONE fact in YOUR own words","用「自己的話」寫下一個事實"],
+  ["Tell it at dinner tonight","今晚晚餐時分享"]],
+ luis:[["Write the question, then brainstorm 3 search phrases","寫下問題，再想出3種搜尋寫法"],
+  ["Find 3 DIFFERENT sources (not the same site)","找3個「不同」的來源（不能同一個網站）"],
+  ["Cross-check: do they agree? If not, why?","交叉比對：它們一致嗎？不一致的話為什麼？"],
+  ["Write 3 facts in YOUR words — no copy-paste","用自己的話寫3個事實——不能複製貼上"],
+  ["Bonus: ask AI to quiz you on what you learned","加分：請AI考你剛學到的內容"]]},
+doskill:{icon:"🛠️",title:"I want to LEARN to do something",tz:"我想「學會」做一件事",
+ lucien:[["Say what you want to learn ('fold a paper plane')","說出你想學什麼（例如「摺紙飛機」）"],
+  ["Watch ONE video with a buddy — all of it","和夥伴看「一支」影片——看完整支"],
+  ["Get your materials ready","準備好材料"],
+  ["Try it! It's OK if it goes wrong 😄","試試看！做壞了也沒關係 😄"],
+  ["Try again more slowly, then show someone","再慢慢做一次，然後展示給別人看"]],
+ lili:[["Name the skill exactly: 'how to fold a paper crane'","精確說出技能：「怎麼摺紙鶴」"],
+  ["Search it + 'for kids' or 'easy'","搜尋時加上「for kids」或「easy」"],
+  ["Watch or read ONE full guide BEFORE starting","開始前先「完整」看完一份教學"],
+  ["Gather materials, then follow step by step","準備材料，然後一步一步跟著做"],
+  ["First try fails? That IS learning — go again","第一次失敗？那就是學習——再來一次"],
+  ["Teach it to Lucien when you can do it","學會後教Lucien"]],
+ luis:[["Define the skill + your target ('draw a face that looks real')","定義技能＋你的目標（「畫出逼真的臉」）"],
+  ["Find 2 tutorials, pick the clearer one","找2份教學，選比較清楚的那份"],
+  ["Watch fully first, THEN do it along step by step","先看完，「再」跟著一步一步做"],
+  ["Practice the hardest step 5 times on its own","把最難的那一步單獨練5次"],
+  ["Compare your result with the tutorial — what's different?","比較你的成果和教學——差在哪裡？"],
+  ["Log it: today's attempt, what to fix tomorrow","記錄：今天的嘗試、明天要改進什麼"]]},
+askai:{icon:"🤖",title:"How to ask AI well",tz:"怎麼問AI才厲害",
+ lucien:[["A grown-up sits with you — always","一定要有大人陪你"],
+  ["Say what you want: 'a silly story about a digger'","說出你想要什麼：「一個挖土機的搞笑故事」"],
+  ["If it's boring, ask again differently","不好玩的話，換個方式再問一次"],
+  ["Remember: it's a robot, not a person 🤖","記住：它是機器人，不是真人 🤖"]],
+ lili:[["Say exactly what you need + how: 'explain like I'm 7'","說清楚你要什麼＋怎麼說：「像對7歲小孩一樣解釋」"],
+  ["Give details — the clearer the question, the better the answer","給細節——問題越清楚，答案越好"],
+  ["Not helpful? Rephrase and try again","沒幫助？換個說法再試"],
+  ["Ask it to QUIZ you — that's the best trick","請它「考」你——這是最棒的用法"],
+  ["AI can be wrong! Check surprises with a grown-up","AI可能會錯！奇怪的答案要和大人確認"]],
+ luis:[["Give context, task, and format: 'explain X, then quiz me with 5 questions'","給背景、任務和格式：「解釋X，然後出5題考我」"],
+  ["Use it to LEARN, never to do your work for you","用它來「學習」，絕不是幫你做作業"],
+  ["Always verify: ask for its reasoning, check one claim yourself","一定要驗證：請它說明理由，自己查證一個說法"],
+  ["Catch its mistakes — spotting a wrong answer = you really understand","抓出它的錯——能發現錯誤＝你真的懂了"],
+  ["End with: 'what should I learn next about this?'","結尾問它：「關於這個，我接下來該學什麼？」"]]},
+};
+const MAGIC_WORDS=[["how to","怎麼做"],["why","為什麼"],["what is","是什麼"],["for kids","給小孩的"],
+ ["easy","簡單"],["tutorial","教學"],["step by step","一步一步"],["pictures of","的圖片"]];
+const QB_STARTERS=[["How to","怎麼"],["Why","為什麼"],["What is","什麼是"],["Pictures of","圖片："]];
+const QB_TOPICS=[["excavators","挖土機","🚜"],["helicopters","直升機","🚁"],["race cars","賽車","🏎️"],
+ ["dinosaurs","恐龍","🦖"],["volcanoes","火山","🌋"],["sharks","鯊魚","🦈"],["space","太空","🌌"],
+ ["rainbows","彩虹","🌈"],["ants","螞蟻","🐜"],["robots","機器人","🤖"]];
+
+/* how-to guidelines + gamification per Activity Bank entry (same order as BANK) */
+const ACT_GUIDE=[
+ {timer:10,steps:[["Warm up 2 minutes: jumping jacks or animal walks", "熱身2分鐘：開合跳或動物走"],["Pick 3 moves from your list above", "從上面的清單挑3個動作"],["Do each move for 1 minute, then a short rest", "每個動作做1分鐘，短暫休息"],["Water break, then do the whole round again", "喝水，然後整輪再做一次"],["Finish strong — stretch tall like a star ⭐", "收尾：像星星一樣伸展 ⭐"]]},
+ {timer:2,steps:[["Ask a grown-up to be nearby, gloves on 🥊", "請大人在旁邊，戴上手套 🥊"],["Warm up: 1 minute of shadow boxing", "熱身：影子拳擊1分鐘"],["Start the timer — do your combo until it rings", "按下計時器——打你的連擊直到鈴響"],["Rest 30 seconds, breathe, then one more round", "休息30秒，深呼吸，再一回合"],["Cool down: shake your arms, big breaths", "收操：甩甩手臂，深呼吸"]]},
+ {timer:30,steps:[["Hat on, water bottle filled ☀️", "戴帽子、裝滿水壺 ☀️"],["Pick one game from your list above", "從上面的清單挑一個遊戲"],["Play until the timer rings — swap games if you like", "玩到計時器響——想換遊戲也可以"],["Everyone drinks water at the end", "結束時大家都要喝水"],["Put the balls and bikes away", "把球和腳踏車收好"]]},
+ {timer:20,steps:[["Choose ONE thing from your list", "從清單挑「一件」事"],["Set up your desk: paper, colours, materials", "佈置桌面：紙、顏色、材料"],["Create until the timer rings — no rushing", "創作到計時器響——不用急"],["Write your name and today's date on it", "寫上名字和今天的日期"],["Keep it safe to show at dinner tonight 🍽", "收好，晚餐時展示 🍽"]]},
+ {steps:[["Gather your materials first — check you have everything", "先收集材料——確認都齊了"],["Follow the steps slowly, one at a time", "慢慢照步驟做，一次一步"],["Stuck? Ask a big sibling or a grown-up", "卡住了？問哥哥姊姊或大人"],["Take a photo of your finished creation 📸", "幫成品拍一張照 📸"],["Tidy your space completely before you stop", "結束前把桌面完全收乾淨"]]},
+ {type:"photo",steps:[["Grab the camera or the phone (ask first)", "拿相機或手機（先問過）"],["Tap the mission button below 🎲", "按下面的任務按鈕 🎲"],["Take LOTS of photos — then choose your best one", "拍很多張——再挑最棒的一張"],["Try today's trick from the tip", "試試今天的小技巧"],["Show your best photo at dinner tonight", "晚餐時展示你最棒的照片"]]},
+ {steps:[["A grown-up must be nearby — always 🧑‍🦱", "一定要有大人在旁邊 🧑‍🦱"],["Golden rules: ask first, never type your name or address", "黃金規則：先問過，絕不打出名字或地址"],["Do your task from the list above", "做清單上的任務"],["If anything feels wrong — close it and tell Papa", "感覺不對勁——關掉並告訴爸爸"],["Tell one thing you learned at dinner", "晚餐時分享一件學到的事"]]},
+ {steps:[["Being bored is GOOD — it starts your idea engine 🧠", "無聊是好事——它會啟動你的點子引擎 🧠"],["Grab the box of random objects, pick 2 or 3", "拿出雜物箱，挑2、3樣東西"],["Invent a game with them and make up the rules", "用它們發明一個遊戲，自己訂規則"],["Give your game a cool name", "幫遊戲取一個酷名字"],["Teach it to everyone tonight!", "今晚教大家玩！"]]},
+ {steps:[["Pick ONE job from your list above", "從清單挑「一個」工作"],["Do it completely — halfway doesn't count 😉", "做完整——做一半不算 😉"],["Ask a grown-up to check when you're finished", "做完請大人檢查"],["This one earns EXTRA stars on the wall tracker too", "這個在牆上的追蹤表也能多拿星星"]]},
+ {timer:15,steps:[["Push chairs away — make a safe dance space", "把椅子推開——空出安全的跳舞空間"],["Pick a video from your list above", "從清單挑一支影片"],["Follow along the WHOLE video, no sitting down", "整支跟完，不可以坐下"],["Big glass of water when you finish 💧", "結束喝一大杯水 💧"]]},
+ {steps:[["Only during a screen window, and only if your boxes are ticked ✓", "只能在螢幕時段，而且格子都打勾 ✓"],["Pick your mission from the list above", "從清單挑你的任務"],["Build it properly — details make it awesome", "好好蓋——細節讓它更厲害"],["Take a screenshot when it's finished", "完成後截圖"],["Give the tour at dinner tonight ⛏️", "晚餐時帶大家參觀 ⛏️"]]},
+];
+const BANK_POOL=["gym","boxing","outdoor","desk","craft","photo","computer","boredom","house","activescreen","minecraft"];
+const PHOTO_TRICKS=[
+ ["🤚 Hold steady: two hands, elbows in, breathe out, then press","🤚 拿穩：雙手拿、手肘夾緊、吐氣再按"],
+ ["👟 Move your feet — don't zoom, walk closer, get low, get high","👟 用腳移動——不要縮放，走近一點、蹲低、站高"],
+ ["☀️ Find the light: sun behind YOU, morning & evening are prettiest","☀️ 找光：太陽在你背後，早晚的光最漂亮"],
+ ["🎯 Off-centre: put your subject a bit to the side (rule of thirds)","🎯 不要放正中間：主體偏一邊（三分法）"],
+ ["🖼 Frame it: shoot through a doorway, window or branches","🖼 框起來：透過門、窗或樹枝拍"],
+];
+const PHOTO_POOL={
+ lucien:[
+  ["Photograph something RED", "Photographie quelque chose de ROUGE", "🔴", "拍一個紅色的東西"],
+  ["Photograph something BLUE", "Photographie quelque chose de BLEU", "🔵", "拍一個藍色的東西"],
+  ["Photograph something YELLOW", "Photographie quelque chose de JAUNE", "🟡", "拍一個黃色的東西"],
+  ["Photograph something GREEN", "Photographie quelque chose de VERT", "🟢", "拍一個綠色的東西"],
+  ["Photograph your shoe", "Photographie ta chaussure", "👟", "拍你的鞋子"],
+  ["Photograph a flower", "Photographie une fleur", "🌸", "拍一朵花"],
+  ["Photograph a toy you love", "Photographie un jouet que tu aimes", "🧸", "拍一個你愛的玩具"],
+  ["Photograph your shadow", "Photographie ton ombre", "🌑", "拍你的影子"],
+  ["Photograph something round", "Photographie quelque chose de rond", "⭕", "拍一個圓圓的東西"],
+  ["Photograph a leaf", "Photographie une feuille", "🍃", "拍一片葉子"],
+  ["Photograph something tiny", "Photographie quelque chose de tout petit", "🐜", "拍一個很小很小的東西"],
+  ["Photograph a cloud", "Photographie un nuage", "☁️", "拍一朵雲"],
+  ["Photograph something soft", "Photographie quelque chose de doux", "🪶", "拍一個軟軟的東西"],
+  ["Photograph an excavator or truck", "Photographie une pelleteuse ou un camion", "🚜", "拍一台挖土機或卡車"],
+ ],
+ lili:[
+  ["Find every rainbow colour — one photo each", "Trouve toutes les couleurs de l'arc-en-ciel", "🌈", "找齊彩虹的每個顏色——各拍一張"],
+  ["10 super-close-ups: textures & tiny things", "10 photos de très près : textures et petites choses", "🔍", "10張超近拍：材質和小東西"],
+  ["Photograph a reflection", "Photographie un reflet", "🪞", "拍一個倒影"],
+  ["Photograph a shadow that looks funny", "Photographie une ombre rigolote", "🌑", "拍一個好笑的影子"],
+  ["Photograph something older than you", "Photographie quelque chose de plus vieux que toi", "🏺", "拍一個比你老的東西"],
+  ["Photograph 3 things that are ORANGE", "Photographie 3 choses ORANGE", "🟠", "拍3個橘色的東西"],
+  ["Photograph a letter shape hiding in objects", "Trouve une lettre cachée dans les objets", "🔤", "在物品裡找一個藏起來的字母"],
+  ["Photograph water in a cool way", "Photographie de l'eau de façon originale", "💧", "用特別的方式拍水"],
+  ["Photograph something through a window", "Photographie à travers une fenêtre", "🪟", "隔著窗戶拍一張"],
+  ["Tell a story in 3 photos", "Raconte une histoire en 3 photos", "📖", "用3張照片說一個故事"],
+  ["Photograph a bug or small creature", "Photographie un insecte", "🐞", "拍一隻昆蟲"],
+  ["Freeze someone jumping", "Fige quelqu'un qui saute", "🤾", "拍下有人跳起來的瞬間"],
+ ],
+ luis:[
+  ["Rule of thirds: subject off-centre, 3 shots", "Règle des tiers : sujet décentré, 3 photos", "🎯", "三分法：主體偏一邊，拍3張"],
+  ["Frame your subject through something", "Cadre ton sujet à travers quelque chose", "🖼", "隔著東西框住你的主體"],
+  ["Shoot a silhouette against the light", "Photographie une silhouette à contre-jour", "🌇", "逆光拍一張剪影"],
+  ["Golden hour: 5 shots in evening light", "Golden hour : 5 photos en lumière du soir", "🌅", "黃金時刻：傍晚光線拍5張"],
+  ["Freeze motion: ball, splash or jump", "Fige le mouvement : ballon, éclaboussure, saut", "⚽", "凝結動作：球、水花或跳躍"],
+  ["Macro: your 3 sharpest close-ups, crop tight", "Macro : tes 3 photos les plus nettes", "🔬", "微距：挑3張最清晰的，裁切"],
+  ["Photo-story of one normal day, in order", "Raconte une journée normale en photos", "🏡", "照片故事：按順序記錄平常的一天"],
+  ["Same object, 5 totally different angles", "Le même objet sous 5 angles différents", "🔄", "同一個物品，5個完全不同角度"],
+  ["A colour rainbow, arranged into a grid", "Un arc-en-ciel de couleurs en grille", "🌈", "顏色彩虹排成九宮格"],
+  ["Low angle: make something small look giant", "Contre-plongée : rends un petit objet géant", "🐜", "低角度：讓小東西看起來巨大"],
+  ["Reflections only: mirrors, water, glass", "Uniquement des reflets : miroir, eau, verre", "🪞", "只拍倒影：鏡子、水、玻璃"],
+  ["Shoot a 30-sec video or stop-motion", "Filme 30 secondes ou un stop-motion", "🎬", "拍30秒影片或停格動畫"],
+ ],
+};
+MISSIONS.photo={lucien:PHOTO_POOL.lucien.map(m=>[m[2]+" "+m[0],m[3]]),
+  lili:PHOTO_POOL.lili.map(m=>[m[2]+" "+m[0],m[3]]),
+  luis:PHOTO_POOL.luis.map(m=>[m[2]+" "+m[0],m[3]])};
+MISSIONS.sport={}; MISSIONS.project={};
+["lucien","lili","luis"].forEach(k=>{
+  MISSIONS.sport[k]=[...MISSIONS.gym[k],...MISSIONS.outdoor[k],...MISSIONS.boxing[k],...MISSIONS.activescreen[k]];
+  MISSIONS.project[k]=[...MISSIONS.craft[k],...MISSIONS.boredom[k],...MISSIONS.computer[k],...MISSIONS.minecraft[k]];
+});
+const CUSTOMERS=["🧙","🧝","🧛","🧚","🤴","👸","🧟","🥷","🧑‍🚀","🦹"];
+const LETTERS = {A:"🍎 Apple",B:"⚽ Ball",C:"🐱 Cat",D:"🐶 Dog",E:"🐘 Elephant",F:"🐟 Fish",
+G:"🍇 Grapes",H:"🎩 Hat",I:"🍦 Ice cream",J:"🕹️ Joystick",K:"🔑 Key",L:"🦁 Lion",M:"🌙 Moon",
+N:"👃 Nose",O:"🐙 Octopus",P:"🐧 Penguin",Q:"👑 Queen",R:"🌈 Rainbow",S:"☀️ Sun",T:"🌳 Tree",
+U:"☂️ Umbrella",V:"🎻 Violin",W:"🍉 Watermelon",X:"❌ X mark",Y:"🪀 Yoyo",Z:"🦓 Zebra"};
+const WORDS_EASY = [["cat","🐱"],["dog","🐶"],["sun","☀️"],["hat","🎩"],["red","🔴"],["big","🐘"],
+["box","📦"],["cup","☕"],["bus","🚌"],["egg","🥚"],["fox","🦊"],["pig","🐷"],["bee","🐝"],["owl","🦉"],
+["fish","🐟"],["star","⭐"],["book","📚"],["tree","🌳"],["milk","🥛"],["frog","🐸"],["bird","🐦"],
+["cake","🍰"],["ball","⚽"],["moon","🌙"],["rain","🌧️"],["leaf","🍃"],["duck","🦆"],["bear","🐻"],
+["shoe","👟"],["hand","✋"]];
+const WORDS_HARD = ["because","animal","yellow","planet","dragon","castle","rocket","jungle","guitar",
+"thunder","rainbow","picture","morning","treasure","adventure","elephant","computer","birthday",
+"mountain","dinosaur","butterfly","chocolate","wonderful","keyboard","practice"];
+const SENTENCES = ["The quick cat runs fast.","I like to read good books.","We play in the sun today.",
+"My dog can jump very high.","Taiwan is a lovely green island.","Learning to type is really fun.",
+"The rocket flew up to the moon.","She draws a big blue whale.","We eat rice and fish for lunch.",
+"A rainbow has seven bright colours."];
+const ORC_FIGS = ["👹","👺","🧌","👾","🐗","🦖"];
+const BALLOON_COLORS = ["#3DDC97","#FF6FB5","#4EA8FF","#FFC93C","#A78BFA","#34D399","#FB923C","#F87171"];
+
+/* finger map: key -> [fingerVar, fingerName] */
+const FINGER = {};
+const setF=(keys,v,name)=>keys.split("").forEach(k=>FINGER[k]=[v,name]);
+setF("qaz1","--f-lp","Left pinky"); setF("wsx2","--f-lr","Left ring");
+setF("edc3","--f-lm","Left middle"); setF("rfvtgb45","--f-li","Left index");
+setF("yhnujm67","--f-ri","Right index"); setF("ik8","--f-rm","Right middle");
+setF("ol9","--f-rr","Right ring"); setF("p;/0[]'","--f-rp","Right pinky");
+FINGER[" "]=["--f-th","Thumb"];
+const fingerVar=ch=>{const f=FINGER[(ch||"").toLowerCase()];return f?f[0]:"--f-th";};
+
+const ROWS=["1234567890","qwertyuiop","asdfghjkl","zxcvbnm"];
+
+/* ============ STATE ============ */
+let sound=true, kid=null, level=null, kb={}, state={};
+const newProg=()=>({stars:0,best:{balloon:0,race:0,orc:0,shop:0},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
+let progress={lucien:newProg(),lili:newProg(),luis:newProg()};
+const bestOf=(id,mode)=>{const b=progress[id].best; return (b&&typeof b==="object")?(b[mode]||0):0;};
+const heroBest=id=>{const lvl=KIDS[id].level;
+  if(lvl==="race") return bestOf(id,"race")+" wpm";
+  if(lvl==="orc") return bestOf(id,"orc");
+  if(lvl==="balloon") return bestOf(id,"balloon");
+  if(lvl==="machines") return (progress[id].stars||0)+" ⭐";
+  return progress[id].stars||0;};
+let settings={
+  balloon:{speed:2, count:3},                 /* speed 1-5, balloons on screen 1-6 */
+  orc:{diff:"easy", speed:2, count:2},        /* diff: easy(letters)/medium/hard, speed 1-5, orcs 1-5 */
+  vocab:{mode:"study", pack:"animals", speed:2, tts:true,
+    levels:{lucien:"copy", lili:"recall", luis:"translate"}},
+};
+
+/* ============ STORAGE ============ */
+async function loadProgress(){
+  try{ if(window.storage){const r=await window.storage.get("keyquest:v2");
+    if(r&&r.value){const d=JSON.parse(r.value);
+      if(d.progress){progress=d.progress;
+        Object.keys(progress).forEach(k=>{const P=progress[k];
+          if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0};
+          if(P.best.shop==null)P.best.shop=0;
+          if(!P.vocab)P.vocab={};
+          if(P.missions==null)P.missions=0;
+          if(!P.day)P.day={d:'',done:{},rr:{}};});}
+      if(d.settings) settings=Object.assign(settings,d.settings);}} }catch(e){}
+}
+async function saveProgress(){
+  try{ if(window.storage) await window.storage.set("keyquest:v2",
+    JSON.stringify({progress,settings}),false);}catch(e){}
+}
+
+/* ============ SOUND ============ */
+let AC=null;
+function beep(freq,dur,type,vol){
+  if(!sound)return;
+  try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||"sine";o.frequency.value=freq;o.connect(g);g.connect(AC.destination);
+    g.gain.setValueAtTime(vol||.15,AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+(dur||.12));
+    o.start();o.stop(AC.currentTime+(dur||.12));
+  }catch(e){}
+}
+const sGood=()=>beep(660,.09,"triangle",.18);
+const sBad =()=>beep(150,.16,"sawtooth",.12);
+const sPop =()=>{beep(880,.06,"square",.12);setTimeout(()=>beep(1320,.08,"triangle",.14),40);};
+const sZap =()=>{beep(1200,.05,"sawtooth",.1);setTimeout(()=>beep(500,.1,"square",.12),50);};
+const sHit =()=>{beep(120,.25,"sawtooth",.16);};
+const sWin =()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.14,"triangle",.16),i*90));};
+function say(txt,lang,keep){
+  if(!settings.vocab.tts) return;
+  try{ if(!keep) speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(txt);
+    u.lang=lang||"en-US"; u.rate=.85; u.pitch=1.05;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function sayPair(en,fr){ say(en); if(fr) say(fr,"fr-FR",true); }
+
+/* ============ HOME ============ */
+function renderHome(){
+  const box=document.getElementById("heroes"); box.innerHTML="";
+  Object.entries(KIDS).forEach(([id,k])=>{
+    const p=progress[id]||{stars:0,best:0};
+    const b=document.createElement("button"); b.className="hero";
+    b.innerHTML=`<div class="glow" style="background:${k.color}"></div>
+      <div class="av">${k.av}</div>
+      <div class="age">Age ${k.age}</div>
+      <h2 style="color:${k.color}">${k.name}</h2>
+      <div class="mode">${LEVELS[k.level].icon} ${LEVELS[k.level].title}</div>
+      <div class="stats"><span>⭐ <b>${p.stars||0}</b> stars</span>
+        <span>🏁 best <b>${heroBest(id)}</b></span></div>`;
+    b.onclick=()=>openHub(id);
+    box.appendChild(b);
+  });
+}
+
+/* ============ KEYBOARD ============ */
+function buildKeyboard(){
+  const el=document.getElementById("kb"); el.innerHTML=""; kb={};
+  ROWS.forEach(row=>{
+    const r=document.createElement("div"); r.className="krow";
+    row.split("").forEach(ch=>{
+      const key=document.createElement("div"); key.className="key";
+      key.textContent=ch.toUpperCase();
+      key.style.background=`var(${fingerVar(ch)})`;
+      key.dataset.k=ch;
+      key.onclick=()=>handleInput(ch);
+      kb[ch]=key; r.appendChild(key);
+    });
+    el.appendChild(r);
+  });
+  const r=document.createElement("div"); r.className="krow";
+  const sp=document.createElement("div"); sp.className="key space";
+  sp.style.background="var(--f-th)"; sp.textContent="space"; sp.dataset.k=" ";
+  sp.onclick=()=>handleInput(" "); kb[" "]=sp; r.appendChild(sp);
+  el.appendChild(r);
+  const L=[["--f-lp","Pinky"],["--f-lr","Ring"],["--f-lm","Middle"],["--f-li","L index"],
+    ["--f-ri","R index"],["--f-rm","Middle"],["--f-rr","Ring"],["--f-rp","Pinky"]];
+  document.getElementById("legend").innerHTML=
+    L.map(([v,n])=>`<span><i class="dot" style="background:var(${v})"></i>${n}</span>`).join("");
+}
+function highlightTarget(ch){
+  Object.values(kb).forEach(k=>k.classList.remove("target"));
+  if(ch&&kb[ch.toLowerCase()]) kb[ch.toLowerCase()].classList.add("target");
+}
+function highlightSet(chars){
+  Object.values(kb).forEach(k=>k.classList.remove("target"));
+  (chars||[]).forEach(ch=>{const k=kb[(ch||"").toLowerCase()]; if(k)k.classList.add("target");});
+}
+function pressFx(ch){
+  const k=kb[(ch||"").toLowerCase()]; if(!k)return;
+  k.classList.add("pressed"); setTimeout(()=>k.classList.remove("pressed"),90);
+}
+
+/* ============ HUD ============ */
+function hud(items){
+  document.getElementById("hud").innerHTML=items.map(i=>
+    `<div class="stat" style="border-color:${i.c||'transparent'}">
+      <div class="k">${i.k}</div><div class="v">${i.v}</div></div>`).join("");
+}
+
+/* ============ SETTINGS BAR ============ */
+function renderSetbar(){
+  const bar=document.getElementById("setbar");
+  if(level!=="balloon" && level!=="orc" && level!=="vocab"){bar.classList.add("hidden");bar.innerHTML="";return;}
+  bar.classList.remove("hidden");
+  if(level==="vocab"){
+    const s=settings.vocab, lvl=s.levels[kid]||"copy";
+    const M=[["study","🧘 Study"],["shop","⚗️ Potion Shop"]];
+    const L=[["copy","✍️ Copy"],["recall","🧠 Recall"],["translate","🇫🇷→🇬🇧 Translate"],["sentences","💬 Sentences"]];
+    bar.innerHTML=`
+      <div class="grp dchips">${M.map(([k,l])=>
+        `<button class="chip ${s.mode===k?'on':''}" data-m="${k}"
+          style="${s.mode===k?`background:${KIDS[kid].raw}`:''}">${l}</button>`).join("")}</div>
+      <div class="grp dchips">${L.map(([k,l])=>
+        `<button class="chip ${lvl===k?'on':''}" data-lv="${k}"
+          style="${lvl===k?`background:${KIDS[kid].raw}`:''}">${l}</button>`).join("")}</div>
+      ${s.mode==="shop"?`<div class="grp">🐢 Speed <input type="range" id="setSpeed" min="1" max="5" value="${s.speed}"> 🐇
+        <span class="val" id="vSpeed">${s.speed}</span></div>`:""}
+      <div class="grp"><button class="chip ${s.tts?'on':''}" id="ttsBtn"
+        style="${s.tts?`background:${KIDS[kid].raw}`:''}">🗣️ Voice</button></div>`;
+    bar.querySelectorAll("[data-m]").forEach(c=>c.onclick=()=>{
+      settings.vocab.mode=c.dataset.m; saveProgress(); startGame(kid,"vocab");});
+    bar.querySelectorAll("[data-lv]").forEach(c=>c.onclick=()=>{
+      settings.vocab.levels[kid]=c.dataset.lv; saveProgress(); startGame(kid,"vocab");});
+    bar.querySelector("#ttsBtn").onclick=()=>{
+      settings.vocab.tts=!settings.vocab.tts; saveProgress(); renderSetbar();};
+    const sp=bar.querySelector("#setSpeed");
+    if(sp) sp.oninput=()=>{s.speed=+sp.value;bar.querySelector("#vSpeed").textContent=sp.value;saveProgress();};
+    return;
+  }
+  if(level==="balloon"){
+    const s=settings.balloon;
+    bar.innerHTML=`
+      <div class="grp">🐢 Speed <input type="range" id="setSpeed" min="1" max="5" value="${s.speed}"> 🐇
+        <span class="val" id="vSpeed">${s.speed}</span></div>
+      <div class="grp">🎈 Balloons <input type="range" id="setCount" min="1" max="6" value="${s.count}">
+        <span class="val" id="vCount">${s.count}</span></div>`;
+  } else {
+    const s=settings.orc;
+    const D=[["easy","🙂 Letters"],["medium","😀 Words"],["hard","😈 Big words"]];
+    bar.innerHTML=`
+      <div class="grp dchips">${D.map(([k,l])=>
+        `<button class="chip ${s.diff===k?'on':''}" data-d="${k}"
+          style="${s.diff===k?`background:${KIDS[kid].raw}`:''}">${l}</button>`).join("")}</div>
+      <div class="grp">🐢 Speed <input type="range" id="setSpeed" min="1" max="5" value="${s.speed}"> 🐇
+        <span class="val" id="vSpeed">${s.speed}</span></div>
+      <div class="grp">👹 Orcs <input type="range" id="setCount" min="1" max="5" value="${s.count}">
+        <span class="val" id="vCount">${s.count}</span></div>`;
+    bar.querySelectorAll("[data-d]").forEach(c=>c.onclick=()=>{
+      settings.orc.diff=c.dataset.d; saveProgress(); startGame(kid,"orc");});
+  }
+  const S=level==="balloon"?settings.balloon:settings.orc;
+  const sp=bar.querySelector("#setSpeed"), ct=bar.querySelector("#setCount");
+  sp.oninput=()=>{S.speed=+sp.value;bar.querySelector("#vSpeed").textContent=sp.value;saveProgress();};
+  ct.oninput=()=>{S.count=+ct.value;bar.querySelector("#vCount").textContent=ct.value;saveProgress();};
+}
+
+/* ============ GAME FLOW ============ */
+function startGame(id,lvl){
+  stopArena();
+  kid=id; level=lvl;
+  ["home","hub","act"].forEach(x=>document.getElementById(x).classList.add("hidden"));
+  document.getElementById("game").classList.remove("hidden");
+  document.getElementById("back").textContent="← "+KIDS[id].name;
+  document.documentElement.style.setProperty("--accent",KIDS[id].color);
+  buildKeyboard();
+  document.getElementById("levelChips").innerHTML=Object.entries(LEVELS).map(([k,v])=>
+    `<button class="chip ${k===lvl?'on':''}" data-l="${k}"
+      style="${k===lvl?`background:${KIDS[id].raw}`:''}">${v.icon} ${v.title}</button>`).join("");
+  document.querySelectorAll("#levelChips .chip").forEach(c=>
+    c.onclick=()=>startGame(id,c.dataset.l));
+  renderSetbar();
+  if(lvl==="hunt") initHunt();
+  else if(lvl==="home") initHome();
+  else if(lvl==="race") initRace();
+  else if(lvl==="balloon") initBalloon();
+  else if(lvl==="vocab") initVocab();
+  else if(lvl==="machines") initMachines();
+  else initOrc();
+}
+function stopArena(){
+  if(state.raf) cancelAnimationFrame(state.raf);
+  if(state.timer) clearInterval(state.timer);
+  state.raf=null; state.timer=null; state.running=false;
+  try{speechSynthesis.cancel();}catch(e){}
+  document.getElementById("stage").classList.remove("arena");
+}
+function goHome(){
+  stopArena();
+  if(kid){ openHub(kid); return; }   /* back from a game goes to the kid's hub */
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("home").classList.remove("hidden");
+  renderHome();
+}
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
+
+/* ---- MODE: KEY HUNT ---- */
+function initHunt(){
+  state={score:0,found:0,letter:null};
+  nextHunt();
+}
+function nextHunt(){
+  const letter=rand(Object.keys(LETTERS)); state.letter=letter;
+  const [em,...w]=LETTERS[letter].split(" ");
+  document.getElementById("stage").innerHTML=
+    `<div class="cue">Press this key 👇</div>
+     <div class="bigletter" style="color:${KIDS[kid].color}">${letter}</div>
+     <div class="picword"><span class="em">${em}</span>${w.join(" ")}</div>
+     <div class="msg">Find the glowing key!</div>`;
+  highlightTarget(letter);
+  hud([{k:"Found",v:state.found,c:KIDS[kid].raw},{k:"Stars",v:progress[kid].stars}]);
+}
+
+/* ---- MODE: HOME ROW ---- */
+function initHome(){
+  state={queue:shuffle(WORDS_EASY.slice()),i:0,pos:0,typed:0,errors:0,words:0};
+  nextHome();
+}
+function nextHome(){
+  if(state.i>=state.queue.length){state.queue=shuffle(WORDS_EASY.slice());state.i=0;}
+  state.word=state.queue[state.i][0]; state.em=state.queue[state.i][1];
+  state.pos=0; state.wrong=false; drawWord("home"); updatePlayHud();
+}
+
+/* ---- MODE: WORD RACER ---- */
+function initRace(){
+  state={pool:makeRacePool(),i:0,pos:0,correct:0,typed:0,errors:0,words:0,time:60,started:false};
+  drawRace(); updatePlayHud();
+  hint("Start typing to begin the 60-second race!");
+}
+function makeRacePool(){
+  const clean=s=>s.replace(/[^a-zA-Z ]/g,"").replace(/\s+/g," ").trim().toLowerCase();
+  const words=shuffle(WORDS_HARD.slice()).map(w=>[w.toLowerCase(),""]);
+  const sents=shuffle(SENTENCES.slice()).map(s=>[clean(s),""]);
+  const out=[]; let wi=0,si=0;
+  while(wi<words.length||si<sents.length){
+    for(let n=0;n<3&&wi<words.length;n++) out.push(words[wi++]);
+    if(si<sents.length) out.push(sents[si++]);
+  }
+  return out.concat(shuffle(words),shuffle(sents));
+}
+function nextRace(){
+  state.i++;
+  if(state.i>=state.pool.length){state.pool=makeRacePool();state.i=0;}
+  state.pos=0; drawRace();
+}
+function startTimer(){
+  state.started=true; state.startTs=Date.now();
+  state.timer=setInterval(()=>{
+    state.time--; updatePlayHud();
+    if(state.time<=0){clearInterval(state.timer);state.timer=null;finishRace();}
+  },1000);
+}
+
+/* ---- shared word drawing (home + race) ---- */
+function drawWord(mode){
+  const w=state.word, pos=state.pos;
+  const spans=w.split("").map((c,idx)=>{
+    let cls="todo"; if(idx<pos)cls="done"; else if(idx===pos)cls=state.wrong?"bad cur":"cur";
+    return `<span class="${cls}">${c}</span>`;
+  }).join("");
+  document.getElementById("stage").innerHTML=
+    `<div class="cue">${mode==="home"?"Type the word":"Type it!"}</div>
+     ${state.em?`<div class="word-em">${state.em}</div>`:""}
+     <div class="word">${spans}</div>
+     <div class="msg" id="msg"></div>`;
+  highlightTarget(w[pos]);
+}
+function drawRace(){
+  state.word=state.pool[state.i][0]; state.em="";
+  state.wrong=false; drawWord("race");
+}
+
+/* ---- MODE: BALLOON POP (Lucien) ---- */
+function initBalloon(){
+  const st=document.getElementById("stage");
+  st.classList.add("arena");
+  st.innerHTML=`<div class="arena-msg" id="amsg">Pop the balloons — press the letter on each one! 🎈</div>`;
+  state={balloons:[],popped:0,escaped:0,streak:0,running:true,last:performance.now(),spawnAt:0,raf:null};
+  balloonHud();
+  state.raf=requestAnimationFrame(balloonLoop);
+}
+function balloonHud(){
+  hud([{k:"Popped",v:state.popped,c:KIDS[kid].raw},
+    {k:"Streak",v:state.streak},
+    {k:"Stars",v:progress[kid].stars}]);
+}
+function usedLetters(){return new Set(state.balloons.map(b=>b.letter));}
+function spawnBalloon(){
+  const st=document.getElementById("stage");
+  const W=st.clientWidth, used=usedLetters();
+  let letter; const pool="abcdefghijklmnopqrstuvwxyz".split("").filter(c=>!used.has(c));
+  if(!pool.length) return;
+  letter=rand(pool);
+  const el=document.createElement("div"); el.className="balloon";
+  const col=rand(BALLOON_COLORS);
+  el.innerHTML=`<div class="bl" style="background:${col}">${letter.toUpperCase()}</div>
+    <div class="knot" style="background:${col}"></div><div class="str"></div>`;
+  const bw=70;
+  const x=20+Math.random()*(Math.max(W-bw-40,10));
+  el.style.left=x+"px"; el.style.top="0px";
+  el.style.transform=`translate(0px, ${st.clientHeight+30}px)`;
+  st.appendChild(el);
+  const wob=Math.random()*Math.PI*2;
+  state.balloons.push({el,letter,y:st.clientHeight+30,x,wob,dead:false});
+}
+function balloonLoop(now){
+  if(!state.running) return;
+  const st=document.getElementById("stage");
+  const dt=Math.min((now-state.last)/1000,.05); state.last=now;
+  const s=settings.balloon;
+  /* rise speed: 28..110 px/s */
+  const spd=28 + (s.speed-1)*20.5;
+  /* spawn when below target count */
+  if(now>state.spawnAt && state.balloons.filter(b=>!b.dead).length < s.count){
+    spawnBalloon();
+    state.spawnAt=now+ (700 - s.speed*80) + Math.random()*500;
+  }
+  state.balloons.forEach(b=>{
+    if(b.dead) return;
+    b.y-=spd*dt; b.wob+=dt*2.2;
+    const wx=Math.sin(b.wob)*10;
+    b.el.style.transform=`translate(${wx}px, ${b.y}px)`;
+    b.el.style.top="0px";
+    if(b.y < -110){ /* escaped off the top */
+      b.dead=true; state.escaped++; state.streak=0;
+      b.el.classList.add("byefx");
+      setTimeout(()=>b.el.remove(),500);
+      balloonHud();
+    }
+  });
+  state.balloons=state.balloons.filter(b=>!b.dead||b.el.isConnected);
+  highlightSet(state.balloons.filter(b=>!b.dead).map(b=>b.letter));
+  state.raf=requestAnimationFrame(balloonLoop);
+}
+function balloonInput(ch){
+  /* pop the lowest matching balloon */
+  const cand=state.balloons.filter(b=>!b.dead&&b.letter===ch)
+    .sort((a,b)=>b.y-a.y)[0];
+  if(cand){
+    cand.dead=true; state.popped++; state.streak++;
+    sPop(); burstAt(cand.el);
+    cand.el.classList.add("popfx");
+    setTimeout(()=>cand.el.remove(),300);
+    if(state.popped>bestOf(kid,"balloon")) progress[kid].best.balloon=state.popped;
+    if(state.popped%10===0){
+      progress[kid].stars++; saveProgress(); star(); sWin();
+    } else { saveProgress(); }
+    balloonHud();
+  } else {
+    sBad(); state.streak=0; balloonHud();
+    const m=document.getElementById("amsg");
+    if(m){m.textContent="Look at the letters on the balloons! 🎈";
+      setTimeout(()=>{if(m.isConnected)m.textContent="Pop the balloons — press the letter on each one! 🎈";},1500);}
+  }
+}
+
+/* ---- MODE: ORC ATTACK (Luis) ---- */
+function orcWordPool(){
+  const d=settings.orc.diff;
+  if(d==="easy") return "abcdefghijklmnopqrstuvwxyz".split("");
+  if(d==="medium") return WORDS_EASY.map(w=>w[0]);
+  return WORDS_HARD.slice();
+}
+function initOrc(){
+  const st=document.getElementById("stage");
+  st.classList.add("arena");
+  st.innerHTML=`<div class="arena-msg" id="amsg">Type the word above each orc to zap it! ⚡</div>
+    <div class="hero-fig" id="heroFig"><div class="fig">🦸</div></div>`;
+  state={orcs:[],hp:3,score:0,kills:0,lock:null,running:true,
+    last:performance.now(),spawnAt:performance.now()+600,raf:null,wave:1};
+  orcHud();
+  state.raf=requestAnimationFrame(orcLoop);
+}
+function orcHud(){
+  hud([{k:"Lives",v:"❤️".repeat(Math.max(state.hp,0))||"💀",c:state.hp<=1?'var(--bad)':KIDS[kid].raw},
+    {k:"Score",v:state.score},
+    {k:"Kills",v:state.kills},
+    {k:"Best",v:bestOf(kid,"orc")}]);
+}
+function spawnOrc(){
+  const st=document.getElementById("stage");
+  const used=new Set(state.orcs.filter(o=>!o.dead).map(o=>o.word[0]));
+  let pool=orcWordPool().filter(w=>!used.has(w[0]));
+  if(!pool.length) pool=orcWordPool();
+  const word=rand(pool);
+  const el=document.createElement("div"); el.className="orc";
+  el.innerHTML=`<div class="tag"></div><div class="fig">${rand(ORC_FIGS)}</div>`;
+  const H=st.clientHeight;
+  const y=Math.max(50, 40+Math.random()*(H-140));
+  el.style.top=y+"px";
+  st.appendChild(el);
+  const o={el,word,pos:0,x:st.clientWidth+20,y,dead:false,
+    fig:el.querySelector(".fig"),tag:el.querySelector(".tag")};
+  drawOrcTag(o);
+  el.style.transform=`translateX(${o.x}px)`;
+  state.orcs.push(o);
+}
+function drawOrcTag(o){
+  o.tag.innerHTML=o.word.split("").map((c,i)=>
+    `<span class="${i<o.pos?'done':'todo'}">${c.toUpperCase()}</span>`).join("");
+}
+function orcLoop(now){
+  if(!state.running) return;
+  const st=document.getElementById("stage");
+  const dt=Math.min((now-state.last)/1000,.05); state.last=now;
+  const s=settings.orc;
+  const diffMul=s.diff==="easy"?1:s.diff==="medium"?1.12:1.25;
+  /* walk speed: 26..96 px/s, scaled by difficulty and how many kills (gentle ramp) */
+  const spd=(26+(s.speed-1)*17.5)*diffMul*(1+Math.min(state.kills*0.008,.5));
+  if(now>state.spawnAt && state.orcs.filter(o=>!o.dead).length < s.count){
+    spawnOrc();
+    state.spawnAt=now+(1600-s.speed*180)+Math.random()*800;
+  }
+  const heroX=64;
+  state.orcs.forEach(o=>{
+    if(o.dead) return;
+    o.x-=spd*dt;
+    o.el.style.transform=`translateX(${o.x}px)`;
+    if(o.x<=heroX){
+      o.dead=true; o.el.remove();
+      if(state.lock===o) state.lock=null;
+      state.hp--; sHit(); flash("bad");
+      const hf=document.getElementById("heroFig");
+      if(hf){hf.classList.add("hit");setTimeout(()=>hf.classList.remove("hit"),400);}
+      orcHud();
+      if(state.hp<=0) finishOrc();
+    }
+  });
+  state.orcs=state.orcs.filter(o=>!o.dead);
+  if(state.lock) highlightTarget(state.lock.word[state.lock.pos]);
+  else highlightSet(state.orcs.map(o=>o.word[0]));
+  state.raf=requestAnimationFrame(orcLoop);
+}
+function orcInput(ch){
+  if(!state.running) return;
+  if(state.lock){
+    const o=state.lock;
+    if(ch===o.word[o.pos]){
+      o.pos++; sGood(); drawOrcTag(o);
+      if(o.pos>=o.word.length) killOrc(o);
+    } else { sBad(); flash("bad"); }
+    return;
+  }
+  /* no lock: target closest orc whose word starts with ch */
+  const cand=state.orcs.filter(o=>!o.dead&&o.word[0]===ch)
+    .sort((a,b)=>a.x-b.x)[0];
+  if(cand){
+    cand.pos=1; sGood(); drawOrcTag(cand);
+    if(cand.pos>=cand.word.length){ killOrc(cand); }
+    else { state.lock=cand; cand.el.classList.add("locked"); }
+  } else { sBad(); flash("bad"); }
+}
+function killOrc(o){
+  o.dead=true;
+  if(state.lock===o) state.lock=null;
+  /* lightning from hero to orc */
+  zapTo(o);
+  sZap(); burstAt(o.el);
+  o.el.classList.add("diefx");
+  setTimeout(()=>o.el.remove(),300);
+  state.kills++;
+  state.score+=o.word.length*10;
+  if(state.score>bestOf(kid,"orc")){progress[kid].best.orc=state.score;}
+  if(state.kills%5===0){progress[kid].stars++; star(); sWin();}
+  saveProgress();
+  orcHud();
+}
+function zapTo(o){
+  const st=document.getElementById("stage");
+  const z=document.createElement("div"); z.className="zap";
+  const x1=70, y1=st.clientHeight/2, x2=o.x+20, y2=o.y+40;
+  const len=Math.hypot(x2-x1,y2-y1), ang=Math.atan2(y2-y1,x2-x1);
+  z.style.cssText+=`left:${x1}px;top:${y1}px;width:${len}px;transform:rotate(${ang}rad)`;
+  st.appendChild(z);
+  setTimeout(()=>z.remove(),200);
+}
+function finishOrc(){
+  state.running=false;
+  if(state.raf) cancelAnimationFrame(state.raf); state.raf=null;
+  const prevBest=bestOf(kid,"orc");
+  const isBest=state.score>=prevBest&&state.score>0;
+  if(state.score>prevBest) progress[kid].best.orc=state.score;
+  saveProgress();
+  burst(40);
+  const ov=document.createElement("div"); ov.className="overlay";
+  ov.innerHTML=`<div class="card">
+    <h3 style="color:${KIDS[kid].color}">${isBest?"🏆 New best!":"⚔️ Battle over!"}</h3>
+    <div class="big" style="color:${KIDS[kid].color}">${state.score}</div>
+    <p>points · ${state.kills} orcs defeated${isBest?"":` · best ${prevBest}`}</p>
+    <button class="btn" id="again" style="background:${KIDS[kid].raw};color:#1c1436">Fight again ⚔️</button>
+    <button class="btn small" id="ovhome" style="margin-left:8px">Heroes</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector("#again").onclick=()=>{ov.remove();startGame(kid,"orc");};
+  ov.querySelector("#ovhome").onclick=()=>{ov.remove();goHome();};
+}
+
+/* ---- MODE: BIG MACHINES (Lucien: 🏎️ race · 🚜 dig · 🚁 fly) ---- */
+const NUM_EN=["","one","two","three","four","five","six","seven","eight","nine"];
+const NUM_FR=["","un","deux","trois","quatre","cinq","six","sept","huit","neuf"];
+const MCH_WORDS=()=>ALL_WORDS.filter(w=>w[0].length<=4&&!w[0].includes(" "));
+function initMachines(){
+  state={round:0,wins:0,running:true,kind:null};
+  nextMachine();
+}
+function nextMachine(){
+  const kinds=["race","dig","heli"];
+  state.kind=kinds[state.round%3]; state.round++;
+  if(state.kind==="race") mchRace();
+  else if(state.kind==="dig") mchDig();
+  else mchHeli();
+  hud([{k:"Wins",v:state.wins,c:KIDS[kid].raw},{k:"Stars",v:progress[kid].stars}]);
+}
+function mchRace(){
+  const [en,em,fr]=rand(MCH_WORDS());
+  state.word=en; state.pos=0; state.em=em; state.fr=fr;
+  document.getElementById("stage").innerHTML=
+    `<div class="cue">🏎️ Type the letters to race to the flag!</div>
+     <div class="word-em" style="font-size:44px">${em}</div>
+     <div class="word" id="mword"></div>
+     <div class="vfr" style="font-size:18px">${fr}</div>
+     <div class="mch-track"><span class="mch-car" id="car" style="left:0%">🏎️</span>
+       <span class="mch-flag">🏁</span></div>
+     <div class="msg" id="msg"></div>`;
+  drawMchWord(); say(en);
+}
+function drawMchWord(){
+  const el=document.getElementById("mword"); if(!el)return;
+  el.innerHTML=state.word.split("").map((c,i)=>
+    `<span class="${i<state.pos?'done':i===state.pos?'cur':'todo'}">${c}</span>`).join("");
+  const car=document.getElementById("car");
+  if(car) car.style.left=(state.pos/state.word.length*82)+"%";
+  highlightTarget(state.word[state.pos]);
+}
+function mchDig(){
+  const n=1+Math.floor(Math.random()*9);
+  state.num=n;
+  document.getElementById("stage").innerHTML=
+    `<div class="cue">🚜 How many stones did the excavator dig up?</div>
+     <div class="mch-row"><span class="mch-digger" id="digger">🚜</span></div>
+     <div class="mch-row" id="stones">${"🪨".repeat(n)}</div>
+     <div class="bigletter" style="font-size:64px;color:${KIDS[kid].color}" id="dignum">?</div>
+     <div class="msg" id="msg">Press the number!</div>`;
+  highlightTarget(String(n));
+}
+function mchHeli(){
+  const letter=rand(Object.keys(LETTERS));
+  state.letter=letter;
+  const [em,...w]=LETTERS[letter].split(" ");
+  document.getElementById("stage").innerHTML=
+    `<div class="cue">🚁 Press the key to lift the cargo!</div>
+     <div class="mch-row"><span class="mch-lift" id="heli" style="opacity:0">🚁</span></div>
+     <div class="mch-lift" id="cargo">
+       <div class="bigletter" style="font-size:76px;color:${KIDS[kid].color}">${letter}</div>
+       <div class="picword"><span class="em">${em}</span>${w.join(" ")}</div>
+     </div>
+     <div class="msg" id="msg">Find the glowing key!</div>`;
+  highlightTarget(letter);
+}
+function mchWin(extraSay){
+  state.wins++; sWin(); burst(14); flash("ok");
+  if(state.wins%5===0){progress[kid].stars++; saveProgress(); star();}
+  hud([{k:"Wins",v:state.wins,c:KIDS[kid].raw},{k:"Stars",v:progress[kid].stars}]);
+  setTimeout(nextMachine,1300);
+}
+function machinesInput(ch){
+  if(state.kind==="race"){
+    if(ch===state.word[state.pos]){
+      state.pos++; sGood(); drawMchWord();
+      if(state.pos>=state.word.length){
+        const car=document.getElementById("car"); if(car)car.style.left="88%";
+        sayPair(state.word,state.fr); mchWin();
+      }
+    } else { sBad(); flash("bad"); }
+  } else if(state.kind==="dig"){
+    if(ch===String(state.num)){
+      const d=document.getElementById("digger"); if(d)d.classList.add("dig");
+      const el=document.getElementById("dignum");
+      if(el) el.textContent=state.num+" · "+NUM_EN[state.num]+" · "+NUM_FR[state.num];
+      sayPair(NUM_EN[state.num],NUM_FR[state.num]); mchWin();
+    } else if(/[1-9]/.test(ch)){ sBad(); flash("bad"); hint("Count the stones again! 🪨"); }
+  } else { /* heli */
+    if(ch.toUpperCase()===state.letter){
+      const h=document.getElementById("heli"),c=document.getElementById("cargo");
+      if(h){h.style.opacity="1"; setTimeout(()=>{h.classList.add("up"); if(c)c.classList.add("up");},250);}
+      say(state.letter);
+      mchWin();
+    } else { sBad(); flash("bad"); }
+  }
+}
+
+/* ---- MODE: WORD WIZARD (vocab) ---- */
+const vLevel=()=>settings.vocab.levels[kid]||"copy";
+const vPool=()=>vLevel()==="sentences"?SENT:ALL_WORDS;
+const vKey=w=>(vLevel()==="sentences"?"s:":"w:")+w;
+const vBox=w=>(progress[kid].vocab[vKey(w)]||0);
+const vMastered=w=>vBox(w)>=2;
+function packStats(){
+  const P=vPool(); return {done:P.filter(w=>vMastered(w[0])).length, total:P.length};
+}
+function buildVocabQueue(){
+  const P=vPool();
+  const fresh=shuffle(P.filter(w=>!vMastered(w[0])));
+  const review=shuffle(P.filter(w=>vMastered(w[0])));
+  return fresh.concat(review);
+}
+function pickPrompt(lvl){
+  /* what to show: picture / french / both */
+  if(lvl==="copy"||lvl==="recall") return "pic";
+  const r=Math.random();
+  if(lvl==="sentences") return r<.6?"fr":"both";
+  return r<.4?"fr":r<.7?"pic":"both";
+}
+function initVocab(){
+  if(settings.vocab.mode==="shop"){ initShop(); return; }
+  state={queue:buildVocabQueue(),qi:0,streak:0,sessionMastered:0,running:true};
+  nextVocab();
+}
+function nextVocab(){
+  if(state.qi>=state.queue.length){state.queue=buildVocabQueue();state.qi=0;}
+  const [en,em,fr,zh]=state.queue[state.qi];
+  const lvl=settings.vocab.levels[kid]||"copy";
+  state.word=en; state.em=em; state.fr=fr; state.zh=zh||""; state.pos=0; state.wrong=false;
+  state.firstTry=true; state.hintUsed=false;
+  state.revealed=(lvl==="copy")?en.length:0;
+  state.prompt=pickPrompt(lvl);
+  drawVocab(); vocabHud();
+  if(lvl==="copy") say(en);
+}
+function drawVocab(){
+  const lvl=settings.vocab.levels[kid]||"copy";
+  const showPic=(state.prompt!=="fr");
+  const showFr=((lvl==="translate"||lvl==="sentences")&&state.prompt!=="pic");
+  const wstyle=state.word.length>14?'style="font-size:clamp(22px,4.6vw,36px);letter-spacing:1px"':"";
+  const got=vPool().filter(w=>vMastered(w[0])).map(w=>w[1]);
+  const shelf=got.slice(0,28).join("")+(got.length>28?` +${got.length-28}`:"");
+  const cue=lvl==="copy"?"Type the word you see!"
+    :lvl==="recall"?"What is it in English?"
+    :lvl==="sentences"?"Say it in English! 💬"
+    :"Type it in English!";
+  document.getElementById("stage").innerHTML=
+    `<div class="cue">${cue}</div>
+     ${showPic?`<div class="word-em" style="font-size:56px">${state.em}</div>`:""}
+     ${showFr?`<div class="vfr">${state.fr}</div><div class="vzh">${state.zh}</div>`:""}
+     <div class="word" id="vword" ${wstyle}>${vocabSpans()}</div>
+     <div class="msg" id="msg"></div>
+     <div class="vrow">
+       <button class="btn small" id="sayBtn">🗣️ Say it</button>
+       ${lvl!=="copy"?`<button class="btn small" id="hintBtn">💡 Hint</button>`:""}
+     </div>
+     <div class="vshelf"><span class="lbl">YOUR COLLECTION</span>${shelf||"…"}</div>`;
+  document.getElementById("sayBtn").onclick=()=>say(state.word);
+  const hb=document.getElementById("hintBtn");
+  if(hb) hb.onclick=()=>{
+    state.hintUsed=true;
+    let r=Math.max(state.revealed,state.pos);
+    do{r++;}while(r<state.word.length&&state.word[r-1]===" ");
+    state.revealed=Math.min(r,state.word.length);
+    say(state.word);
+    redrawVocabWord();
+  };
+  highlightVocab();
+}
+function vocabSpans(){
+  const w=state.word;
+  return w.split("").map((c,i)=>{
+    if(i<state.pos) return `<span class="done">${c===" "?"&nbsp;":c}</span>`;
+    const shown=i<state.revealed;
+    const cls=(i===state.pos)?(state.wrong?"bad cur":"cur"):(shown?"hintl":"todo");
+    if(c===" ") return `<span class="${cls}">&nbsp;&nbsp;</span>`;
+    return `<span class="${cls}">${shown?c:"_"}</span>`;
+  }).join("");
+}
+function redrawVocabWord(){
+  const el=document.getElementById("vword"); if(el) el.innerHTML=vocabSpans();
+  highlightVocab();
+}
+function highlightVocab(){
+  const lvl=settings.vocab.levels[kid]||"copy";
+  /* only guide the next key when the letter is visible (copy or hinted) */
+  if(state.pos<state.revealed) highlightTarget(state.word[state.pos]);
+  else highlightSet([]);
+}
+function vocabHud(){
+  const st=packStats();
+  hud([{k:vLevel()==="sentences"?"Sentences":"Words",v:st.done+"/"+st.total,c:KIDS[kid].raw},
+    {k:"Streak",v:state.streak},
+    {k:"Stars",v:progress[kid].stars}]);
+}
+function vocabComplete(){
+  const success=state.firstTry&&!state.hintUsed;
+  const k=vKey(state.word), was=vMastered(state.word);
+  progress[kid].vocab[k]=success?Math.min(vBox(state.word)+1,3):Math.max(vBox(state.word)-1,0);
+  const now=vMastered(state.word);
+  state.streak=success?state.streak+1:0;
+  say(state.word); sWin(); burst(12); flash("ok");
+  if(now&&!was){
+    state.sessionMastered++;
+    bigFloat(state.em);
+    if(state.sessionMastered%3===0){progress[kid].stars++; star();}
+  }
+  saveProgress();
+  if(!success){ /* missed → bring it back a few cards later */
+    state.queue.splice(state.qi+3,0,[state.word,state.em,state.fr,state.zh]);
+  }
+  state.qi++;
+  setTimeout(nextVocab,650);
+}
+/* ---- Potion Shop (timed vocab) ---- */
+function initShop(){
+  state={hp:3,score:0,served:0,streak:0,running:true,raf:null};
+  nextCustomer();
+}
+function shopDur(){
+  const lvl=settings.vocab.levels[kid]||"copy";
+  const base=lvl==="copy"?12:lvl==="recall"?14:lvl==="sentences"?26:16;
+  return base*(1.4-settings.vocab.speed*0.15)*1000;  /* ms */
+}
+function nextCustomer(){
+  const [en,em,fr,zh]=rand(vPool());
+  const lvl=settings.vocab.levels[kid]||"copy";
+  state.word=en; state.em=em; state.fr=fr; state.zh=zh||""; state.pos=0; state.wrong=false; state.firstTry=true;
+  state.revealed=(lvl==="copy")?en.length:0; state.hintUsed=false;
+  state.prompt=pickPrompt(lvl);
+  state.cust=rand(CUSTOMERS);
+  state.custStart=performance.now(); state.dur=shopDur();
+  drawShop(); shopHud();
+  if(lvl==="copy") say(en);
+  if(!state.raf) state.raf=requestAnimationFrame(shopLoop);
+}
+function drawShop(){
+  const lvl=settings.vocab.levels[kid]||"copy";
+  const showPic=(state.prompt!=="fr");
+  const showFr=((lvl==="translate"||lvl==="sentences")&&state.prompt!=="pic");
+  const wstyle=state.word.length>14?'style="font-size:clamp(22px,4.6vw,36px);letter-spacing:1px"':"";
+  const bub=[showPic?state.em:"",showFr?state.fr:"",lvl==="copy"?state.word:""]
+    .filter(Boolean).join("  ");
+  document.getElementById("stage").innerHTML=
+    `<div class="cue">Serve the customer before they leave! ⚗️</div>
+     <div class="word-em" style="font-size:54px">${state.cust}</div>
+     <div class="vbubble">${bub}${showFr?`<div class="vzh">${state.zh}</div>`:""}</div>
+     <div class="pbar"><div class="pfill" id="pfill" style="width:100%"></div></div>
+     <div class="word" id="vword" ${wstyle}>${vocabSpans()}</div>
+     <div class="msg" id="msg"></div>`;
+  highlightVocab();
+}
+function shopHud(){
+  hud([{k:"Lives",v:"❤️".repeat(Math.max(state.hp,0))||"💀",c:state.hp<=1?'var(--bad)':KIDS[kid].raw},
+    {k:"Score",v:state.score},
+    {k:"Served",v:state.served},
+    {k:"Best",v:bestOf(kid,"shop")}]);
+}
+function shopLoop(now){
+  if(!state.running) return;
+  const left=1-((now-state.custStart)/state.dur);
+  const f=document.getElementById("pfill");
+  if(f){f.style.width=Math.max(left*100,0)+"%";
+    f.style.background=left<.3?"var(--bad)":left<.6?"var(--gold)":"var(--ok)";}
+  if(left<=0){
+    /* customer walks away */
+    state.hp--; sHit(); flash("bad");
+    const k=vKey(state.word);
+    progress[kid].vocab[k]=Math.max(vBox(state.word)-1,0); saveProgress();
+    shopHud();
+    if(state.hp<=0){ finishShop(); return; }
+    hint(`It was "${state.word}" — ${state.em} ${state.fr}・${state.zh}`); say(state.word);
+    setTimeout(()=>{if(state.running)nextCustomer();},1400);
+    state.custStart=now+999999; /* pause bar until next customer */
+  }
+  state.raf=requestAnimationFrame(shopLoop);
+}
+function shopComplete(){
+  const left=Math.max(1-((performance.now()-state.custStart)/state.dur),0);
+  const pts=state.word.length*10+Math.round(left*20);
+  state.score+=pts; state.served++;
+  const k=vKey(state.word);
+  progress[kid].vocab[k]=Math.min(vBox(state.word)+1,3);
+  if(state.score>bestOf(kid,"shop")) progress[kid].best.shop=state.score;
+  saveProgress();
+  say(state.word); sWin(); burst(12); flash("ok");
+  shopHud();
+  state.custStart=performance.now()+999999;
+  setTimeout(()=>{if(state.running)nextCustomer();},600);
+}
+function finishShop(){
+  state.running=false;
+  if(state.raf) cancelAnimationFrame(state.raf); state.raf=null;
+  const prevBest=bestOf(kid,"shop");
+  const isBest=state.score>=prevBest&&state.score>0;
+  if(state.score>prevBest) progress[kid].best.shop=state.score;
+  saveProgress(); burst(40);
+  const ov=document.createElement("div"); ov.className="overlay";
+  ov.innerHTML=`<div class="card">
+    <h3 style="color:${KIDS[kid].color}">${isBest?"🏆 New best!":"⚗️ Shop closed!"}</h3>
+    <div class="big" style="color:${KIDS[kid].color}">${state.score}</div>
+    <p>points · ${state.served} customers served${isBest?"":` · best ${prevBest}`}</p>
+    <button class="btn" id="again" style="background:${KIDS[kid].raw};color:#1c1436">Open again ⚗️</button>
+    <button class="btn small" id="ovhome" style="margin-left:8px">Heroes</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector("#again").onclick=()=>{ov.remove();initShop();};
+  ov.querySelector("#ovhome").onclick=()=>{ov.remove();goHome();};
+}
+/* ---- vocab input (both modes) ---- */
+function vocabInput(ch){
+  if(!state.running&&settings.vocab.mode==="shop") return;
+  if(state.word==null||state.pos>=state.word.length) return;
+  if(ch===state.word[state.pos]){
+    state.pos++; state.wrong=false; sGood();
+    if(state.pos>=state.word.length){
+      if(settings.vocab.mode==="shop") shopComplete(); else vocabComplete();
+    } else redrawVocabWord();
+  } else {
+    state.wrong=true; state.firstTry=false; sBad(); flash("bad");
+    redrawVocabWord();
+    hint(settings.vocab.mode==="shop"?"Oops, try again!":"Not quite — 💡 Hint can help!");
+  }
+}
+
+/* ============ INPUT ============ */
+function handleInput(ch){
+  pressFx(ch);
+  if(level==="balloon"){ balloonInput(ch); return; }
+  if(level==="orc"){ orcInput(ch); return; }
+  if(level==="vocab"){ vocabInput(ch); return; }
+  if(level==="machines"){ machinesInput(ch); return; }
+  if(level==="hunt"){
+    if(ch.toUpperCase()===state.letter){
+      state.found++; sGood(); flash("ok"); burst(6);
+      if(state.found%5===0){progress[kid].stars++; saveProgress(); star();}
+      setTimeout(nextHunt,220);
+    } else { sBad(); flash("bad"); wobbleMsg("Oops! Press the glowing key 👆"); }
+    return;
+  }
+  /* home / race: match next char */
+  if(level==="race" && !state.started) startTimer();
+  const expect=state.word[state.pos];
+  if(ch===expect.toLowerCase() || (expect===" "&&ch===" ")){
+    state.pos++; state.wrong=false; state.correct=(state.correct||0)+1;
+    sGood();
+    if(state.pos>=state.word.length){
+      state.words++; burst(10); sWin();
+      if(level==="home"){
+        if(state.words%3===0){progress[kid].stars++;saveProgress();star();}
+        state.i++; setTimeout(nextHome,300);
+      } else { setTimeout(nextRace,120); }
+    } else {
+      (level==="home")?drawWord("home"):drawWord("race");
+    }
+    updatePlayHud();
+  } else {
+    state.errors=(state.errors||0)+1; state.wrong=true; sBad(); flash("bad");
+    (level==="home")?drawWord("home"):drawWord("race");
+    hint(hintFinger(expect));
+    updatePlayHud();
+  }
+}
+function hintFinger(ch){
+  const f=FINGER[(ch||"").toLowerCase()];
+  if(!f) return "Try again!";
+  return `Use your ${f[1]} for "${ch.toUpperCase()}"`;
+}
+
+/* ============ HUD for play modes ============ */
+function updatePlayHud(){
+  if(level==="home"){
+    const total=(state.correct||0)+(state.errors||0);
+    const acc=total?Math.round((state.correct/total)*100):100;
+    hud([{k:"Words",v:state.words,c:KIDS[kid].raw},{k:"Accuracy",v:acc+"%"},{k:"Stars",v:progress[kid].stars}]);
+  } else if(level==="race"){
+    const mins=state.started?Math.max((Date.now()-state.startTs)/60000,1/60):1/60;
+    const wpm=Math.round(((state.correct||0)/5)/mins);
+    const total=(state.correct||0)+(state.errors||0);
+    const acc=total?Math.round((state.correct/total)*100):100;
+    hud([{k:"Time",v:state.time+"s",c:state.time<=10?'var(--bad)':KIDS[kid].raw},
+      {k:"WPM",v:state.started?wpm:0},{k:"Accuracy",v:acc+"%"},{k:"Words",v:state.words}]);
+  }
+}
+
+/* ============ FINISH (race) ============ */
+function finishRace(){
+  const mins=(Date.now()-state.startTs)/60000;
+  const wpm=Math.round(((state.correct||0)/5)/Math.max(mins,1/60));
+  const total=(state.correct||0)+(state.errors||0);
+  const acc=total?Math.round((state.correct/total)*100):100;
+  const prevBest=bestOf(kid,"race");
+  const isBest=wpm>prevBest;
+  if(isBest){progress[kid].best.race=wpm;} progress[kid].stars+=Math.floor(wpm/10); saveProgress();
+  sWin(); burst(50);
+  const ov=document.createElement("div"); ov.className="overlay";
+  ov.innerHTML=`<div class="card">
+    <h3 style="color:${KIDS[kid].color}">${isBest?"🏆 New best!":"⏱️ Time!"}</h3>
+    <div class="big" style="color:${KIDS[kid].color}">${wpm}</div>
+    <p>words per minute · ${acc}% accuracy · ${state.words} words${isBest?"":` · best ${prevBest}`}</p>
+    <button class="btn" id="again" style="background:${KIDS[kid].raw};color:#1c1436">Play again 🔁</button>
+    <button class="btn small" id="ovhome" style="margin-left:8px">Heroes</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector("#again").onclick=()=>{ov.remove();initRace();};
+  ov.querySelector("#ovhome").onclick=()=>{ov.remove();goHome();};
+}
+
+/* ============ FX ============ */
+function flash(kind){const s=document.getElementById("stage");
+  s.classList.add(kind==="ok"?"flash-ok":"flash-bad");
+  setTimeout(()=>s.classList.remove("flash-ok","flash-bad"),320);}
+function hint(t){const m=document.getElementById("msg"); if(m)m.textContent=t;}
+function wobbleMsg(t){const m=document.querySelector("#stage .msg"); if(m){m.textContent=t;}}
+function star(){bigFloat("⭐");}
+function bigFloat(txt){
+  const d=document.createElement("div");
+  d.textContent=txt; d.style.cssText=`position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);
+    font-size:80px;z-index:45;pointer-events:none;transition:all .9s ease-out;opacity:1`;
+  document.body.appendChild(d);
+  requestAnimationFrame(()=>{d.style.top="12%";d.style.opacity="0";d.style.fontSize="120px";});
+  setTimeout(()=>d.remove(),900);
+}
+/* confetti */
+const cvs=document.getElementById("confetti"),ctx=cvs.getContext("2d");
+let parts=[]; let fxRaf=null;
+function sizeCvs(){cvs.width=innerWidth;cvs.height=innerHeight;} sizeCvs(); addEventListener("resize",sizeCvs);
+const COLORS=["#3DDC97","#FF6FB5","#4EA8FF","#FFC93C","#A78BFA","#34D399"];
+function burst(n,px,py){
+  const x=px??innerWidth/2, y=py??innerHeight*0.42;
+  for(let i=0;i<n;i++)parts.push({x,y,
+    vx:(Math.random()-.5)*10,vy:Math.random()*-9-3,g:.35,
+    s:Math.random()*8+5,c:rand(COLORS),life:60,rot:Math.random()*6});
+  if(!fxRaf) loopFx();
+}
+function burstAt(el){
+  try{const r=el.getBoundingClientRect(); burst(12, r.left+r.width/2, r.top+r.height/2);}
+  catch(e){burst(12);}
+}
+function loopFx(){
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  parts.forEach(p=>{p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.life--;p.rot+=.2;
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=p.c;
+    ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);ctx.restore();});
+  parts=parts.filter(p=>p.life>0&&p.y<cvs.height+20);
+  if(parts.length){fxRaf=requestAnimationFrame(loopFx);} else {ctx.clearRect(0,0,cvs.width,cvs.height);fxRaf=null;}
+}
+
+/* ============ EVENTS ============ */
+addEventListener("keydown",e=>{
+  if(document.getElementById("game").classList.contains("hidden"))return;
+  if(e.key==="Escape"){goHome();return;}
+  let ch=e.key;
+  if(ch===" ")e.preventDefault();
+  if(ch.length===1 && /[a-zA-Z0-9 ;'/]/.test(ch)) { handleInput(ch.toLowerCase()); }
+});
+document.getElementById("back").onclick=goHome;
+function toggleMute(){sound=!sound;
+  document.getElementById("mute").textContent=sound?"🔊":"🔇";
+  document.getElementById("muteHome").textContent="🔊 Sound: "+(sound?"On":"Off");}
+document.getElementById("mute").onclick=toggleMute;
+document.getElementById("muteHome").onclick=toggleMute;
+
+/* ============ KID HUB ============ */
+let hubKid=null, actIdx=null, actTimerInt=null, actTimerLeft=0, actTimerTotal=0;
+const todayStr=()=>new Date().toISOString().slice(0,10);
+function actsToday(id){
+  const P=progress[id];
+  if(!P.actsDay||P.actsDay.d!==todayStr()) P.actsDay={d:todayStr(),done:{}};
+  return P.actsDay.done;
+}
+function showOnly(id){
+  ["home","game","hub","act"].forEach(x=>
+    document.getElementById(x).classList.toggle("hidden",x!==id));
+}
+let hubTab="day";
+function openHub(id){
+  stopArena(); stopActTimer();
+  hubKid=id; showOnly("hub"); renderHub();
+}
+function dseed(str){let h=7;for(const c of str)h=(h*31+c.charCodeAt(0))>>>0;return h;}
+function dayState(id){
+  const P=progress[id];
+  if(!P.day||P.day.d!==todayStr()) P.day={d:todayStr(),done:{},rr:{}};
+  return P.day;
+}
+function missionFor(id,i){
+  const b=DAY[i]; if(b.kind!=="mission") return null;
+  const pool=MISSIONS[b.pool][id];
+  const rr=(dayState(id).rr[i]||0);
+  return pool[(dseed(todayStr()+id+i)+rr)%pool.length];
+}
+function renderMyDay(){
+  const d=dayState(hubKid), k=KIDS[hubKid];
+  const total=DAY.length, done=Object.keys(d.done).length;
+  document.getElementById("dayFill").style.width=(done/total*100)+"%";
+  document.getElementById("dayTxt").textContent=done+" / "+total+(done>=total?"  — DAY COMPLETE! 全部完成！🌟":"");
+  document.getElementById("dayList").innerHTML=
+    `<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div>`+
+    DAY.map((b,i)=>{
+      const isDone=!!d.done[i], mis=missionFor(hubKid,i);
+      return `<div class="dayrow ${b.kind} ${isDone?'done':''}">
+        <div class="dtime">${b.t}</div>
+        <div class="dmid">
+          <div class="dt-title">${b.icon} ${b.title}<span class="zht">${b.tz||""}</span></div>
+          <div class="dt-mis ${b.kind}">${b.kind==="mission"
+            ?`🎯 ${mis[0]}<span class="zhs">${mis[1]}</span>`
+            :`${b.txt?b.txt[hubKid]:""}<span class="zhs">${b.txtz?b.txtz[hubKid]:""}</span>`}</div>
+        </div>
+        <div class="dbtns">
+          <button class="btn small tick" data-done="${i}"
+            style="${isDone?'background:var(--ok);color:#1c1436':''}">${isDone?"✓":"✓ 完成"}</button>
+          ${b.kind==="mission"&&!isDone?`<button class="btn small tick" data-rr="${i}">🎲</button>`:""}
+        </div>
+      </div>`;
+    }).join("");
+  document.querySelectorAll("#dayList [data-done]").forEach(btn=>btn.onclick=()=>{
+    const i=+btn.dataset.done, d2=dayState(hubKid);
+    if(d2.done[i]){delete d2.done[i]; saveProgress(); renderMyDay(); return;} /* un-tick allowed */
+    d2.done[i]=true;
+    if(DAY[i].kind==="mission"){
+      progress[hubKid].stars=(progress[hubKid].stars||0)+1;
+      if(DAY[i].pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
+      sWin(); burst(16); star();
+    } else { sGood(); }
+    if(Object.keys(d2.done).length>=DAY.length){
+      progress[hubKid].stars+=2; sWin(); burst(60); bigFloat("🌟");
+    }
+    saveProgress(); renderMyDay(); renderHubHead();
+  });
+  document.querySelectorAll("#dayList [data-rr]").forEach(btn=>btn.onclick=()=>{
+    const i=+btn.dataset.rr, d2=dayState(hubKid);
+    d2.rr[i]=(d2.rr[i]||0)+1; saveProgress(); sGood(); renderMyDay();
+  });
+}
+function renderHubHead(){
+  const k=KIDS[hubKid], P=progress[hubKid];
+  document.getElementById("hubStars").innerHTML=`<span class="starpill">⭐ ${P.stars||0}</span>`;
+  document.getElementById("hubHead").innerHTML=
+    `<span class="av">${k.av}</span><div><h2 style="color:${k.color}">Hi ${k.name}!</h2>
+     <p>${hubTab==="day"?"Here is your day 📅":"What do you want to do?"}</p></div>`;
+}
+function renderHub(){
+  const k=KIDS[hubKid], done=actsToday(hubKid);
+  renderHubHead();
+  /* tabs */
+  document.querySelectorAll("#hubTabs .chip").forEach(c=>{
+    const on=c.dataset.t===hubTab;
+    c.classList.toggle("on",on);
+    c.style.background=on?k.raw:"";
+    c.onclick=()=>{hubTab=c.dataset.t; renderHub();};
+  });
+  document.getElementById("tab-day").classList.toggle("hidden",hubTab!=="day");
+  document.getElementById("tab-games").classList.toggle("hidden",hubTab!=="games");
+  document.getElementById("tab-acts").classList.toggle("hidden",hubTab!=="acts");
+  document.getElementById("tab-learn").classList.toggle("hidden",hubTab!=="learn");
+  if(hubTab==="learn") renderLearn();
+  if(hubTab==="day") renderMyDay();
+  /* games — the kid's own game first */
+  const order=[k.level,...Object.keys(LEVELS).filter(l=>l!==k.level)];
+  document.getElementById("gameRow").innerHTML=order.map(l=>
+    `<button class="gamecard ${l===k.level?'fav':''}" data-l="${l}"
+      style="${l===k.level?`border-color:${k.raw}`:''}">
+      <span class="gi">${LEVELS[l].icon}</span><b>${LEVELS[l].title}</b>
+      <small>${LEVELS[l].blurb}<span class="zhs">${LEVELS[l].tz}</span></small>${l===k.level?'<span class="favtag">MY GAME</span>':''}</button>`).join("");
+  document.querySelectorAll("#gameRow .gamecard").forEach(c=>
+    c.onclick=()=>startGame(hubKid,c.dataset.l));
+  /* activities */
+  document.getElementById("actGrid").innerHTML=BANK.map((b,i)=>
+    `<button class="bankcard actcard ${done[i]?'donetoday':''}" data-i="${i}">
+      <div class="bt">${b.icon} ${b.cat} ${done[i]?'<span class="donetag">✓ today 今天完成</span>':''}
+        <span class="zhs">${b.catz}</span></div>
+      <p>${b[hubKid]}<span class="zhs">${b.z[hubKid]}</span></p></button>`).join("");
+  document.querySelectorAll("#actGrid .actcard").forEach(c=>
+    c.onclick=()=>openAct(+c.dataset.i));
+}
+function openAct(i){
+  actIdx=i; showOnly("act"); renderAct();
+}
+function renderAct(){
+  const b=BANK[actIdx], g=ACT_GUIDE[actIdx], k=KIDS[hubKid];
+  const done=actsToday(hubKid)[actIdx];
+  const isPhoto=g.type==="photo";
+  let extra=`<div class="bigcard"><h3>${isPhoto?"📸":"🎲"} Your mission</h3>
+      <div class="res" id="misRes"><span class="sub">Tap the button to get a mission! 按下面拿任務！</span></div>
+      <div class="tipline" id="misTip"></div>
+      <button class="btn" id="misBtn">🎲 New mission 新任務</button></div>`;
+  if(g.timer){
+    extra+=`<div class="bigcard"><h3>⏱️ ${g.timer} minute timer 分鐘計時器</h3>
+      <div class="timerbig" id="timerDisp">${String(g.timer).padStart(2,"0")}:00</div>
+      <div class="vrow"><button class="btn" id="timerBtn">▶️ Start</button>
+      <button class="btn small" id="timerReset">↺ Reset</button></div></div>`;
+  }
+  document.getElementById("actBody").innerHTML=`
+    <div class="bigcard" style="text-align:left">
+      <h3>${b.icon} ${b.cat}<span class="zhs" style="font-size:14px">${b.catz}</span></h3>
+      <p class="actmine" style="border-color:${k.raw}">${k.av} <b>${k.name}:</b> ${b[hubKid]}<span class="zhs">${b.z[hubKid]}</span></p>
+      <div class="steps">${g.steps.map((st,n)=>
+        `<div class="step"><span class="sn" style="background:${k.raw}">${n+1}</span><span>${st[0]}<span class="zhs">${st[1]}</span></span></div>`).join("")}</div>
+    </div>
+    ${extra}
+    <div style="text-align:center;margin-top:4px">
+      <button class="btn" id="actDone" ${done?"disabled":""}
+        style="background:${done?'var(--panel)':k.raw};color:${done?'var(--muted)':'#1c1436'}">
+        ${done?"✓ Done today 今天完成了 — see you tomorrow!":"✓ I did it! 我做到了！+⭐"}</button>
+    </div>`;
+  document.getElementById("misBtn").onclick=()=>{
+    if(isPhoto){
+      const [en,fr,em,zh]=rand(PHOTO_POOL[hubKid]);
+      document.getElementById("misRes").innerHTML=
+        `<span class="em">${em}</span>${en}<div class="fr">${fr}</div><div class="zhs" style="font-size:15px">${zh}</div>`;
+      const tk=rand(PHOTO_TRICKS);
+      document.getElementById("misTip").innerHTML=`Tip · ${tk[0]}<span class="zhs">${tk[1]}</span>`;
+    } else {
+      const m=rand(MISSIONS[BANK_POOL[actIdx]][hubKid]);
+      document.getElementById("misRes").innerHTML=
+        `<span class="em">${BANK[actIdx].icon}</span>${m[0]}<div class="zhs" style="font-size:15px">${m[1]}</div>`;
+      document.getElementById("misTip").textContent="";
+    }
+    sGood();
+  };
+  if(g.timer){
+    actTimerTotal=g.timer*60; actTimerLeft=actTimerTotal;
+    document.getElementById("timerBtn").onclick=toggleActTimer;
+    document.getElementById("timerReset").onclick=()=>{stopActTimer();actTimerLeft=actTimerTotal;drawActTimer();
+      document.getElementById("timerBtn").textContent="▶️ Start";};
+  }
+  const d=document.getElementById("actDone");
+  d.onclick=()=>{
+    if(actsToday(hubKid)[actIdx])return;
+    actsToday(hubKid)[actIdx]=true;
+    progress[hubKid].stars=(progress[hubKid].stars||0)+1;
+    if(g.type==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
+    saveProgress(); sWin(); burst(30); star();
+    renderAct();
+  };
+}
+function drawActTimer(){
+  const el=document.getElementById("timerDisp"); if(!el)return;
+  const m=Math.floor(actTimerLeft/60),sec=actTimerLeft%60;
+  el.textContent=String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
+  el.style.color=actTimerLeft<=10&&actTimerLeft>0?"var(--bad)":"var(--ink)";
+}
+function toggleActTimer(){
+  const btn=document.getElementById("timerBtn");
+  if(actTimerInt){stopActTimer(); if(btn)btn.textContent="▶️ Start"; return;}
+  if(btn)btn.textContent="⏸ Pause";
+  actTimerInt=setInterval(()=>{
+    actTimerLeft--; drawActTimer();
+    if(actTimerLeft<=0){stopActTimer(); sWin(); burst(30); bigFloat("🏁");
+      const b=document.getElementById("timerBtn"); if(b)b.textContent="▶️ Start";
+      actTimerLeft=actTimerTotal;}
+  },1000);
+}
+function stopActTimer(){ if(actTimerInt){clearInterval(actTimerInt);actTimerInt=null;} }
+document.getElementById("hubBack").onclick=()=>{stopActTimer();showOnly("home");renderHome();};
+document.getElementById("actBack").onclick=()=>{stopActTimer();showOnly("hub");renderHub();};
+
+/* ============ LEARN TAB ============ */
+let qbStarter=null, qbTopic=null;
+function renderLearn(){
+  const k=KIDS[hubKid], done=actsToday(hubKid);
+  /* question builder chips */
+  document.getElementById("qbStarters").innerHTML=QB_STARTERS.map(([en,zh],i)=>
+    `<button class="chip ${qbStarter===i?'on':''}" data-s="${i}"
+      style="${qbStarter===i?`background:${k.raw}`:''}">${en} <span class="zhs" style="display:inline">${zh}</span></button>`).join("");
+  document.getElementById("qbTopics").innerHTML=QB_TOPICS.map(([en,zh,em],i)=>
+    `<button class="chip ${qbTopic===i?'on':''}" data-p="${i}"
+      style="${qbTopic===i?`background:${k.raw}`:''}">${em} ${en}</button>`).join("");
+  document.querySelectorAll("#qbStarters [data-s]").forEach(c=>c.onclick=()=>{
+    qbStarter=+c.dataset.s; renderLearn(); qbCompose();});
+  document.querySelectorAll("#qbTopics [data-p]").forEach(c=>c.onclick=()=>{
+    qbTopic=+c.dataset.p; document.getElementById("qbInput").value=""; renderLearn(); qbCompose();});
+  document.getElementById("qbInput").oninput=e=>{qbTopic=null; qbCompose();};
+  document.getElementById("qbKiddle").onclick=()=>qbGo("https://www.kiddle.co/s.php?q=");
+  document.getElementById("qbGoogle").onclick=()=>qbGo("https://www.google.com/search?q=");
+  qbCompose();
+  /* guide cards */
+  document.getElementById("learnGrid").innerHTML=Object.entries(LEARN_GUIDES).map(([key,g])=>
+    `<button class="bankcard actcard ${done['L'+key]?'donetoday':''}" data-lg="${key}">
+      <div class="bt">${g.icon} ${g.title} ${done['L'+key]?'<span class="donetag">✓ today 今天完成</span>':''}
+        <span class="zhs">${g.tz}</span></div>
+      <p>${g[hubKid].length} steps · step-by-step guide<span class="zhs">${g[hubKid].length}個步驟——一步一步教你</span></p></button>`).join("");
+  document.querySelectorAll("#learnGrid [data-lg]").forEach(c=>c.onclick=()=>openLearn(c.dataset.lg));
+  /* magic words */
+  document.getElementById("magicWords").innerHTML=MAGIC_WORDS.map(([en,zh])=>
+    `<span class="chip" style="cursor:default">${en} <span class="zhs" style="display:inline">${zh}</span></span>`).join("");
+}
+function qbQuery(){
+  const st=qbStarter!=null?QB_STARTERS[qbStarter][0]:"";
+  const tp=qbTopic!=null?QB_TOPICS[qbTopic][0]:document.getElementById("qbInput").value.trim();
+  if(!tp) return null;
+  return (st?st+" ":"")+tp+" for kids";
+}
+function qbCompose(){
+  const q=qbQuery();
+  document.getElementById("qbOut").innerHTML=q
+    ?`<span class="qout">"${q}"</span><div class="sub">This is a great search! 這是很棒的搜尋句！</div>`
+    :`<span class="sub">Pick a starter + a topic 選一個開頭＋一個主題</span>`;
+}
+function qbGo(base){
+  const q=qbQuery(); if(!q){sBad();return;}
+  sGood(); window.open(base+encodeURIComponent(q),"_blank");
+}
+function openLearn(key){
+  actIdx="L"+key; showOnly("act");
+  const g=LEARN_GUIDES[key], k=KIDS[hubKid];
+  const done=actsToday(hubKid)[actIdx];
+  document.getElementById("actBody").innerHTML=`
+    <div class="bigcard" style="text-align:left">
+      <h3>${g.icon} ${g.title}<span class="zhs" style="font-size:14px">${g.tz}</span></h3>
+      <div class="steps" style="margin-top:12px">${g[hubKid].map((st,n)=>
+        `<div class="step"><span class="sn" style="background:${k.raw}">${n+1}</span>
+          <span>${st[0]}<span class="zhs">${st[1]}</span></span></div>`).join("")}</div>
+    </div>
+    <div style="text-align:center;margin-top:4px">
+      <button class="btn" id="actDone" ${done?"disabled":""}
+        style="background:${done?'var(--panel)':k.raw};color:${done?'var(--muted)':'#1c1436'}">
+        ${done?"✓ Done today 今天完成了":"✓ I learned something! 我學到了！+⭐"}</button>
+    </div>`;
+  document.getElementById("actDone").onclick=()=>{
+    if(actsToday(hubKid)[actIdx])return;
+    actsToday(hubKid)[actIdx]=true;
+    progress[hubKid].stars=(progress[hubKid].stars||0)+1;
+    saveProgress(); sWin(); burst(30); star();
+    openLearn(key);
+  };
+}
+
+/* ============ BOOT ============ */
+(async()=>{ await loadProgress(); renderHome(); })();
+</script>

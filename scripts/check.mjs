@@ -1,0 +1,143 @@
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const root = new URL("..", import.meta.url);
+const failures = [];
+
+const fail = (name, detail) => failures.push(`${name}: ${detail}`);
+const assertPair = (value, where) => {
+  if (!Array.isArray(value) || value.length !== 2 || !value[0] || !value[1]) {
+    fail("bilingual pair", `${where} must be [en, zh]`);
+  }
+};
+
+const indexHtml = readFileSync(new URL("index.html", root), "utf8");
+const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
+if (scriptMatches.length !== 1) {
+  fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
+}
+
+const appScript = scriptMatches[0]?.[1] ?? "";
+const tmp = mkdtempSync(join(tmpdir(), "summer-quest-check-"));
+try {
+  const scriptPath = join(tmp, "index-script.js");
+  writeFileSync(scriptPath, appScript);
+  const syntax = spawnSync(process.execPath, ["--check", scriptPath], { encoding: "utf8" });
+  if (syntax.status !== 0) {
+    fail("syntax", (syntax.stderr || syntax.stdout || "node --check failed").trim());
+  }
+} finally {
+  rmSync(tmp, { recursive: true, force: true });
+}
+
+try {
+  const marker = "/* finger map";
+  const markerIndex = appScript.indexOf(marker);
+  if (markerIndex === -1) {
+    throw new Error(`missing ${marker} marker`);
+  }
+  const dataScript = appScript.slice(0, markerIndex);
+  const data = new Function(`${dataScript}
+return { ALL_WORDS, SENT, MISSIONS, BANK, ACT_GUIDE, BANK_POOL, DAY, PHOTO_POOL, PHOTO_TRICKS, LEARN_GUIDES };`)();
+
+  const seenWords = new Set();
+  for (const [i, word] of data.ALL_WORDS.entries()) {
+    if (!Array.isArray(word) || word.length !== 4 || !word[3]) {
+      fail("ALL_WORDS", `entry ${i} must have 4 fields with non-empty zh`);
+    }
+    const key = String(word[0] ?? "").trim().toLowerCase();
+    if (seenWords.has(key)) fail("ALL_WORDS", `duplicate English key "${word[0]}"`);
+    seenWords.add(key);
+  }
+
+  for (const [i, sentence] of data.SENT.entries()) {
+    if (!Array.isArray(sentence) || sentence.length !== 4 || !sentence[3]) {
+      fail("SENT", `entry ${i} must have 4 fields with non-empty zh`);
+    }
+  }
+
+  for (const [pool, kids] of Object.entries(data.MISSIONS)) {
+    for (const kid of ["lucien", "lili", "luis"]) {
+      if (!Array.isArray(kids?.[kid])) {
+        fail("MISSIONS", `${pool}.${kid} must be an array`);
+        continue;
+      }
+      kids[kid].forEach((mission, i) => assertPair(mission, `MISSIONS.${pool}.${kid}[${i}]`));
+    }
+  }
+
+  if (data.BANK.length !== data.ACT_GUIDE.length || data.BANK.length !== data.BANK_POOL.length) {
+    fail("activity bank", `BANK(${data.BANK.length}) ACT_GUIDE(${data.ACT_GUIDE.length}) BANK_POOL(${data.BANK_POOL.length}) lengths differ`);
+  }
+
+  data.DAY.forEach((block, i) => {
+    if (!block?.tz) fail("DAY", `block ${i} missing tz`);
+    if (block?.kind === "routine" && !block.txtz) fail("DAY", `routine block ${i} missing txtz`);
+  });
+
+  data.ACT_GUIDE.forEach((guide, guideIndex) => {
+    if (!Array.isArray(guide?.steps)) {
+      fail("ACT_GUIDE", `entry ${guideIndex} missing steps`);
+      return;
+    }
+    guide.steps.forEach((step, stepIndex) => assertPair(step, `ACT_GUIDE[${guideIndex}].steps[${stepIndex}]`));
+  });
+
+  for (const [guideKey, guide] of Object.entries(data.LEARN_GUIDES)) {
+    for (const kid of ["lucien", "lili", "luis"]) {
+      if (!Array.isArray(guide?.[kid])) {
+        fail("LEARN_GUIDES", `${guideKey}.${kid} must be an array`);
+        continue;
+      }
+      guide[kid].forEach((step, stepIndex) => assertPair(step, `LEARN_GUIDES.${guideKey}.${kid}[${stepIndex}]`));
+    }
+  }
+
+  for (const [kid, entries] of Object.entries(data.PHOTO_POOL)) {
+    entries.forEach((entry, i) => {
+      if (!Array.isArray(entry) || entry.length !== 4 || entry.some((field) => !field)) {
+        fail("PHOTO_POOL", `${kid}[${i}] must have 4 non-empty fields`);
+      }
+    });
+  }
+
+  data.PHOTO_TRICKS.forEach((entry, i) => {
+    if (!Array.isArray(entry) || entry.length !== 2 || entry.some((field) => !field)) {
+      fail("PHOTO_TRICKS", `entry ${i} must have 2 non-empty fields`);
+    }
+  });
+} catch (error) {
+  fail("data load", error.message);
+}
+
+try {
+  const tracked = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })
+    .split(/\r?\n/)
+    .filter(Boolean);
+  const serviceRolePattern = ["service", "role"].join("_");
+  const jwtPattern = ["e", "y", "J"].join("");
+  const allowedServiceRoleFiles = new Set([".claude/commands/ship.md", "CLAUDE.md", "js/config.example.js"]);
+  const allowedJwtFiles = new Set([".claude/commands/ship.md"]);
+  for (const file of tracked) {
+    const text = readFileSync(new URL(file, root), "utf8");
+    const normalizedFile = file.replaceAll("\\", "/");
+    if (text.includes(jwtPattern) && !allowedJwtFiles.has(normalizedFile)) {
+      fail("secrets", `${file} contains JWT prefix ${jwtPattern}`);
+    }
+    if (text.includes(serviceRolePattern) && !allowedServiceRoleFiles.has(normalizedFile)) {
+      fail("secrets", `${file} contains ${serviceRolePattern}`);
+    }
+  }
+} catch (error) {
+  fail("git scan", error.message);
+}
+
+if (failures.length) {
+  console.error(`Summer Quest check failed (${failures.length})`);
+  failures.forEach((failure) => console.error(`- ${failure}`));
+  process.exit(1);
+}
+
+console.log("Summer Quest check passed: syntax, bilingual data, pool alignment, and tracked-file secret scan are green.");

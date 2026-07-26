@@ -1,0 +1,20 @@
+# secrets & local config — NEVER commit real keys
+js/config.js
+.env
+.env.*
+*.local
+
+# supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+# node / tooling
+node_modules/
+npm-debug.log*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
