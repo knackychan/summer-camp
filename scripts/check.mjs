@@ -222,6 +222,14 @@ if (!indexHtml.includes('data-t="captain"') || !indexHtml.includes("renderCaptai
 if (!adminHtml.includes("helpClaims")) {
   fail("captain", "admin missing help claims queue");
 }
+for (const marker of ['id="railLeft"', 'id="railRight"', 'class="col-center"']) {
+  if (!adminHtml.includes(marker)) {
+    fail("admin shell", `admin.html missing ${marker}`);
+  }
+}
+if (!/<details class="fold"/.test(adminHtml)) {
+  fail("admin shell", "admin.html missing collapsed cold panels");
+}
 
 const syncTest = spawnSync(process.execPath, [fileURLToPath(new URL("sync.test.mjs", import.meta.url))], { encoding: "utf8" });
 if (syncTest.status !== 0) {
