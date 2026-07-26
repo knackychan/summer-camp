@@ -921,6 +921,14 @@ function renderHome(){
     box.appendChild(b);
   });
 }
+function saveAppPlace(view){
+  try{
+    localStorage.setItem("sq:view",view||"home");
+    if(hubKid)localStorage.setItem("sq:kid",hubKid);
+    localStorage.setItem("sq:hubTab",hubTab||"day");
+    if(actIdx!=null)localStorage.setItem("sq:actIdx",String(actIdx));
+  }catch(e){}
+}
 function selectKid(id){
   const pin=(store&&store.kidPins&&store.kidPins[id])||((JSON.parse(localStorage.getItem("sq:kidPins")||"{}"))[id]);
   if(!pin||localStorage.getItem("sq:kid")===id){localStorage.setItem("sq:kid",id);openHub(id);return;}
@@ -1056,6 +1064,7 @@ function startGame(id,lvl){
   if(ls.locked){showLockOverlay(ls.blockIdx);return;}
   stopArena();
   kid=id; level=lvl;
+  hubKid=id; hubTab="games"; saveAppPlace("hub");
   ["home","hub","act"].forEach(x=>document.getElementById(x).classList.add("hidden"));
   document.getElementById("game").classList.remove("hidden");
   document.getElementById("back").textContent="← "+KIDS[id].name;
@@ -1922,7 +1931,7 @@ function showOnly(id){
 let hubTab="day";
 function openHub(id){
   stopArena(); stopActTimer();
-  hubKid=id; refreshOverrides(); showOnly("hub"); renderHub();
+  hubKid=id; refreshOverrides(); showOnly("hub"); saveAppPlace("hub"); renderHub();
 }
 function dseed(str){let h=7;for(const c of str)h=(h*31+c.charCodeAt(0))>>>0;return h;}
 function dayState(id){
@@ -2152,7 +2161,7 @@ function renderHub(){
     const on=c.dataset.t===hubTab;
     c.classList.toggle("on",on);
     c.style.background=on?k.raw:"";
-    c.onclick=()=>{hubTab=c.dataset.t; renderHub();};
+    c.onclick=()=>{hubTab=c.dataset.t; saveAppPlace("hub"); renderHub();};
   });
   document.getElementById("tab-day").classList.toggle("hidden",hubTab!=="day");
   document.getElementById("tab-games").classList.toggle("hidden",hubTab!=="games");
@@ -2204,7 +2213,7 @@ function refreshLockUI(){
   }
 }
 function openAct(i){
-  actIdx=i; showOnly("act"); renderAct();
+  actIdx=i; showOnly("act"); saveAppPlace("act"); renderAct();
 }
 function renderAct(){
   const b=BANK[actIdx], g=ACT_GUIDE[actIdx], k=KIDS[hubKid];
@@ -2282,8 +2291,8 @@ function toggleActTimer(){
   },1000);
 }
 function stopActTimer(){ if(actTimerInt){clearInterval(actTimerInt);actTimerInt=null;} }
-document.getElementById("hubBack").onclick=()=>{stopActTimer();showOnly("home");renderHome();};
-document.getElementById("actBack").onclick=()=>{stopActTimer();showOnly("hub");renderHub();};
+document.getElementById("hubBack").onclick=()=>{stopActTimer();hubKid=null;saveAppPlace("home");showOnly("home");renderHome();};
+document.getElementById("actBack").onclick=()=>{stopActTimer();showOnly("hub");saveAppPlace("hub");renderHub();};
 
 /* ============ LEARN TAB ============ */
 let qbStarter=null, qbTopic=null;
@@ -2333,7 +2342,7 @@ function qbGo(base){
   sGood(); window.open(base+encodeURIComponent(q),"_blank");
 }
 function openLearn(key){
-  actIdx="L"+key; showOnly("act");
+  actIdx="L"+key; showOnly("act"); saveAppPlace("act");
   const g=LEARN_GUIDES[key], k=KIDS[hubKid];
   const done=actsToday(hubKid)[actIdx];
   document.getElementById("actBody").innerHTML=`
@@ -2555,10 +2564,36 @@ function setupRealtime(){
 }
 
 /* ============ BOOT ============ */
+function restoreAppPlace(){
+  renderHome();
+  const savedKid=localStorage.getItem("sq:kid");
+  const savedView=localStorage.getItem("sq:view")||"home";
+  const savedTab=localStorage.getItem("sq:hubTab")||"day";
+  const tabs={day:1,games:1,acts:1,learn:1,ask:1,captain:1};
+  if(!savedKid||!KIDS[savedKid]||savedView==="home"){
+    showOnly("home");
+    return;
+  }
+  hubTab=tabs[savedTab]?savedTab:"day";
+  if(savedView==="act"){
+    hubKid=savedKid; refreshOverrides();
+    const raw=localStorage.getItem("sq:actIdx");
+    if(raw&&raw.charAt(0)==="L"&&LEARN_GUIDES[raw.slice(1)]){
+      openLearn(raw.slice(1));
+      return;
+    }
+    const idx=Number(raw);
+    if(Number.isInteger(idx)&&BANK[idx]){
+      openAct(idx);
+      return;
+    }
+  }
+  openHub(savedKid);
+}
 if("serviceWorker" in navigator){
   addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 }
-(async()=>{ await loadProgress(); renderHome(); setupRealtime(); startTimelineWatcher(); })();
+(async()=>{ await loadProgress(); restoreAppPlace(); setupRealtime(); startTimelineWatcher(); })();
 </script>
 </body>
 </html>
