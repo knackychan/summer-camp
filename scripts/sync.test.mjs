@@ -123,4 +123,37 @@ const seedProgress = () => ({});
   console.log("ok - local-only fallback works without config");
 }
 
+// --- Test 4: brain best scores round-trip through hydration and diffing ---
+{
+  const ls = makeLocalStorage();
+  const SyncStore = loadSyncStore(ls);
+  const writes = [];
+  const client = fakeSupabase({
+    game_stats: [
+      { kid_id: "lili", stat: "race", value: 40 },
+      { kid_id: "lili", stat: "brain_calc", value: 18 },
+      { kid_id: "lili", stat: "brain_calc_ms", value: 41000 },
+      { kid_id: "lili", stat: "missions", value: 7 }
+    ]
+  }, writes);
+  const store = new SyncStore({ progress: seedProgress(), settings: {} }, client);
+
+  await store.hydrate();
+  assert.equal(store.progress.lili.best.brain_calc, 18, "brain best hydrated");
+  assert.equal(store.progress.lili.best.brain_calc_ms, 41000, "brain best time hydrated");
+  assert.equal(store.progress.lili.best.race, 40, "original game best still hydrated");
+  assert.equal(store.progress.lili.missions, 7, "missions still routed to its own field");
+
+  const before = JSON.parse(JSON.stringify(store.progress));
+  const after = JSON.parse(JSON.stringify(store.progress));
+  after.lili.best.brain_calc = 20;
+  after.lili.best.city = 9;
+  store.enqueueDiff(before, after);
+  const brainOp = store.queue.find(o => o.type === "stat" && o.stat === "brain_calc");
+  assert.ok(brainOp, "brain best diff enqueued");
+  assert.equal(brainOp.value, 20);
+  assert.ok(store.queue.some(o => o.type === "stat" && o.stat === "city"), "city best diff still enqueued");
+  console.log("ok - brain best scores round-trip through hydration and diffing");
+}
+
 console.log("sync tests passed");

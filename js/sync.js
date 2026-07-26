@@ -4,6 +4,13 @@
   const SUPABASE_CDN="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
   const KIDS=["lucien","lili","luis"];
 
+  /* A "best score" stat: the six existing games, or any brain-gym key.
+     Prefix rule on purpose — adding a brain game must not require editing sync.js. */
+  function isBestStat(key){
+    return key==="balloon"||key==="race"||key==="orc"||key==="shop"||
+      key==="city"||key==="dig"||key.indexOf("brain_")===0;
+  }
+
   const clone=value=>JSON.parse(JSON.stringify(value));
   const uuid=()=>crypto.randomUUID?crypto.randomUUID():
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g,c=>
@@ -180,7 +187,7 @@
       (vocab||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].vocab[r.word_key]=r.box||0;});
       (stats||[]).forEach(r=>{
         ensureKid(p,r.kid_id);
-        if(["balloon","race","orc","shop","city","dig"].includes(r.stat)) p[r.kid_id].best[r.stat]=r.value||0;
+        if(isBestStat(r.stat)) p[r.kid_id].best[r.stat]=r.value||0;
         if(r.stat==="missions") p[r.kid_id].missions=r.value||0;
       });
       this.papaNote=note&&note.body?note.body:"";
@@ -258,7 +265,9 @@
         });
 
         const ab=a.best||{}, bb=b.best||{};
-        ["balloon","race","orc","shop","city","dig"].forEach(stat=>{
+        const bestKeys=Object.keys(ab).concat(Object.keys(bb)).filter(function(k,i,arr){return arr.indexOf(k)===i;});
+        bestKeys.forEach(stat=>{
+          if(!isBestStat(stat))return;
           if((ab[stat]||0)!==(bb[stat]||0)) this.enqueue({type:"stat",kid,stat,value:ab[stat]||0});
         });
         if((a.missions||0)!==(b.missions||0)) this.enqueue({type:"stat",kid,stat:"missions",value:a.missions||0});
