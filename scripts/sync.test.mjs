@@ -70,10 +70,11 @@ const seedProgress = () => ({});
   after.lili.stars = 5;                    // +5 → chunked into +3 and +2
   after.lili.vocab["w:cat"] = 2;
   after.lili.best.race = 42;
+  after.lili.best.city = 7;
 
   store.enqueueDiff(before, after);
   const types = store.queue.map(o => o.type).sort();
-  assert.deepEqual(types, ["actDone", "roll", "stars", "stars", "stat", "tick", "vocab"]);
+  assert.deepEqual(types, ["actDone", "roll", "stars", "stars", "stat", "stat", "tick", "vocab"]);
   const starOps = store.queue.filter(o => o.type === "stars").map(o => o.delta).sort();
   assert.deepEqual(starOps, [2, 3], "star deltas must be chunked 1-3");
   assert.ok(store.queue.every(o => o.id), "every op carries a client uuid for dedupe");

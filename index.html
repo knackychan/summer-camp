@@ -875,7 +875,7 @@ const ROWS=["1234567890","qwertyuiop","asdfghjkl","zxcvbnm"];
 
 /* ============ STATE ============ */
 let sound=true, kid=null, level=null, kb={}, state={};
-const newProg=()=>({stars:0,best:{balloon:0,race:0,orc:0,shop:0},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
+const newProg=()=>({stars:0,best:{balloon:0,race:0,orc:0,shop:0,city:0},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
 let progress={lucien:newProg(),lili:newProg(),luis:newProg()};
 const bestOf=(id,mode)=>{const b=progress[id].best; return (b&&typeof b==="object")?(b[mode]||0):0;};
 const heroBest=id=>{const lvl=KIDS[id].level;
@@ -895,8 +895,9 @@ let settings={
 let store=null;
 function normalizeProgressShape(){
   Object.keys(progress).forEach(k=>{const P=progress[k];
-    if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0};
+    if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0,city:0};
     if(P.best.shop==null)P.best.shop=0;
+    if(P.best.city==null)P.best.city=0;
     if(!P.vocab)P.vocab={};
     if(P.missions==null)P.missions=0;
     if(!P.day)P.day={d:'',done:{},rr:{}};});
