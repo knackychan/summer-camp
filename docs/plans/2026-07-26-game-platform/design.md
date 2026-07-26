@@ -3,7 +3,7 @@
 **Date:** 2026-07-26
 **Status:** approved by Papa (brainstorm session, Claude Code)
 **Extends:** `docs/SPEC.md`, `docs/plans/2026-07-26-brain-gym/design.md`, `docs/plans/2026-07-26-machine-games/design.md`. Where this document disagrees with any of them on *how a game is wired into the app*, this document wins; gameplay, tone and lock rules from those documents stand unchanged.
-**Slices:** `12-registry-host.md` … `19-3d-game.md` (numbering continues the global sequence; 01–08 in homework-lock-drills-outing, 09–11 in brain-gym).
+**Slices:** `15-registry-host.md` … `22-3d-game.md` (numbering continues the global sequence; 01–08 in homework-lock-drills-outing, 09–11 in brain-gym, 12–14 in admin-layout).
 
 ## Context
 
@@ -33,9 +33,9 @@ The goal: make adding an arcade game cost what adding a brain game costs — one
 |---|---|
 | D1 | **Full migration.** All nine arcade games move out of `index.html` into `js/games/*.js`. This explicitly authorises touching working gameplay, which CLAUDE.md otherwise forbids. |
 | D2 | **ES modules with lazy `import()`**, replacing the IIFE-plus-`<script>`-tag idiom for game files. |
-| D3 | **3D engine deferred.** The registry is designed so a 3D game is a drop-in plugin; the engine is chosen in slice 19, after the seam is proven with a throwaway cube. |
-| D4 | Behaviour preservation is the acceptance bar **for the migration slices (14–17)**, and only for them. Papa has confirmed gameplay itself will change afterwards; this bar exists so those changes arrive as their own small reviewable diffs, not smuggled inside 3000 lines of code movement. A migration slice that "improves" a game while moving it is not done — it is two changes wearing one hat. |
-| D5 | Gameplay changes are expected after slice 17 and are **out of scope for this design**. Each gets its own brainstorm and slice against the new registry. |
+| D3 | **3D engine deferred.** The registry is designed so a 3D game is a drop-in plugin; the engine is chosen in slice 22, after the seam is proven with a throwaway cube. |
+| D4 | Behaviour preservation is the acceptance bar **for the migration slices (17–20)**, and only for them. Papa has confirmed gameplay itself will change afterwards; this bar exists so those changes arrive as their own small reviewable diffs, not smuggled inside 3000 lines of code movement. A migration slice that "improves" a game while moving it is not done — it is two changes wearing one hat. |
+| D5 | Gameplay changes are expected after slice 20 and are **out of scope for this design**. Each gets its own brainstorm and slice against the new registry. |
 
 ## 2. The registry
 
@@ -60,7 +60,7 @@ export default {
 - `js/games/index.js` is a **static manifest**: an ordered array of `{id, meta, keyboard, bestKey, brain}` for every game, imported eagerly by `main.js`. Small, data-only, no game logic.
 - `js/games/<id>.js` holds `init` / `stop` / `settings` and is imported only when that game starts.
 
-The manifest is the single source of truth for `LEVELS`, for grid order (favourite first, then manifest order, preserving today's behaviour at `index.html:2938`), and for `check.mjs`. A game module's own `meta` must match its manifest entry; slice 12's check enforces this so the two cannot drift.
+The manifest is the single source of truth for `LEVELS`, for grid order (favourite first, then manifest order, preserving today's behaviour at `index.html:2938`), and for `check.mjs`. A game module's own `meta` must match its manifest entry; slice 15's check enforces this so the two cannot drift.
 
 ## 3. The `ctx` contract
 
@@ -95,11 +95,11 @@ SQGames.register(mod.default);
 
 **Offline is preserved by precaching, not by eager parsing.** `sw.js` precaches `APP_SHELL` at install (`sw.js:29`), so every `js/games/*.js` file is on the tablet before a kid ever taps the game; `import()` then resolves from cache with wifi off. The offline-first non-negotiable holds. What lazy loading removes is *parse* cost, not availability: Lucien opening Big Machines no longer parses Orc Attack, Word Wizard and City Drive.
 
-This also keeps the deferred 3D decision cheap. If slice 19 lands on a vendored engine, it parses only when the 3D game starts, on the tablet that started it — instead of taxing every open on every device.
+This also keeps the deferred 3D decision cheap. If slice 22 lands on a vendored engine, it parses only when the 3D game starts, on the tablet that started it — instead of taxing every open on every device.
 
 **Secondary win:** `brain-core.js:4` currently does `typeof window!=="undefined" ? window.SQBrainData : require("./brain-data.js")`, a dual-mode hack existing only so one file can be both a browser global and a node test import. Under ESM that becomes a plain `import`. `scripts/core.test.mjs` is already `.mjs`, so tests get simpler, not harder.
 
-**Cost:** `file://` no longer works for local development — ESM requires http. Production (GitHub Pages / Vercel) is unaffected. Local dev becomes `npx serve .` or `python -m http.server`, documented in README as part of slice 12.
+**Cost:** `file://` no longer works for local development — ESM requires http. Production (GitHub Pages / Vercel) is unaffected. Local dev becomes `npx serve .` or `python -m http.server`, documented in README as part of slice 15.
 
 **Non-game modules** (`sync.js`, `day.js`, `lock-core.js`, `drills.js`, `papa-tools.js`, `time-core.js`, `pinpad.js`, and the `admin.html` scripts) keep their current IIFE-plus-global form. Converting them is not required by this design and is out of scope; `main.js` may read their globals as it does today.
 
@@ -113,9 +113,9 @@ Three hardcoded lists die. Supabase is untouched.
 | `index.html:927` `newProg().best` — six literal keys | `{}`, filled lazily — `sync.js:69` already tolerates this |
 | `index.html:1176` `noKb` | `game.keyboard` |
 
-**Migration safety.** `sync.js:70-75` currently defaults the six best keys to `0` on hydrate. Removing that is safe for reads — `bestOf` (`index.html:929`) already handles a missing key — but kids' existing high scores travel this path, so slice 13 pins the behaviour with a test against a hydrate payload containing real scores before the defaults are removed.
+**Migration safety.** `sync.js:70-75` currently defaults the six best keys to `0` on hydrate. Removing that is safe for reads — `bestOf` (`index.html:929`) already handles a missing key — but kids' existing high scores travel this path, so slice 16 pins the behaviour with a test against a hydrate payload containing real scores before the defaults are removed.
 
-`sync.js` cannot import the registry: it is a plain IIFE global script (§4 keeps it that way) and an ESM `import` is not available to it. Slice 13 injects the predicate instead — `SQSync.setBestStatCheck(fn)`, called from `main.js` at startup, defaulting to the current six-name whitelist when never called. The default matters because it keeps `sync.js` correct on its own, without the registry present.
+`sync.js` cannot import the registry: it is a plain IIFE global script (§4 keeps it that way) and an ESM `import` is not available to it. Slice 16 injects the predicate instead — `SQSync.setBestStatCheck(fn)`, called from `main.js` at startup, defaulting to the current six-name whitelist when never called. The default matters because it keeps `sync.js` correct on its own, without the registry present.
 
 ## 6. The 3D seam
 
@@ -126,9 +126,9 @@ Two additions make that real rather than theoretical:
 - **`ctx.mount`** — so a game can own its DOM instead of being handed one fixed canvas.
 - **WebGL context-loss handling in the host** — tablets drop GL contexts on background/resume. Without a `webglcontextlost` / `webglcontextrestored` path, a kid switching apps returns to a black screen. This is the one requirement 3D has that 2D never did.
 
-**Proof (slice 18):** a throwaway spinning-cube game, raw WebGL, roughly 80 lines, behind a dev flag, not in the games grid. If a cube can register, render, survive a tab switch and tear down cleanly through the same contract as Dig Site, the seam holds and the engine choice is genuinely deferrable. If it cannot, we learn that for 80 lines instead of after vendoring 600 KB.
+**Proof (slice 21):** a throwaway spinning-cube game, raw WebGL, roughly 80 lines, behind a dev flag, not in the games grid. If a cube can register, render, survive a tab switch and tear down cleanly through the same contract as Dig Site, the seam holds and the engine choice is genuinely deferrable. If it cannot, we learn that for 80 lines instead of after vendoring 600 KB.
 
-**Slice 19 chooses the engine** with that evidence in hand. Candidates recorded, not decided: hand-rolled WebGL (0 KB, no models), vendored Three.js (~600 KB, real 3D, lazy-loaded), CSS 3D transforms (no canvas, tens of elements max). Whichever wins, it is vendored into the repo and added to `APP_SHELL` — no CDN, per the offline-first non-negotiable.
+**Slice 22 chooses the engine** with that evidence in hand. Candidates recorded, not decided: hand-rolled WebGL (0 KB, no models), vendored Three.js (~600 KB, real 3D, lazy-loaded), CSS 3D transforms (no canvas, tens of elements max). Whichever wins, it is vendored into the repo and added to `APP_SHELL` — no CDN, per the offline-first non-negotiable.
 
 ## 7. Verification
 
@@ -145,29 +145,29 @@ Each ships independently and leaves the app working.
 
 | # | Slice | Ships |
 |---|---|---|
-| 12 | Registry + ESM host | `registry.js`, `main.js`, module entry, `sw.js` precache, README dev-server note. Legacy if/else still runs all nine through a fallback. |
-| 13 | Persistence generic | injected `isBestStat`, `best:{}` lazy, test pinning existing scores |
-| 14 | Pilot migration | `dig`, `city` — newest, self-contained, no keyboard |
-| 15 | Keyboard games | `hunt`, `home`, `race`, `balloon`, `orc` |
-| 16 | Complex two | `vocab`, `machines` — largest settings surface |
-| 17 | Delete legacy | if/else chain, `renderSetbar` branches, `noKb`, shared `stopArena`, global `state`. `index.html` → roughly 60 KB |
-| 18 | 3D seam | `ctx.mount`, context-loss handling, spinning-cube proof behind a dev flag |
-| 19 | Real 3D game | engine chosen here |
+| 15 | Registry + ESM host | `registry.js`, `main.js`, module entry, `sw.js` precache, README dev-server note. Legacy if/else still runs all nine through a fallback. |
+| 16 | Persistence generic | injected `isBestStat`, `best:{}` lazy, test pinning existing scores |
+| 17 | Pilot migration | `dig`, `city` — newest, self-contained, no keyboard |
+| 18 | Keyboard games | `hunt`, `home`, `race`, `balloon`, `orc` |
+| 19 | Complex two | `vocab`, `machines` — largest settings surface |
+| 20 | Delete legacy | if/else chain, `renderSetbar` branches, `noKb`, shared `stopArena`, global `state`. `index.html` → roughly 60 KB |
+| 21 | 3D seam | `ctx.mount`, context-loss handling, spinning-cube proof behind a dev flag |
+| 22 | Real 3D game | engine chosen here |
 
-Slices 12–17 deliver the scalability win alone. 18–19 are the 3D track and can wait.
+Slices 15–20 deliver the scalability win alone. 21–22 are the 3D track and can wait.
 
-**Rewrite-instead-of-migrate (per D5).** Any game with a gameplay rewrite already planned should not be migrated and then rewritten — that is the same file written twice. Such a game is dropped from its migration slice and written directly in registry form as part of its own rewrite slice, which then also carries the migration. Slices 14–16 open by confirming with Papa which games, if any, are in that state; the answer only removes work from those slices, so it never blocks them.
+**Rewrite-instead-of-migrate (per D5).** Any game with a gameplay rewrite already planned should not be migrated and then rewritten — that is the same file written twice. Such a game is dropped from its migration slice and written directly in registry form as part of its own rewrite slice, which then also carries the migration. Slices 17–19 open by confirming with Papa which games, if any, are in that state; the answer only removes work from those slices, so it never blocks them.
 
-**After slice 17, adding an arcade game costs:** one file in `js/games/`, one line in `js/games/index.js`, one line in `sw.js`. Same shape as adding a brain game.
+**After slice 20, adding an arcade game costs:** one file in `js/games/`, one line in `js/games/index.js`, one line in `sw.js`. Same shape as adding a brain game.
 
 ## 9. Risks
 
 | Risk | Mitigation |
 |---|---|
 | Migrating gameplay CLAUDE.md says not to touch | Per-slice behaviour-preservation DONE WHEN, smoke tests, one game group per slice so a regression is bisectable. D1 accepts this knowingly. D5 lowers the stakes further — gameplay is changing soon regardless, so a subtle migration regression in a game about to be reworked is cheap. It is still caught, not tolerated: the point of D4 is that nobody has to wonder *which* change broke something. |
-| Migrating a game that is about to be rewritten | Wasted work. Before slices 14–16 begin, Papa names any game with a known gameplay rewrite coming; that game skips migration and is written directly in registry form as part of its own rewrite slice. See §8. |
-| Latent cross-game coupling via global `state` | Expected to surface in slices 14–16. Each game's state moves to closure scope; anything genuinely shared moves to `ctx`, and if something resists, it is recorded rather than smuggled back into a global. |
-| `file://` dev stops working | README dev-server note in slice 12. Only genuine ergonomic loss. |
+| Migrating a game that is about to be rewritten | Wasted work. Before slices 17–19 begin, Papa names any game with a known gameplay rewrite coming; that game skips migration and is written directly in registry form as part of its own rewrite slice. See §8. |
+| Latent cross-game coupling via global `state` | Expected to surface in slices 17–19. Each game's state moves to closure scope; anything genuinely shared moves to `ctx`, and if something resists, it is recorded rather than smuggled back into a global. |
+| `file://` dev stops working | README dev-server note in slice 15. Only genuine ergonomic loss. |
 | Stale service-worker shell | `CACHE_NAME` bump on every file-touching slice's checklist. |
-| Slices 15/16 are large | `orc` and `vocab` are the biggest games; either may be split into its own slice without blocking the others. |
-| High scores lost during persistence change | Slice 13 lands its hydrate test *before* the defaults are removed. |
+| Slices 18/19 are large | `orc` and `vocab` are the biggest games; either may be split into its own slice without blocking the others. |
+| High scores lost during persistence change | Slice 16 lands its hydrate test *before* the defaults are removed. |
