@@ -200,6 +200,41 @@ p {
   border-color: var(--bad);
 }
 
+.grant-total {
+  margin: 6px 0 0;
+}
+
+.grant-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.grant-big {
+  min-height: 86px;
+  font-size: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.grant-big span {
+  font-size: 13px;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.grant-more {
+  margin-bottom: 8px;
+}
+
+.grant-reset {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .btn:disabled {
   opacity: .5;
   cursor: default;

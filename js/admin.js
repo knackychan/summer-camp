@@ -159,17 +159,21 @@
     $("grants").innerHTML=Object.entries(KIDS).map(([id,k])=>`
       <article class="kid-card" style="--kid-color:${k.color}">
         <h3>${k.name}</h3>
+        <p class="grant-total"><span class="gold">⭐ ${(rows.totals.find(t=>t.kid_id===id)||{}).stars||0}</span> stars 星星</p>
         <label class="field"><span>Reason 原因</span><input class="input" id="reason-${id}" placeholder="helped Lucien 幫Lucien"></label>
-        <div class="row">
-          <button class="btn btn--danger" data-grant="${id}" data-delta="-1">−1</button>
-          <button class="btn" data-grant="${id}" data-delta="1">+1</button>
-          <button class="btn" data-grant="${id}" data-delta="2">+2</button>
-          <button class="btn" data-grant="${id}" data-delta="3">+3</button>
+        <div class="grant-actions">
+          <button class="btn btn--danger grant-big" data-grant="${id}" data-delta="-1">−<span>1 star<br>扣1顆</span></button>
+          <button class="btn grant-big" data-grant="${id}" data-delta="1">+<span>1 star<br>加1顆</span></button>
+        </div>
+        <div class="row grant-more">
+          <button class="btn btn--secondary" data-grant="${id}" data-delta="2">+2</button>
+          <button class="btn btn--secondary" data-grant="${id}" data-delta="3">+3</button>
         </div>
         <div class="row">
           <input class="input" id="custom-${id}" type="number" min="-10" max="10" value="1">
           <button class="btn btn--secondary" data-custom="${id}">Custom 自訂</button>
         </div>
+        <button class="btn btn--danger grant-reset" data-resetstars="${id}">Reset stars to 0 星星歸零</button>
       </article>`).join("");
     document.querySelectorAll("[data-grant]").forEach(b=>b.onclick=()=>grantStars(b.dataset.grant,+b.dataset.delta));
     document.querySelectorAll("[data-custom]").forEach(b=>b.onclick=()=>{
@@ -178,6 +182,7 @@
       if(!v)return;
       grantStars(id,v);
     });
+    document.querySelectorAll("[data-resetstars]").forEach(b=>b.onclick=()=>resetStars(b.dataset.resetstars));
   }
 
   async function grantStars(kid,delta){
@@ -188,6 +193,18 @@
     if(error){writeFailed(error);return;}
     toast(`${delta>0?"+":""}${delta} ⭐ ${kidName(kid)} — saved 已儲存`,true);
     input.value="";
+    await loadAll();
+  }
+
+  async function resetStars(kid){
+    const total=(rows.totals.find(t=>t.kid_id===kid)||{}).stars||0;
+    if(!total){toast(`${kidName(kid)} already has 0 stars 已經是0顆星`,true);return;}
+    if(!confirm(`Reset ${kidName(kid)} stars to 0? This adds a ledger row of ${-total}. 星星歸零？會新增一筆 ${-total} 的星星紀錄。`))return;
+    const {error}=await client.from("stars_ledger").insert({
+      kid_id:kid,delta:-total,reason:"Star reset 星星歸零",source:"admin",granted_by:session.user.id
+    });
+    if(error){writeFailed(error);return;}
+    toast(`${kidName(kid)} stars reset to 0 星星已歸零`,true);
     await loadAll();
   }
 
