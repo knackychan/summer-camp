@@ -33,6 +33,27 @@ window.SQLoadGame = function (id) {
   return loading[id];
 };
 
+/* Dev-flag spinning-cube probe — proves the 3D seam on a real tablet (slice 21).
+   Not in the manifest, not in the grid, costs nothing unless the flag is set. */
+if (location.hash === "#devcube") {
+  import("./games/cube.js").then(function (mod) {
+    SQGames.register(mod.default);
+    var host = window.SQHost;
+    var kidId = host.kid || (host.KIDS && Object.keys(host.KIDS)[0]);
+    if (!kidId) { console.error("devcube: no kid selected — open a kid hub first"); return; }
+    var game = SQGames.get("cube");
+    if (!game) { console.error("devcube: failed to register cube"); return; }
+    window.currentGame = game;
+    game.init({
+      kid: kidId, mount: host.mount(), stage: host.stage(),
+      hud: host.hud, say: host.say, sayPair: host.sayPair,
+      sfx: host.sfx, keys: host.keys, fx: host.fx,
+      settings: host.settings, rand: host.rand, shuffle: host.shuffle,
+      finish: function () {}
+    });
+  }).catch(function (err) { console.error("devcube: load failed", err); });
+}
+
 /* Drift guard: the manifest and the inline LEVELS must agree while both exist.
    Slice 20 deletes LEVELS and this check with it. */
 (function guard() {

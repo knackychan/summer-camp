@@ -1229,6 +1229,22 @@ function goHome(){
   document.getElementById("home").classList.remove("hidden");
   renderHome();
 }
+/* WebGL context-loss safety net (design.md §6). Tablets drop GL contexts on
+   background/resume; without this a kid returns to a black screen. */
+var glLost=false;
+window.SQHost.mount().addEventListener("webglcontextlost",function(e){
+  e.preventDefault(); glLost=true;
+  wobbleMsg("One moment\u2026 \u7b49\u4e00\u4e0b\u5594");
+},true);
+window.SQHost.mount().addEventListener("webglcontextrestored",function(){
+  if(!glLost)return; glLost=false;
+  if(currentGame){ var g=currentGame;
+    try{ g.stop(); }catch(e){}
+    try{ startRegistered(g); return; }catch(e){ console.error(e); }
+  }
+  stopArena(); goHome();
+},true);
+
 const rand=a=>a[Math.floor(Math.random()*a.length)];
 const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
 

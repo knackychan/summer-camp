@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, globSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,13 +17,27 @@ const assertPair = (value, where) => {
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
-const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/brain-audio-cues.js", "js/sync.js", "js/admin-nav.js", "js/admin.js", "sw.js", "js/main.js", "js/games/registry.js", "js/games/index.js", "js/games/solar-data.js"];
+// Discovered, not listed. The hand-maintained array meant every new js/ file
+// skipped syntax, legacy-syntax and secret scanning until someone remembered to
+// append it — and splitting index.html adds files by the dozen.
+const runtimeFiles = ["index.html", "admin.html", "sw.js"].concat(
+  globSync("js/**/*.js", { cwd: fileURLToPath(root) })
+    .map((file) => file.replaceAll("\\", "/"))
+    .filter((file) => file !== "js/config.js" && file !== "js/config.example.js") // gitignored; absent on a fresh clone
+    .filter((file) => !file.startsWith("js/vendor/")) // third-party; not subject to legacy-syntax scan
+    .sort()
+);
+
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
-if (scriptMatches.length !== 1) {
-  fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
+if (!scriptMatches.length) {
+  fail("script extraction", "index.html has no inline script");
 }
 
-const appScript = scriptMatches[0]?.[1] ?? "";
+// Every inline block, concatenated — the old "expected exactly 1" made the
+// monolith a structural requirement of its own verifier.
+// ponytail: classic scripts only. An inline type="module" block would fail the
+// `node --check` below; move module code to js/ rather than inlining it.
+const appScript = scriptMatches.map((match) => match[1]).join("\n");
 const tmp = mkdtempSync(join(tmpdir(), "summer-quest-check-"));
 try {
   const scriptPath = join(tmp, "index-script.js");
@@ -50,6 +64,20 @@ for (const file of runtimeFiles.filter((f) => f.endsWith(".js"))) {
   const parsed = spawnSync(process.execPath, ["--check", fileURLToPath(new URL(file, root))], { encoding: "utf8" });
   if (parsed.status !== 0) {
     fail("syntax", `${file}: ${(parsed.stderr || parsed.stdout || "node --check failed").trim().split("\n").slice(0, 4).join(" ")}`);
+  }
+}
+
+// Offline-first is a non-negotiable: a script the app loads but sw.js never
+// precaches works on wifi and dies without it. Only files something actually
+// references are required — a module written ahead of the slice that ships it
+// is not yet a shell file. Games loaded by dynamic import are covered by the
+// MANIFEST check further down instead, since their path is built from an id.
+{
+  const swText = readFileSync(new URL("sw.js", root), "utf8");
+  const loaders = indexHtml + adminHtml + readFileSync(new URL("js/main.js", root), "utf8");
+  for (const file of runtimeFiles.filter((f) => f.startsWith("js/"))) {
+    if (!loaders.includes(file)) continue;
+    if (!swText.includes(`./${file}`)) fail("offline", `${file} is loaded but missing from sw.js APP_SHELL`);
   }
 }
 
@@ -764,6 +792,19 @@ try {
   }
 } catch (error) {
   fail("manifest load", error.message);
+}
+
+try {
+  var threeUrl = new URL("js/vendor/three.module.min.js", root);
+  var orbitUrl = new URL("js/vendor/OrbitControls.js", root);
+  if (!existsSync(threeUrl)) fail("vendor", "js/vendor/three.module.min.js is missing");
+  if (!existsSync(orbitUrl)) fail("vendor", "js/vendor/OrbitControls.js is missing");
+  var orbitText = readFileSync(orbitUrl, "utf8");
+  if (/from\s+['"]three['"]/.test(orbitText) && !/from\s+['"]\.\/three\.module\.min\.js['"]/.test(orbitText)) {
+    fail("vendor", "OrbitControls.js still has a bare 'three' import specifier");
+  }
+} catch (error) {
+  fail("vendor", error.message);
 }
 
 try {
