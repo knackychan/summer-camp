@@ -13,16 +13,27 @@
 --   Two different things land in the unlabelled bucket, and only one is a bug:
 --
 --   (a) DUPLICATES from the store.last fault above. Reversible, should go.
---   (b) LEGACY rows. Before commit bbd436b (2026-07-26 18:21) the app had no
---       reason plumbing at all, so the lowercase string 'app progress' was the
---       ONLY reason any app star ever received. Those are real stars the kids
---       earned. A tablet that was offline, or still on the old build, flushes
---       its queued ops in a burst on the next reload — which looks like a pile
---       of identical +1 rows seconds apart, but is just a backlog arriving.
+--   (b) LEGACY rows. Until the labelling build actually reached the tablets,
+--       the lowercase string 'app progress' was the ONLY reason any app star
+--       ever received. Those are real stars the kids earned. A tablet that was
+--       offline, or still on the old build, flushes its queued ops in a burst
+--       on the next reload — which looks like a pile of identical +1 rows
+--       seconds apart, but is just a backlog arriving.
 --
---   PART 1's verdict column is what separates them. Read it before repairing.
---   Rows dated before the cutoff are legacy by definition and are never
---   touched by the repair.
+--   The cutoff is DERIVED FROM THE DATA, not hardcoded: it is the timestamp of
+--   the first app row that carries a real reason. Before that moment no tablet
+--   was capable of labelling anything, so "unlabelled" says nothing about
+--   whether a row is a duplicate. Deploy dates are the wrong basis — a commit
+--   can sit undeployed, and tablets pick up a build whenever they reload.
+--
+--   PART 1's verdict column separates them. Read it before repairing.
+--
+-- WHAT THE REAL DATA SHOWED (2026-07-27):
+--   357 unlabelled rows / 374 stars, spanning 07-26 13:33 to 07-27 08:03,
+--   against only ~65 stars of positive admin grants in the same window. So the
+--   overwhelming majority are genuine, and every one of them predates the
+--   cutoff. Conclusion: there was nothing worth repairing in the history. This
+--   file's ongoing value is PART 0 and PART 5 as a watch, not PART 3.
 --
 -- DISARMED: every write below is commented out. Nothing here changes data
 --           until you uncomment it yourself.
@@ -70,7 +81,11 @@ select
   a.reason                                                             as admin_reason,
   round(extract(epoch from (u.created_at - a.created_at)))             as seconds_after_admin,
   case
-    when u.created_at < timestamptz '2026-07-26 18:21+08'
+    when u.created_at < (select coalesce(min(created_at), 'infinity')
+                       from stars_ledger
+                       where source = 'app'
+                         and reason not ilike 'app progress%'
+                         and reason not ilike 'unlabelled%')
       then 'LEGACY — predates reason plumbing; a real star, leave it alone'
     when a.id is null
       then 'ORPHAN — no admin grant before it; probably a real star, lost reason'
@@ -98,7 +113,11 @@ order by u.created_at desc;
 -- ============================================================
 with unlabelled as (
   select l.*,
-         l.created_at < timestamptz '2026-07-26 18:21+08' as is_legacy,
+         l.created_at < (select coalesce(min(created_at), 'infinity')
+                       from stars_ledger
+                       where source = 'app'
+                         and reason not ilike 'app progress%'
+                         and reason not ilike 'unlabelled%') as is_legacy,
          exists (
            select 1 from stars_ledger a
            where a.kid_id = l.kid_id
@@ -156,7 +175,11 @@ order by k.id;
 -- where u.source = 'app'
 --   and u.delta > 0
 --   and (u.reason ilike 'app progress%' or u.reason ilike 'unlabelled%')
---   and u.created_at >= timestamptz '2026-07-26 18:21+08'
+--   and u.created_at >= (select coalesce(min(created_at), 'infinity')
+                       from stars_ledger
+                       where source = 'app'
+                         and reason not ilike 'app progress%'
+                         and reason not ilike 'unlabelled%')
 --   and exists (
 --     select 1 from stars_ledger a
 --     where a.kid_id = u.kid_id
