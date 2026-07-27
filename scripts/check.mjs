@@ -17,7 +17,7 @@ const assertPair = (value, where) => {
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
-const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/sync.js", "js/admin.js", "sw.js"];
+const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/sync.js", "js/admin.js", "sw.js"];
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -52,11 +52,13 @@ try {
   const dataScript = appScript.slice(0, markerIndex);
   const dayDataJs = readFileSync(new URL("js/day-data.js", root), "utf8");
   const actDataJs = readFileSync(new URL("js/act-data.js", root), "utf8");
+  const learnDataJs = readFileSync(new URL("js/learn-data.js", root), "utf8");
   const data = new Function(`const window={};
 ${dayDataJs}
 ${actDataJs}
+${learnDataJs}
 ${dataScript}
-return { ALL_WORDS, SENT, MISSIONS, BANK, ACT_GUIDE, BANK_POOL, DAY, PHOTO_POOL, PHOTO_TRICKS, LEARN_GUIDES };`)();
+return { ALL_WORDS, SENT, MISSIONS, BANK, ACT_GUIDE, BANK_POOL, DAY, PHOTO_POOL, PHOTO_TRICKS, LEARN_GUIDES, LEARN_BASE, LEARN_KEYS, learnActIdx };`)();
 
   const seenWords = new Set();
   for (const [i, word] of data.ALL_WORDS.entries()) {
@@ -109,6 +111,20 @@ return { ALL_WORDS, SENT, MISSIONS, BANK, ACT_GUIDE, BANK_POOL, DAY, PHOTO_POOL,
       }
       guide[kid].forEach((step, stepIndex) => assertPair(step, `LEARN_GUIDES.${guideKey}.${kid}[${stepIndex}]`));
     }
+  }
+
+  // Learn guides sync through act_done.act_idx (an int column), in a reserved
+  // band above every BANK index. A collision would make revoking a learn star
+  // un-tick a real activity instead.
+  if (!(data.LEARN_BASE > data.BANK.length)) {
+    fail("LEARN", `LEARN_BASE(${data.LEARN_BASE}) must sit above BANK length(${data.BANK.length})`);
+  }
+  data.LEARN_KEYS.forEach((key) => {
+    const idx = data.learnActIdx(key);
+    if (!Number.isInteger(idx)) fail("LEARN", `${key} has no integer act index`);
+  });
+  if (data.LEARN_KEYS.length !== Object.keys(data.LEARN_GUIDES).length) {
+    fail("LEARN", "LEARN_KEYS out of sync with LEARN_GUIDES");
   }
 
   for (const [kid, entries] of Object.entries(data.PHOTO_POOL)) {
@@ -211,6 +227,24 @@ try {
   }
 } catch (error) {
   fail("pwa", error.message);
+}
+
+// Star provenance: every local `stars` bump must name what earned it, or the
+// diff in sync.js has nothing to attach and the row lands in the "Unlabelled"
+// bucket. Checked as "a noteStars() call within 2 lines", which is how all
+// existing grant sites are written.
+{
+  const appLines = appScript.split("\n");
+  appLines.forEach((line, i) => {
+    if (!/progress\[[^\]]+\]\.stars\s*(\+=|=\s*\(?progress)/.test(line)) return;
+    const window = appLines.slice(i, i + 3).join("\n");
+    if (!window.includes("noteStars(")) {
+      fail("star provenance", `index.html line ~${i + 1} changes stars with no noteStars() reason`);
+    }
+  });
+  if (/App progress/.test(readFileSync(new URL("js/sync.js", root), "utf8"))) {
+    fail("star provenance", "sync.js still has the anonymous 'App progress' bucket");
+  }
 }
 
 if (!schemaSql.includes("create table if not exists help_claims")) {

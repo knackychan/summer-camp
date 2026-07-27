@@ -4,6 +4,12 @@
   const SUPABASE_CDN="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
   const KIDS=["lucien","lili","luis"];
 
+  /* Every app star must name what earned it. A delta with no reason attached
+     means local `stars` moved without a matching noteStars() call — a bug, not
+     a normal path — so it gets labelled loudly instead of hidden in the generic
+     catch-all bucket that used to make the ledger unauditable. */
+  const UNLABELLED="Unlabelled — check the app 未標註（請檢查）";
+
   /* A "best score" stat: the six existing games, or any brain-gym key.
      Prefix rule on purpose — adding a brain game must not require editing sync.js. */
   function isBestStat(key){
@@ -93,7 +99,15 @@
       this.supabase=supabaseClient;
       this.progress=normalize(seed.progress);
       this.settings=seed.settings;
-      this.queue=loadJson(QUEUE_KEY,[]);
+      /* Drop ops no build can ever apply. Learn guides used to enqueue
+         actIdx:NaN (serialised to null); act_done.act_idx is not-null, so the
+         insert failed forever and flush() stopped there — every star queued
+         behind it stayed stuck on the tablet. */
+      this.queue=loadJson(QUEUE_KEY,[]).filter(function(op){
+        // isFinite(null) is true — the op serialised NaN to null, so check the type
+        return !(op&&op.type==="actDone"&&!(typeof op.actIdx==="number"&&isFinite(op.actIdx)));
+      });
+      saveJson(QUEUE_KEY,this.queue);
       this.kidPins=loadJson("sq:kidPins",{});
       this.adminPin=loadJson("sq:adminPin","");
       this.familySettings=loadJson("sq:famSettings",{});
@@ -242,7 +256,7 @@
       (starReasons||[]).forEach(r=>{
         if(!r||!r.kid||!r.delta)return;
         const list=reasonsByKid[r.kid]=reasonsByKid[r.kid]||[];
-        for(let i=0;i<r.delta;i++)list.push(r.reason||"App progress app進度");
+        for(let i=0;i<r.delta;i++)list.push(r.reason||UNLABELLED);
       });
       KIDS.forEach(kid=>{
         const a=after[kid], b=before[kid]||{};
@@ -262,6 +276,7 @@
           if((aRolls[i]||0)!==(bRolls[i]||0)) this.enqueue({type:"roll",kid,day:ad,blockIdx:+i,count:aRolls[i]||0});
         });
         new Set([...Object.keys(aActs),...Object.keys(bActs)]).forEach(i=>{
+          if(!isFinite(+i)) return;   // never enqueue a key act_done cannot store
           if(!!aActs[i]&&!bActs[i]) this.enqueue({type:"actDone",kid,day:ad,actIdx:+i});
         });
 
@@ -269,12 +284,13 @@
         const starReasonsForKid=reasonsByKid[kid]||[];
         while(delta>0){
           if(!starReasonsForKid.length){
-            const chunk=Math.min(delta,3);
-            this.enqueue({type:"stars",kid,delta:chunk,reason:"App progress app進度"});
-            delta-=chunk;
+            /* One honest row for the whole unexplained remainder. Chunking it
+               into 3s only made a bug look like several innocent little grants. */
+            this.enqueue({type:"stars",kid,delta,reason:UNLABELLED});
+            delta=0;
             continue;
           }
-          const reason=starReasonsForKid.shift()||"App progress app進度";
+          const reason=starReasonsForKid.shift()||UNLABELLED;
           let chunk=1;
           while(chunk<delta&&starReasonsForKid[0]===reason){
             starReasonsForKid.shift();
@@ -403,6 +419,19 @@
       this.enqueue({type:"stars",kid,delta,reason});
       await this.flush();
     }
+    /* A ledger row that arrived from the server (Papa's grant, a revoke, another
+       device) is already recorded. Move `last` together with `progress` so the
+       next diff sees no change. Without this the tablet re-enqueued the same
+       delta as a second, unlabelled star — and a negative correction left `last`
+       above `progress`, silently eating the kid's next real star. */
+    applyServerStars(kid,delta){
+      if(!kid||!delta) return;
+      ensureKid(this.progress,kid);
+      ensureKid(this.last,kid);
+      this.progress[kid].stars=(this.progress[kid].stars||0)+delta;
+      this.last[kid].stars=(this.last[kid].stars||0)+delta;
+      this.persistLocal();
+    }
     async actDone(kid,dayISO,actIdx){
       this.enqueue({type:"actDone",kid,day:dayISO,actIdx});
       await this.flush();
@@ -433,7 +462,8 @@
       kids.forEach(kid=>blockIdxs.forEach(blockIdx=>{
         this.enqueue({type:"outingBlock",kid:kid,day:dayISO,blockIdx:blockIdx,credited:credited,reason:reason});
         this.passes.unshift({kid_id:kid,kind:"outing",status:"granted",day:dayISO,block_idx:blockIdx,credited:!!credited,reason:reason});
-        if(credited)this.enqueue({type:"stars",kid:kid,delta:1,reason:"Outing 出遊"});
+        if(credited)this.enqueue({type:"stars",kid:kid,delta:1,
+          reason:"Outing 出遊 · "+(reason||"Family outing 家庭出遊")});
       }));
       await this.flush();
     }
