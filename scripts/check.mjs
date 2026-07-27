@@ -17,7 +17,7 @@ const assertPair = (value, where) => {
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
-const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/brain-audio-cues.js", "js/sync.js", "js/admin-nav.js", "js/admin.js", "sw.js", "js/games/solar-data.js"];
+const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/brain-audio-cues.js", "js/sync.js", "js/admin-nav.js", "js/admin.js", "sw.js", "js/main.js", "js/games/registry.js", "js/games/index.js", "js/games/solar-data.js"];
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -730,6 +730,40 @@ try {
       });
     });
   }
+}
+
+try {
+  var manifestMod = await import(new URL("js/games/index.js", root));
+  var MANIFEST_D = manifestMod.MANIFEST;
+  var seenMan = new Set();
+  for (var ei = 0; ei < MANIFEST_D.length; ei++) {
+    var entry = MANIFEST_D[ei];
+    if (!entry.id) fail("manifest", "entry with no id");
+    if (seenMan.has(entry.id)) fail("manifest", "duplicate id " + entry.id);
+    seenMan.add(entry.id);
+    if (!entry.meta || !entry.meta.icon) fail("manifest", entry.id + ": missing icon");
+    assertPair([entry.meta.title, entry.meta.tz], "manifest." + entry.id + ".title");
+    if (!entry.meta.blurb) fail("manifest", entry.id + ": missing blurb");
+    if (typeof entry.keyboard !== "boolean") fail("manifest", entry.id + ": keyboard must be boolean");
+    if (!new RegExp("\\b" + entry.id + "\\s*:\\s*\\{").test(indexHtml)) {
+      fail("manifest", entry.id + ": no matching LEVELS entry in index.html");
+    }
+  }
+  var bestKeysM = MANIFEST_D.map(function (e) { return e.bestKey; }).filter(Boolean);
+  if (new Set(bestKeysM).size !== bestKeysM.length) fail("manifest", "duplicate bestKey");
+  if (!indexHtml.includes('<script type="module" src="js/main.js">')) {
+    fail("manifest", "index.html is not loading js/main.js as a module");
+  }
+  var swText = readFileSync(new URL("sw.js", root), "utf8");
+  for (var ei2 = 0; ei2 < MANIFEST_D.length; ei2++) {
+    var ev = MANIFEST_D[ei2];
+    if (ev.brain || ev.legacy !== false) continue;
+    if (!swText.includes("./js/games/" + ev.id + ".js")) {
+      fail("manifest", ev.id + ": migrated game missing from sw.js APP_SHELL");
+    }
+  }
+} catch (error) {
+  fail("manifest load", error.message);
 }
 
 try {

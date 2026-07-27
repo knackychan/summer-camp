@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v16";
+const CACHE_NAME = "summer-quest-v17";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -23,6 +23,9 @@ const APP_SHELL = [
   "./js/brain-data.js",
   "./js/brain-core.js",
   "./js/brain-ui.js",
+  "./js/main.js",
+  "./js/games/registry.js",
+  "./js/games/index.js",
   "./js/games/solar-data.js",
   "./manifest.webmanifest",
   "./assets/icons/icon.svg",

@@ -581,6 +581,7 @@ button:disabled{cursor:default}
 <script src="js/brain-data.js"></script>
 <script src="js/brain-core.js"></script>
 <script src="js/brain-ui.js"></script>
+<script type="module" src="js/main.js"></script>
 <script>
 /* ============ DATA ============ */
 const KIDS = {
@@ -871,7 +872,7 @@ const fingerVar=ch=>{const f=FINGER[(ch||"").toLowerCase()];return f?f[0]:"--f-t
 const ROWS=["1234567890","qwertyuiop","asdfghjkl","zxcvbnm"];
 
 /* ============ STATE ============ */
-let sound=true, kid=null, level=null, kb={}, state={};
+let sound=true, kid=null, level=null, kb={}, state={}, currentGame=null;
 const newProg=()=>({stars:0,best:{balloon:0,race:0,orc:0,shop:0,city:0,dig:0},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
 let progress={lucien:newProg(),lili:newProg(),luis:newProg()};
 const bestOf=(id,mode)=>{const b=progress[id].best; return (b&&typeof b==="object")?(b[mode]||0):0;};
@@ -1126,6 +1127,39 @@ function startGame(id,lvl){
     c.onclick=()=>startGame(id,c.dataset.l));
   renderSetbar();
   if(LEVELS[lvl].brain){ startBrain(lvl); return; }
+  if(window.SQLoadGame){
+    var pending=window.SQLoadGame(lvl);
+    if(pending){
+      pending.then(function(game){ if(game) startRegistered(game); else startLegacy(lvl); });
+      return;
+    }
+  }
+  startLegacy(lvl);
+}
+
+/* Hand off to a migrated game module (design.md §3). */
+function startRegistered(game){
+  currentGame=game;
+  var H=window.SQHost;
+  game.init({
+    kid:kid, mount:H.mount(), stage:H.stage(),
+    hud:hud, say:say, sayPair:sayPair, sfx:H.sfx, keys:H.keys, fx:H.fx,
+    settings:settings, rand:rand, shuffle:shuffle,
+    finish:function(res){ finishRegistered(game,res); }
+  });
+}
+
+function finishRegistered(game,res){
+  if(!game.bestKey||!res||typeof res.score!=="number")return;
+  var p=progress[kid];
+  if(res.score>(p.best[game.bestKey]||0)){
+    p.best[game.bestKey]=res.score;
+    saveProgress();
+    if(store)store.setStat(kid,game.bestKey,res.score);
+  }
+}
+
+function startLegacy(lvl){
   if(lvl==="hunt") initHunt();
   else if(lvl==="home") initHome();
   else if(lvl==="race") initRace();
@@ -1177,6 +1211,8 @@ function showBrainResult(res,better){
   if(better)burst(24);
 }
 function stopArena(){
+  if(currentGame&&currentGame.stop){ try{currentGame.stop();}catch(e){console.error(e);} }
+  currentGame=null;
   if(state.raf) cancelAnimationFrame(state.raf);
   if(state.timer) clearInterval(state.timer);
   state.raf=null; state.timer=null; state.running=false;
@@ -3374,6 +3410,26 @@ function restoreAppPlace(){
 if("serviceWorker" in navigator){
   addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 }
+/* ---- Bridge to the ESM host (design.md §3) ----
+   Everything a migrated game is allowed to touch, handed over explicitly.
+   A game module reads this and nothing else from the old world. As games move
+   out in slices 17-19 this object shrinks; at slice 20 it disappears. */
+window.SQHost={
+  KIDS:KIDS, LEVELS:LEVELS,
+  get kid(){return kid;},
+  get progress(){return progress;},
+  get settings(){return settings;},
+  get store(){return store;},
+  hud:hud, say:say, sayPair:sayPair,
+  sfx:{good:sGood,bad:sBad,pop:sPop,zap:sZap,hit:sHit,win:sWin},
+  keys:{build:buildKeyboard,highlight:highlightTarget,highlightSet:highlightSet,press:pressFx},
+  fx:{flash:flash,burst:burst,bigFloat:bigFloat,wobbleMsg:wobbleMsg,hint:hint},
+  rand:rand, shuffle:shuffle,
+  saveProgress:saveProgress, noteStars:noteStars,
+  stage:function(){return document.getElementById("stage");},
+  mount:function(){return document.getElementById("stage").parentNode;}
+};
+
 (async()=>{ await loadProgress(); restoreAppPlace(); setupRealtime(); startTimelineWatcher(); refreshTestBanner(); })();
 </script>
 </body>
