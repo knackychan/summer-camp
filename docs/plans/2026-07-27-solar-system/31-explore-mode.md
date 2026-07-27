@@ -36,6 +36,7 @@
 | `js/games/solar.js` | Create | The 3D game module: scene, camera rig, raycast+pulse, time band UI, `init`/`stop` |
 | `js/games/solar-sim.js` | Create | Pure sim math: `SPEEDS`, `daysPerSec`, `advance`, `orbitCount` |
 | `js/games/index.js` | Modify | Manifest gains the `solar` entry (design.md §2) |
+| `index.html` | Modify | **Host grid wiring for registry-native games.** The home games grid and arena game-switcher iterated `Object.keys(LEVELS)` and `Object.entries(LEVELS)` only, which left a `legacy:false` registry-native game like solar with a manifest entry but no tile. Add `gameMeta(id)` + `allGameIds()` helpers (LEVELS if present, else `window.SQManifest`), then route the grid render, `levelChips`, `startGame`'s brain check and the `noKb` derivation through them. The manifest's `keyboard` flag now drives keyboard visibility — solar's `keyboard:false` hides the on-screen keyboard without further allowlist edits. |
 | `sw.js` | Modify | `APP_SHELL` gains both files; `CACHE_NAME` bumped |
 | `scripts/check.mjs` | Modify | `runtimeFiles` gains both files |
 | `scripts/solar-sim.test.mjs` | Create | Sim math tests |
@@ -43,7 +44,7 @@
 
 ---
 
-## Task 1: Manifest entry
+## Task 1: Manifest entry + host grid wiring
 
 - [ ] **Step 1:** Add to `js/games/index.js`, between `vocab` and the brain block, exactly:
 
@@ -53,6 +54,32 @@
 ```
 
 - [ ] **Step 2:** `node --test scripts/registry.test.mjs` passes (update length assertions, never the data).
+
+- [ ] **Step 3: Wire the home grid and arena game-switcher to the manifest.** Without this, the manifest entry exists but no tile renders — `renderHub` iterated `Object.keys(LEVELS)` only, and `startGame` accessed `LEVELS[lvl].brain` directly. Solar is `legacy:false` (registry-native) and never had a LEVELS entry, so the manifest was the only source of its UI metadata and the grid never showed it. Add to `index.html` (near `const LEVELS = {...}`):
+
+```js
+function gameMeta(id){
+  const L=LEVELS[id];
+  if(L) return L;
+  const M=(window.SQManifest||[]).find(e=>e.id===id);
+  if(M) return {icon:M.meta.icon, title:M.meta.title, tz:M.meta.tz, blurb:M.meta.blurb, brain:!!M.brain};
+  return null;
+}
+function allGameIds(){
+  if(window.SQManifest && window.SQManifest.length)
+    return window.SQManifest.map(e=>e.id);
+  return Object.keys(LEVELS);
+}
+```
+
+Then route the three consumers through them:
+1. `renderHub` games row: build `order` from `allGameIds()` instead of `Object.keys(LEVELS)`; render each tile from `gameMeta(l)`; filter out any id with no `gameMeta` (so a half-loaded manifest never throws on `undefined.icon`).
+2. `startGame` `levelChips`: same — iterate `allGameIds()`, render each chip from `gameMeta(k)`.
+3. `startGame` brain + keyboard: replace `LEVELS[lvl].brain` with `gameMeta(lvl) && gameMeta(lvl).brain`; replace `const noKb=(lvl==="city"||lvl==="dig")` with a lookup of the manifest's `keyboard` flag (fall back to the city/dig allowlist only when the manifest hasn't published yet — main.js loads deferred).
+
+The host still doesn't know solar is 3D; it knows the manifest carries registry-native tiles, which it didn't before. Behaviour preservation: inline games' tiles render from `LEVELS` exactly as before — `gameMeta` returns the LEVELS entry unchanged when present.
+
+- [ ] **Step 4:** `node scripts/check.mjs` PASS. On a kid's hub (served, not file://): the Solar System tile appears between Word Wizard and Calculations, in manifest grid order; tapping it routes through `SQLoadGame("solar")` → `startRegistered(game)`; tapping a different chip mid-game switches games through the same path; the on-screen keyboard is hidden for solar.
 
 ---
 
@@ -82,7 +109,7 @@
 ## Task 4: Tests, cache, check, tablet
 
 - [ ] **Step 1:** `scripts/solar-explore.test.mjs` — `hitRadius` floors at 0.9 for Mercury; `angleAt(earth, 365)` = full turn; module default export matches the manifest entry (`id`, `bestKey:null`, `keyboard:false`, meta equal).
-- [ ] **Step 2:** `APP_SHELL` + `CACHE_NAME` bump; both files in `runtimeFiles`; `node scripts/check.mjs` PASS (manifest guard sees `solar` precached).
+- [ ] **Step 2:** `APP_SHELL` + `CACHE_NAME` bump; both files in `runtimeFiles`; `node scripts/check.mjs` PASS. Two guards now in play (tech-spec §16.1): the manifest guard still requires `./js/games/solar.js` itself; the **import-graph precache guard** walks `solar.js` one level deep and requires `./js/games/solar-data.js`, `./js/games/solar-sim.js`, `./js/vendor/three.module.min.js`, `./js/vendor/OrbitControls.js` too — prove it by deleting `solar-sim.js` from `APP_SHELL` and re-running → FAIL naming `offline imports: js/games/solar.js imports ./solar-sim.js → js/games/solar-sim.js missing from sw.js APP_SHELL`; restore → PASS.
 - [ ] **Step 3: On the tablet (wifi off):** grid tile → scene; orbits at real ratios; camera clamped, double-tap reset; band warps time and the counter matches reality at Day 365; pop on Mercury laps; tap → pulse only; back → reopen works, no leaked loops; home-button → return recovers (host GL handling).
 - [ ] **Step 4: Commit**
 

@@ -68,6 +68,18 @@
     return picked;
   }
 
+  /* The daily-3 door (design.md §6). Only today's trio counts — replaying a
+     favourite game three times must never open the gate. */
+  function gateState(ctx){
+    const trio=ctx.trio||[], done=ctx.done||{};
+    const remaining=trio.filter(function(id){return !done[id];});
+    return {
+      open:!!ctx.bypass||remaining.length===0,
+      doneCount:trio.length-remaining.length,
+      remaining:remaining
+    };
+  }
+
   function buildRound(gameId,tier,rnd,override){
     const data=cat(override);
     const g=data.GAMES[gameId];
@@ -108,7 +120,7 @@
 
   const api={dseed:dseed,mulberry32:mulberry32,tierFor:tierFor,
     eligibleGames:eligibleGames,dailyThree:dailyThree,seededShuffle:seededShuffle,
-    buildRound:buildRound,scoreRound:scoreRound};
+    buildRound:buildRound,scoreRound:scoreRound,gateState:gateState};
   if(typeof window!=="undefined")window.SQBrainCore=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

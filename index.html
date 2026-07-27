@@ -401,7 +401,17 @@ button:disabled{cursor:default}
 .pinkey{font-size:1.3em;min-height:52px}
 .shake{animation:pinshake .4s}
 @keyframes pinshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
-.gameslocked #gameRow{display:none}
+.gameslocked #gameRow .gamecard{opacity:.58;filter:saturate(.7)}
+/* Brain gate: the trio stays tappable; the rest stays visible and opens the nudge. */
+.brainlocked #gameRow .gamecard:not(.brain){opacity:.58;filter:saturate(.7)}
+.brainnudge{display:block;width:100%;text-align:left;font:inherit;color:inherit;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#3D5E8C,#5B7FB8)}
+.brainnudge:active{transform:translateY(2px)}
+.btrio{display:flex;flex-wrap:wrap;gap:.4em;justify-content:center;margin:.6em 0}
+.btchip{background:rgba(255,255,255,.09);border-radius:12px;padding:.35em .6em;font-size:.85em}
+.btchip.done{opacity:.5}
+.todaytag{display:block;font-size:.72em;margin-top:.3em;color:var(--accent);font-weight:700}
+.todaytag.done{opacity:.6}
 .ptkid.on{background:var(--ok);color:#1c1436}
 .ptblk.on{background:var(--ok);color:#1c1436}
 .drillcard{max-width:380px;text-align:center}
@@ -599,6 +609,7 @@ const LEVELS = {
   race:   {icon:"🚀", title:"Word Racer", tz:"文字競速",      blurb:"Type fast for a score"},
   orc:    {icon:"⚔️", title:"Orc Attack", tz:"半獸人來襲",      blurb:"Type to defend the hero"},
   vocab:  {icon:"🧙", title:"Word Wizard", tz:"文字巫師",     blurb:"Learn English words"},
+  solar:  {icon:"🪐", title:"Solar System", tz:"太陽系",     blurb:"Explore the planets"},
   calc:   {icon:"➕", title:"Calculations", tz:"計算",      blurb:"Quick sums", brain:true},
   signs:  {icon:"❓", title:"Sign Finder", tz:"找符號",   blurb:"Find the missing sign", brain:true},
   lowhigh:{icon:"🔢", title:"Low to High", tz:"由小到大", blurb:"Remember and order",    brain:true},
@@ -609,6 +620,37 @@ const LEVELS = {
   wordmem:{icon:"🧠", title:"Word Memory", tz:"記單字",   blurb:"Remember the words",    brain:true},
   recall: {icon:"🔁", title:"Math Recall", tz:"記憶計算", blurb:"Answer the one before", brain:true},
 };
+/* Unified game metadata lookup. LEVELS carries inline and fallback tile metadata;
+   the manifest (js/games/index.js, published to window.SQManifest by main.js)
+   carries the registry-native module contract (solar: legacy:false).
+   This helper returns one shape — {icon,title,tz,blurb,brain} — for any id
+   the grid or levelChips might render, so renderHub and startGame can iterate
+   "known games" without every registry-native game getting a LEVELS stub.
+   Without it, solar's manifest entry never reached the grid and startGame
+   threw on LEVELS[lvl].brain once the kid tapped it. */
+function gameMeta(id){
+  const L=LEVELS[id];
+  if(L) return L;
+  const M=(window.SQManifest||[]).find(e=>e.id===id);
+  if(M) return {icon:M.meta.icon, title:M.meta.title, tz:M.meta.tz, blurb:M.meta.blurb, brain:!!M.brain};
+  return null;
+}
+function allGameIds(){
+  /* Manifest order is the documented grid order (js/games/CLAUDE.md); fall back
+     to Object.keys(LEVELS) only when main.js hasn't published yet. */
+  if(window.SQManifest && window.SQManifest.length)
+    return window.SQManifest.map(e=>e.id);
+  return Object.keys(LEVELS);
+}
+function renderGameSwitcher(id,lvl){
+  document.getElementById("levelChips").innerHTML=allGameIds().map(k=>{
+    const m=gameMeta(k); if(!m) return "";
+    return `<button class="chip ${k===lvl?'on':''}" data-l="${k}"
+      style="${k===lvl?`background:${KIDS[id].raw}`:''}">${m.icon} ${m.title}</button>`;
+  }).join("");
+  document.querySelectorAll("#levelChips .chip").forEach(c=>
+    c.onclick=()=>startGame(id,c.dataset.l));
+}
 /* English / emoji / French word packs */
 const VOCAB={
  animals:{icon:"🐾",name:"Animals",words:[["cat","🐱","le chat","貓"],["dog","🐶","le chien","狗"],["fish","🐟","le poisson","魚"],["bird","🐦","l'oiseau","鳥"],["horse","🐴","le cheval","馬"],["rabbit","🐰","le lapin","兔子"],["bear","🐻","l'ours","熊"],["lion","🦁","le lion","獅子"],["monkey","🐵","le singe","猴子"],["elephant","🐘","l'éléphant","大象"],["butterfly","🦋","le papillon","蝴蝶"],["frog","🐸","la grenouille","青蛙"],["sheep","🐑","le mouton","綿羊"],["pig","🐷","le cochon","豬"],["duck","🦆","le canard","鴨子"]]},
@@ -1109,9 +1151,15 @@ function renderSetbar(){
 /* ============ GAME FLOW ============ */
 function startGame(id,lvl){
   if(hubKid&&appLockReason(hubKid)){refreshAppLock();return;}
-  if(catLockReason(id,"games")){hubKid=id; hubTab="day"; saveAppPlace("hub"); renderHub(); bigFloat("🔒"); return;}
-  const ls=gameLockState();
-  if(ls.locked){showLockOverlay(ls.blockIdx);return;}
+  /* Brain Gym is the daily routine, not a game reward: it passes both the games
+     category lock and the games lock, or the door could never be opened.
+     Only a full Papa app-pause stops it. */
+  const isBrain=!!(gameMeta(lvl)&&gameMeta(lvl).brain);
+  if(!isBrain){
+    if(catLockReason(id,"games")){hubKid=id; hubTab="day"; saveAppPlace("hub"); renderHub(); bigFloat("🔒"); return;}
+    const ls=gameLockState();
+    if(ls.locked){showLockOverlay(ls);return;}
+  }
   stopArena();
   kid=id; level=lvl;
   hubKid=id; hubTab="games"; saveAppPlace("hub");
@@ -1119,17 +1167,20 @@ function startGame(id,lvl){
   document.getElementById("game").classList.remove("hidden");
   document.getElementById("back").textContent="← "+KIDS[id].name;
   document.documentElement.style.setProperty("--accent",KIDS[id].color);
-  buildKeyboard();
-  const noKb=(lvl==="city"||lvl==="dig");
+  /* Hide the on-screen keyboard when the game doesn't read keys. The manifest
+     carries authoritative `keyboard` flags (solar: false, hunt: true…); the
+     old cutelist `lvl==="city"||lvl==="dig"` is preserved as a fallback if
+     main.js hasn't published the manifest yet (deferred module load). */
+  const noEntry=(window.SQManifest||[]).find(e=>e.id===lvl);
+  const noKb=noEntry? !noEntry.keyboard : (lvl==="city"||lvl==="dig");
   document.getElementById("kb").classList.toggle("hidden",noKb);
   document.getElementById("legend").classList.toggle("hidden",noKb);
-  document.getElementById("levelChips").innerHTML=Object.entries(LEVELS).map(([k,v])=>
-    `<button class="chip ${k===lvl?'on':''}" data-l="${k}"
-      style="${k===lvl?`background:${KIDS[id].raw}`:''}">${v.icon} ${v.title}</button>`).join("");
-  document.querySelectorAll("#levelChips .chip").forEach(c=>
-    c.onclick=()=>startGame(id,c.dataset.l));
+  /* Arena game-switcher: manifest ids stay in sync with the home grid, so tapping
+     a solar chip mid-arcade launches the registry module via the same SQLoadGame
+     path — same gap as the grid: Object.entries(LEVELS) alone misses solar. */
+  renderGameSwitcher(id,lvl);
   renderSetbar();
-  if(LEVELS[lvl].brain){ startBrain(lvl); return; }
+  if(gameMeta(lvl)&&gameMeta(lvl).brain){ startBrain(lvl); return; }
   if(window.SQLoadGame){
     var pending=window.SQLoadGame(lvl);
     if(pending){
@@ -1144,12 +1195,21 @@ function startGame(id,lvl){
 function startRegistered(game){
   currentGame=game;
   var H=window.SQHost;
-  game.init({
+  var st=H.stage();
+  st.classList.add("arena");
+  st.innerHTML='<div class="msg">Loading... 載入中</div>';
+  var result=game.init({
     kid:kid, mount:H.mount(), stage:H.stage(),
     hud:hud, say:say, sayPair:sayPair, sfx:H.sfx, keys:H.keys, fx:H.fx,
     settings:settings, rand:rand, shuffle:shuffle,
     finish:function(res){ finishRegistered(game,res); }
   });
+  if(result&&result.catch){
+    result.catch(function(err){
+      console.error("game init failed: "+game.id,err);
+      st.innerHTML='<div class="msg">Still loading... 還在載入中</div>';
+    });
+  }
 }
 
 function finishRegistered(game,res){
@@ -1171,7 +1231,8 @@ function startLegacy(lvl){
   else if(lvl==="machines") initMachines();
   else if(lvl==="city") initCity();
   else if(lvl==="dig") initDig();
-  else initOrc();
+  else if(lvl==="orc") initOrc();
+  else wobbleMsg("Still loading... 還在載入中");
 }
 /* Brain Gym round (design.md §8). Bests live in progress[kid].best.brain_<id>. */
 function startBrain(gameId){
@@ -1195,15 +1256,35 @@ function finishBrain(k,res){
     if(store)store.setStat(k,bestKey,res.score);
     if(store&&res.ms>0)store.setStat(k,msKey,res.ms);
   }
-  showBrainResult(res,better);
+  /* daily-3 progress and the ⭐ for the set (design.md §6-§7) */
+  const day=todayStr();
+  brainToday(k);                       /* rolls p.brain over to today if stale */
+  const first=!p.brain.done[res.gameId];
+  p.brain.done[res.gameId]={score:res.score,ms:res.ms};
+  if(first&&store&&store.markBrainDone)store.markBrainDone(k,day,res.gameId,res.score,res.ms);
+  const gate=SQBrainCore.gateState({trio:brainTrio(k),done:p.brain.done,bypass:false});
+  let earned=false;
+  if(gate.open&&!p.brain.starred){
+    /* the ledger has no unique constraint, so p.brain.starred is what stops a
+       replay from awarding a second star */
+    p.brain.starred=true;
+    progress[k].stars=(progress[k].stars||0)+1;
+    noteStars(k,1,"Brain Gym 頭腦體操 · daily set 每日三項 · "+day);
+    earned=true;
+  }
+  saveProgress();
+  refreshLockUI();
+  if(earned){sWin();burst(60);star();}
+  showBrainResult(res,better,earned);
 }
-function showBrainResult(res,better){
+function showBrainResult(res,better,earned){
   const o=document.createElement("div");
   o.className="overlay"; o.id="brainResult";
   o.innerHTML=`<div class="card braincard">
     <div style="font-size:2.4em">${better?"🌟":"👏"}</div>
     <h3>${res.score} / ${res.total}${res.ms?" · "+SQBrain.fmtMs(res.ms):""}</h3>
     <p>${better?"New best! 新紀錄！":"Nice work! 做得好！"}</p>
+    ${earned?`<p>⭐ Brain Gym complete! 頭腦體操完成！<br>All games unlocked 🔓 遊戲全部解鎖</p>`:""}
     <div class="vrow">
       <button class="btn" id="brAgain">Again 再一次</button>
       <button class="btn small" id="brDone">Done 完成</button>
@@ -1232,18 +1313,23 @@ function goHome(){
 /* WebGL context-loss safety net (design.md §6). Tablets drop GL contexts on
    background/resume; without this a kid returns to a black screen. */
 var glLost=false;
-window.SQHost.mount().addEventListener("webglcontextlost",function(e){
-  e.preventDefault(); glLost=true;
-  wobbleMsg("One moment\u2026 \u7b49\u4e00\u4e0b\u5594");
-},true);
-window.SQHost.mount().addEventListener("webglcontextrestored",function(){
-  if(!glLost)return; glLost=false;
-  if(currentGame){ var g=currentGame;
-    try{ g.stop(); }catch(e){}
-    try{ startRegistered(g); return; }catch(e){ console.error(e); }
-  }
-  stopArena(); goHome();
-},true);
+/* DOMContentLoaded, not inline: window.SQHost is defined further down this same
+   script, so touching it here at parse time threw and aborted every line below
+   it \u2014 the app rendered nothing at all. */
+addEventListener("DOMContentLoaded",function(){
+  window.SQHost.mount().addEventListener("webglcontextlost",function(e){
+    e.preventDefault(); glLost=true;
+    wobbleMsg("One moment\u2026 \u7b49\u4e00\u4e0b\u5594");
+  },true);
+  window.SQHost.mount().addEventListener("webglcontextrestored",function(){
+    if(!glLost)return; glLost=false;
+    if(currentGame){ var g=currentGame;
+      try{ g.stop(); }catch(e){}
+      try{ startRegistered(g); return; }catch(e){ console.error(e); }
+    }
+    stopArena(); goHome();
+  },true);
+});
 
 const rand=a=>a[Math.floor(Math.random()*a.length)];
 const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
@@ -2437,12 +2523,33 @@ function bigFloat(txt){
   requestAnimationFrame(()=>{d.style.top="12%";d.style.opacity="0";d.style.fontSize="120px";});
   setTimeout(()=>d.remove(),900);
 }
-function showLockOverlay(blockIdx){
+function showLockOverlay(st){
   if(document.getElementById("lockOverlay"))return;
-  const b=DAY[blockIdx];
   const o=document.createElement("div");
   o.className="overlay"; o.id="lockOverlay";
-  o.innerHTML=`<div class="card" style="text-align:center;max-width:340px">
+  o.innerHTML=st.reason==="brain"?brainLockHtml():activityLockHtml(st.blockIdx);
+  document.body.appendChild(o);
+  const day=o.querySelector("#lockGoDay");
+  if(day)day.onclick=function(){o.remove();if(hubKid){hubTab="day";renderHub();}};
+  const gym=o.querySelector("#lockGoGym");
+  if(gym)gym.onclick=function(){
+    const id=activeKid(), next=brainGate(id).remaining[0];
+    o.remove(); if(next)startGame(id,next);
+  };
+  const papa=o.querySelector("#lockPapa");
+  if(papa)papa.onclick=function(){
+    if(st.reason==="brain"){
+      SQPin.show({title:"Open games today 今天開放遊戲",subtitle:"Skip today's Brain Gym 今天跳過頭腦體操",
+        onOk:function(){o.remove();openGamesToday(activeKid());}});
+      return;
+    }
+    SQPin.show({title:"Unlock games 解鎖遊戲",subtitle:"Rest of this block only 只到這個時段結束",
+      onOk:function(){lockOverride={day:todayStr(),blockIdx:st.blockIdx};o.remove();refreshLockUI();}});
+  };
+}
+function activityLockHtml(blockIdx){
+  const b=DAY[blockIdx];
+  return `<div class="card" style="text-align:center;max-width:340px">
     <div style="font-size:2.2em">${b.icon}</div>
     <h3>It's ${b.title.split("—")[0].trim()} time! ${(b.tz||"").split("——")[0].split("（")[0]}時間到了！</h3>
     <p>Games are resting 遊戲休息中 😌<br>Finish the activity, then tick it in My Day! 完成活動後在「我的一天」打勾！</p>
@@ -2451,13 +2558,39 @@ function showLockOverlay(blockIdx){
       <button class="btn small" id="lockPapa">🔧 Papa 爸爸</button>
     </div>
   </div>`;
-  document.body.appendChild(o);
-  o.querySelector("#lockGoDay").onclick=function(){o.remove();if(hubKid){hubTab="day";renderHub();}};
-  o.querySelector("#lockPapa").onclick=function(){
-    SQPin.show({title:"Unlock games 解鎖遊戲",subtitle:"Rest of this block only 只到這個時段結束",
-      onOk:function(){lockOverride={day:todayStr(),blockIdx:blockIdx};o.remove();refreshLockUI();}});
-  };
 }
+/* Invites, never scolds (design.md §7): no red, no countdown, no blame. */
+function brainLockHtml(){
+  const id=activeKid(), g=brainGate(id);
+  return `<div class="card" style="text-align:center;max-width:340px">
+    <div style="font-size:2.2em">🧠</div>
+    <h3>Brain Gym first! 先做頭腦體操！</h3>
+    <p>${g.doneCount} / ${g.doneCount+g.remaining.length} done today 今天完成 ${g.doneCount}/${g.doneCount+g.remaining.length} 😊<br>
+       About 3 minutes 大約三分鐘</p>
+    ${brainTrioStrip(id)}
+    <div class="vrow">
+      <button class="btn" id="lockGoGym">▶ Start 開始</button>
+      <button class="btn small" id="lockPapa">🔧 Papa 爸爸</button>
+    </div>
+  </div>`;
+}
+function brainTrioStrip(id){
+  const done=brainToday(id);
+  return `<div class="btrio">${brainTrio(id).map(function(x){
+    const L=LEVELS[x];
+    return `<span class="btchip${done[x]?" done":""}">${L.icon} ${L.title}<span class="zhs">${L.tz}</span></span>`;
+  }).join("")}</div>`;
+}
+/* Papa's PIN-gated skip for today, shared by the lock card and the Papa menu. */
+function openGamesToday(id){
+  if(!id)return;
+  if(store&&store.clearBrainGate)store.clearBrainGate(id,todayStr());
+  else{const fs=store&&store.familySettings;if(fs)fs["braingate_"+id]=todayStr();}
+  refreshLockUI();
+  if(hubKid)renderHub();
+  bigFloat("🔓");
+}
+window.sqOpenGamesToday=function(){openGamesToday(activeKid());};
 /* ---- Papa test mode: Papa PIN-gated, unlocks everything for today so Papa can try every function ---- */
 function isTestMode(){
   try{return localStorage.getItem("sq:testMode")===todayStr();}catch(e){return false;}
@@ -2500,7 +2633,10 @@ function lockedCategoryMessage(cat){
 }
 function leaveLockedCategory(){
   if(!hubKid)return;
-  if(!document.getElementById("game").classList.contains("hidden")&&catLockReason(hubKid,"games")){
+  /* Brain Gym passes the games category lock (see startGame), so it must not be
+     evicted by it either */
+  const inBrain=!!(level&&LEVELS[level]&&LEVELS[level].brain);
+  if(!inBrain&&!document.getElementById("game").classList.contains("hidden")&&catLockReason(hubKid,"games")){
     stopArena(); showOnly("hub"); hubTab="day"; saveAppPlace("hub"); renderHub(); return;
   }
   if(!document.getElementById("act").classList.contains("hidden")){
@@ -2607,16 +2743,42 @@ function timelineInfo(){return SQTime.timelineInfo(DAY,dayOverrides,nowMins());}
 let lockOverride=null; /* {day,blockIdx} — Papa PIN unlock, rest of that block only */
 function activeKid(){return hubKid||((typeof kid!=="undefined")&&kid)||null;}
 function passOkFor(id,i){return !!(id&&passFor(id,i,["granted","spent"]));}
+/* ---- Brain Gym gate (brain-gym design.md §6): today's three exercises are the
+   door to every other game. Self-healing shape so local-only mode works too. ---- */
+function brainToday(id){
+  const p=progress[id];
+  if(!p)return {};
+  if(!p.brain||typeof p.brain!=="object")p.brain={d:"",done:{},starred:false};
+  if(p.brain.d!==todayStr())p.brain={d:todayStr(),done:{},starred:false};
+  if(!p.brain.done)p.brain.done={};
+  return p.brain.done;
+}
+function brainTrio(id){
+  return SQBrainCore.dailyThree(id,todayStr(),(store&&store.familySettings)||{});
+}
+function brainBypass(id){
+  if(isTestMode())return true;
+  const fs=(store&&store.familySettings)||{};
+  if(fs["braingate_"+id]===todayStr())return true;
+  /* a granted golden/excused pass dated today opens the gate too (design.md §6) */
+  return !!passFor(id,null,["granted","spent"]);
+}
+function brainGate(id){
+  return SQBrainCore.gateState({trio:brainTrio(id),done:brainToday(id),bypass:brainBypass(id)});
+}
 function gameLockState(){
-  if(isTestMode())return {locked:false,blockIdx:null};
+  if(isTestMode())return {locked:false,blockIdx:null,reason:null};
   const id=activeKid();
   const done=id?dayState(id).done:{};
   const st=SQLock.computeLock({
     day:DAY,overrides:dayOverrides,now:nowMins(),done:done,passOk:function(i){return passOkFor(id,i);},
     redos:(id&&store&&store.redos&&store.redos[id])||{},
+    brainOpen:id?brainGate(id).open:true
   });
-  if(st.locked&&lockOverride&&lockOverride.day===todayStr()&&lockOverride.blockIdx===st.blockIdx)
-    return {locked:false,blockIdx:null};
+  /* the PIN override frees one activity block only — it must not open the brain
+     gate, whose blockIdx is also null (Papa has clearBrainGate for that) */
+  if(st.locked&&st.reason!=="brain"&&lockOverride&&lockOverride.day===todayStr()&&lockOverride.blockIdx===st.blockIdx)
+    return {locked:false,blockIdx:null,reason:null};
   if(!st.locked)lockOverride=null;
   return st;
 }
@@ -2780,7 +2942,7 @@ function renderMyDay(skipScroll){
   document.getElementById("dayTxt").textContent=done+" / "+total+(done>=total?"  — DAY COMPLETE! 全部完成！🌟":"");
   const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${escHtml(store.papaNote)}</div>`:"";
   document.getElementById("dayList").innerHTML=
-    note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div>`+
+    brainNudge(hubKid)+note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div>`+
     SQTime.displayOrder(DAY,dayOverrides).map(i=>{
       const b=DAY[i];
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
@@ -2847,6 +3009,23 @@ function renderMyDay(skipScroll){
       onFinish:function(){sWin();burst(30);if(!dayState(hubKid).done[PRACTICE_IDX])tickBlockDone(PRACTICE_IDX);}
     });
   });
+  const nudge=document.getElementById("brainNudge");
+  if(nudge)nudge.onclick=function(){
+    const next=brainGate(hubKid).remaining[0];
+    if(next)startGame(hubKid,next);
+  };
+}
+/* The daily routine has to be visible the moment a kid opens the app — the day
+   tab is where they land, and the games tab may be locked by Papa entirely. */
+function brainNudge(id){
+  if(isTestMode())return "";
+  const g=brainGate(id);
+  if(g.open)return "";
+  const total=g.doneCount+g.remaining.length;
+  return `<button class="dayhero brainnudge" id="brainNudge">🧠 Brain Gym first! 先做頭腦體操！
+    ${g.doneCount}/${total} done today — about 3 minutes. Tap to start! 😊
+    <span class="zhs" style="color:#BFE3CF">今天完成 ${g.doneCount}/${total}，大約三分鐘。點一下開始！</span>
+    ${brainTrioStrip(id)}</button>`;
 }
 async function requestPass(i){
   if(!store||!store.supabase){sBad();return;}
@@ -2934,8 +3113,10 @@ function startTimelineWatcher(){
       if(hubKid&&hubTab==="day") renderMyDay();
     }
     const ls=gameLockState();
-    if(ls.locked&&!document.getElementById("game").classList.contains("hidden")){
-      goHome(); showLockOverlay(ls.blockIdx);
+    /* never evict a kid from a Brain Gym round — it is what opens the lock */
+    const inBrain=!!(level&&LEVELS[level]&&LEVELS[level].brain);
+    if(ls.locked&&!inBrain&&!document.getElementById("game").classList.contains("hidden")){
+      goHome(); showLockOverlay(ls);
     }
     refreshAppLock();
     if(hubKid&&hubTab==="games")refreshLockUI();
@@ -2978,13 +3159,24 @@ function renderHub(){
   if(hubTab==="day") renderMyDay();
   if(hubTab==="ask") renderAsk();
   if(hubTab==="captain") renderCaptain();
-  /* games — the kid's own game first */
-  const order=[k.level,...Object.keys(LEVELS).filter(l=>l!==k.level)];
-  document.getElementById("gameRow").innerHTML=order.map(l=>
-    `<button class="gamecard ${l===k.level?'fav':''}" data-l="${l}"
+  /* games — today's Brain Gym trio first (it is the door), then the kid's own game.
+     Source-of-truth for the row is now the manifest (allGameIds), so a
+     registry-native game like solar — which has no inline LEVELS entry — still
+     renders. gameMeta() returns one shape that works for both inline and
+     manifest-only ids; if it ever doesn't find one, the tile is skipped rather
+     than throwing on undefined.icon. */
+  const trio=brainTrio(hubKid), bdone=brainToday(hubKid);
+  const order=trio.concat([k.level],allGameIds().filter(l=>trio.indexOf(l)<0&&l!==k.level))
+    .filter((l,i,a)=>a.indexOf(l)===i)
+    .filter(l=>gameMeta(l));
+  document.getElementById("gameRow").innerHTML=order.map(l=>{
+    const m=gameMeta(l);
+    return `<button class="gamecard ${l===k.level?'fav':''}${m.brain?' brain':''}" data-l="${l}"
       style="${l===k.level?`border-color:${k.raw}`:''}">
-      <span class="gi">${LEVELS[l].icon}</span><b>${LEVELS[l].title}</b>
-      <small>${LEVELS[l].blurb}<span class="zhs">${LEVELS[l].tz}</span></small>${l===k.level?'<span class="favtag">MY GAME</span>':''}</button>`).join("");
+      <span class="gi">${m.icon}</span><b>${m.title}</b>
+      <small>${m.blurb}<span class="zhs">${m.tz}</span></small>${l===k.level?'<span class="favtag">MY GAME</span>':''}${
+      trio.indexOf(l)>=0?`<span class="todaytag${bdone[l]?" done":""}">${bdone[l]?"✓ done 完成":"today 今天"}</span>`:""}</button>`;
+  }).join("");
   document.querySelectorAll("#gameRow .gamecard").forEach(c=>
     c.onclick=()=>startGame(hubKid,c.dataset.l));
   /* activities */
@@ -3009,12 +3201,21 @@ function refreshLockUI(){
       card.id="gamesLockCard"; card.className="dayhero";
       tab.insertBefore(card,tab.firstChild);
     }
-    const b=DAY[ls.blockIdx];
-    card.innerHTML=`${b.icon} It's ${b.title.split("—")[0].trim()} time — games are resting 遊戲休息中。 Tick it in My Day to unlock! 在「我的一天」打勾就能解鎖！`;
-    tab.classList.add("gameslocked");
+    if(ls.reason==="brain"){
+      const g=brainGate(hubKid);
+      card.innerHTML=`🧠 Brain Gym first! 先做頭腦體操！ ${g.doneCount}/${g.doneCount+g.remaining.length} today 今天 — tap a 🧠 game below to start! 點下面的頭腦遊戲開始！`;
+    }else{
+      const b=DAY[ls.blockIdx];
+      card.innerHTML=`${b.icon} It's ${b.title.split("—")[0].trim()} time — games are resting 遊戲休息中。 Tick it in My Day to unlock! 在「我的一天」打勾就能解鎖！`;
+    }
+    /* the brain lock must leave the brain games reachable — hiding the whole row
+       would lock the kid out of the very thing that opens the door */
+    tab.classList.toggle("gameslocked",ls.reason!=="brain");
+    tab.classList.toggle("brainlocked",ls.reason==="brain");
   }else{
     if(card)card.remove();
     tab.classList.remove("gameslocked");
+    tab.classList.remove("brainlocked");
   }
 }
 function openAct(i){
@@ -3427,7 +3628,7 @@ function restoreAppPlace(){
   openHub(savedKid);
 }
 if("serviceWorker" in navigator){
-  addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+  addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").then(reg=>reg.update()).catch(()=>{}));
 }
 /* ---- Bridge to the ESM host (design.md §3) ----
    Everything a migrated game is allowed to touch, handed over explicitly.
@@ -3446,8 +3647,15 @@ window.SQHost={
   rand:rand, shuffle:shuffle,
   saveProgress:saveProgress, noteStars:noteStars,
   stage:function(){return document.getElementById("stage");},
-  mount:function(){return document.getElementById("stage").parentNode;}
+  mount:function(){return document.getElementById("stage");}
 };
+
+addEventListener("sqmanifestready",function(){
+  const hub=document.getElementById("hub");
+  if(hubKid&&hub&&!hub.classList.contains("hidden"))renderHub();
+  const gameEl=document.getElementById("game");
+  if(kid&&level&&gameEl&&!gameEl.classList.contains("hidden"))renderGameSwitcher(kid,level);
+});
 
 (async()=>{ await loadProgress(); restoreAppPlace(); setupRealtime(); startTimelineWatcher(); refreshTestBanner(); })();
 </script>

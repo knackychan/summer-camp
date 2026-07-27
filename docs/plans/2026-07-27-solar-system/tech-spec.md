@@ -116,7 +116,20 @@ Every kid-facing string EN + 繁體中文, sourced from data/sim/quiz modules (g
 
 ## 16. Testing contract
 
-Node (headless): `solar-data` schema/anchors, `solar-sim` math, `solar-quiz` generation+grading, `solar.js` **named-export pure helpers** (`hitRadius`, `angleAt`, `statCells`, `factPool`) — the module must import in node without touching the vendor files (§1's dynamic-import rule exists for this). On-device (per-slice tablet tasks): scene, camera, focus rig, card, quiz, teardown, offline. `check.mjs` gates: `runtimeFiles`, bilingual blocks, manifest/sw guard.
+Node (headless): `solar-data` schema/anchors, `solar-sim` math, `solar-quiz` generation+grading, `solar.js` **named-export pure helpers** (`hitRadius`, `angleAt`, `statCells`, `factPool`) — the module must import in node without touching the vendor files (§1's dynamic-import rule exists for this). On-device (per-slice tablet tasks): scene, camera, focus rig, card, quiz, teardown, offline. `check.mjs` gates: `runtimeFiles`, bilingual blocks, manifest/sw guard, **import-graph precache guard** (see §16.1).
+
+### 16.1 Import-graph precache guard
+
+The manifest guard only proves a shipped game's *entry* module (`js/games/<id>.js`) lives in `APP_SHELL`. It says nothing about what that module then imports — so before this guard existed, `solar.js` statically pulled `./solar-data.js` / `./solar-sim.js` / `./solar-quiz.js` and dynamically pulled `../vendor/three.module.min.js` / `../vendor/OrbitControls.js`, and all five were precached by hand; nobody checked.
+
+`check.mjs` now walks **one level of relative imports** from every registered (`legacy:false`, non-brain) game module and asserts each resolved target also appears in `sw.js` `APP_SHELL`:
+
+- Regex captures specifiers from both `import … from "…"` and `import("…")`, anchored on `./` or `../` and ending `.js`/`.mjs` so interpolated loaders (`import("./games/" + id + ".js")` in `main.js`) and bare specifiers (`"three"`) are skipped by construction.
+- Path resolution is plain string `dir + spec` with `.` and `..` collapsed — no `URL` round-trip (Windows-safe, no root confusion).
+- Scope is the manifest's registered games, not every `runtimeFiles` entry. The `cube.js` `#devcube` probe is *not* a registered game (slice 21 constraint 4 — never in the grid/manifest) and stays out of `APP_SHELL` as designed; this guard does not touch it.
+- Failure category: `offline imports`, message `js/games/<id>.js imports <spec> → <resolved> missing from sw.js APP_SHELL`.
+
+Implication for new slices: the moment a new `js/games/<id>.js` statically or dynamically imports a new relative module, that module **must** land in `APP_SHELL` in the same commit or the build fails. Hand-precaching is still required for the entry, but forgetting a sibling no longer survives a green check.
 
 ## 17. Textures (D9, slice 34)
 

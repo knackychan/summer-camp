@@ -403,6 +403,30 @@ try {
   }
 }
 
+// Brain gate (plan 2026-07-26-brain-gym slice 11): the daily three are the door to the games
+if (!schemaSql.includes("create table if not exists brain_done")) {
+  fail("brain gate", "schema missing brain_done table");
+}
+if (!schemaSql.includes("kid braingate")) {
+  fail("brain gate", "schema missing the anon braingate policy");
+}
+if (!indexHtml.includes("brainGate") || !indexHtml.includes("brainTrio")) {
+  fail("brain gate", "kid app missing gate wiring");
+}
+if (!indexHtml.includes('reason==="brain"')) {
+  fail("brain gate", "lock overlay does not handle the brain reason");
+}
+if (!indexHtml.includes("brainNudge")) {
+  fail("brain gate", "day tab missing the Brain Gym prompt — kids would never see the routine");
+}
+// the gate hides the rest of the row; hiding the brain games too would deadlock the kid
+if (!indexHtml.includes(".brainlocked #gameRow .gamecard:not(.brain)")) {
+  fail("brain gate", "brain games are not exempt from the locked-row rule");
+}
+if (!/先做頭腦體操/.test(indexHtml)) {
+  fail("brain gate", "gate copy is missing its 中文 half");
+}
+
 if (!schemaSql.includes("create table if not exists help_claims")) {
   fail("captain", "schema missing help_claims table");
 }
@@ -476,19 +500,24 @@ if (!adminHtml.includes("helpClaims") && !/helpClaims/.test(readFileSync(new URL
   }
 }
 
-const syncTest = spawnSync(process.execPath, [fileURLToPath(new URL("sync.test.mjs", import.meta.url))], { encoding: "utf8" });
-if (syncTest.status !== 0) {
-  fail("sync tests", (syncTest.stderr || syncTest.stdout || "sync.test.mjs failed").trim());
-}
-
-const coreTest = spawnSync(process.execPath, ["--test", "scripts/core.test.mjs"], { cwd: root, encoding: "utf8" });
-if (coreTest.status !== 0) {
-  fail("core tests", (coreTest.stderr || coreTest.stdout || "node --test scripts/core.test.mjs failed").trim().split("\n").slice(-8).join("\n"));
-}
-
-const chatTest = spawnSync(process.execPath, ["--test", "scripts/chat-core.test.mjs"], { cwd: root, encoding: "utf8" });
-if (chatTest.status !== 0) {
-  fail("chat tests", (chatTest.stderr || chatTest.stdout || "node --test scripts/chat-core.test.mjs failed").trim().split("\n").slice(-8).join("\n"));
+// Every test file, discovered. Three were named here by hand while five others
+// (registry, solar-data, solar-sim, solar-explore, solar-quiz) sat in scripts/
+// passing but never run by the gate — a test nobody runs is a test nobody has.
+{
+  const testFiles = globSync("scripts/*.test.mjs", { cwd: fileURLToPath(root) })
+    .map((file) => file.replaceAll("\\", "/"))
+    .sort();
+  if (!testFiles.length) fail("tests", "no scripts/*.test.mjs found");
+  const run = spawnSync(process.execPath, ["--test", ...testFiles], { cwd: root, encoding: "utf8" });
+  if (run.status !== 0) {
+    const out = (run.stdout || "") + (run.stderr || "");
+    // Cut at node's "failing tests:" summary — it repeats every ✖ line already
+    // printed above it, which is how one failure reported itself three times.
+    const failing = [...new Set(
+      out.split("failing tests:")[0].split("\n").filter((line) => /^✖\s*\S/.test(line))
+    )].slice(0, 6);
+    fail("tests", failing.length ? failing.join(" | ") : out.trim().split("\n").slice(-8).join("\n"));
+  }
 }
 
 try {
@@ -792,15 +821,60 @@ try {
       fail("manifest", ev.id + ": migrated game missing from sw.js APP_SHELL");
     }
   }
+
+  // Import-graph precache guard (solar-system tech-spec §16.1). The manifest
+  // guard above only proves a shipped game's *entry* module is precached; it
+  // says nothing about what that module then imports. solar.js statically pulls
+  // ./solar-data.js / ./solar-sim.js / ./solar-quiz.js and dynamically pulls
+  // ../vendor/three.module.min.js / ../vendor/OrbitControls.js — all five were
+  // precached by hand until this walk made the imports prove it. One level deep
+  // (each registered game module → its direct relative specifiers). Bare
+  // specifiers ("three") and interpolated import("./games/" + id + ".js")
+  // can't be a cache path, so they're skipped by construction.
+  var IMPORT_RE = /\bimport\b[^'";`\n]*?["'`](\.\.?\/[^"'`\n]+\.(?:js|mjs))["'`]/g;
+  var resolveImport = function (fromFile, spec) {
+    var dir = fromFile.slice(0, fromFile.lastIndexOf("/") + 1);
+    var out = [];
+    for (var parts = (dir + spec).split("/"), i = 0; i < parts.length; i++) {
+      if (!parts[i] || parts[i] === ".") continue;
+      if (parts[i] === "..") { out.pop(); continue; }
+      out.push(parts[i]);
+    }
+    return out.join("/");
+  };
+  for (var ei3 = 0; ei3 < MANIFEST_D.length; ei3++) {
+    var ev3 = MANIFEST_D[ei3];
+    if (ev3.brain || ev3.legacy !== false) continue;
+    var gameFile = "js/games/" + ev3.id + ".js";
+    if (!existsSync(new URL(gameFile, root))) continue;
+    var gameText = readFileSync(new URL(gameFile, root), "utf8");
+    var im;
+    while ((im = IMPORT_RE.exec(gameText)) !== null) {
+      var resolved = resolveImport(gameFile, im[1]);
+      if (!swText.includes("./" + resolved)) {
+        fail("offline imports", gameFile + " imports " + im[1] + " \u2192 " + resolved + " missing from sw.js APP_SHELL");
+      }
+    }
+  }
 } catch (error) {
   fail("manifest load", error.message);
 }
 
 try {
+  var threeCoreUrl = new URL("js/vendor/three.core.min.js", root);
   var threeUrl = new URL("js/vendor/three.module.min.js", root);
   var orbitUrl = new URL("js/vendor/OrbitControls.js", root);
+  if (!existsSync(threeCoreUrl)) fail("vendor", "js/vendor/three.core.min.js is missing");
   if (!existsSync(threeUrl)) fail("vendor", "js/vendor/three.module.min.js is missing");
   if (!existsSync(orbitUrl)) fail("vendor", "js/vendor/OrbitControls.js is missing");
+  var swTextVendor = readFileSync(new URL("sw.js", root), "utf8");
+  ["three.core.min.js", "three.module.min.js", "OrbitControls.js"].forEach(function (file) {
+    if (!swTextVendor.includes("./js/vendor/" + file)) fail("vendor", "js/vendor/" + file + " missing from sw.js APP_SHELL");
+  });
+  var threeText = readFileSync(threeUrl, "utf8");
+  if (!/from\s*["']\.\/three\.core\.min\.js["']/.test(threeText)) {
+    fail("vendor", "three.module.min.js no longer imports ./three.core.min.js; update the vendor guard");
+  }
   var orbitText = readFileSync(orbitUrl, "utf8");
   if (/from\s+['"]three['"]/.test(orbitText) && !/from\s+['"]\.\/three\.module\.min\.js['"]/.test(orbitText)) {
     fail("vendor", "OrbitControls.js still has a bare 'three' import specifier");

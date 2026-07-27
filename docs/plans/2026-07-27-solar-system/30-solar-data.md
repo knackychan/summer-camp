@@ -275,7 +275,7 @@ try {
 
 - [ ] **Step 3: Precache and bump**
 
-Add `"./js/games/solar-data.js"` to `APP_SHELL` and bump `CACHE_NAME`. Offline non-negotiable: the file exists on disk → it is precached in the same commit.
+Add `"./js/games/solar-data.js"` to `APP_SHELL` and bump `CACHE_NAME`. Offline non-negotiable: the file exists on disk → it is precached in the same commit. (Note: at this point nothing imports `solar-data.js` yet, so the import-graph precache guard in `tech-spec §16.1` does not require it. Once slice 31's `solar.js` statically imports `./solar-data.js`, that import becomes the enforceable proof — forgetting to precache the file fails `check.mjs` automatically.)
 
 - [ ] **Step 4: Prove the guard guards**
 

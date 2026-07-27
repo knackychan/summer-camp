@@ -60,6 +60,7 @@ export default {
     if (!mount.style.position || mount.style.position === "static") {
       mount.style.position = "relative";
     }
+    mount.innerHTML = "";
 
     var canvas = document.createElement("canvas");
     canvas.style.display = "block";
@@ -70,11 +71,12 @@ export default {
     R.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
     R.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     R.renderer.setClearColor(0x191340);
-    canvas.width = mount.clientWidth;
-    canvas.height = mount.clientHeight;
+    var initialW = Math.max(mount.clientWidth || 640, 1);
+    var initialH = Math.max(mount.clientHeight || 320, 1);
+    R.renderer.setSize(initialW, initialH, false);
 
     R.scene = new THREE.Scene();
-    R.camera = new THREE.PerspectiveCamera(45, canvas.width / Math.max(canvas.height, 1), 0.1, 100);
+    R.camera = new THREE.PerspectiveCamera(45, initialW / initialH, 0.1, 100);
     R.camera.position.set(3, 2, 5);
     R.camera.lookAt(0, 0, 0);
 
@@ -90,10 +92,8 @@ export default {
 
     R.clock = new THREE.Clock();
     R.resize = function () {
-      var w = mount.clientWidth;
-      var h = mount.clientHeight;
-      canvas.width = w;
-      canvas.height = h;
+      var w = Math.max(mount.clientWidth || 640, 1);
+      var h = Math.max(mount.clientHeight || 320, 1);
       R.renderer.setSize(w, h, false);
       R.camera.aspect = w / Math.max(h, 1);
       R.camera.updateProjectionMatrix();

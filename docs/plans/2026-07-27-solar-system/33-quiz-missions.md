@@ -151,7 +151,7 @@ With devtools on the `game_stats` / `stars_ledger` traffic (or the local fallbac
 
 ## Task 3: Cache, check, tablet
 
-- [ ] **Step 1:** `APP_SHELL` gains `"./js/games/solar-quiz.js"`; `CACHE_NAME` bumped; `runtimeFiles` gains the file.
+- [ ] **Step 1:** `APP_SHELL` gains `"./js/games/solar-quiz.js"`; `CACHE_NAME` bumped; `runtimeFiles` gains the file. Note: once `solar.js` statically imports `./solar-quiz.js` (Task 2 wires the quiz runner through that import per tech-spec §1), the import-graph precache guard (§16.1) makes forgetting the carve-out fail the same way — delete the line from `APP_SHELL` and `check.mjs` reports `offline imports: js/games/solar.js imports ./solar-quiz.js → js/games/solar-quiz.js missing from sw.js APP_SHELL`.
 - [ ] **Step 2:** `node scripts/check.mjs` and `node --test scripts/solar-quiz.test.mjs` → PASS.
 - [ ] **Step 3: On the tablet (wifi off):** full mission end-to-end — spoken bilingual prompts, wrong tap coaches and lets the kid retry, stars burst on first-try corrects, end card shows the right count, Again deals a *different* 8. Close the game mid-mission: teardown clean, no stars written (finish never fired).
 - [ ] **Step 4: Commit**

@@ -7,6 +7,7 @@
 **Normative implementation bible:** `implementation-guidelines.md`
 **Interactive visual reference:** `design-preview.html`
 **Visual/UI agent execution prompt:** `visual-ui-agent-prompt.md`
+**Pixel motion amendment (pending approval):** `pixel-motion-amendment.md` — fixes sprite scale, snap rules, three motion-service helpers and the juice allow/denylist
 
 > Implementers: this document establishes product direction. `implementation-guidelines.md` fixes the visual tokens, component geometry, motion, audio, accessibility, scene API, state machine, failure behavior, offline rules and test budgets. A slice may narrow those rules but MUST NOT contradict them. Do not fill a missing art or architecture decision by taste; ask Papa.
 

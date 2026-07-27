@@ -11,6 +11,7 @@
       <div class="vrow" style="flex-direction:column;align-items:stretch;gap:12px;margin-top:20px">
         <button class="btn" id="ptResched">⏰ Reschedule today 調整今天時間</button>
         <button class="btn" id="ptOuting">🚶 Outing 出遊</button>
+        <button class="btn" id="ptBrain">🧠 Open games today 今天開放遊戲</button>
         <button class="btn" id="ptTest">${on?"🧪 Test mode: ON — tap to turn off":"🧪 Test mode 測試模式（今天解鎖全部）"}</button>
       </div>
       <button class="btn small" id="ptClose" style="margin-top:16px">Close 關閉</button>
@@ -20,6 +21,11 @@
     o.querySelector("#ptClose").onclick=function(){o.remove();};
     o.querySelector("#ptResched").onclick=function(){resched(o.querySelector("#ptBody"),"all");};
     o.querySelector("#ptOuting").onclick=function(){outing(o.querySelector("#ptBody"));};
+    /* skips today's Brain Gym for this kid — a bypass, never a completion */
+    o.querySelector("#ptBrain").onclick=function(){
+      if(window.sqOpenGamesToday)window.sqOpenGamesToday();
+      o.remove();
+    };
     o.querySelector("#ptTest").onclick=function(){
       if(window.sqTestMode)window.sqTestMode.set(!on);
       o.remove();

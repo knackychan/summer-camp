@@ -55,13 +55,21 @@ if (location.hash === "#devcube") {
 }
 
 /* Drift guard: the manifest and the inline LEVELS must agree while both exist.
-   Slice 20 deletes LEVELS and this check with it. */
+   Slice 20 deletes LEVELS and this check with it.
+   A migrated game (legacy:false) draws its meta from the manifest and never had
+   a LEVELS entry to drift from, so it is exempt — same rule scripts/check.mjs
+   applies. Without this, Solar System console.errored on every boot. */
 (function guard() {
   var L = window.SQHost && window.SQHost.LEVELS;
   if (!L) return;
-  var missing = MANIFEST.filter(function (e) { return !L[e.id]; }).map(function (e) { return e.id; });
+  var missing = MANIFEST.filter(function (e) { return e.legacy !== false && !L[e.id]; }).map(function (e) { return e.id; });
   var extra = Object.keys(L).filter(function (id) { return !findEntry(id); });
   if (missing.length || extra.length) {
     console.error("manifest/LEVELS drift — missing:", missing, "extra:", extra);
   }
 })();
+
+/* The inline app may restore straight into the Games tab before this deferred
+   module has published SQManifest. Let it redraw once the registry manifest is
+   definitely available, so registry-native tiles like solar appear on boot. */
+window.dispatchEvent(new CustomEvent("sqmanifestready", { detail: { manifest: MANIFEST } }));

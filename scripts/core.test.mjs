@@ -83,8 +83,12 @@ const LDAY = [
   { t: "✨", title: "Bonus", tz: "加碼" },
 ];
 const noPass = () => false;
-const lock = (now, done, passOk = noPass, overrides = {}, redos = {}) =>
-  SQLock.computeLock({ day: LDAY, overrides, now, done, passOk, redos });
+/* drops `reason` so the pre-gate expectations below stay readable — the reason
+   itself is asserted by the brain-gate tests further down */
+const lock = (now, done, passOk = noPass, overrides = {}, redos = {}) => {
+  const st = SQLock.computeLock({ day: LDAY, overrides, now, done, passOk, redos });
+  return { locked: st.locked, blockIdx: st.blockIdx };
+};
 
 test("locked during unticked activity block", () => {
   assert.deepEqual(lock(10 * 60 + 30, {}), { locked: true, blockIdx: 1 });
@@ -133,6 +137,65 @@ test("pass on redo block unlocks", () => {
 test("redo lock outranks current-block verdict", () => {
   // 12:10 lunch current+ticked, homework redo-flagged and unticked → locked by homework
   assert.deepEqual(lock(12 * 60 + 10, { 3: true }, noPass, {}, { 1: true }), { locked: true, blockIdx: 1 });
+});
+
+/* ---- Brain Gym gate (slice 11) ---- */
+const gateLock = (ctx) =>
+  SQLock.computeLock({ day: LDAY, overrides: {}, now: 10 * 60 + 30, passOk: noPass, redos: {}, ...ctx });
+
+test("gateState counts only today's trio", () => {
+  const trio = ["a", "b", "c"];
+  assert.deepEqual(SQBrainCore.gateState({ trio, done: {}, bypass: false }),
+    { open: false, doneCount: 0, remaining: ["a", "b", "c"] });
+  // a game outside the trio never counts toward the door
+  assert.deepEqual(SQBrainCore.gateState({ trio, done: { a: true, zz: true }, bypass: false }),
+    { open: false, doneCount: 1, remaining: ["b", "c"] });
+  const all = SQBrainCore.gateState({ trio, done: { a: 1, b: 1, c: 1 }, bypass: false });
+  assert.equal(all.open, true);
+  assert.deepEqual(all.remaining, []);
+});
+
+test("gateState opens on a bypass without touching the counter", () => {
+  const out = SQBrainCore.gateState({ trio: ["a", "b", "c"], done: { a: 1 }, bypass: true });
+  assert.equal(out.open, true);
+  assert.equal(out.doneCount, 1);
+});
+
+test("gateState opens when there is no trio at all", () => {
+  assert.equal(SQBrainCore.gateState({ trio: [], done: {}, bypass: false }).open, true);
+});
+
+test("dailyThree is stable per kid+day and three distinct games", () => {
+  const a = SQBrainCore.dailyThree("lucien", "2026-07-27", {});
+  assert.deepEqual(a, SQBrainCore.dailyThree("lucien", "2026-07-27", {}));
+  assert.equal(a.length, 3);
+  assert.equal(new Set(a).size, 3);
+  assert.notDeepEqual(a, SQBrainCore.dailyThree("lucien", "2026-07-28", {}));
+});
+
+test("computeLock reports a reason for every lock", () => {
+  assert.deepEqual(gateLock({ now: 9 * 60, done: {}, redos: { 3: 1 }, brainOpen: true }),
+    { locked: true, blockIdx: 3, reason: "redo" });
+  assert.deepEqual(gateLock({ done: {}, brainOpen: true }),
+    { locked: true, blockIdx: 1, reason: "activity" });
+  assert.deepEqual(gateLock({ done: { 1: 1 }, brainOpen: true }),
+    { locked: false, blockIdx: null, reason: null });
+});
+
+test("computeLock falls through to the brain gate once the day is clear", () => {
+  assert.deepEqual(gateLock({ done: { 1: 1 }, brainOpen: false }),
+    { locked: true, blockIdx: null, reason: "brain" });
+  // and before the first block of the day, when nothing else can lock
+  assert.deepEqual(gateLock({ now: 6 * 60, done: {}, brainOpen: false }),
+    { locked: true, blockIdx: null, reason: "brain" });
+});
+
+test("an activity lock outranks the brain gate", () => {
+  assert.equal(gateLock({ done: {}, brainOpen: false }).reason, "activity");
+});
+
+test("brainOpen defaults to open so pre-gate callers are unaffected", () => {
+  assert.equal(gateLock({ done: { 1: 1 } }).locked, false);
 });
 
 test("practice-day alternation is deterministic and roughly half", () => {

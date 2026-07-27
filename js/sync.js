@@ -95,6 +95,9 @@
     p.day.rr=p.day.rr||{};
     p.actsDay=p.actsDay||{d:"",done:{}};
     p.actsDay.done=p.actsDay.done||{};
+    /* Brain Gym daily set: {d, done:{gameId:{score,ms}}, starred} */
+    p.brain=p.brain&&typeof p.brain==="object"?p.brain:{d:"",done:{},starred:false};
+    p.brain.done=p.brain.done&&typeof p.brain.done==="object"?p.brain.done:{};
   }
 
   function normalize(progress){
@@ -170,7 +173,7 @@
       const day=todayISO();
       const p=normalize(this.progress);
 
-      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings},{data:overrides},{data:redos}]=await Promise.all([
+      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings},{data:overrides},{data:redos},{data:brain}]=await Promise.all([
         this.supabase.from("kids").select("id,pin"),
         this.supabase.from("day_ticks").select("kid_id,block_idx").eq("day",day),
         this.supabase.from("day_rolls").select("kid_id,block_idx,count").eq("day",day),
@@ -185,6 +188,7 @@
         this.supabase.from("family_settings").select("key,value"),
         this.supabase.from("day_overrides").select("kid_id,block_idx,t").eq("day",day),
         this.supabase.from("day_redos").select("kid_id,block_idx,note").eq("day",day),
+        this.supabase.from("brain_done").select("kid_id,day,game_id,score,ms").eq("day",day),
       ]);
 
       this.kidPins={};
@@ -213,12 +217,16 @@
       KIDS.forEach(kid=>{
         p[kid].day={d:day,done:{},rr:{}};
         p[kid].actsDay={d:day,done:{}};
+        /* keep `starred` across a same-day hydrate — it is the only guard against
+           awarding the daily ⭐ twice when a kid replays a trio game */
+        p[kid].brain={d:day,done:{},starred:p[kid].brain.d===day&&!!p[kid].brain.starred};
       });
       (ticks||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].day.done[r.block_idx]=true;});
       (rolls||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].day.rr[r.block_idx]=r.count||0;});
       (acts||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].actsDay.done[r.act_idx]=true;});
       (totals||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].stars=r.stars||0;});
       (vocab||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].vocab[r.word_key]=r.box||0;});
+      (brain||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].brain.done[r.game_id]={score:r.score||0,ms:r.ms||0};});
       this.applyStatRows(p,stats||[]);
       this.papaNote=note&&note.body?note.body:"";
 
@@ -239,6 +247,8 @@
           P.vocab[op.wordKey]=op.box||0;
         }else if(op.type==="stat"){
           if(op.stat==="missions") P.missions=op.value||0; else P.best[op.stat]=op.value||0;
+        }else if(op.type==="brainDone"&&op.day===day){
+          P.brain.done[op.gameId]={score:op.score||0,ms:op.ms||0};
         }
       });
 
@@ -401,6 +411,11 @@
           credited:!!op.credited
         });
         if(error&&error.code!=="23505") throw error;
+      }else if(op.type==="brainDone"){
+        const {error}=await this.supabase.from("brain_done").upsert({
+          kid_id:op.kid,day:op.day,game_id:op.gameId,score:op.score||0,ms:op.ms||null
+        },{onConflict:"kid_id,day,game_id"});
+        if(error) throw error;
       }else if(op.type==="famset"){
         /* update, not upsert — anon RLS only allows clearing applock_* keys */
         const {error}=await this.supabase.from("family_settings")
@@ -430,6 +445,16 @@
       saveJson("sq:famSettings",this.familySettings);
       this.enqueue({type:"famset",key,value});
       await this.flush();
+    }
+    async markBrainDone(kid,dayISO,gameId,score,ms){
+      this.enqueue({type:"brainDone",kid,day:dayISO,gameId,score,ms});
+      await this.flush();
+    }
+    /* Papa's "open games today" — the anon RLS policy only lets the tablet write
+       braingate_* keys, and setFamilySetting already updates locally first, so
+       the gate opens instantly with wifi off. */
+    async clearBrainGate(kid,dayISO){
+      await this.setFamilySetting("braingate_"+kid,dayISO);
     }
     async addStars(kid,delta,reason){
       this.enqueue({type:"stars",kid,delta,reason});
@@ -544,6 +569,13 @@
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`famset-${Date.now()}`)
         .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},p=>cb(p.new||p.old))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
+    onBrainDone(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`brain-${Date.now()}`)
+        .on("postgres_changes",{event:"*",schema:"public",table:"brain_done"},p=>cb(p.new||p.old))
         .subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }
