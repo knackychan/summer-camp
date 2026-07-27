@@ -8,11 +8,19 @@ import { buildMission, grade } from "./solar-quiz.js";
 
 var R = null;
 var STAR_TINTS = ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFE9C8", "#FFE9C8", "#C9D6FF"];
+var AVAILABLE_PHOTOS = {};
 
 /* ====== Pure helpers (exported for testing) ====== */
 
 export function hitRadius(size) { return Math.max(2.5 * size, 0.9); }
 export function angleAt(body, totalDays) { return (totalDays / body.yearDays) * Math.PI * 2; }
+export function focusDistance(id, size) { return id === "sun" ? 18 : Math.max(7, Math.min(24, size * 8)); }
+export function bodyOpacity(bodyId, focusId) {
+  if (!focusId || bodyId === focusId) return 1;
+  return focusId === "sun" ? 0.82 : 0.55;
+}
+export function photoIsVendored(path) { return !!AVAILABLE_PHOTOS[path]; }
+export function bodyNamePair(body) { return [body.name, body.tz]; }
 
 export function factPool(body, excludeIdx) {
   if (!body || !body.facts || !body.facts.length) return null;
@@ -384,7 +392,10 @@ export default {
     ic.querySelector("#icvoice").addEventListener("click", function () {
       if (R.focusCardId) {
         var bd = findBody(R.focusCardId);
-        if (bd) ctx.sayPair(bd.data.desc.en, bd.data.desc.tz);
+        if (bd) {
+          var pair = bodyNamePair(bd.data);
+          ctx.sayPair(pair[0], pair[1]);
+        }
       }
     });
 
@@ -556,14 +567,20 @@ export default {
       var imgEl = cEl.querySelector("#icimg");
       photoEl.classList.remove("fallback");
       photoEl.style.background = "#0d0a24";
-      imgEl.style.display = "";
-      imgEl.onerror = function () {
+      imgEl.removeAttribute("src");
+      function showFallbackPhoto() {
         imgEl.style.display = "none";
         photoEl.classList.add("fallback");
         var hex = "#" + b.color.toString(16).padStart(6, "0");
         photoEl.style.background = "radial-gradient(circle at 38% 34%, " + shade(hex, 0.35) + ", " + shade(hex, -0.45) + ")";
-      };
-      imgEl.src = b.photo;
+      }
+      imgEl.onerror = showFallbackPhoto;
+      if (photoIsVendored(b.photo)) {
+        imgEl.style.display = "";
+        imgEl.src = b.photo;
+      } else {
+        showFallbackPhoto();
+      }
 
       var cells = statCells(b);
       var gridHtml = "";
@@ -587,7 +604,6 @@ export default {
       var fact = bd.data.facts[idx];
       document.getElementById("icfact").textContent = fact.en;
       document.getElementById("icfacttz").textContent = fact.tz;
-      ctx.sayPair(fact.en, fact.tz);
     }
 
     function closeCard() {
@@ -595,7 +611,6 @@ export default {
       R.infocard.classList.add("hidden");
       if (R.focus) {
         R.focus = null;
-        var homeTarget = new THREE.Vector3(0, 0, 0);
         goHome(0.4);
       }
     }
@@ -607,6 +622,7 @@ export default {
       R.controls.maxPolarAngle = 1.2;
       R.controls.minPolarAngle = 0.5;
       R.focusStart = performance.now();
+      R.focusDuration = 1200;
       openCard(bodyEntry);
     }
 
@@ -704,9 +720,11 @@ export default {
       ctx.sfx.pop();
       var bd = findBody(bodyId);
       if (!bd) return;
+      var pair = bodyNamePair(bd.data);
+      ctx.sayPair(pair[0], pair[1]);
 
       if (R.focus && R.focus.id === bodyId) {
-        /* Tap on already-focused body: keep card, just pulse */
+        openCard(bd);
       } else if (R.focus) {
         /* Refocus on different body */
         closeCard();
@@ -781,7 +799,7 @@ export default {
       R.totalDays = advance(R.totalDays, dt * 1000, perSec);
 
       /* Update planet positions */
-      var focusWorldPos = null;
+      var focusWorldPos = R.focus && R.focus.id === "sun" ? new R.THREE.Vector3(0, 0, 0) : null;
       R.bodies.forEach(function (b) {
         var oc = orbitCount(R.totalDays, b.yearDays);
         var ang = b.startAngle + oc.angle;
@@ -791,12 +809,7 @@ export default {
         var spinRate = Math.max(0.05, Math.min(0.8, 0.5 * (24 / b.dayHours)));
         b.mesh.rotation.y += spinRate * dt;
 
-        /* Dim non-focused bodies */
-        if (R.focus) {
-          b.mesh.material.opacity = (b.id === R.focus.id) ? 1 : 0.35;
-        } else {
-          b.mesh.material.opacity = 1;
-        }
+        b.mesh.material.opacity = bodyOpacity(b.id, R.focus && R.focus.id);
 
         if (R.focus && b.id === R.focus.id) {
           focusWorldPos = new R.THREE.Vector3(ox, 0, oz);
@@ -805,11 +818,11 @@ export default {
 
       /* Focus rig */
       if (R.focus && focusWorldPos) {
-        R.controls.target.lerp(focusWorldPos, 0.15);
-        var focusDist = Math.max(40, R.focus.size * 10);
+        R.controls.target.lerp(focusWorldPos, 0.07);
+        var focusDist = focusDistance(R.focus.id, R.focus.size);
         var curDist = R.camera.position.distanceTo(R.controls.target);
         var targetDist = focusDist;
-        var t = Math.min(1, (performance.now() - R.focusStart) / 500);
+        var t = Math.min(1, (performance.now() - R.focusStart) / R.focusDuration);
         t = 1 - Math.pow(1 - t, 3);
         R.camera.position.copy(R.controls.target).add(
           R.camera.position.clone().sub(R.controls.target).normalize().multiplyScalar(curDist + (targetDist - curDist) * t)

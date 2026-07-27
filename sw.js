@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v23";
+const CACHE_NAME = "summer-quest-v30";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -30,6 +30,12 @@ const APP_SHELL = [
   "./js/games/solar-sim.js",
   "./js/games/solar-quiz.js",
   "./js/games/solar.js",
+  "./js/games/dig.js",
+  "./js/games/city.js",
+  "./js/games/hunt.js",
+  "./js/games/home.js",
+  "./js/games/race.js",
+  "./js/games/balloon.js",
   "./js/vendor/three.core.min.js",
   "./js/vendor/three.module.min.js",
   "./js/vendor/OrbitControls.js",
