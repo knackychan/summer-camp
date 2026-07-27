@@ -68,6 +68,9 @@
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const fmt=ts=>new Date(ts).toLocaleString([],{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
   const clock=t=>`${String(Math.floor(t/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`;
+  /* clock() takes minutes; DAY[i].t is a "8:00" string. Feeding the string
+     straight in printed NaN:NaN across the whole day board. */
+  const blockClock=t=>{var m=SQTime.parseMins(t);return m==null?esc(t||"--:--"):clock(m);};
   const timeOnly=ts=>new Date(ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
   const todayTicks=kid=>rows.ticks.filter(t=>t.kid_id===kid&&t.day===today);
   const tickFor=(kid,i)=>rows.ticks.find(t=>t.kid_id===kid&&t.day===today&&t.block_idx===i);
@@ -252,6 +255,7 @@
       renderProofs();
     }
     if(route==="stars"){
+      renderStarTotals();
       renderGrants();
       renderLedger();
     }
@@ -360,7 +364,7 @@
         return '<div class="board__h"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span><span class="star">'+stars+' ⭐</span></div>';
       }).join("")+
       DAY.map(function(b,i){
-        var rowsHtml='<div class="board__t">'+clock(b.t)+'<small>'+blockTitle(i)+'</small></div>';
+        var rowsHtml='<div class="board__t">'+blockClock(b.t)+'<small>'+esc(blockTitle(i))+'</small></div>';
         Object.keys(KIDS).forEach(function(kid){
           rowsHtml+=boardCell(kid,i);
         });
@@ -598,6 +602,25 @@
     await loadAll();
   }
 
+  /* ---- Star totals band ---- */
+  function renderStarTotals(){
+    var el=$("starTotals");
+    if(!el)return;
+    var todayStr=today;
+    el.innerHTML='<div class="band band--3">'+Object.entries(KIDS).map(function(e){
+      var id=e[0], k=e[1];
+      /* Still the sum of the ledger — read off the star_totals view, never a
+         counter we keep ourselves. */
+      var stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
+      var todayRows=rows.ledger.filter(function(r){return r.kid_id===id&&String(r.created_at||"").slice(0,10)===todayStr;});
+      var gained=todayRows.filter(function(r){return r.delta>0;}).reduce(function(s,r){return s+r.delta;},0);
+      var lost=todayRows.filter(function(r){return r.delta<0;}).reduce(function(s,r){return s+r.delta;},0);
+      return '<div class="k-'+id+'"><span class="lbl"><span class="who__m">'+esc(k.name[0])+'</span> '+esc(k.name)+'</span>'+
+        '<span class="band__v"><b class="num star">'+stars+'</b><span>⭐ total</span></span>'+
+        '<span class="band__sub">'+(gained?"+"+gained:"0")+' today'+(lost?" · "+lost+" revoked":"")+' · '+todayRows.length+' row'+(todayRows.length===1?"":"s")+'</span></div>';
+    }).join("")+'</div>';
+  }
+
   /* ---- Grants (per-kid reason) ---- */
   function renderGrants(){
     var el=$("grants");
@@ -606,7 +629,8 @@
       var id=e[0], k=e[1];
       var stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
       return '<div class="grant k-'+id+'">'+
-        '<span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span>'+
+        '<span class="grant__who"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span>'+
+        '<b class="star num grant__total">'+stars+' ⭐</b></span>'+
         '<label><span class="lbl" style="display:block;margin-bottom:4px">Reason (goes in the ledger)</span>'+
         '<input class="inp" id="grantReason-'+id+'" placeholder="e.g. helped with the dishes"></label>'+
         '<span class="grant__n">'+
@@ -614,10 +638,25 @@
           '<button class="btn btn--sm btn--primary" data-grant="'+id+'" data-delta="1">+1</button>'+
           '<button class="btn btn--sm" data-grant="'+id+'" data-delta="2">+2</button>'+
           '<button class="btn btn--sm" data-grant="'+id+'" data-delta="3">+3</button>'+
+          /* Custom amount is per-kid, like the reason. The old shared
+             #grantAmount meant typing a number for one kid and tapping ±
+             on another applied it to whoever you tapped. */
+          '<input class="inp num grant__amt" id="grantAmount-'+id+'" type="number" min="-20" max="20" step="1" placeholder="±" aria-label="Custom amount for '+esc(k.name)+'">'+
+          '<button class="btn btn--sm" data-grantcustom="'+id+'" title="Grant the custom amount">Apply</button>'+
         '</span></div>';
     }).join("");
     document.querySelectorAll("[data-grant]").forEach(function(b){
       b.onclick=function(){grantStars(b.dataset.grant,+b.dataset.delta);};
+    });
+    document.querySelectorAll("[data-grantcustom]").forEach(function(b){
+      b.onclick=function(){
+        var id=b.dataset.grantcustom;
+        var field=$("grantAmount-"+id);
+        var v=Math.round(+(field&&field.value)||0);
+        if(!v){toast("Type a custom amount first",false);return;}
+        if(v<-20||v>20){toast("Custom amount must be between −20 and 20",false);return;}
+        grantStars(id,v);
+      };
     });
   }
 
@@ -629,6 +668,8 @@
     if(error){writeFailed(error);return;}
     toast(`${delta>0?"+":""}${delta} ⭐ ${kidName(kid)} — saved`,true);
     if(input)input.value="";
+    var amt=$("grantAmount-"+kid);
+    if(amt)amt.value="";
     await loadAll();
   }
 
@@ -1297,7 +1338,7 @@
     var el=$("dayTemplate");
     if(!el)return;
     el.innerHTML='<table class="tbl"><thead><tr><th style="width:60px">#</th><th style="width:90px">Time</th><th>Block</th><th style="width:160px">繁體中文</th><th style="width:100px" class="r">Kind</th></tr></thead><tbody>'+
-      DAY.map(function(b,i){return '<tr><td data-l="#" class="num">'+(i+1)+'</td><td data-l="Time" class="num">'+clock(b.t)+'</td><td data-l="Block"><b>'+esc(b.title)+'</b></td><td data-l="中文" lang="zh-Hant">'+esc(b.tz||"")+'</td><td data-l="Kind" class="r">'+esc(b.kind||"")+'</td></tr>';}).join("")+'</tbody></table>';
+      DAY.map(function(b,i){return '<tr><td data-l="#" class="num">'+(i+1)+'</td><td data-l="Time" class="num">'+blockClock(b.t)+'</td><td data-l="Block"><b>'+esc(b.title)+'</b></td><td data-l="中文" lang="zh-Hant">'+esc(b.tz||"")+'</td><td data-l="Kind" class="r">'+esc(b.kind||"")+'</td></tr>';}).join("")+'</tbody></table>';
 
   }
 
