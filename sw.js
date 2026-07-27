@@ -1,9 +1,10 @@
-const CACHE_NAME = "summer-quest-v11";
+const CACHE_NAME = "summer-quest-v12";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./admin.html",
   "./css/admin-tokens.css",
+  "./css/admin-shell.css",
   "./css/admin.css",
   "./js/config.js",
   "./js/day.js",
@@ -16,8 +17,9 @@ const APP_SHELL = [
   "./js/pinpad.js",
   "./js/papa-tools.js",
   "./js/drills.js",
-  "./js/sync.js",
+  "./js/admin-nav.js",
   "./js/admin.js",
+  "./js/sync.js",
   "./js/brain-data.js",
   "./js/brain-core.js",
   "./js/brain-ui.js",
