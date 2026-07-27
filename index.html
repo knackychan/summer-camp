@@ -3037,9 +3037,12 @@ function renderLearn(){
   document.getElementById("qbGoogle").onclick=()=>qbGo("https://www.google.com/search?q=");
   qbCompose();
   /* guide cards */
+  /* same int key openLearn writes — the old 'L'+key lookup silently never
+     matched once completions moved to learnActIdx, so a finished guide never
+     showed its ✓ */
   document.getElementById("learnGrid").innerHTML=Object.entries(LEARN_GUIDES).map(([key,g])=>
-    `<button class="bankcard actcard ${done['L'+key]?'donetoday':''}" data-lg="${key}">
-      <div class="bt">${g.icon} ${g.title} ${done['L'+key]?'<span class="donetag">✓ today 今天完成</span>':''}
+    `<button class="bankcard actcard ${done[learnActIdx(key)]?'donetoday':''}" data-lg="${key}">
+      <div class="bt">${g.icon} ${g.title} ${done[learnActIdx(key)]?'<span class="donetag">✓ today 今天完成</span>':''}
         <span class="zhs">${g.tz}</span></div>
       <p>${g[hubKid].length} steps · step-by-step guide<span class="zhs">${g[hubKid].length}個步驟——一步一步教你</span></p></button>`).join("");
   document.querySelectorAll("#learnGrid [data-lg]").forEach(c=>c.onclick=()=>openLearn(c.dataset.lg));
