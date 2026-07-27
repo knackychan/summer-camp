@@ -12,11 +12,24 @@
      (kid-facing reasons below stay bilingual). */
   const UNLABELLED="Unlabelled — check the app";
 
-  /* A "best score" stat: the six existing games, or any brain-gym key.
-     Prefix rule on purpose — adding a brain game must not require editing sync.js. */
+  /* Which game_stats keys are best scores.
+
+     sync.js is a plain global script and cannot import the game registry
+     (design.md §5), so main.js injects the registry's predicate at boot via
+     setBestStatCheck. Until it does, the original six-name whitelist applies,
+     which keeps this file correct on its own and keeps its tests honest.
+
+     brain_* is checked unconditionally: the Brain Gym does not go through the
+     arcade registry, and its keys must survive whatever is injected. */
+  var bestStatCheck=null;
+  function defaultBestStat(key){
+    return key==="balloon"||key==="race"||key==="orc"||
+      key==="shop"||key==="city"||key==="dig";
+  }
   function isBestStat(key){
-    return key==="balloon"||key==="race"||key==="orc"||key==="shop"||
-      key==="city"||key==="dig"||key.indexOf("brain_")===0;
+    if(!key)return false;
+    if(key.indexOf("brain_")===0)return true;
+    return bestStatCheck?!!bestStatCheck(key):defaultBestStat(key);
   }
 
   const clone=value=>JSON.parse(JSON.stringify(value));
@@ -75,12 +88,6 @@
     progress[kid]=progress[kid]||{stars:0,best:{},vocab:{},missions:0,day:{d:"",done:{},rr:{}}};
     const p=progress[kid];
     p.best=p.best&&typeof p.best==="object"?p.best:{};
-    p.best.balloon=p.best.balloon||0;
-    p.best.race=p.best.race||0;
-    p.best.orc=p.best.orc||0;
-    p.best.shop=p.best.shop||0;
-    p.best.city=p.best.city||0;
-    p.best.dig=p.best.dig||0;
     p.vocab=p.vocab||{};
     p.missions=p.missions||0;
     p.day=p.day||{d:"",done:{},rr:{}};
@@ -135,6 +142,17 @@
       store.last=clone(store.progress);
       store.startFlush();
       return store;
+    }
+
+    /* One row of game_stats -> one field of progress. Pulled out of hydrate()
+       so it can be tested on its own (slice 16). */
+    applyStatRows(progress,rows){
+      (rows||[]).forEach(function(r){
+        if(!r||!r.kid_id)return;
+        ensureKid(progress,r.kid_id);
+        if(isBestStat(r.stat)) progress[r.kid_id].best[r.stat]=r.value||0;
+        if(r.stat==="missions") progress[r.kid_id].missions=r.value||0;
+      });
     }
 
     startFlush(){
@@ -201,11 +219,7 @@
       (acts||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].actsDay.done[r.act_idx]=true;});
       (totals||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].stars=r.stars||0;});
       (vocab||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].vocab[r.word_key]=r.box||0;});
-      (stats||[]).forEach(r=>{
-        ensureKid(p,r.kid_id);
-        if(isBestStat(r.stat)) p[r.kid_id].best[r.stat]=r.value||0;
-        if(r.stat==="missions") p[r.kid_id].missions=r.value||0;
-      });
+      this.applyStatRows(p,stats||[]);
       this.papaNote=note&&note.body?note.body:"";
 
       // spec: hydration merges server rows, then the local queue replays anything pending
@@ -548,6 +562,10 @@
       return ()=>this.supabase.removeChannel(ch);
     }
   }
+
+  SyncStore.setBestStatCheck=function(fn){
+    bestStatCheck=typeof fn==="function"?fn:null;
+  };
 
   window.SyncStore=SyncStore;
 })();

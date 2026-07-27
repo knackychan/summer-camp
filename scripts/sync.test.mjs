@@ -220,4 +220,70 @@ const seedProgress = () => ({});
   console.log("ok - brain best scores round-trip through hydration and diffing");
 }
 
+// --- Legacy high scores must survive the persistence refactor (slice 16) ---
+{
+  var localStorage3 = makeLocalStorage();
+  var SyncStore3 = loadSyncStore(localStorage3);
+  var store3 = new SyncStore3({ progress: {} });
+  var progress3 = {};
+
+  store3.applyStatRows(progress3, [
+    { kid_id: "lili", stat: "balloon", value: 12 },
+    { kid_id: "lili", stat: "race", value: 40 },
+    { kid_id: "lili", stat: "orc", value: 7 },
+    { kid_id: "lili", stat: "shop", value: 22 },
+    { kid_id: "lili", stat: "city", value: 3 },
+    { kid_id: "lili", stat: "dig", value: 9 },
+    { kid_id: "lili", stat: "missions", value: 5 },
+    { kid_id: "lili", stat: "bogus_key", value: 99 },
+  ]);
+
+  assert.equal(progress3.lili.best.balloon, 12, "balloon best lost");
+  assert.equal(progress3.lili.best.race, 40, "race best lost");
+  assert.equal(progress3.lili.best.orc, 7, "orc best lost");
+  assert.equal(progress3.lili.best.shop, 22, "shop best lost");
+  assert.equal(progress3.lili.best.city, 3, "city best lost");
+  assert.equal(progress3.lili.best.dig, 9, "dig best lost");
+  assert.equal(progress3.lili.missions, 5, "missions lost");
+  assert.equal(progress3.lili.best.bogus_key, undefined, "unknown stat must not be stored");
+  console.log("ok - legacy high scores hydrate");
+}
+
+// --- Injected best-stat predicate (slice 16) ---
+{
+  var localStorage4 = makeLocalStorage();
+  var SyncStore4 = loadSyncStore(localStorage4);
+
+  // Default: unchanged whitelist, so sync.js is correct with no registry present.
+  var plain4 = new SyncStore4({ progress: {} });
+  var p1 = {};
+  plain4.applyStatRows(p1, [
+    { kid_id: "luis", stat: "orc", value: 30 },
+    { kid_id: "luis", stat: "rocket", value: 11 },
+  ]);
+  assert.equal(p1.luis.best.orc, 30);
+  assert.equal(p1.luis.best.rocket, undefined, "unregistered key must be ignored by default");
+
+  // Injected: a new game's key is recognised without editing sync.js.
+  SyncStore4.setBestStatCheck(function (key) { return key === "rocket" || key === "orc"; });
+  var injected4 = new SyncStore4({ progress: {} });
+  var p2 = {};
+  injected4.applyStatRows(p2, [
+    { kid_id: "luis", stat: "rocket", value: 11 },
+    { kid_id: "luis", stat: "balloon", value: 4 },
+  ]);
+  assert.equal(p2.luis.best.rocket, 11, "injected predicate not consulted");
+  assert.equal(p2.luis.best.balloon, undefined, "injected predicate must fully replace the default");
+
+  // brain_* keys survive whatever is injected — the gym does not go through the registry.
+  SyncStore4.setBestStatCheck(function (key) { return key === "rocket"; });
+  var brain4 = new SyncStore4({ progress: {} });
+  var p3 = {};
+  brain4.applyStatRows(p3, [{ kid_id: "lili", stat: "brain_calc", value: 18 }]);
+  assert.equal(p3.lili.best.brain_calc, 18, "brain_ prefix must be unconditional");
+
+  SyncStore4.setBestStatCheck(null); // restore for any later test in this file
+  console.log("ok - best-stat predicate is injectable");
+}
+
 console.log("sync tests passed");

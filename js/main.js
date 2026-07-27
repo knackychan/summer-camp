@@ -6,6 +6,13 @@ import { MANIFEST, findEntry } from "./games/index.js";
 window.SQGames = SQGames;
 window.SQManifest = MANIFEST;
 
+/* sync.js cannot import us, so hand it the predicate (design.md §5). */
+if (window.SyncStore && window.SyncStore.setBestStatCheck) {
+  window.SyncStore.setBestStatCheck(function (key) {
+    return SQGames.isBest(key) || MANIFEST.some(function (e) { return e.bestKey === key; });
+  });
+}
+
 /* Lazily load and register one game module. Returns the game, or null when the
    id has no module yet — that is the normal case for a game still living in
    index.html, and the caller falls back to the legacy path. */

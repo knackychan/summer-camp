@@ -873,7 +873,10 @@ const ROWS=["1234567890","qwertyuiop","asdfghjkl","zxcvbnm"];
 
 /* ============ STATE ============ */
 let sound=true, kid=null, level=null, kb={}, state={}, currentGame=null;
-const newProg=()=>({stars:0,best:{balloon:0,race:0,orc:0,shop:0,city:0,dig:0},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
+/* best is filled lazily — bestOf() already treats a missing key as 0, and
+   seeding names here was the fifth of the seven edit points a new game used
+   to need (design.md Context). */
+const newProg=()=>({stars:0,best:{},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
 let progress={lucien:newProg(),lili:newProg(),luis:newProg()};
 const bestOf=(id,mode)=>{const b=progress[id].best; return (b&&typeof b==="object")?(b[mode]||0):0;};
 const heroBest=id=>{const lvl=KIDS[id].level;
