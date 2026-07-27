@@ -334,8 +334,8 @@
         var stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
         return '<div class="board__h"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span><span class="star">'+stars+' ⭐</span></div>';
       }).join("")+
-      Object.keys(KIDS).length?scheduleOrder("lucien").map(function(i){
-        var rowsHtml='<div class="board__t">'+clock(i<DAY.length?DAY[i].t||0:0)+'<small>'+blockTitle(i)+'</small></div>';
+      DAY.map(function(b,i){
+        var rowsHtml='<div class="board__t">'+clock(b.t)+'<small>'+blockTitle(i)+'</small></div>';
         Object.keys(KIDS).forEach(function(kid){
           rowsHtml+=boardCell(kid,i);
         });

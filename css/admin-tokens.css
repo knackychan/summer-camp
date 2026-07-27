@@ -1,26 +1,68 @@
+/* ============================================================
+   Palette swap: edit ONE block (L1) and run `node scripts/check.mjs`.
+   L2 and everything below it are hands-off.
+   ============================================================ */
+
 /* ---------- L1 · primitives · edit this block to reskin ---------- */
 :root {
-  --p-ground:      #17132A;
-  --p-sheet:       #241E3D;
-  --p-sheet-2:     #2A2348;
-  --p-sheet-3:     #151127;
-  --p-ink:         #F8F4FF;
-  --p-ink-2:       #D3D5E8;
-  --p-ink-3:       #B7B9D6;
-  --p-rule:        #3A3359;
-  --p-rule-2:      #3A3359;
-  --p-signal:      #FFC93C;
-  --p-signal-ink:  #17132A;
-  --p-focus:       #FFC93C;
-  --p-alert:       #FF7A90;
-  --p-warn:        #FFC93C;
-  --p-good:        #3DDC97;
-  --p-star:        #FFC93C;
-  --p-kid-1:       #3DDC97;
-  --p-kid-2:       #FF6FB5;
-  --p-kid-3:       #4EA8FF;
-  --p-shadow:      #000;
-  --p-backdrop:    #0A0814;
+  /* Ground */
+  --p-ground:      #EBEEF1;
+  --p-sheet:       #FFFFFF;
+  --p-sheet-2:     #F6F8F9;
+  --p-sheet-3:     #EFF1F3;
+  --p-ink:         #14181D;
+  --p-ink-2:       #4C555F;
+  --p-ink-3:       #6E7880;
+  --p-rule:        #DCE1E6;
+  --p-rule-2:      #C2CAD1;
+  /* Signalling */
+  --p-signal:      #14181D;
+  --p-signal-ink:  #FFFFFF;
+  --p-focus:       #1857C4;
+  /* Status */
+  --p-alert:       #B42318;
+  --p-alert-bg:    #FEF3F2;
+  --p-warn:        #92400E;
+  --p-warn-bg:     #FEF6E7;
+  --p-good:        #0F7C55;
+  --p-good-bg:     #ECFAF3;
+  --p-star:        #A16207;
+  /* Kids — re-tinted for light ground */
+  --p-kid-1:       #0F7C55;
+  --p-kid-2:       #B3306E;
+  --p-kid-3:       #1857C4;
+  --p-shadow:      rgba(20, 24, 29, 0.06);
+  --p-backdrop:    #0C1014;
+}
+
+/* Light values for dark scheme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --p-ground:      #0D1114;
+    --p-sheet:       #161B20;
+    --p-sheet-2:     #1D242A;
+    --p-sheet-3:     #202830;
+    --p-ink:         #E7ECEF;
+    --p-ink-2:       #A5AFB7;
+    --p-ink-3:       #7C868E;
+    --p-rule:        #262E35;
+    --p-rule-2:      #39434B;
+    --p-signal:      #E7ECEF;
+    --p-signal-ink:  #10151A;
+    --p-focus:       #79A9FF;
+    --p-alert:       #FF8A7A;
+    --p-alert-bg:    #2A1614;
+    --p-warn:        #F0B45E;
+    --p-warn-bg:     #2A1F0F;
+    --p-good:        #4ED9A0;
+    --p-good-bg:     #0F2620;
+    --p-star:        #F0C24B;
+    --p-kid-1:       #3DDC97;
+    --p-kid-2:       #FF6FB5;
+    --p-kid-3:       #6BB6FF;
+    --p-shadow:      rgba(0, 0, 0, 0.5);
+    --p-backdrop:    #0A0D0F;
+  }
 }
 
 /* ---------- L2 · semantics · components use ONLY these ---------- */
@@ -29,6 +71,7 @@
   --surface-sheet:     var(--p-sheet);
   --surface-sheet-2:   var(--p-sheet-2);
   --surface-inset:     var(--p-sheet-3);
+  --text-invert:       #FFFFFF;
   --text-1:            var(--p-ink);
   --text-2:            var(--p-ink-2);
   --text-3:            var(--p-ink-3);
@@ -38,17 +81,31 @@
   --action-fg:         var(--p-signal-ink);
   --focus-ring:        var(--p-focus);
   --status-late:       var(--p-alert);
+  --status-late-bg:    var(--p-alert-bg);
   --status-now:        var(--p-warn);
+  --status-now-bg:     var(--p-warn-bg);
   --status-done:       var(--p-good);
+  --status-done-bg:    var(--p-good-bg);
   --star:              var(--p-star);
   --kid-lucien:        var(--p-kid-1);
   --kid-lili:          var(--p-kid-2);
   --kid-luis:          var(--p-kid-3);
-  --shadow-colour:     var(--p-shadow);
+  --shadow:            0 1px 2px var(--p-shadow), 0 8px 24px -12px rgba(20, 24, 29, 0.28);
   --backdrop:          var(--p-backdrop);
+  --r:                 4px;
+  --pad:               20px;
+  --top-h:             56px;
+  --nav-w:             232px;
+  --dock-w:            372px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.8);
+  }
 }
 
 /* ---------- kid identity classes ---------- */
-.k-lucien { --kid-color: var(--kid-lucien); }
-.k-lili   { --kid-color: var(--kid-lili); }
-.k-luis   { --kid-color: var(--kid-luis); }
+.k-lucien { --kid: var(--kid-lucien); }
+.k-lili   { --kid: var(--kid-lili); }
+.k-luis   { --kid: var(--kid-luis); }
