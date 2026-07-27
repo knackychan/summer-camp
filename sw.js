@@ -1,8 +1,9 @@
-const CACHE_NAME = "summer-quest-v10";
+const CACHE_NAME = "summer-quest-v11";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./admin.html",
+  "./css/admin-tokens.css",
   "./css/admin.css",
   "./js/config.js",
   "./js/day.js",

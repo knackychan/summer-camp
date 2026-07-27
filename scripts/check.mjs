@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -304,6 +304,58 @@ try {
   }
 } catch (error) {
   fail("git scan", error.message);
+}
+
+// L1 token leak: no --p-* outside admin-tokens.css
+{
+  const cssDir = new URL("css/", root);
+  if (existsSync(cssDir)) {
+    const cssFiles = readdirSync(cssDir).filter(f => /^admin.*\.css$/.test(f));
+    for (const file of cssFiles) {
+      if (file.includes("admin-tokens")) continue;
+      const text = readFileSync(new URL(`css/${file}`, root), "utf8");
+      const lines = text.split("\n");
+      lines.forEach((line, i) => {
+        if (/--p-[a-z0-9-]+/.test(line)) {
+          fail("admin tokens: L1 leak", `css/${file}:${i + 1} references --p-*`);
+        }
+      });
+    }
+  }
+}
+
+// Colour literals in admin CSS (outside tokens file)
+{
+  const cssDir = new URL("css/", root);
+  if (existsSync(cssDir)) {
+    const cssFiles = readdirSync(cssDir).filter(f => /^admin.*\.css$/.test(f));
+    for (const file of cssFiles) {
+      if (file.includes("admin-tokens")) continue;
+      const text = readFileSync(new URL(`css/${file}`, root), "utf8");
+      const lines = text.split("\n");
+      lines.forEach((line, i) => {
+        if (/#[0-9A-Fa-f]{3,8}\b/.test(line) || /\brgba?\(/.test(line) || /\bhsla?\(/.test(line)) {
+          if (/color-mix\(in srgb,\s*var\(--/.test(line)) return;
+          fail("admin tokens: colour literal in CSS", `css/${file}:${i + 1} "${line.trim()}"`);
+        }
+      });
+    }
+  }
+}
+
+// Colour literals in admin JS
+{
+  const adminJsPath = new URL("js/admin.js", root);
+  if (existsSync(adminJsPath)) {
+    const text = readFileSync(adminJsPath, "utf8");
+    const lines = text.split("\n");
+    lines.forEach((line, i) => {
+      if (/#[0-9A-Fa-f]{3,8}\b/.test(line) || /\brgba?\(/.test(line) || /\bhsla?\(/.test(line)) {
+        if (/color-mix\(in srgb,\s*var\(--/.test(line)) return;
+        fail("admin tokens: colour literal in JS", `js/admin.js:${i + 1} "${line.trim()}"`);
+      }
+    });
+  }
 }
 
 if (failures.length) {

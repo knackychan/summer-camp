@@ -1,9 +1,9 @@
 (function(){
   const CDN="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
   const KIDS={
-    lucien:{name:"Lucien",color:"#3DDC97"},
-    lili:{name:"Lili",color:"#FF6FB5"},
-    luis:{name:"Luis",color:"#4EA8FF"}
+    lucien:{name:"Lucien"},
+    lili:{name:"Lili"},
+    luis:{name:"Luis"}
   };
   const DAY=window.SQ_DAY_DATA||[];
   const BANK=window.SQ_ACT_DATA||[];
@@ -307,7 +307,7 @@
       const covered=coveredSet(id);
       const stars=(rows.totals.find(t=>t.kid_id===id)||{}).stars||0;
       const missions=(rows.stats.find(s=>s.kid_id===id)||{}).value||0;
-      return `<article class="kid-card" style="--kid-color:${k.color}">
+      return `<article class="kid-card k-${id}">
         <div class="schedule-head">
           <div>
             <h2 class="card-title">${k.name}</h2>
@@ -315,7 +315,7 @@
           </div>
           <span class="pill">${covered.size}/${DAY.length} blocks</span>
         </div>
-        <div class="progress"><div class="progress__fill" style="width:${covered.size/DAY.length*100}%;background:${k.color}"></div></div>
+        <div class="progress"><div class="progress__fill" style="width:${covered.size/DAY.length*100}%"></div></div>
         <div class="schedule-list" data-schedule="${id}">
           ${scheduleOrder(id).map(i=>scheduleBlock(id,i,done,redo)).join("")}
         </div>
@@ -552,7 +552,7 @@
     $("grants").innerHTML=Object.entries(KIDS).map(function(e){
       const id=e[0], k=e[1];
       const stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
-      return `<div class="grant-row" style="--kid-color:${k.color}">
+      return `<div class="grant-row k-${id}">
         <div class="grant-row__who">
           <b>${esc(k.name)}</b>
           <span class="gold">⭐ ${stars}</span>
@@ -643,7 +643,7 @@
             <button class="btn btn--danger" data-revokeact="${id}" data-acti="${a.act_idx}">Revoke ⭐</button>
           </div>`).join("")
         : `<p class="compact-copy">Nothing ticked yet today</p>`;
-      return `<article class="kid-card" style="--kid-color:${k.color}">
+      return `<article class="kid-card k-${id}">
         <h3>${k.name}</h3>
         <p class="compact-copy">${mine.length} activity star${mine.length===1?"":"s"} today</p>
         ${list}
@@ -759,7 +759,7 @@
       const total=mine.reduce(function(s,r){return s+r.delta;},0);
       const chips=[...byKind.values()].sort(function(a,b){return b.stars-a.stars;})
         .map(function(c){return `<span class="pill">${esc(c.label)} ${c.stars}⭐ ×${c.n}</span>`;}).join("");
-      return `<div class="ledger-summary__kid" style="--kid-color:${k.color}">
+      return `<div class="ledger-summary__kid k-${id}">
         <b>${esc(k.name)}</b> <span class="gold">+${total}⭐ today</span>
         <div class="chat-filters">${chips||`<span class="pill">nothing yet</span>`}</div>
       </div>`;
@@ -818,8 +818,8 @@
   function renderLedgerRecent(){
     const recent=rows.ledger.slice(0,8);
     $("ledgerRecent").innerHTML=recent.length?recent.map(function(r){
-      const k=KIDS[r.kid_id]||{name:r.kid_id,color:"var(--blue)"};
-      return `<div class="ledger-row" style="--kid-color:${k.color}">
+      const k=KIDS[r.kid_id]||{name:r.kid_id};
+      return `<div class="ledger-row k-${r.kid_id}">
         <span class="muted">${timeOnly(r.created_at)}</span>
         <span class="ledger-row__delta ${r.delta>0?"gold":"bad"}">${r.delta>0?"+":""}${r.delta}</span>
         <span class="ledger-row__why"><b>${esc(k.name)}</b> ${esc(starKind(r).label)} ${esc(r.reason)}</span>
@@ -850,8 +850,7 @@
       return [e[0],e[1].name];
     })).map(function(pair){
       const on=chatFilters.kid===pair[0];
-      return `<button class="chip ${on?"is-on":""}" data-chatkid="${pair[0]}"
-        style="--kid-color:${KIDS[pair[0]]?KIDS[pair[0]].color:"var(--blue)"}"
+      return `<button class="chip ${on?"is-on":""} ${KIDS[pair[0]]?"k-"+pair[0]:""}" data-chatkid="${pair[0]}"
         aria-pressed="${on}">${esc(pair[1])}</button>`;
     }).join("");
     $("chatKidFilter").innerHTML=kidBtns;
@@ -884,7 +883,7 @@
   }
 
   function chatRowHtml(row){
-    const k=KIDS[row.kidId]||{name:row.kidId,color:"var(--blue)"};
+    const k=KIDS[row.kidId]||{name:row.kidId};
     const when=timeOnly(row.at);
     if(row.type==="system"){
       const label=row.meta.event==="tick"?`✓ ${blockTitle(row.meta.blockIdx)} ${blockTz(row.meta.blockIdx)}`
@@ -900,14 +899,14 @@
       </article>`;
     }
     if(row.type==="photo"){
-      return `<article class="bubble bubble--kid" style="--kid-color:${k.color}">
+      return `<article class="bubble bubble--kid k-${row.kidId}">
         <div class="bubble__meta">${esc(k.name)} · ${when} · 📷 ${esc(blockTitle(row.meta.blockIdx))}</div>
         <img class="thumb" src="${proofUrl(row.meta.path)}" alt="Photo proof">
       </article>`;
     }
     if(row.type==="claim"){
       const done=row.meta.status!=="requested";
-      return `<article class="bubble bubble--kid bubble--action" style="--kid-color:${k.color}">
+      return `<article class="bubble bubble--kid bubble--action k-${row.kidId}">
         <div class="bubble__meta">${esc(k.name)} · captain · ${when}</div>
         <p>Helped ${esc(kidName(row.meta.helped))} — ${esc(row.body)}</p>
         ${done
@@ -919,7 +918,7 @@
     if(row.type==="pass"){
       const done=row.meta.status!=="requested";
       const kindLabel=row.meta.kind==="golden"?"Golden":"Excused";
-      return `<article class="bubble bubble--kid bubble--action" style="--kid-color:${k.color}">
+      return `<article class="bubble bubble--kid bubble--action k-${row.kidId}">
         <div class="bubble__meta">${esc(k.name)} · 🎟 ${kindLabel} · ${when}</div>
         <p>${esc(blockTitle(row.meta.blockIdx))} ${esc(blockTz(row.meta.blockIdx))} — ${esc(row.body||"no reason")}</p>
         ${done
@@ -929,7 +928,7 @@
       </article>`;
     }
     /* type === "ask" */
-    return `<article class="bubble bubble--kid ${row.archived?"is-archived":""}" style="--kid-color:${k.color}">
+    return `<article class="bubble bubble--kid ${row.archived?"is-archived":""} k-${row.kidId}">
       <div class="bubble__meta">${esc(k.name)} · ${esc(row.meta.kind)} · ${when}</div>
       <p>${esc(row.body||"Voice memo")}</p>
       ${row.audio?`<audio class="audio" controls src="${publicUrl(row.audio)}"></audio>`:""}
@@ -1118,7 +1117,7 @@
       <span></span>${days.map(d=>`<span class="muted">${d.slice(5)}</span>`).join("")}
       ${Object.entries(KIDS).map(([id,k])=>`<b>${k.name}</b>${days.map(d=>{
         const c=counts.get(`${id}:${d}`)||0, pct=c/DAY.length;
-        return `<span class="heat-cell" style="background:rgba(61,220,151,${Math.max(.08,pct)})">${c}</span>`;
+        return `<span class="heat-cell" style="background:color-mix(in srgb,var(--status-done) ${Math.max(8,pct*100)}%,transparent)">${c}</span>`;
       }).join("")}`).join("")}
     </div>`;
   }
@@ -1129,7 +1128,7 @@
       const feedback=pinFeedback[id]||{};
       const isSet=!!row.pin, pending=feedback.type==="pending";
       const displayPin=feedback.value!==undefined?feedback.value:(row.pin||"");
-      return `<article class="kid-card pin-card ${isSet?"is-set":""}" style="--kid-color:${k.color}">
+      return `<article class="kid-card pin-card ${isSet?"is-set":""} k-${id}">
         <div class="pin-card__head">
           <h3>${k.name}</h3>
           <span class="status-pill ${isSet?"status-pill--ok":"status-pill--muted"}">${isSet?"PIN set":"No PIN"}</span>
@@ -1221,7 +1220,7 @@
       const cats=LOCK_CATS.filter(function(c){return c[0]!=="captain"||id==="luis";});
       const lockedCount=cats.filter(function(c){return (fs[`catlock_${id}_${c[0]}`]||"")!=="";}).length;
       const summary=paused?"⏸ paused":lockedCount?`🔒 ${lockedCount} locked`:"free";
-      return `<details class="lock-row ${paused?"is-paused":""}" style="--kid-color:${k.color}">
+      return `<details class="lock-row ${paused?"is-paused":""} k-${id}">
         <summary><b>${esc(k.name)}</b> <span class="muted">${summary}</span></summary>
         <div class="lock-row__body">
           <button class="btn ${paused?"":"btn--danger"}" data-applock="${id}" data-paused="${paused?1:0}">

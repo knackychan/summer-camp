@@ -1,0 +1,54 @@
+/* ---------- L1 · primitives · edit this block to reskin ---------- */
+:root {
+  --p-ground:      #17132A;
+  --p-sheet:       #241E3D;
+  --p-sheet-2:     #2A2348;
+  --p-sheet-3:     #151127;
+  --p-ink:         #F8F4FF;
+  --p-ink-2:       #D3D5E8;
+  --p-ink-3:       #B7B9D6;
+  --p-rule:        #3A3359;
+  --p-rule-2:      #3A3359;
+  --p-signal:      #FFC93C;
+  --p-signal-ink:  #17132A;
+  --p-focus:       #FFC93C;
+  --p-alert:       #FF7A90;
+  --p-warn:        #FFC93C;
+  --p-good:        #3DDC97;
+  --p-star:        #FFC93C;
+  --p-kid-1:       #3DDC97;
+  --p-kid-2:       #FF6FB5;
+  --p-kid-3:       #4EA8FF;
+  --p-shadow:      #000;
+  --p-backdrop:    #0A0814;
+}
+
+/* ---------- L2 · semantics · components use ONLY these ---------- */
+:root {
+  --surface-page:      var(--p-ground);
+  --surface-sheet:     var(--p-sheet);
+  --surface-sheet-2:   var(--p-sheet-2);
+  --surface-inset:     var(--p-sheet-3);
+  --text-1:            var(--p-ink);
+  --text-2:            var(--p-ink-2);
+  --text-3:            var(--p-ink-3);
+  --border-hairline:   var(--p-rule);
+  --border-strong:     var(--p-rule-2);
+  --action-bg:         var(--p-signal);
+  --action-fg:         var(--p-signal-ink);
+  --focus-ring:        var(--p-focus);
+  --status-late:       var(--p-alert);
+  --status-now:        var(--p-warn);
+  --status-done:       var(--p-good);
+  --star:              var(--p-star);
+  --kid-lucien:        var(--p-kid-1);
+  --kid-lili:          var(--p-kid-2);
+  --kid-luis:          var(--p-kid-3);
+  --shadow-colour:     var(--p-shadow);
+  --backdrop:          var(--p-backdrop);
+}
+
+/* ---------- kid identity classes ---------- */
+.k-lucien { --kid-color: var(--kid-lucien); }
+.k-lili   { --kid-color: var(--kid-lili); }
+.k-luis   { --kid-color: var(--kid-luis); }
