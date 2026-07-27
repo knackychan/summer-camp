@@ -7,6 +7,13 @@
   };
   const DAY=window.SQ_DAY_DATA||[];
   const BANK=window.SQ_ACT_DATA||[];
+  /* Games default to locked (Papa, 2026-07-27): no catlock row yet reads as
+     locked; Papa grants a pass by setting the value to "unlocked", not by
+     clearing it. Every other category keeps the old any-value-locks rule. */
+  const catIsLocked=function(fs,id,cat){
+    var v=fs['catlock_'+id+'_'+cat]||"";
+    return cat==="games"?v!=="unlocked":v!=="";
+  };
   const LOCK_CATS=[
     ["games","Games"],
     ["acts","Activities"],
@@ -20,6 +27,16 @@
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={}, adminPinFeedback={};
   let overridesRaw={}, dragState=null;
+  /* Day board time editing. boardScope says what a time change applies to:
+     "all" = everyone today, a kid id = that kid today, "template" = every day
+     from now on. timeDrag holds a live gutter drag so a realtime event cannot
+     re-render the board out from under Papa's finger. */
+  const TEMPLATE_KEY="day_template_times";
+  const BOARD_SCOPES=[["all","Everyone"],["lucien","Lucien"],["lili","Lili"],["luis","Luis"]];
+  /* Pixels of drag per 5-minute step. Tune to taste: lower = faster travel,
+     higher = finer control. 4px puts a full hour at ~48px, roughly one board row. */
+  const DRAG_PX=4;
+  let boardScope="all", timeDrag=null;
   let browserNotifyEnabled=localStorage.getItem("sq-admin-notify")==="1";
   const silentRealtime=new Map();
   let currentRoute="today";
@@ -234,6 +251,9 @@
     (overrides.data||[]).forEach(function(r){
       (overridesRaw[r.kid_id]=overridesRaw[r.kid_id]||{})[r.block_idx]=r.t;
     });
+    /* Stamp the everyday template onto DAY before anything renders, so DAY[i].t
+       is the real base a today-override is measured against. */
+    SQTime.applyTemplate(DAY,templateMap());
     /* The note lives in module state, not in the DOM. Seeding #noteBody here
        silently did nothing: renderNote() creates that textarea, so on load it
        does not exist yet and the saved message never reached the editor. */
@@ -394,18 +414,37 @@
   }
 
   /* ---- Overview / Day board ---- */
+  function templateMap(){
+    var row=rows.familySettings.find(function(x){return x.key===TEMPLATE_KEY;});
+    return SQTime.parseTemplate(row&&row.value);
+  }
+  /* Times as the current scope sees them. In template scope there are no
+     day-overrides to layer — DAY already carries the template. */
+  function scopeEff(){
+    if(boardScope==="template")return {};
+    return SQTime.resolveOverrides(overridesRaw,boardScope==="all"?null:boardScope);
+  }
+  function scopeLabel(){
+    if(boardScope==="template")return "every day";
+    return boardScope==="all"?"everyone today":kidName(boardScope)+" today";
+  }
+
   function renderOverview(){
     var el=$("overview");
     if(!el)return;
+    if(timeDrag)return; /* a live drag owns the DOM until the finger lifts */
+    renderBoardScope();
+    var eff=scopeEff();
+    var info=SQTime.timelineInfo(DAY,eff,SQ_DAY.nowMins());
     el.innerHTML='<div class="board">'+
-      '<div class="board__h" data-kid="all"><span class="lbl">Time</span></div>'+
+      '<div class="board__h" data-kid="all"><span class="lbl">Time</span><span class="lbl board__scope">'+esc(scopeLabel())+'</span></div>'+
       Object.keys(KIDS).map(function(id){
         var k=KIDS[id];
         var stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
         return '<div class="board__h"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span><span class="star">'+stars+' ⭐</span></div>';
       }).join("")+
-      DAY.map(function(b,i){
-        var rowsHtml='<div class="board__t">'+blockClock(b.t)+'<small>'+esc(blockTitle(i))+'</small></div>';
+      SQTime.displayOrder(DAY,eff).map(function(i){
+        var rowsHtml=boardTime(i,eff,info);
         Object.keys(KIDS).forEach(function(kid){
           rowsHtml+=boardCell(kid,i);
         });
@@ -413,6 +452,40 @@
       }).join("")+
     '</div>';
     bindScheduleBlocks();
+    bindTimeEdit();
+  }
+
+  /* The time gutter is the schedule editor. The grip ripple-drags this block
+     and every later one (running late moves the rest of the day, and no two
+     blocks can ever collide); the field sets this one block alone. */
+  function boardTime(i,eff,info){
+    var mins=SQTime.effMins(DAY,eff,i);
+    var moved=boardScope==="template"?(DAY[i].t0!==undefined&&DAY[i].t!==DAY[i].t0):eff[i]!=null;
+    var label=blockTitle(i);
+    var body=mins==null
+      ? '<span class="board__fixed">'+esc(DAY[i].t||"--")+'</span>'
+      : '<span class="board__grab" data-tdrag="'+i+'" tabindex="0" role="button" '+
+          'aria-label="'+esc(label)+' starts '+clock(mins)+'. Drag or use arrow keys to move this and every later block."'+
+          '><span class="board__grip" aria-hidden="true">⋮⋮</span><b data-tclock="'+i+'">'+clock(mins)+'</b></span>'+
+        '<input class="board__time" type="time" step="300" value="'+clock(mins)+'" data-tset="'+i+'" aria-label="Set start time for '+esc(label)+'">';
+    return '<div class="board__t'+(i===info.current?" is-now":"")+'">'+body+
+      '<small>'+esc(label)+'</small>'+
+      (moved?'<em class="board__moved">'+(boardScope==="template"?"changed":"moved")+'</em>':'')+
+    '</div>';
+  }
+
+  function renderBoardScope(){
+    var el=$("boardScope");
+    if(!el)return;
+    el.innerHTML='<span class="lbl">Change times for</span>'+
+      BOARD_SCOPES.map(function(s){
+        return '<button class="chip" data-bscope="'+s[0]+'" aria-pressed="'+(boardScope===s[0])+'">'+esc(s[1])+'</button>';
+      }).join("")+
+      '<span class="board__sep" aria-hidden="true"></span>'+
+      '<button class="chip" data-bscope="template" aria-pressed="'+(boardScope==="template")+'" title="Edits the everyday plan, not just today">Every day</button>';
+    el.querySelectorAll("[data-bscope]").forEach(function(b){
+      b.onclick=function(){boardScope=b.dataset.bscope;renderOverview();};
+    });
   }
 
   function scheduleOrder(kid){
@@ -513,6 +586,91 @@
 
   function clearDropTargets(){
     document.querySelectorAll(".is-drop-target").forEach(function(x){x.classList.remove("is-drop-target");});
+  }
+
+  /* ---- Time gutter: ripple drag + precise field ---- */
+
+  function rippleFrom(i,eff){return SQTime.ripple(DAY,eff,i);}
+
+  function previewRipple(rip,delta){
+    rip.group.forEach(function(x){
+      var el=document.querySelector('[data-tclock="'+x.i+'"]');
+      if(el)el.textContent=clock(x.t+delta);
+    });
+  }
+
+  function bindTimeEdit(){
+    document.querySelectorAll("[data-tdrag]").forEach(function(grab){
+      grab.onpointerdown=function(e){
+        if(e.button)return;
+        var rip=rippleFrom(+grab.dataset.tdrag,scopeEff());
+        if(!rip)return;
+        e.preventDefault();
+        timeDrag=rip;
+        var y0=e.clientY, delta=0;
+        grab.setPointerCapture(e.pointerId);
+        grab.classList.add("is-dragging");
+        grab.onpointermove=function(ev){
+          delta=SQTime.clampDelta(rip,Math.round((ev.clientY-y0)/DRAG_PX/5)*5);
+          previewRipple(rip,delta);
+        };
+        grab.onpointerup=grab.onpointercancel=function(){
+          grab.onpointermove=grab.onpointerup=grab.onpointercancel=null;
+          grab.classList.remove("is-dragging");
+          timeDrag=null;
+          if(delta)shiftRipple(rip,delta); else renderOverview();
+        };
+      };
+      /* Same ripple, 5 minutes a press — the coarse-pointer and keyboard path. */
+      grab.onkeydown=function(e){
+        if(e.key!=="ArrowUp"&&e.key!=="ArrowDown")return;
+        e.preventDefault();
+        var rip=rippleFrom(+grab.dataset.tdrag,scopeEff());
+        if(!rip)return;
+        var delta=SQTime.clampDelta(rip,e.key==="ArrowUp"?-5:5);
+        if(delta)shiftRipple(rip,delta);
+      };
+    });
+    document.querySelectorAll("[data-tset]").forEach(function(inp){
+      inp.onchange=function(){
+        var mins=SQTime.parseMins(inp.value);
+        if(mins==null){renderOverview();return;}
+        saveTimes([{i:+inp.dataset.tset,t:mins}]);
+      };
+    });
+  }
+
+  function shiftRipple(rip,delta){
+    saveTimes(rip.group.map(function(x){return {i:x.i,t:x.t+delta};}));
+  }
+
+  /* One write path for both scopes: today's day_overrides row per block, or a
+     single template map covering every day from now on. */
+  async function saveTimes(entries){
+    if(!entries.length)return;
+    if(boardScope==="template")return saveTemplateTimes(entries);
+    var kid=boardScope;
+    const results=await Promise.all(entries.map(function(e){
+      return saveBlockTime(kid,e.i,clock(e.t),true);
+    }));
+    const err=results.find(function(r){return r&&r.error;});
+    if(err){writeFailed(err.error);return;}
+    toast(entries.length>1?`Day shifted — ${scopeLabel()}`:`Time saved — ${scopeLabel()}`,true);
+    await loadAll();
+  }
+
+  async function saveTemplateTimes(entries){
+    var map=templateMap();
+    entries.forEach(function(e){
+      var v=clock(e.t);
+      if(SQTime.parseMins(v)===SQTime.parseMins(DAY[e.i].t0))delete map[e.i];
+      else map[e.i]=v;
+    });
+    const {error}=await client.from("family_settings")
+      .upsert({key:TEMPLATE_KEY,value:JSON.stringify(map),updated_at:new Date().toISOString()});
+    if(error){writeFailed(error);return;}
+    toast("Saved for every day from now on",true);
+    await loadAll();
   }
 
   async function saveDraggedOrder(kid,fromBlock,toBlock){
@@ -1389,7 +1547,7 @@
       var covered=coveredSet(id).size;
       var paused=(fs["applock_"+id]||"")!=="";
       var cats=LOCK_CATS.filter(function(c){return c[0]!=="captain"||id==="luis";});
-      var lockedCount=cats.filter(function(c){return (fs['catlock_'+id+'_'+c[0]]||"")!=="";}).length;
+      var lockedCount=cats.filter(function(c){return catIsLocked(fs,id,c[0]);}).length;
       var lockSummary=lockedCount?'<span class="tag tag--late">'+lockedCount+' locked</span>':'<span class="tbl__note">None</span>';
       var pinRow=rows.kids.find(function(x){return x.id===id;});
       var hasPin=pinRow&&pinRow.pin;
@@ -1428,8 +1586,9 @@
       '<div class="sheet__pad">'+
       '<span class="lbl" style="display:block;margin-bottom:8px">Category locks</span>'+
       '<div class="chips">'+cats.map(function(c){
-        var locked=(fs['catlock_'+kid+'_'+c[0]]||"")!=="";
-        return '<button class="chip" aria-pressed="'+(locked?"true":"false")+'" data-catlock="'+kid+':'+c[0]+'" data-locked="'+(locked?1:0)+'">'+esc(c[1])+(locked?" · locked":"")+'</button>';
+        var locked=catIsLocked(fs,kid,c[0]);
+        var label=c[0]==="games"&&!locked?" · pass":locked?" · locked":"";
+        return '<button class="chip" aria-pressed="'+(locked?"true":"false")+'" data-catlock="'+kid+':'+c[0]+'" data-locked="'+(locked?1:0)+'">'+esc(c[1])+label+'</button>';
       }).join("")+'</div>'+
       '<p class="field__hint" style="margin-top:9px">My Day, guides, Learn and the ask channel stay open in every state except a full pause.</p>'+
       '<div class="grid-2" style="margin-top:18px">'+
@@ -1454,10 +1613,11 @@
     };});
     document.querySelectorAll("[data-catlock]").forEach(function(b){b.onclick=async function(){
       var parts=b.dataset.catlock.split(":"), id=parts[0], cat=parts[1], locked=b.dataset.locked==="1";
+      var value=cat==="games"?(locked?"unlocked":""):(locked?"":"1");
       suppressRealtime("family_settings",{key:'catlock_'+id+'_'+cat});
-      const {error}=await client.from("family_settings").upsert({key:'catlock_'+id+'_'+cat,value:locked?"":"1",updated_at:new Date().toISOString()});
+      const {error}=await client.from("family_settings").upsert({key:'catlock_'+id+'_'+cat,value,updated_at:new Date().toISOString()});
       if(error){writeFailed(error);return;}
-      toast(kidName(id)+" "+cat+" "+(locked?"unlocked":"locked"),true);
+      toast(kidName(id)+" "+cat+" "+(locked?(cat==="games"?"pass granted":"unlocked"):"locked"),true);
       await loadAll();
     };});
     document.querySelectorAll("[data-savepin]").forEach(function(b){b.onclick=function(){savePin(b.dataset.savepin,false);};});

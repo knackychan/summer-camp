@@ -17,7 +17,7 @@ const assertPair = (value, where) => {
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
-const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/sync.js", "js/admin-nav.js", "js/admin.js", "sw.js"];
+const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/brain-audio-cues.js", "js/sync.js", "js/admin-nav.js", "js/admin.js", "sw.js"];
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -237,6 +237,124 @@ try {
   }
 } catch (error) {
   fail("pwa", error.message);
+}
+
+// Brain Gym sprite atlases. A manifest whose frame boxes run past the edge of the
+// atlas fails as a silently blank sprite in the browser, so the coordinates are
+// checked against the real PNG header here rather than discovered on a tablet.
+// Also enforces the pack budgets and the offline rule: an atlas that a runtime file
+// actually references MUST be precached in APP_SHELL.
+{
+  const manifestUrl = new URL("assets/brain/sprites/manifest.json", root);
+  if (existsSync(manifestUrl)) {
+    try {
+      const pack = JSON.parse(readFileSync(manifestUrl, "utf8"));
+      const swText = readFileSync(new URL("sw.js", root), "utf8");
+      const runtimeText = runtimeFiles
+        .map((f) => readFileSync(new URL(f, root), "utf8"))
+        .join("\n");
+      let packBytes = 0;
+
+      Object.entries(pack.atlases || {}).forEach(([file, atlas]) => {
+        const url = new URL(`assets/brain/sprites/${file}`, root);
+        if (!existsSync(url)) {
+          fail("sprites", `manifest lists ${file} but the file is missing`);
+          return;
+        }
+        const png = readFileSync(url);
+        packBytes += png.length;
+        if (png.length > 256 * 1024) {
+          fail("sprites", `${file} is ${Math.round(png.length / 1024)} KB, over the 256 KB per-atlas budget`);
+        }
+        // PNG IHDR: 8-byte signature, 4-byte length, "IHDR", then width and height.
+        const width = png.readUInt32BE(16);
+        const height = png.readUInt32BE(20);
+        if (width !== atlas.width || height !== atlas.height) {
+          fail("sprites", `${file} is ${width}x${height} but the manifest says ${atlas.width}x${atlas.height}`);
+        }
+
+        Object.entries(atlas.sprites || {}).forEach(([id, s]) => {
+          const frames = s.frames || 1;
+          const right = s.x + (frames - 1) * (s.step || 0) + s.w;
+          const bottom = s.y + s.h;
+          if (s.x < 0 || s.y < 0 || right > width || bottom > height) {
+            fail("sprites", `${file}#${id} frame box runs to ${right}x${bottom}, outside the ${width}x${height} atlas`);
+          }
+          if (!Array.isArray(s.ramp) || !s.ramp.length) {
+            fail("sprites", `${file}#${id} records no palette ramp`);
+          } else {
+            s.ramp.forEach((hex) => {
+              if (!/^#[0-9a-fA-F]{6}$/.test(hex)) fail("sprites", `${file}#${id} ramp entry ${hex} is not a hex colour`);
+            });
+            if (s.ramp.length > 10) fail("sprites", `${file}#${id} uses ${s.ramp.length} colours, over the 10-colour budget`);
+          }
+          if (!s.provenance) fail("sprites", `${file}#${id} has no SPRITE-PROMPTS.md provenance id`);
+        });
+
+        // Only demand precaching once something shipped actually loads the atlas.
+        const referenced = runtimeText.includes(`assets/brain/sprites/${file}`);
+        if (referenced && !swText.includes(`assets/brain/sprites/${file}`)) {
+          fail("sprites", `${file} is used at runtime but is not in APP_SHELL`);
+        }
+      });
+
+      if (packBytes > 900 * 1024) {
+        fail("sprites", `sprite pack is ${Math.round(packBytes / 1024)} KB, over the 900 KB budget`);
+      }
+      if (!existsSync(new URL("assets/brain/SPRITE-PROMPTS.md", root))) {
+        fail("sprites", "assets/brain/SPRITE-PROMPTS.md is missing; every sprite needs recorded provenance");
+      }
+    } catch (error) {
+      fail("sprites", error.message);
+    }
+  }
+}
+
+// Brain Gym placeholder sound pack. The cue list in js/brain-audio-cues.js and the cue
+// table in assets/audio/brain/README.md are the same list written twice; drift between
+// them is how a scene ends up calling a cue nobody ever recorded. Checked here so the
+// pair stays in step when the synthesized placeholders are swapped for real MP3s.
+{
+  const cuesFile = new URL("js/brain-audio-cues.js", root);
+  if (existsSync(cuesFile)) {
+    try {
+      const { createRequire } = await import("node:module");
+      const cues = createRequire(import.meta.url)("../js/brain-audio-cues.js");
+      const readme = readFileSync(new URL("assets/audio/brain/README.md", root), "utf8");
+      const documented = [...readme.matchAll(/^\| `([a-z0-9-]+)` \|/gm)].map((m) => m[1]);
+
+      documented.forEach((cue) => {
+        if (!cues.CUES[cue]) fail("audio cues", `README documents "${cue}" but no recipe exists`);
+      });
+      cues.CUE_NAMES.forEach((cue) => {
+        if (!documented.includes(cue)) fail("audio cues", `recipe "${cue}" is not in the README cue table`);
+      });
+
+      cues.CUE_NAMES.forEach((cue) => {
+        const layers = cues.CUES[cue];
+        if (!Array.isArray(layers) || !layers.length) {
+          fail("audio cues", `${cue}: empty recipe`);
+          return;
+        }
+        layers.forEach((layer, i) => {
+          const where = `${cue} layer ${i}`;
+          if (layer.t !== "tone" && layer.t !== "noise") fail("audio cues", `${where}: unknown layer type ${layer.t}`);
+          if (!(layer.dur > 0)) fail("audio cues", `${where}: duration must be positive`);
+          if (!(layer.gain > 0)) fail("audio cues", `${where}: gain must be positive`);
+          // exponentialRampToValueAtTime cannot ramp to or from zero
+          if (layer.t === "tone" && !(layer.f0 > 0 && layer.f1 > 0)) fail("audio cues", `${where}: frequencies must be > 0`);
+          if (layer.t === "noise" && !(layer.hz > 0 && layer.q > 0)) fail("audio cues", `${where}: noise needs hz and q`);
+        });
+        // §8.2: nothing loops and decorative motion lives no longer than 640ms, so a
+        // single cue that outlasts its animation would be audible after the visual ends.
+        const seconds = cues.cueDuration(cue);
+        if (seconds > 0.64) fail("audio cues", `${cue} runs ${Math.round(seconds * 1000)}ms, over the 640ms ceiling`);
+        if (Math.max(...layers.map((l) => l.gain)) > 0.14) fail("audio cues", `${cue} is louder than the 0.14 placeholder ceiling`);
+      });
+    } catch (error) {
+      fail("audio cues", error.message);
+    }
+  }
 }
 
 // Star provenance: every local `stars` bump must name what earned it, or the

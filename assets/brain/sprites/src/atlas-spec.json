@@ -1,0 +1,59 @@
+{
+  "cell": 256,
+  "padding": 2,
+  "atlases": [
+    {
+      "file": "change.png",
+      "scene": "change",
+      "sprites": [
+        {
+          "id": "till",
+          "src": "till-strip.png",
+          "native": 256,
+          "frames": 3,
+          "anchor": "top-left",
+          "content": { "x": 2, "y": 2, "w": 193, "h": 252 },
+          "regions": {
+            "display": { "x": 52, "y": 33, "w": 94, "h": 24 },
+            "drawer": { "x": 22, "y": 163, "w": 152, "h": 52, "cols": 4, "rows": 2 }
+          },
+          "ramp": ["#3B3159", "#2F2845", "#5CC98C", "#2F9E68", "#1E6B47", "#FFF5DC", "#F1E3BF", "#D9B27E", "#B4844A"],
+          "provenance": "till-open-strip",
+          "use": "the whole register as one machine: frame 0 closed, 1 half, 2 open. Money tokens are DOM buttons layered over the `drawer` region; the price/total is DOM text over `display`. Supersedes the separate register and drawer sprites."
+        },
+        {
+          "id": "coin",
+          "src": "coin-strip.png",
+          "native": 64,
+          "frames": 4,
+          "values": [1, 5, 10, 50],
+          "anchor": "center",
+          "ramp": ["#3B3159", "#2F2845", "#E6E4EC", "#C3C0CE", "#8E8AA0", "#F2CE72", "#D6A63C", "#9E7420"],
+          "provenance": "coin-strip",
+          "use": "blank coin bases for NT$1/5/10/50, one frame each. Rising diameter and silver-to-gold are the non-colour cues; the numeral is DOM text centred on the blank face."
+        },
+        {
+          "id": "note",
+          "src": "note-strip.png",
+          "native": 128,
+          "frames": 2,
+          "values": [100, 500],
+          "anchor": "center",
+          "ramp": ["#3B3159", "#2F2845", "#FFF5DC", "#F1E3BF", "#E9A0A4", "#CF6870", "#9C3F4C", "#D9B27E", "#B4844A", "#7E5A2E"],
+          "provenance": "note-strip",
+          "use": "blank note bases for NT$100/500. The cream centre panel is the DOM text area. No numerals, portraits, serial numbers or security design."
+        },
+        {
+          "id": "apple",
+          "src": "apple.png",
+          "native": 64,
+          "frames": 1,
+          "anchor": "bottom-center",
+          "ramp": ["#3B3159", "#F2685C", "#D8453E", "#9E2C33", "#3E9E63", "#8A6A34", "#FFF5DC"],
+          "provenance": "apple-idle",
+          "use": "product token on the checkout mat; also the Fruit Stand and Library Desk apple"
+        }
+      ]
+    }
+  ]
+}

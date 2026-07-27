@@ -4,7 +4,7 @@
 
 **Goal:** Every name, number and fact the game will ever show, in one pure data module — bilingual, node-testable, and validated by `check.mjs` — before any 3D code exists.
 
-**Architecture:** `js/games/solar-data.js` is data-only (same discipline as `js/brain-data.js`): no DOM, no Three.js, no globals. Quiz questions (slice 33) and fact cards (slice 31) are *derived* from these structured fields, so this file is the single source of truth for both.
+**Architecture:** `js/games/solar-data.js` is data-only (same discipline as `js/brain-data.js`): no DOM, no Three.js, no globals. Quiz questions (slice 33) and the info card (slice 32) are *derived* from these structured fields, so this file is the single source of truth for both. D8 adds three card fields per body: `type:{en,tz}` (classification), `desc:{en,tz}` (wiki-style description), `photo` (vendored asset path).
 
 **Tech Stack:** ES module, `node:test`, `scripts/check.mjs`.
 
@@ -76,6 +76,10 @@ test("every planet has a complete bilingual schema", () => {
     for (const f of p.facts) {
       assert.ok(f.en && f.tz, `${p.id}: fact must be bilingual`);
     }
+    // D8 card fields
+    assert.ok(p.type && p.type.en && p.type.tz, `${p.id}: type must be bilingual`);
+    assert.ok(p.desc && p.desc.en && p.desc.tz, `${p.id}: desc must be bilingual`);
+    assert.match(p.photo, /^assets\/solar\/[a-z]+\.jpg$/, `${p.id}: photo must be a vendored asset path`);
   }
 });
 
@@ -121,6 +125,10 @@ The schema, then the full dataset below — facts may be reworded for the kids' 
 
 export const SOLAR = {
   name: "Sun", tz: "太陽", color: 0xfdb813, diameterKm: 1392700,
+  type: { en: "STAR", tz: "恆星" },
+  desc: { en: "The Sun is the giant star at the centre of our solar system. Its gravity holds all eight planets, and its light gives Earth warmth and energy.",
+          tz: "太陽是位於太陽系中心的巨大恆星。它的引力抓住八顆行星,它的光帶給地球溫暖與能量。" },
+  photo: "assets/solar/sun.jpg",
   facts: [
     { en: "The Sun is a star — a giant ball of hot gas.", tz: "太陽是一顆恆星,一個巨大的熱氣球。" },
     { en: "Eight planets travel around the Sun.", tz: "有八顆行星繞著太陽轉。" },
@@ -132,6 +140,10 @@ export const PLANETS = [
   { id: "mercury", name: "Mercury", tz: "水星", color: 0x9c8e84,
     diameterKm: 4879, au: 0.39, yearDays: 88, dayHours: 1416, moons: 0,
     flags: {},
+    type: { en: "TERRESTRIAL PLANET", tz: "類地行星" },
+    desc: { en: "Mercury is a small rocky world that sprints around the Sun. With almost no air, its days are scorching and its nights are freezing.",
+            tz: "水星是一顆小小的岩石星球,繞著太陽飛奔。因為幾乎沒有空氣,白天酷熱、夜晚嚴寒。" },
+    photo: "assets/solar/mercury.jpg",
     facts: [
       { en: "Mercury is the closest planet to the Sun.", tz: "水星是離太陽最近的行星。" },
       { en: "One year on Mercury is only 88 days!", tz: "水星上的一年只有 88 天!" },
@@ -205,6 +217,8 @@ export const SCENE = {
 export default { SOLAR, PLANETS, SCENE };
 ```
 
+**The D8 fields for the remaining bodies:** `type` is `TERRESTRIAL PLANET 類地行星` (venus, earth, mars), `GAS GIANT 氣態巨行星` (jupiter, saturn), `ICE GIANT 冰巨行星` (uranus, neptune); `photo` is `assets/solar/<id>.jpg`. The `desc` texts are authored and locked in `design-preview.html`'s data block (fields `descEn`/`descTz`) — copy them **verbatim** into `desc.en`/`desc.tz`; do not rephrase. Classifications: terrestrial ×4, gas giant ×2, ice giant ×2, star ×1.
+
 - [ ] **Step 2: Run to verify pass**
 
 Run: `node --test scripts/solar-data.test.mjs`
@@ -249,6 +263,8 @@ try {
     if (seen.has(p.id)) fail("solar", `duplicate planet id ${p.id}`);
     seen.add(p.id);
     assertPair([p.name, p.tz], `solar.${p.id}.name`);
+    if (p.type) assertPair([p.type.en, p.type.tz], `solar.${p.id}.type`);
+    if (p.desc) assertPair([p.desc.en, p.desc.tz], `solar.${p.id}.desc`);
     (p.facts || []).forEach((f, i) => assertPair([f.en, f.tz], `solar.${p.id}.fact${i}`));
     if ((p.facts || []).length !== 3) fail("solar", `${p.id}: exactly 3 facts required`);
   }

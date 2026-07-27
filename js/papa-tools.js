@@ -8,12 +8,12 @@
     o.className="overlay";
     o.innerHTML=`<div class="card" style="max-width:380px">
       <h3>🔧 Papa tools 爸爸工具</h3>
-      <div class="vrow">
+      <div class="vrow" style="flex-direction:column;align-items:stretch;gap:12px;margin-top:20px">
         <button class="btn" id="ptResched">⏰ Reschedule today 調整今天時間</button>
         <button class="btn" id="ptOuting">🚶 Outing 出遊</button>
         <button class="btn" id="ptTest">${on?"🧪 Test mode: ON — tap to turn off":"🧪 Test mode 測試模式（今天解鎖全部）"}</button>
-        <button class="btn small" id="ptClose">Close 關閉</button>
       </div>
+      <button class="btn small" id="ptClose" style="margin-top:16px">Close 關閉</button>
       <div id="ptBody"></div>
     </div>`;
     document.body.appendChild(o);

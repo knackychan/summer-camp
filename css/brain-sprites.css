@@ -1,0 +1,79 @@
+/* Brain Gym pixel-sprite primitives.
+ *
+ * Not loaded by index.html yet: it is consumed by
+ * docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html and is ready for
+ * slice 34 to @import (or fold into css/brain-shell.css). When it first ships in a
+ * runtime page it must be added to APP_SHELL in sw.js and CACHE_NAME incremented.
+ *
+ * Geometry comes from assets/brain/sprites/manifest.json. A sprite element declares
+ * which atlas it reads, the sprite's native box, its position in the atlas, and an
+ * integer zoom. Nothing here blurs, smooths or filters a sprite.
+ */
+
+.brain-sprite {
+  --sprite-zoom: 2;             /* integer only; fractional zoom breaks the pixel grid */
+  --sprite-x: 0px;              /* native offset of the sprite inside the atlas */
+  --sprite-y: 0px;
+  --sprite-w: 64px;             /* native sprite box */
+  --sprite-h: 64px;
+  --sprite-atlas-w: 388px;      /* native atlas size */
+  --sprite-atlas-h: 388px;
+  --sprite-frame: 0;            /* current frame index for a strip */
+  --sprite-step: 130px;         /* native x advance between frames (cell + padding) */
+
+  display: block;
+  flex: none;
+  width: calc(var(--sprite-w) * var(--sprite-zoom));
+  height: calc(var(--sprite-h) * var(--sprite-zoom));
+  background-repeat: no-repeat;
+  background-size: calc(var(--sprite-atlas-w) * var(--sprite-zoom))
+                   calc(var(--sprite-atlas-h) * var(--sprite-zoom));
+  background-position:
+    calc(-1 * (var(--sprite-x) + var(--sprite-frame) * var(--sprite-step)) * var(--sprite-zoom))
+    calc(-1 * var(--sprite-y) * var(--sprite-zoom));
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  /* A sprite is art, never a control surface or a text container. */
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Sprites carry their own baked outline; a CSS filter would soften the alpha edge and
+ * break the "no browser blur, drop-shadow or smoothing" rule. Contact shadows are drawn
+ * as an opaque offset element instead. */
+.brain-sprite--shadowed {
+  position: relative;
+}
+.brain-sprite--shadowed::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: calc(-3px * var(--sprite-zoom) / 2);
+  height: calc(2px * var(--sprite-zoom));
+  border-radius: 999px;
+  background: var(--brain-shadow, #171229);
+  opacity: 0.28;
+}
+
+/* Stepped internal animation. The whole sprite node may still move smoothly with a
+ * transform; only the frame index steps. 6-12 fps per the motion rules. */
+.brain-sprite--play {
+  animation: brain-sprite-frames var(--sprite-duration, 500ms)
+             steps(var(--sprite-frames, 3), jump-none) var(--sprite-repeat, 1) forwards;
+}
+@keyframes brain-sprite-frames {
+  from { background-position-x: calc(-1 * var(--sprite-x) * var(--sprite-zoom)); }
+  to   { background-position-x: calc(-1 * (var(--sprite-x)
+           + (var(--sprite-frames, 3) - 1) * var(--sprite-step)) * var(--sprite-zoom)); }
+}
+
+/* Reduced motion: hold the final frame, never step. Study durations and input behaviour
+ * are unaffected — this only removes the animation. */
+@media (prefers-reduced-motion: reduce) {
+  .brain-sprite--play {
+    animation: none;
+    background-position-x: calc(-1 * (var(--sprite-x)
+      + (var(--sprite-frames, 3) - 1) * var(--sprite-step)) * var(--sprite-zoom));
+  }
+}

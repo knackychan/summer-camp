@@ -26,13 +26,13 @@
 <div class="app is-locked" id="app">
   <!-- ================= NAV ================= -->
   <nav class="nav" id="nav" aria-label="Sections">
-    <div class="nav__brand">
+    <a class="nav__brand" href="index.html" title="Back to the kid app 回到主畫面" style="text-decoration:none;color:inherit">
       <span class="mark" aria-hidden="true">SQ</span>
       <div>
         <b>Summer Quest</b>
         <small>Operations</small>
       </div>
-    </div>
+    </a>
 
     <div class="nav__body">
       <div class="nav__group">
@@ -157,6 +157,7 @@
             <h2>Day board</h2>
             <span class="lbl" id="boardDate"></span>
             <div class="sheet__tools">
+              <div class="chips" role="group" aria-label="Apply time changes to" id="boardScope"></div>
               <button class="btn btn--sm btn--danger" id="resetAcceptedBtn">Reset day</button>
             </div>
           </div>

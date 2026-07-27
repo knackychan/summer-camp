@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solar System — 3D design draft</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+/* Locked palette — art-direction.md §3 */
+:root{
+  --bg:#201A40; --bg2:#2A2350; --panel:#332B66; --panel2:#3D3475;
+  --ink:#F3F0FF; --muted:#A79FD6; --line:#4A4090;
+  --gold:#FFC93C; --ok:#4ADE80; --bad:#FF6B6B; --dark:#1C1436;
+  --space:#191340; --holo:#4EA8FF;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:'Nunito',system-ui,sans-serif;
+  background:radial-gradient(1400px 800px at 50% 30%, #211848 0%, var(--space) 65%);
+  color:var(--ink);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#gl.dragging{cursor:grabbing}
+
+/* ---------- shared UI atoms ---------- */
+.chip{font-family:'Fredoka';font-weight:600;font-size:16px;border:2px solid var(--line);
+  background:rgba(25,19,64,.72);backdrop-filter:blur(6px);color:var(--muted);
+  border-radius:999px;padding:8px 18px;cursor:pointer}
+.chip.on{background:var(--gold);color:var(--dark);border-color:transparent}
+.btn{font-family:'Fredoka';font-weight:600;border:none;cursor:pointer;border-radius:14px;
+  padding:12px 22px;font-size:17px;color:var(--ink);background:var(--panel);
+  box-shadow:0 4px 0 rgba(0,0,0,.25)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.btn.gold{background:var(--gold);color:var(--dark)}
+.icon-btn{width:44px;height:44px;border-radius:14px;border:2px solid var(--line);background:transparent;
+  color:var(--ink);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}
+.ui{position:absolute;z-index:10}
+
+/* ---------- mode bar ---------- */
+.modebar{top:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+
+/* ---------- info card (sci-fi holo panel, right side) ---------- */
+.infocard{top:12px;right:12px;bottom:12px;width:min(360px,92vw);overflow-y:auto;
+  background:rgba(25,19,64,.82);backdrop-filter:blur(10px);
+  border:1px solid rgba(78,168,255,.45);border-radius:18px;padding:16px 16px 18px;
+  box-shadow:0 0 32px rgba(78,168,255,.12), inset 0 0 60px rgba(78,168,255,.04);
+  animation:icin .22s ease-out;scrollbar-width:thin}
+@keyframes icin{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+.infocard::before,.infocard::after{content:"";position:absolute;width:18px;height:18px;pointer-events:none}
+.infocard::before{top:6px;left:6px;border-top:2px solid var(--gold);border-left:2px solid var(--gold);border-radius:6px 0 0 0}
+.infocard::after{bottom:6px;right:6px;border-bottom:2px solid var(--gold);border-right:2px solid var(--gold);border-radius:0 0 6px 0}
+.ic-close{position:absolute;top:10px;right:10px;z-index:2;background:rgba(25,19,64,.6)}
+.ic-photo{position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;
+  border:1px solid rgba(78,168,255,.35);box-shadow:0 0 24px rgba(78,168,255,.15);background:#0d0a24}
+.ic-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.ic-photo.fallback img{display:none}
+.ic-class{margin-top:12px;font-weight:800;font-size:11px;letter-spacing:2px;color:var(--holo)}
+.infocard h2{font-family:'Fredoka';font-weight:700;font-size:28px;margin-top:2px}
+.infocard h2 span{font-weight:600;font-size:23px}
+.ic-desc{margin-top:8px;font-weight:700;font-size:15px;line-height:1.45}
+.ic-desc-tz{margin-top:4px;font-weight:700;font-size:14px;line-height:1.45;color:var(--muted)}
+.ic-factbox{margin-top:12px;border:1px dashed rgba(255,201,60,.45);border-radius:12px;padding:10px 12px}
+.ic-factbox .fb-head{display:flex;align-items:center;gap:8px;font-weight:800;font-size:11px;
+  letter-spacing:2px;color:var(--gold)}
+.ic-factbox .fb-head button{margin-left:auto;width:34px;height:34px;font-size:15px;border-radius:10px;
+  border:1px solid rgba(255,201,60,.45);background:transparent;color:var(--gold);cursor:pointer}
+.fb-en{margin-top:6px;font-weight:700;font-size:15px;line-height:1.4}
+.fb-tz{margin-top:2px;font-weight:700;font-size:14px;color:var(--muted)}
+.ic-grid{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cell{border:1px solid rgba(78,168,255,.25);border-radius:10px;padding:8px 10px}
+.cell .k{font-weight:800;font-size:10px;letter-spacing:1.5px;color:var(--holo)}
+.cell .v{font-family:'Fredoka';font-weight:700;font-size:16px;margin-top:1px}
+.ic-voice{margin-top:12px;width:100%}
+
+/* ---------- time band (persistent, bottom) ---------- */
+.timeband{left:12px;bottom:12px;max-width:min(92vw,600px);background:rgba(51,43,102,.82);
+  backdrop-filter:blur(8px);border:2px solid var(--line);border-radius:18px;padding:10px 16px;text-align:center}
+.counter1{font-family:'Fredoka';font-weight:700;font-size:19px}
+.counter1 b{color:var(--gold)}
+.counter2{margin-top:1px;font-weight:800;font-size:12px;color:var(--muted)}
+.counter2 b{color:var(--gold)}
+.speeds{margin-top:8px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+.speeds .chip{font-size:13px;padding:5px 12px}
+
+/* ---------- quiz banner ---------- */
+.quizbanner{top:64px;left:50%;transform:translateX(-50%);width:min(92vw,600px);
+  background:var(--panel2);border:2px solid var(--line);border-radius:18px;padding:12px 18px;
+  display:flex;align-items:center;gap:14px;animation:icin .22s ease-out}
+.quizbanner.shake{animation:fbad .3s}
+@keyframes fbad{0%,60%{transform:translateX(calc(-50% - 6px))}30%,90%{transform:translateX(calc(-50% + 6px))}100%{transform:translateX(-50%)}}
+.q-round{font-family:'Fredoka';font-weight:700;font-size:18px;color:var(--gold);white-space:nowrap}
+.q-mid{flex:1;text-align:center}
+.q-en{font-family:'Fredoka';font-weight:600;font-size:22px}
+.q-tz{font-weight:800;font-size:17px;color:var(--muted)}
+.q-stars{font-family:'Fredoka';font-weight:700;font-size:18px;color:var(--gold);white-space:nowrap}
+.q-try{position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);
+  font-weight:800;font-size:15px;color:var(--muted);white-space:nowrap}
+
+/* ---------- end card ---------- */
+.endcard{inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,14,46,.55)}
+.endcard .card{background:var(--panel);border:2px solid var(--line);border-radius:22px;
+  padding:28px 32px;text-align:center;max-width:min(90vw,420px);animation:icin .22s ease-out}
+.endcard .big{font-family:'Fredoka';font-weight:700;font-size:48px;color:var(--ink)}
+.endcard .big b{color:var(--gold)}
+.endcard p{margin-top:6px;font-weight:800;font-size:16px;color:var(--muted)}
+.endcard .row{margin-top:18px;display:flex;gap:12px;justify-content:center}
+
+/* ---------- legend ---------- */
+.legend{left:12px;top:12px;z-index:10;background:rgba(51,43,102,.85);border:1px solid var(--line);
+  border-radius:14px;padding:10px 12px;font-size:11px;color:var(--muted);max-width:215px}
+.legend h3{font-family:'Fredoka';font-weight:600;font-size:13px;color:var(--ink);margin-bottom:6px}
+.swatches{display:flex;flex-wrap:wrap;gap:5px}
+.sw{width:18px;height:18px;border-radius:6px;border:1px solid rgba(255,255,255,.18)}
+.legend p{margin-top:6px;line-height:1.4}
+@media (max-width:640px){.legend{display:none}}
+
+.burst{position:absolute;z-index:9;pointer-events:none;font-size:26px;animation:burst .7s ease-out forwards}
+@keyframes burst{0%{transform:translate(-50%,-50%) scale(.6);opacity:1}100%{transform:translate(-50%,-90%) scale(1.5);opacity:0}}
+.hint{position:absolute;bottom:12px;right:14px;z-index:5;color:var(--muted);
+  font-weight:800;font-size:13px;pointer-events:none;transition:opacity 1s}
+@media (max-width:760px){.hint{display:none}}
+.hidden{display:none!important}
+@media (max-width:720px){
+  .infocard{top:auto;left:12px;right:12px;bottom:12px;width:auto;max-height:52vh}
+}
+</style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<div class="ui modebar">
+  <button class="chip on" data-mode="explore">Explore 探索</button>
+  <button class="chip" data-mode="quiz">Quiz 測驗</button>
+</div>
+
+<div class="legend">
+  <h3>🪐 Solar System — 3D design draft</h3>
+  <div class="swatches" id="swatches"></div>
+  <p>Drag to orbit · pinch / scroll to zoom · <b>tap a planet to zoom in</b> · double-tap to reset. Binding values live in the docs, not here.</p>
+</div>
+
+<div class="hint" id="hint">拖曳旋轉 · 雙指縮放 · 點行星放大觀看 — drag · pinch · tap a planet to zoom in</div>
+
+<div class="ui infocard hidden" id="infocard">
+  <button class="icon-btn ic-close" id="icclose">✕</button>
+  <div class="ic-photo" id="icphoto"><img id="icimg" alt=""></div>
+  <div class="ic-class" id="icclass"></div>
+  <h2 id="icname"></h2>
+  <p class="ic-desc" id="icdesc"></p>
+  <p class="ic-desc-tz" id="icdesctz"></p>
+  <div class="ic-factbox">
+    <div class="fb-head">✦ DID YOU KNOW · 你知道嗎 <button id="icshuffle" title="Another fact">🔀</button></div>
+    <div class="fb-en" id="icfact"></div>
+    <div class="fb-tz" id="icfacttz"></div>
+  </div>
+  <div class="ic-grid" id="icgrid"></div>
+  <button class="btn ic-voice" id="icvoice">🔊 Listen 聽一聽</button>
+</div>
+
+<div class="ui timeband" id="timeband">
+  <div class="counter1" id="cday"></div>
+  <div class="counter2" id="cyears"></div>
+  <div class="speeds" id="speeds"></div>
+</div>
+
+<div class="ui quizbanner hidden" id="quizbanner">
+  <div class="q-round">3 / 8</div>
+  <div class="q-mid">
+    <div class="q-en">Tap the red planet!</div>
+    <div class="q-tz">點紅色的星球!</div>
+  </div>
+  <div class="q-stars" id="qstars">★ 2</div>
+  <button class="icon-btn" id="qvoice">🔊</button>
+  <div class="q-try hidden" id="qtry">Try again! 再試一次!</div>
+</div>
+
+<div class="ui endcard hidden" id="endcard">
+  <div class="card">
+    <div class="big"><b>★</b> <span id="endstars">3</span> / 8</div>
+    <p>Well done, space explorer!<br>做得好,小小太空人!</p>
+    <div class="row">
+      <button class="btn gold" id="again">Again 再一次</button>
+      <button class="btn" id="toexplore">Explore 探索</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =================================================================
+   3D design draft — merged Explore+Orbit (D8): planets are always
+   tappable; tap = camera focus zoom + right holo wiki card.
+   Illustrates art-direction.md. Data mirrors slice 30.
+   ================================================================= */
+
+const PLANETS=[
+ {id:"mercury",name:"Mercury",tz:"水星",color:"#9C8E84",size:4,  orbit:70, diameterKm:4879,  au:0.39,yearDays:88,   dayHours:1416,moons:0,
+  typeEn:"TERRESTRIAL PLANET",typeTz:"類地行星",
+  descEn:"Mercury is a small rocky world that sprints around the Sun. With almost no air, its days are scorching and its nights are freezing.",
+  descTz:"水星是一顆小小的岩石星球,繞著太陽飛奔。因為幾乎沒有空氣,白天酷熱、夜晚嚴寒。",
+  photo:"https://commons.wikimedia.org/wiki/Special:FilePath/Mercury_in_color_-_Prockter07-edit1.jpg?width=640",
+  facts:[
+   ["Mercury is the closest planet to the Sun.","水星是離太陽最近的行星。"],
+   ["One year on Mercury is only 88 days!","水星上的一年只有 88 天!"],
+   ["Mercury has no moons.","水星沒有衛星。"]]},
+ {id:"venus",name:"Venus",tz:"金星",color:"#E8CDA5",size:6,  orbit:96, diameterKm:12104, au:0.72,yearDays:225,  dayHours:5832,moons:0,
+  typeEn:"TERRESTRIAL PLANET",typeTz:"類地行星",
+  descEn:"Venus is wrapped in thick clouds that trap heat like a giant greenhouse. It is the hottest planet — hotter even than Mercury!",
+  descTz:"金星被厚厚的雲層包裹,像一座巨大的溫室把熱困住。它是最熱的行星,比水星還熱!",
+  photo:"https://commons.wikimedia.org/wiki/Special:FilePath/Venus-real_color.jpg?width=640",
+  facts:[
+   ["Venus is the hottest planet.","金星是最熱的行星。"],
+   ["Venus spins backwards compared to Earth.","金星的自轉方向和地球相反。"],
+   ["Venus is the brightest planet in our night sky.","金星是夜空中最亮的行星。"]]},
+ {id:"earth",name:"Earth",tz:"地球",color:"#4D7DD1",size:6.7,orbit:122,diameterKm:12742, au:1,   yearDays:365,  dayHours:24,  moons:1,
+  typeEn:"TERRESTRIAL PLANET",typeTz:"類地行星",
+  descEn:"Earth is the blue marble we call home — the only known world with oceans of liquid water, breathable air and life.",
+  descTz:"地球是我們稱為家的藍色彈珠,是目前已知唯一擁有液態海洋、空氣與生命的星球。",
+  photo:"https://commons.wikimedia.org/wiki/Special:FilePath/The_Earth_seen_from_Apollo_17.jpg?width=640",
+  facts:[
+   ["Earth is our home — the only planet with life.","地球是我們的家,是唯一有生命的行星。"],
+   ["Most of Earth is covered by ocean.","地球表面大部分是海洋。"],
+   ["Earth has one moon.","地球有一顆衛星。"]]},
+ {id:"mars",name:"Mars",tz:"火星",color:"#C1440E",size:5.3,orbit:148,diameterKm:6779,  au:1.52,yearDays:687,  dayHours:24.6,moons:2,
+  typeEn:"TERRESTRIAL PLANET",typeTz:"類地行星",
+  descEn:"Mars is a cold desert world coloured red by rusty dust. Scientists send robots there to search for signs of ancient life.",
+  descTz:"火星是一片寒冷的沙漠世界,生鏽的塵土讓它看起來紅紅的。科學家送機器人去那裡尋找古老生命的線索。",
+  photo:"https://commons.wikimedia.org/wiki/Special:FilePath/OSIRIS_Mars_true_color.jpg?width=640",
+  facts:[
+   ["Mars is called the red planet.","火星被稱為紅色星球。"],
+   ["It has the tallest volcano in the solar system.","它有太陽系最高的火山。"],
+   ["Mars has two tiny moons.","火星有兩顆小衛星。"]]},
+ {id:"jupiter",name:"Jupiter",tz:"木星",color:"#C88B3A",size:14, orbit:190,diameterKm:139820,au:5.2, yearDays:4333, dayHours:10,  moons:95,
+  typeEn:"GAS GIANT",typeTz:"氣態巨行星",
+  descEn:"Jupiter is the giant of the solar system — more than 1,300 Earths could fit inside. Its Great Red Spot is a storm that has raged for centuries.",
+  descTz:"木星是太陽系的巨人,可以裝下超過 1,300 個地球。它的大紅斑是一場刮了好幾百年的風暴。",
+  photo:"https://commons.wikimedia.org/wiki/Special:FilePath/Jupiter_by_Cassini-Huygens.jpg?width=640",
+  facts:[
+   ["Jupiter is the biggest planet.","木星是最大的行星。"],
+   ["Its Great Red Spot is a storm bigger than Earth!","它的大紅斑是一場比地球還大的風暴!"],
+   ["Jupiter has at least 95 moons.","木星至少有 95 顆衛星。"]]},
+ {id:"saturn",name:"Saturn",tz:"土星",color:"#EAD6B8",size:11.5,orbit:240,diameterKm:116460,au:9.54,yearDays:10759,dayHours:10.7,moons:274,ring:true,
+  typeEn:"GAS GIANT",typeTz:"氣態巨行星",
+  descEn:"Saturn is famous for its dazzling rings, made of billions of pieces of ice and rock. It spins so fast that a day there is under 11 hours.",
+  descTz:"土星以耀眼的環聞名,由數十億塊冰與岩石組成。它轉得很快,一天不到 11 小時。",
+  photo:"https://commons.wikimedia.org/wiki/Special:FilePath/Saturn_during_Equinox.jpg?width=640",
+  facts:[
+   ["Saturn's rings are made of ice and rock.","土星環是由冰和岩石組成的。"],
+   ["Saturn is so light it could float on water!","土星非常輕,輕到可以浮在水上!"],
+   ["Saturn has the most moons — at least 274!","土星的衛星最多,至少有 274 顆!"]]},
+ {id:"uranus",name:"Uranus",tz:"天王星",color:"#9FE3E0",size:9,  orbit:288,diameterKm:50724, au:19.2,yearDays:30687,dayHours:17,  moons:29,
+  typeEn:"ICE GIANT",typeTz:"冰巨行星",
+  descEn:"Uranus is an ice giant that rolls around the Sun on its side, probably knocked over long ago. It is the coldest planet of all.",
+  descTz:"天王星是一顆側躺著繞太陽滾動的冰巨行星,可能是很久以前被撞倒的。它是最冷的行星。",
+  photo:"https://commons.wikimedia.org/wiki/Special:FilePath/Uranus2.jpg?width=640",
+  facts:[
+   ["Uranus spins on its side like a rolling ball.","天王星像滾動的球一樣側躺著自轉。"],
+   ["It is the coldest planet.","它是最冷的行星。"],
+   ["It looks blue-green because of its gas.","因為氣體的關係,它看起來是藍綠色的。"]]},
+ {id:"neptune",name:"Neptune",tz:"海王星",color:"#3457D5",size:8.8,orbit:336,diameterKm:49244, au:30.1,yearDays:60190,dayHours:16,  moons:16,
+  typeEn:"ICE GIANT",typeTz:"冰巨行星",
+  descEn:"Neptune is a deep-blue, windy world at the edge of the solar system. One year there lasts 165 Earth years.",
+  descTz:"海王星是太陽系邊緣深藍色、多風的世界。那裡的一年等於地球的 165 年。",
+  photo:"https://commons.wikimedia.org/wiki/Special:FilePath/Neptune_Full.jpg?width=640",
+  facts:[
+   ["Neptune is the farthest planet from the Sun.","海王星是離太陽最遠的行星。"],
+   ["It has the fastest winds in the solar system.","它有太陽系最快的風。"],
+   ["One year on Neptune is 165 Earth years!","海王星上的一年等於地球的 165 年!"]]},
+];
+const SUN={id:"sun",name:"Sun",tz:"太陽",color:"#FDB813",size:26,diameterKm:1392700,
+  typeEn:"STAR",typeTz:"恆星",
+  descEn:"The Sun is the giant star at the centre of our solar system. Its gravity holds all eight planets, and its light gives Earth warmth and energy.",
+  descTz:"太陽是位於太陽系中心的巨大恆星。它的引力抓住八顆行星,它的光帶給地球溫暖與能量。",
+  photo:"https://commons.wikimedia.org/wiki/Special:FilePath/The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg?width=640",
+  facts:[
+   ["The Sun is a star — a giant ball of hot gas.","太陽是一顆恆星,一個巨大的熱氣球。"],
+   ["Eight planets travel around the Sun.","有八顆行星繞著太陽轉。"],
+   ["The Sun is so big that one million Earths could fit inside!","太陽非常大,可以裝下一百萬個地球!"]]};
+const SPEEDS=[["pause","Pause","暫停",0],["day","1 day","1 天",1],["10day","10 days","10 天",10],["month","1 month","1 個月",30],["year","1 year","1 年",365]];
+const STAR_TINTS=["#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFE9C8","#FFE9C8","#C9D6FF"];
+
+/* ---------- tiny vec3 ---------- */
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const norm=(a)=>{const l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l];};
+
+function shade(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  const t=amt<0?0:255,p=Math.abs(amt);
+  r=Math.round((t-r)*p+r);g=Math.round((t-g)*p+g);b=Math.round((t-b)*p+b);
+  return`rgb(${r},${g},${b})`;
+}
+
+/* ---------- canvas ---------- */
+const cv=document.getElementById("gl"),ctx=cv.getContext("2d");
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR=Math.min(devicePixelRatio||1,2);
+  W=innerWidth;H=innerHeight;
+  cv.width=W*DPR;cv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+addEventListener("resize",resize);resize();
+
+/* ---------- camera: orbit rig with a movable target (focus rig) ---------- */
+const HOME={az:0.85,pol:1.02,dist:560};
+const cam={az:HOME.az,pol:HOME.pol,dist:HOME.dist,target:[0,0,0],vAz:0,vPol:0,anim:null};
+let focus=null;               // focused body or null
+const posById={sun:[0,0,0]};  // refreshed every frame
+
+function camBasis(){
+  const sp=Math.sin(cam.pol),cp=Math.cos(cam.pol),t=cam.target;
+  const eye=[t[0]+cam.dist*sp*Math.sin(cam.az),t[1]+cam.dist*cp,t[2]+cam.dist*sp*Math.cos(cam.az)];
+  const fwd=norm([t[0]-eye[0],t[1]-eye[1],t[2]-eye[2]]);
+  const right=norm(cross(fwd,[0,1,0]));
+  const up=cross(right,fwd);
+  return{eye,fwd,right,up};
+}
+function project(p,B){
+  const v=[p[0]-B.eye[0],p[1]-B.eye[1],p[2]-B.eye[2]];
+  const z=dot(v,B.fwd);
+  if(z<10)return null;
+  const f=Math.min(W,H)*0.95;
+  return{x:W/2+dot(v,B.right)*f/z, y:H/2-dot(v,B.up)*f/z, z, k:f/z};
+}
+
+/* ---------- starfield ---------- */
+const STARS=[];
+for(let i=0;i<420;i++){
+  const t=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1), r=680+Math.random()*260;
+  STARS.push({p:[r*Math.sin(ph)*Math.cos(t),r*Math.cos(ph)*0.6,r*Math.sin(ph)*Math.sin(t)],
+    c:STAR_TINTS[i%10], s:Math.random()>0.86?2.4:1.4});
+}
+
+/* ---------- sim clock ---------- */
+let simDays=0, perSec=10;
+const ang0=PLANETS.map(()=>Math.random()*Math.PI*2);
+let pulse=null;
+
+/* ---------- render ---------- */
+function drawOrbitRing(r,B){
+  ctx.beginPath();let started=false;
+  for(let i=0;i<=128;i++){
+    const a=i/128*Math.PI*2;
+    const s=project([Math.cos(a)*r,0,Math.sin(a)*r],B);
+    if(!s){started=false;continue;}
+    if(!started){ctx.moveTo(s.x,s.y);started=true;}else ctx.lineTo(s.x,s.y);
+  }
+  ctx.strokeStyle="rgba(74,64,144,.5)";ctx.lineWidth=1.5;ctx.stroke();
+}
+function drawGlow(x,y,r,color,alpha){
+  const g=ctx.createRadialGradient(x,y,r*0.2,x,y,r);
+  g.addColorStop(0,color.replace("A",alpha));g.addColorStop(1,color.replace("A","0"));
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+}
+function sphere(x,y,r,hex,lightOff){
+  const g=ctx.createRadialGradient(x-lightOff.x*r*0.55,y-lightOff.y*r*0.55,r*0.15,x,y,r*1.25);
+  g.addColorStop(0,shade(hex,0.42));g.addColorStop(0.45,hex);g.addColorStop(1,shade(hex,-0.55));
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+  ctx.strokeStyle="rgba(255,255,255,.10)";ctx.lineWidth=1;ctx.stroke();
+}
+function ringBand(seg,pass){
+  ctx.strokeStyle="rgba(232,217,176,.85)";
+  ctx.beginPath();let open=false;
+  for(let i=0;i<seg.length;i++){
+    const s=seg[i];
+    const mine=(s.back?0:1)===pass;
+    if(!mine){open=false;continue;}
+    if(!open){ctx.moveTo(s.x,s.y);open=true;}else ctx.lineTo(s.x,s.y);
+  }
+  ctx.lineWidth=seg.bandPx;ctx.globalAlpha=0.9;ctx.stroke();ctx.globalAlpha=1;
+}
+
+let lastT=performance.now();
+function frame(now){
+  const dt=Math.min((now-lastT)/1000,0.1);lastT=now;
+  simDays+=dt*perSec;
+
+  // refresh world positions
+  PLANETS.forEach((p,i)=>{
+    const ang=ang0[i]+(simDays/p.yearDays)*Math.PI*2;
+    posById[p.id]=[Math.cos(ang)*p.orbit,0,Math.sin(ang)*p.orbit];
+  });
+
+  // focus rig: target tracks the focused body, else eases home
+  const goal=focus?posById[focus.id]:[0,0,0];
+  const ease=focus?0.15:0.08;
+  for(let k=0;k<3;k++)cam.target[k]+=(goal[k]-cam.target[k])*ease;
+
+  if(cam.anim){
+    const a=cam.anim;a.t=Math.min(1,(now-a.t0)/500);
+    const e=1-Math.pow(1-a.t,3);
+    cam.az=a.az0+(a.az1-a.az0)*e;cam.pol=a.pol0+(a.pol1-a.pol0)*e;cam.dist=a.d0+(a.d1-a.d0)*e;
+    if(a.t>=1)cam.anim=null;
+  }else if(!drag.on){
+    cam.az+=cam.vAz;cam.pol+=cam.vPol;
+    cam.vAz*=0.94;cam.vPol*=0.94;
+    cam.pol=Math.max(0.15,Math.min(1.45,cam.pol));
+  }
+
+  const B=camBasis();
+  ctx.clearRect(0,0,W,H);
+
+  for(const st of STARS){
+    const s=project(st.p,B);if(!s)continue;
+    ctx.globalAlpha=0.9;ctx.fillStyle=st.c;
+    ctx.fillRect(s.x,s.y,st.s,st.s);
+  }
+  ctx.globalAlpha=1;
+
+  for(const p of PLANETS)drawOrbitRing(p.orbit,B);
+
+  const bodies=[];
+  const ss=project([0,0,0],B);
+  if(ss)bodies.push({body:SUN,s:ss,world:[0,0,0]});
+  for(const p of PLANETS){
+    const s=project(posById[p.id],B);if(!s)continue;
+    bodies.push({body:p,s,world:posById[p.id]});
+  }
+  bodies.sort((a,b)=>b.s.z-a.s.z);
+
+  for(const b of bodies){
+    const p=b.body,r=Math.max(2.5,p.size*b.s.k);
+    b.rPx=r;
+    const dimmed=focus&&p.id!==focus.id;
+    if(dimmed)ctx.globalAlpha=0.35;
+
+    if(p.id==="sun"){
+      drawGlow(b.s.x,b.s.y,r*3.1,"rgba(255,201,60,A","0.30)");
+      drawGlow(b.s.x,b.s.y,r*1.7,"rgba(253,184,19,A","0.55)");
+      sphere(b.s.x,b.s.y,r,"#FDB813",{x:0.4,y:-0.4});
+      ctx.globalAlpha=1;continue;
+    }
+    const lw=norm([-b.world[0],0,-b.world[2]]);
+    const lp=project([b.world[0]+lw[0]*p.size*3,0,b.world[2]+lw[2]*p.size*3],B);
+    const lo=lp?{x:(lp.x-b.s.x)/(r*3+1e-6),y:(lp.y-b.s.y)/(r*3+1e-6)}:{x:0,y:0};
+    const ln=Math.hypot(lo.x,lo.y)||1;lo.x/=ln;lo.y/=ln;
+
+    let seg=null;
+    if(p.ring){
+      seg=[];const tilt=0.44,N=90;
+      const n=[0,Math.cos(tilt),Math.sin(tilt)];
+      const u=norm(cross(n,[1,0,0])),v=cross(n,u);
+      for(let i=0;i<=N;i++){
+        const a=i/N*Math.PI*2,rr=p.size*1.7;
+        const w=[b.world[0]+(u[0]*Math.cos(a)+v[0]*Math.sin(a))*rr,
+                 b.world[1]+(u[1]*Math.cos(a)+v[1]*Math.sin(a))*rr,
+                 b.world[2]+(u[2]*Math.cos(a)+v[2]*Math.sin(a))*rr];
+        const s=project(w,B);if(!s)continue;
+        seg.push({x:s.x,y:s.y,back:s.z>b.s.z});
+      }
+      seg.bandPx=Math.max(1.5,(p.size*0.7)*b.s.k);
+      ringBand(seg,0);
+    }
+
+    let pr=r;
+    if(pulse&&pulse.id===p.id){
+      const t=(now-pulse.t0)/250;
+      if(t<1)pr=r*(1+0.15*Math.sin(t*Math.PI));else pulse=null;
+    }
+    sphere(b.s.x,b.s.y,pr,p.color,lo);
+    if(seg)ringBand(seg,1);
+    if(dimmed)ctx.globalAlpha=1;
+  }
+
+  requestAnimationFrame(frame);
+}
+
+/* ---------- input ---------- */
+const drag={on:false,x:0,y:0,moved:0,t0:0,pinch:null};
+const pointers=new Map();
+cv.addEventListener("pointerdown",(e)=>{
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size===2){
+    const[a,b]=[...pointers.values()];
+    drag.pinch={d:Math.hypot(a.x-b.x,a.y-b.y),dist:cam.dist};
+  }else{
+    drag.on=true;drag.x=e.clientX;drag.y=e.clientY;drag.moved=0;drag.t0=performance.now();
+    cam.vAz=cam.vPol=0;cam.anim=null;
+  }
+  cv.classList.add("dragging");
+});
+cv.addEventListener("pointermove",(e)=>{
+  if(!pointers.has(e.pointerId))return;
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size===2&&drag.pinch){
+    const[a,b]=[...pointers.values()];
+    const d=Math.hypot(a.x-b.x,a.y-b.y);
+    cam.dist=Math.max(focus?focusMinDist():30,Math.min(950,drag.pinch.dist*drag.pinch.d/Math.max(d,1)));
+    return;
+  }
+  if(!drag.on)return;
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  drag.x=e.clientX;drag.y=e.clientY;drag.moved+=Math.abs(dx)+Math.abs(dy);
+  cam.az-=dx*0.005;cam.pol=Math.max(0.15,Math.min(1.45,cam.pol-dy*0.005));
+  cam.vAz=-dx*0.0009;cam.vPol=-dy*0.0009;
+});
+function focusMinDist(){return focus?Math.max(24,focus.size*4):30;}
+function endPointer(e){
+  pointers.delete(e.pointerId);
+  if(pointers.size<2)drag.pinch=null;
+  if(pointers.size===0){
+    cv.classList.remove("dragging");
+    if(drag.on&&drag.moved<8&&performance.now()-drag.t0<400)tap(e.clientX,e.clientY);
+    drag.on=false;
+  }
+}
+cv.addEventListener("pointerup",endPointer);
+cv.addEventListener("pointercancel",endPointer);
+cv.addEventListener("wheel",(e)=>{
+  e.preventDefault();
+  cam.dist=Math.max(focusMinDist(),Math.min(950,cam.dist*(1+e.deltaY*0.001)));
+},{passive:false});
+cv.addEventListener("dblclick",()=>{if(focus)closeCard();else goHome();});
+function goHome(){
+  cam.anim={t:0,t0:performance.now(),az0:cam.az,pol0:cam.pol,d0:cam.dist,az1:HOME.az,pol1:HOME.pol,d1:HOME.dist};
+}
+
+/* ---------- tap → pick → focus zoom ---------- */
+function tap(x,y){
+  const B=camBasis();
+  const cands=[];
+  const s0=project([0,0,0],B);
+  if(s0)cands.push({body:SUN,s:s0,rPx:Math.max(2.5,SUN.size*s0.k)});
+  for(const p of PLANETS){
+    const s=project(posById[p.id],B);
+    if(s)cands.push({body:p,s,rPx:Math.max(2.5,p.size*s.k)});
+  }
+  let best=null,bestD=1e9;
+  for(const c of cands){
+    const d=Math.hypot(c.s.x-x,c.s.y-y);
+    const hit=Math.max(c.rPx*1.8,26);
+    if(d<hit&&d<bestD){best=c;bestD=d;}
+  }
+  if(!best)return;
+  pulse={id:best.body.id,t0:performance.now()};
+  if(mode==="quiz"){gradeTap(best.body,best.s);return;}
+  focusOn(best.body);
+}
+
+/* =================================================================
+   UI — merged scene: focus zoom + holo wiki card + persistent time band
+   ================================================================= */
+let mode="explore";
+const els={infocard:infocard,quizbanner:quizbanner,endcard:endcard};
+function setMode(m){
+  mode=m;
+  document.querySelectorAll(".modebar .chip").forEach(c=>c.classList.toggle("on",c.dataset.mode===m));
+  els.endcard.classList.add("hidden");
+  els.quizbanner.classList.toggle("hidden",m!=="quiz");
+  qtry.classList.add("hidden");
+  if(m==="quiz")closeCard();
+}
+document.querySelectorAll(".modebar .chip").forEach(c=>c.addEventListener("click",()=>setMode(c.dataset.mode)));
+
+function speak(en,tz){
+  if(!window.speechSynthesis)return;
+  speechSynthesis.cancel();
+  const a=new SpeechSynthesisUtterance(en);a.lang="en-US";
+  const b=new SpeechSynthesisUtterance(tz);b.lang="zh-TW";
+  speechSynthesis.speak(a);speechSynthesis.speak(b);
+}
+
+/* ----- focus zoom + info card ----- */
+let current=null,factIdx=-1;
+function focusOn(b){
+  focus=b;current=b;
+  cam.anim={t:0,t0:performance.now(),az0:cam.az,pol0:cam.pol,d0:cam.dist,
+    az1:cam.az,pol1:Math.max(0.5,Math.min(1.2,cam.pol)),d1:Math.max(40,b.size*10)};
+  openCard(b);
+}
+function closeCard(){
+  focus=null;current=null;
+  els.infocard.classList.add("hidden");
+  goHome();
+}
+function openCard(b){
+  icclass.textContent=b.typeEn+" · "+b.typeTz;
+  icname.innerHTML=`${b.name} <span>${b.tz}</span>`;
+  icdesc.textContent=b.descEn;
+  icdesctz.textContent=b.descTz;
+  // photo with graceful fallback to the flat-shaded colour
+  icphoto.classList.remove("fallback");
+  icphoto.style.background="#0d0a24";
+  icimg.style.display="";
+  icimg.onerror=()=>{
+    icimg.style.display="none";
+    icphoto.classList.add("fallback");
+    icphoto.style.background=`radial-gradient(circle at 38% 34%, ${shade(b.color,0.35)}, ${shade(b.color,-0.45)})`;
+  };
+  icimg.src=b.photo;
+  // stats grid
+  const cells=b.id==="sun"
+    ?[["DIAMETER · 直徑",b.diameterKm.toLocaleString()+" KM"],["TYPE · 類型","STAR 恆星"],["PLANETS · 行星","8"],["CENTRE · 中心","SOLAR SYSTEM"]]
+    :[["DIAMETER · 直徑",b.diameterKm.toLocaleString()+" KM"],["FROM SUN · 距日",b.au+" AU"],
+      ["1 YEAR · 一年",b.yearDays.toLocaleString()+" DAYS"],["1 DAY · 一天",b.dayHours+" HRS"],
+      ["MOONS · 衛星",String(b.moons)],["TYPE · 類型",b.typeEn]];
+  icgrid.innerHTML=cells.map(c=>`<div class="cell"><div class="k">${c[0]}</div><div class="v">${c[1]}</div></div>`).join("");
+  factIdx=-1;shuffleFact();
+  els.infocard.classList.remove("hidden");
+  infocard.scrollTop=0;
+}
+function shuffleFact(){
+  if(!current)return;
+  const n=current.facts.length;
+  let i;do{i=Math.floor(Math.random()*n);}while(n>1&&i===factIdx);
+  factIdx=i;
+  icfact.textContent=current.facts[i][0];
+  icfacttz.textContent=current.facts[i][1];
+  speak(current.facts[i][0],current.facts[i][1]);
+}
+icshuffle.addEventListener("click",(e)=>{e.stopPropagation();shuffleFact();});
+icclose.addEventListener("click",closeCard);
+icvoice.addEventListener("click",()=>{if(current)speak(current.descEn,current.descTz);});
+
+/* ----- persistent time band ----- */
+SPEEDS.forEach(([id,en,tz,dps])=>{
+  const c=document.createElement("button");c.className="chip"+(id==="10day"?" on":"");
+  c.innerHTML=`${en}<br>${tz}`;
+  c.addEventListener("click",()=>{perSec=dps;
+    speeds.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");});
+  speeds.appendChild(c);
+});
+setInterval(()=>{
+  cday.innerHTML=`Day <b>${Math.floor(simDays).toLocaleString()}</b> · 第 <b>${Math.floor(simDays).toLocaleString()}</b> 天`;
+  cyears.innerHTML=PLANETS.map(p=>`${p.name} <b>${Math.floor(simDays/p.yearDays)}</b>`).join(" · ");
+},100);
+
+/* ----- quiz ----- */
+let stars=2;
+function gradeTap(b,s){
+  if(b.id==="mars"){
+    stars++;qstars.textContent="★ "+stars;
+    const bu=document.createElement("div");bu.className="burst";bu.textContent="⭐";
+    bu.style.left=s.x+"px";bu.style.top=s.y+"px";document.body.appendChild(bu);
+    setTimeout(()=>bu.remove(),700);
+    setTimeout(()=>{endstars.textContent=stars;els.endcard.classList.remove("hidden");},750);
+  }else{
+    els.quizbanner.classList.remove("shake");void els.quizbanner.offsetWidth;
+    els.quizbanner.classList.add("shake");
+    qtry.classList.remove("hidden");
+  }
+}
+qvoice.addEventListener("click",()=>speak("Tap the red planet!","點紅色的星球!"));
+again.addEventListener("click",()=>{stars=0;qstars.textContent="★ 0";setMode("quiz");});
+toexplore.addEventListener("click",()=>setMode("explore"));
+
+/* legend swatches */
+[["#191340","space"],["#332B66","panel"],["#3D3475","panel2"],["#4A4090","line"],["#F3F0FF","ink"],["#A79FD6","muted"],["#FFC93C","gold"],["#4EA8FF","holo"],["#FDB813","sun"],["#C1440E","mars"],["#4D7DD1","earth"],["#9FE3E0","uranus"]]
+.forEach(([c,n])=>{const d=document.createElement("div");d.className="sw";d.style.background=c;d.title=n;swatches.appendChild(d);});
+
+setTimeout(()=>{hint.style.opacity=0;},8000);
+
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

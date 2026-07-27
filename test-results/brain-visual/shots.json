@@ -1,0 +1,131 @@
+{
+  "outDir": ".",
+  "shots": [
+    {
+      "name": "style-board",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/sprite-style-board.html",
+      "w": 1200,
+      "h": 900,
+      "dsf": 1,
+      "full": true
+    },
+    {
+      "name": "style-board-hidpi",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/sprite-style-board.html",
+      "w": 1000,
+      "h": 1000,
+      "dsf": 2
+    },
+    {
+      "name": "preview-desktop-1366x1024",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html",
+      "w": 1366,
+      "h": 1024,
+      "dsf": 1
+    },
+    {
+      "name": "preview-tablet-landscape-1280x800",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html",
+      "w": 1280,
+      "h": 800,
+      "dsf": 1
+    },
+    {
+      "name": "preview-tablet-portrait-800x1280",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html",
+      "w": 800,
+      "h": 1280,
+      "dsf": 1
+    },
+    {
+      "name": "preview-short-landscape-1024x600",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html",
+      "w": 1024,
+      "h": 600,
+      "dsf": 1
+    },
+    {
+      "name": "preview-mobile-360x800",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html?compact=true",
+      "w": 360,
+      "h": 800,
+      "dsf": 2,
+      "mobile": true
+    },
+    {
+      "name": "preview-mobile-430x932",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html?compact=true",
+      "w": 430,
+      "h": 932,
+      "dsf": 2,
+      "mobile": true
+    },
+    {
+      "name": "preview-mobile-360x800-full",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html?compact=true",
+      "w": 360,
+      "h": 800,
+      "dsf": 2,
+      "mobile": true,
+      "full": true
+    },
+    {
+      "name": "state-correct-1280x800",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html?preview=correct",
+      "w": 1280,
+      "h": 800,
+      "dsf": 1
+    },
+    {
+      "name": "state-corrective-1280x800",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html?preview=corrective",
+      "w": 1280,
+      "h": 800,
+      "dsf": 1
+    },
+    {
+      "name": "state-reduced-motion-1280x800",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html?reduced=true&preview=correct",
+      "w": 1280,
+      "h": 800,
+      "dsf": 1
+    },
+    {
+      "name": "state-hard-tier-1280x800",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html?tier=hard",
+      "w": 1280,
+      "h": 800,
+      "dsf": 1
+    },
+    {
+      "name": "state-tot-tier-1280x800",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html?tier=tot",
+      "w": 1280,
+      "h": 800,
+      "dsf": 1
+    },
+    {
+      "name": "sprite-hidpi-1280x800-dsf2",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html",
+      "w": 1280,
+      "h": 800,
+      "dsf": 2
+    },
+    {
+      "name": "preview-tablet-landscape-1280x800-full",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html",
+      "w": 1280,
+      "h": 800,
+      "dsf": 1,
+      "full": true
+    },
+    {
+      "name": "state-hard-tier-1280x800-full",
+      "url": "file:///d:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/docs/plans/2026-07-27-brain-gym-visual-redesign/design-preview.html?tier=hard",
+      "w": 1280,
+      "h": 800,
+      "dsf": 1,
+      "full": true
+    }
+  ]
+}

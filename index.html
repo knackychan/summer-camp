@@ -2430,8 +2430,11 @@ function appLockReason(id){
 }
 function catLockReason(id,cat){
   if(isTestMode())return null;
-  const v=store&&store.familySettings&&store.familySettings[`catlock_${id}_${cat}`];
-  return v?v:null;
+  const v=(store&&store.familySettings&&store.familySettings[`catlock_${id}_${cat}`])||"";
+  /* Games default to locked (Papa, 2026-07-27): no row yet = locked; Papa
+     grants a pass by setting the value to "unlocked", not by clearing it. */
+  if(cat==="games")return v==="unlocked"?null:"Papa";
+  return v||null;
 }
 function tabLocked(cat){
   return !!(hubKid&&cat!=="day"&&catLockReason(hubKid,cat));
@@ -2563,6 +2566,10 @@ function gameLockState(){
   return st;
 }
 function refreshOverrides(){
+  /* The everyday template is stamped onto DAY itself; today's overrides layer
+     on top. Both must be re-read together or a template change would only show
+     up after a reload. */
+  SQTime.applyTemplate(DAY,SQTime.parseTemplate(store&&store.familySettings&&store.familySettings.day_template_times));
   dayOverrides=SQTime.resolveOverrides(store&&store.dayOverridesRaw,activeKid());
 }
 /* adapters for js/papa-tools.js */
@@ -3320,6 +3327,7 @@ function setupRealtime(){
     store.familySettings[row.key]=row.value;
     localStorage.setItem("sq:famSettings",JSON.stringify(store.familySettings));
     if(row.key==="admin_pin")localStorage.setItem("sq:adminPin",JSON.stringify(row.value||""));
+    if(row.key==="day_template_times"){refreshOverrides();refreshLockUI();if(hubKid&&hubTab==="day")renderMyDay();}
     leaveLockedCategory();
     if(hubKid&&!document.getElementById("hub").classList.contains("hidden"))renderHub();
     refreshAppLock();

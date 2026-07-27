@@ -1,32 +1,31 @@
-# Slice 31 — Explore mode (the 3D game)
+# Slice 31 — The living scene (merged Explore+Orbit)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** The Solar System tile appears in the games grid and launches a real 3D scene — Sun, eight orbiting planets, touch camera, tap-a-planet bilingual fact card with speech — built entirely on the game platform's registry contract and 3D seam.
+**Goal:** The Solar System tile appears in the games grid and launches a real 3D scene — Sun, eight orbiting planets at real period ratios, orbit camera, and a **persistent time-warp band** with the day/year counter. One scene, always alive; there is no Orbit "mode" to switch into (design D8).
 
-**Architecture:** `js/games/solar.js` is the game module (default export: `{id, meta, keyboard, bestKey, init, stop}`). It ignores `ctx.stage`, appends its own WebGL canvas to `ctx.mount`, and owns every resource it creates. Three.js arrives via lazy `import()` of the vendor files — nothing parses until a kid opens the game. All text is **DOM overlay**, never canvas-drawn (design.md §4 — the 繁體中文 font stack keeps working).
+**Architecture:** `js/games/solar.js` is the game module (default export `{id, meta, keyboard, bestKey, settings, init, stop}`). It ignores `ctx.stage`, appends its own WebGL canvas to `ctx.mount`, and owns every resource it creates. Three.js arrives via lazy `import()` of the vendor files. Sim math lives in the pure module `js/games/solar-sim.js` (no Three.js, node-testable). All text is DOM overlay per `tech-spec.md` §8; every visual value comes from `art-direction.md` — both binding.
 
-**Tech Stack:** Vendored Three.js (latest stable, per design D7), ES modules, `node:test`, `scripts/check.mjs`.
+**Tech Stack:** Vendored Three.js (latest stable, design D7), ES modules, `node:test`, `scripts/check.mjs`.
 
-**Design:** `docs/plans/2026-07-27-solar-system/design.md` §2, §4, §5
+**Design:** `design.md` §2, §4, §5, D4, D8 · **Binding:** `art-direction.md` §3–§5, §6.1, §6.3 · `tech-spec.md` §1–§8, §11, §14
 
-**Depends on:** slice 30 (data); game-platform slice **15** (registry + host + `startRegistered`); game-platform slice **21** as amended by D7 — `js/vendor/three.module.min.js` + `js/vendor/OrbitControls.js` (bare `"three"` specifier rewritten to `./three.module.min.js`), both precached, `ctx.mount` live, host GL context-loss handling.
+**Depends on:** slice 30 (data); game-platform slice **15** (registry + host); game-platform slice **21** as amended by D7 (vendored `three.module.min.js` + `OrbitControls.js`, both precached, `ctx.mount`, host GL context-loss handling).
 
 **DONE WHEN:**
-- On a kid's tablet: the 🪐 tile renders in the grid; the game launches **with wifi off**; planets orbit; tapping Mars opens a bilingual fact card and speaks it; backing out leaves no rAF or GL context behind; launching it a second time works.
-- `node scripts/check.mjs` passes.
-- `node --test scripts/solar-explore.test.mjs` passes (pure helpers only — the scene itself is verified on-device, per platform §7).
+- On a kid's tablet, **offline**: tile launches; planets orbit (Mercury visibly fastest); drag/pinch/double-tap camera works; the time band warps time (pause freezes everything; counter at Day 365 reads Earth 1, Mercury 4); chosen default speed persists; tap pulses a planet (focus zoom arrives in slice 32).
+- `node scripts/check.mjs`, `node --test scripts/solar-sim.test.mjs`, `node --test scripts/solar-explore.test.mjs` all pass.
 
 ---
 
 ## Constraints you must not violate
 
-1. **Legacy-syntax compatible** first-party code (design D7) — no `?.`/`??`/`.flatMap(` in `js/games/solar.js`; it joins `runtimeFiles`.
-2. **Bilingual invariant:** every kid-facing string EN + 繁體中文. Fact content comes from `solar-data.js` — never hardcode a fact string in the game module.
-3. **Offline-first:** `solar.js` joins `APP_SHELL` in the same commit it is created; `CACHE_NAME` bumped. The manifest guard (platform slice 15) fails the build otherwise, because this entry is `legacy:false`.
-4. **Coarse-pointer:** raycast against inflated invisible hit-spheres (design §5). No hover-dependent anything.
-5. **The host must not know this game is 3D.** No edits to `startRegistered`/`stopArena`; everything 3D lives behind `init`/`stop`.
-6. **Coach, not cop:** the fact card invites; nothing shames, nothing is locked.
+1. **Legacy-syntax compatible** first-party code (design D7) — no `?.`/`??`/`.flatMap(`; new files join `runtimeFiles`.
+2. **Bilingual invariant:** every kid-facing string EN + 繁體中文. Strings come from `solar-data.js` / `solar-sim.js` — never hardcoded in the game module.
+3. **Offline-first:** new files join `APP_SHELL` + `CACHE_NAME` bump in the same commit. The manifest guard enforces this (`legacy:false`).
+4. **Coarse-pointer:** inflated hit spheres (`tech-spec.md` §7). No hover-dependent anything.
+5. **The host must not know this game is 3D.** No edits to `startRegistered`/`stopArena`.
+6. **Art-direction is binding:** no value, colour, motion or component that those docs don't specify. No camera moves the kid didn't request (drag/pinch/double-tap only — the tap-to-zoom rig is slice 32).
 
 ---
 
@@ -34,133 +33,68 @@
 
 | File | Change | Responsibility after this slice |
 |---|---|---|
-| `js/games/solar.js` | Create | The 3D game module: scene, camera, raycast, fact card, `init`/`stop` |
-| `js/games/index.js` | Modify | Manifest gains the `solar` entry (after the arcade games, before the brain block) |
-| `sw.js` | Modify | `APP_SHELL` gains `./js/games/solar.js`; `CACHE_NAME` bumped |
-| `scripts/check.mjs` | Modify | `runtimeFiles` gains `js/games/solar.js` |
-| `scripts/solar-explore.test.mjs` | Create | Node tests for the pure helpers exported by `solar.js` |
+| `js/games/solar.js` | Create | The 3D game module: scene, camera rig, raycast+pulse, time band UI, `init`/`stop` |
+| `js/games/solar-sim.js` | Create | Pure sim math: `SPEEDS`, `daysPerSec`, `advance`, `orbitCount` |
+| `js/games/index.js` | Modify | Manifest gains the `solar` entry (design.md §2) |
+| `sw.js` | Modify | `APP_SHELL` gains both files; `CACHE_NAME` bumped |
+| `scripts/check.mjs` | Modify | `runtimeFiles` gains both files |
+| `scripts/solar-sim.test.mjs` | Create | Sim math tests |
+| `scripts/solar-explore.test.mjs` | Create | Pure-helper tests (`hitRadius`, `angleAt`, module shape) |
 
 ---
 
 ## Task 1: Manifest entry
 
-**Files:**
-- Modify: `js/games/index.js`
-
-- [ ] **Step 1: Add the entry**
-
-Between `vocab` and the brain block, exactly as specified in design.md §2:
+- [ ] **Step 1:** Add to `js/games/index.js`, between `vocab` and the brain block, exactly:
 
 ```js
 { id: "solar", brain: false, keyboard: false, bestKey: null, legacy: false,
   meta: { icon: "🪐", title: "Solar System", tz: "太陽系", blurb: "Explore the planets" } },
 ```
 
-`legacy:false` is what routes `SQLoadGame` to `js/games/solar.js` instead of the old if/else chain — and what arms the check.mjs `APP_SHELL` guard.
-
-- [ ] **Step 2: Verify the manifest tests still pass**
-
-Run: `node --test scripts/registry.test.mjs`
-Expected: PASS (counts update if any test asserts a fixed length — update the assertion, not the data).
+- [ ] **Step 2:** `node --test scripts/registry.test.mjs` passes (update length assertions, never the data).
 
 ---
 
-## Task 2: The game module
+## Task 2: The sim module, test-first
 
-**Files:**
-- Create: `js/games/solar.js`
+**Files:** `scripts/solar-sim.test.mjs`, `js/games/solar-sim.js`
 
-- [ ] **Step 1: Write the module**
-
-Skeleton below — fill in, don't redesign. Pure helpers are exported at the bottom so node can test them without importing Three.js (the test stubs the dynamic import away by only importing the named exports — keep the top of the file free of a static three import; the two vendor imports happen **only** inside `init` via dynamic `import()`).
-
-```js
-/* Solar System — Explore mode (design.md §4). Registry-native 3D game:
-   ignores ctx.stage, appends its own canvas to ctx.mount, owns its loop.
-   All text is DOM overlay — nothing is drawn into the GL canvas. */
-import { SOLAR, PLANETS, SCENE } from "./solar-data.js";
-
-let R = null; // module-scope runtime: { renderer, scene, camera, controls, raf, ... }
-
-export default {
-  id: "solar",
-  meta: { icon: "🪐", title: "Solar System", tz: "太陽系", blurb: "Explore the planets" },
-  keyboard: false,
-  bestKey: null,
-
-  async init(ctx) {
-    const THREE = await import("../vendor/three.module.min.js");
-    const { OrbitControls } = await import("../vendor/OrbitControls.js");
-    R = buildScene(THREE, OrbitControls, ctx);
-    R.raf = requestAnimationFrame(function tick(t) { R.tick(t); R.raf = requestAnimationFrame(tick); });
-  },
-
-  stop() {
-    if (!R) return;
-    cancelAnimationFrame(R.raf);
-    R.dispose();          // controls.dispose(), geometries/materials, renderer.dispose(), canvas + overlay removed
-    R = null;
-  },
-};
-```
-
-Scene construction requirements:
-
-- **Sun:** emissive sphere, radius `SCENE.sunRadius`. **Planets:** one sphere each at `SCENE.orbits[id]`, size `SCENE.sizes[id]`, colour from data; Saturn gets one flat `RingGeometry`. Orbit rings: one thin `LineLoop` circle per planet. Background: a `THREE.Points` starfield.
-- **Motion:** each planet's angle advances by `2π / yearDays` per simulated day; v1 runs at a fixed 10 sim-days per real second (slice 32 adds the controls). Axial spin for looks.
-- **Camera:** `OrbitControls`, `enablePan=false`, `minDistance`/`maxDistance` clamped, double-tap resets to the home view (design §5). `devicePixelRatio` capped at 2.
-- **Hit spheres:** per planet, an invisible sphere of radius `Math.max(2.5 * SCENE.sizes[id], 0.9)`; `pointerdown` raycasts against those, not the visual meshes.
-- **Fact card** (DOM overlay appended to `ctx.mount`): planet name EN + 中文 large, one stats line (diameter km · AU · year days · moons), the three facts as a list, and a ✕ close button ≥ 44 px. On open: `ctx.sayPair(facts[0].en, facts[0].tz)`. Tapping any other fact speaks that one. Same treatment for the Sun.
-- **Visibility:** pause the loop on `visibilitychange` hidden, resume on visible (design §5).
-- **`stop()`** releases everything the module created; GL context-loss recovery itself is the host's job (platform slice 21) — the game's part is a complete, idempotent teardown.
-
-- [ ] **Step 2: Extract the pure helpers and export them**
-
-At minimum `hitRadius(id)` and `angleAt(planet, simDays)` as named exports — these are the pieces node can test without WebGL.
+- [ ] **Step 1: Write the failing tests** — five `SPEEDS` steps with pause=0 and bilingual labels; `daysPerSec` falls back to `"10day"` on unknown id; `advance(total, dtMs, perSec)` accumulates; `orbitCount(365, 365)` = Earth exactly 1, Mercury ≈ 4.15, Neptune floors to 0; returned `angle` is derived (`182.5/365` of a turn = π), never stateful. Run: FAIL (module missing).
+- [ ] **Step 2: Implement `js/games/solar-sim.js`** per `tech-spec.md` §11 (the `SPEEDS` table with EN+中文 labels is the exact spec — copy it, don't paraphrase). Run: PASS.
 
 ---
 
-## Task 3: Tests for the pure helpers
+## Task 3: The game module
 
-**Files:**
-- Create: `scripts/solar-explore.test.mjs`
+**Files:** `js/games/solar.js`
 
-- [ ] **Step 1: Write and run the tests**
-
-Cover: `hitRadius` returns ≥2.5× visual size and never below the 0.9 floor (Mercury, the smallest, must hit the floor); `angleAt` puts Earth through a full turn per 365 sim-days and Mercury through ~4.15 turns; module default export carries `id:"solar"`, `bestKey:null`, `keyboard:false`, and meta matching the manifest entry.
-
-Run: `node --test scripts/solar-explore.test.mjs` — expected PASS.
+- [ ] **Step 1: Scene** per `tech-spec.md` §3–§6 and `art-direction.md` §4: unlit sun + glow shell; 8 Lambert planets in `solar-data.js` colours/sizes/orbits; Saturn ring + 0.44 rad tilt; Uranus group tilt 1.71; 8 LineLoop orbit rings; 1,500-point starfield; ambient + point light; **no shadows, no textures**.
+- [ ] **Step 2: Camera rig** per `tech-spec.md` §4: `OrbitControls` with the exact clamps (pan off, damping 0.08, polar [0.15, 1.45], distance [10, 55], autoRotate off); home view (0, 16, 30)-equivalent framing; double-tap eased reset 0.4 s.
+- [ ] **Step 3: Motion** per `art-direction.md` §5: sim days accumulate via `advance`; each planet's angle is `orbitCount(totalDays, yearDays).angle` — derived, never integrated; axial spin per the locked formula; loop pauses on `visibilitychange`.
+- [ ] **Step 4: Tap pulse.** Raycast per `tech-spec.md` §7 (drag-vs-tap discrimination, hit spheres `max(2.5× size, 0.9)`). A tap plays `ctx.sfx.pop` + the 0.25 s scale pulse. (Focus zoom + card are slice 32 — do not build them here.)
+- [ ] **Step 5: Time band + counter** (DOM, `art-direction.md` §6.3): persistent bottom band; five speed chips from `SPEEDS` (bilingual, active = gold); the two-line counter (`Day N · 第 N 天` + per-planet completed years, gold numbers); `ctx.sfx.pop` on each completed orbit. Speed state lives in module runtime; sim resets in `stop()`.
+- [ ] **Step 6: Settings.** `settings(bar, ctx)` renders a default-speed chips row via the host setbar; persists `ctx.settings.speed`, default `"10day"`.
+- [ ] **Step 7: Teardown.** `stop()` per the `tech-spec.md` §10 checklist — complete and idempotent.
 
 ---
 
-## Task 4: Cache, check, tablet
+## Task 4: Tests, cache, check, tablet
 
-**Files:**
-- Modify: `sw.js`, `scripts/check.mjs`
-
-- [ ] **Step 1: Precache and bump** — add `"./js/games/solar.js"` to `APP_SHELL`; bump `CACHE_NAME`. Confirm the two vendor files are already there from platform slice 21; if `OrbitControls.js` is missing, add it now.
-- [ ] **Step 2: `runtimeFiles`** — add `"js/games/solar.js"` to `scripts/check.mjs:20`.
-- [ ] **Step 3: Run the gate** — `node scripts/check.mjs` → PASS. The manifest guard must see `solar` in `APP_SHELL` (its `legacy:false` makes the guard mandatory).
-- [ ] **Step 4: On the tablet** — serve the app, load once online, then verify with wifi off:
-  1. Games grid shows 🪐 Solar System / 太陽系 in manifest order.
-  2. Launch: sun, 8 planets, orbit rings, starfield; planets visibly move; Mercury fastest.
-  3. Drag rotates, pinch zooms (clamped), double-tap resets.
-  4. Tap Mars → card reads "Mars 火星", real numbers, 3 facts; speech plays EN then 中文. Tap Sun → its card. ✕ closes.
-  5. Back to hub, reopen the game — works; no duplicate loops, no console errors.
-  6. Home-button the tablet mid-game and return — scene recovers (host GL handling).
-- [ ] **Step 5: Commit**
+- [ ] **Step 1:** `scripts/solar-explore.test.mjs` — `hitRadius` floors at 0.9 for Mercury; `angleAt(earth, 365)` = full turn; module default export matches the manifest entry (`id`, `bestKey:null`, `keyboard:false`, meta equal).
+- [ ] **Step 2:** `APP_SHELL` + `CACHE_NAME` bump; both files in `runtimeFiles`; `node scripts/check.mjs` PASS (manifest guard sees `solar` precached).
+- [ ] **Step 3: On the tablet (wifi off):** grid tile → scene; orbits at real ratios; camera clamped, double-tap reset; band warps time and the counter matches reality at Day 365; pop on Mercury laps; tap → pulse only; back → reopen works, no leaked loops; home-button → return recovers (host GL handling).
+- [ ] **Step 4: Commit**
 
 ```bash
-git add js/games/solar.js js/games/index.js sw.js scripts/check.mjs scripts/solar-explore.test.mjs
-git commit -m "feat(games): add Solar System explore mode on the 3D seam"
+git add js/games/solar.js js/games/solar-sim.js js/games/index.js sw.js scripts/check.mjs scripts/solar-sim.test.mjs scripts/solar-explore.test.mjs
+git commit -m "feat(games): add the Solar System living scene with time-warp"
 ```
 
 ---
 
 ## DONE WHEN
 
-- Every Task-4 tablet check passes, offline included.
-- Fact cards are bilingual and spoken; no fact string exists outside `solar-data.js`.
-- `stop()` teardown is complete and idempotent (double-stop safe).
-- `node scripts/check.mjs` and `node --test scripts/solar-explore.test.mjs` green; `CACHE_NAME` bumped.
-- No host edits; no `?.`/`??`/`.flatMap` in `js/games/solar.js`.
+- Every Task-4 tablet check passes offline.
+- Counter ratios provably match `solar-data.js`; speeds persist; teardown idempotent.
+- No art-direction value was improvised; no host edits; legacy-syntax compatible; green checks and tests; bumped cache.

@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pocket Brain Lab — sprite style board</title>
+<style>
+:root{
+  --brain-backdrop:#17132f; --brain-shell:#27214f; --brain-shell-2:#332b66;
+  --brain-paper:#fff5dc; --brain-paper-2:#f1e3bf; --brain-ink:#2f2845; --brain-ink-2:#655d76;
+  --brain-outline:#3b3159; --brain-shadow:#171229; --brain-white:#fffdf7;
+  --brain-success:#2f9e68; --brain-success-soft:#dff4e8; --brain-hint:#d99416; --brain-hint-soft:#fff0c7;
+  --brain-focus:#68c8ff; --brain-disabled:#aaa3b6;
+  --brain-calc:#ee7b54; --brain-signs:#dda62b; --brain-lowhigh:#3f9fc8; --brain-stroop:#8b63b8;
+  --brain-crunch:#319f91; --brain-clock:#5e6fc4; --brain-change:#2f9e68; --brain-wordmem:#8255a4;
+  --brain-recall:#d9783d;
+  --brain-red:#cf3f4a; --brain-blue:#2775bd; --brain-green:#24845a; --brain-yellow:#c28a08;
+
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+
+  /* Pixel-sprite primitives — candidates for css/brain-sprites.css */
+  --sprite-atlas:url("../../../assets/brain/sprites/change.png");
+  --sprite-cell:256px;
+  --sprite-gap:2px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:var(--s5) var(--s4) var(--s7);
+  background:var(--brain-backdrop); color:var(--brain-paper);
+  font:16px/1.45 Nunito,system-ui,sans-serif;
+}
+.wrap{max-width:1000px;margin:0 auto}
+h1,h2,h3{font-family:Fredoka,system-ui,sans-serif;line-height:1.15;margin:0 0 var(--s2)}
+h1{font-size:clamp(22px,3vw,32px)}
+h2{font-size:clamp(19px,2.4vw,24px);margin-top:var(--s6)}
+h3{font-size:17px;margin-top:var(--s4);color:var(--brain-paper-2)}
+p{margin:0 0 var(--s3);max-width:72ch;color:#e3d9be}
+.meta{color:var(--brain-disabled);font-size:14px;margin-bottom:var(--s5)}
+.card{
+  background:var(--brain-shell); border:2px solid var(--brain-outline); border-radius:18px;
+  padding:var(--s4); margin-bottom:var(--s4);
+}
+.card--paper{background:var(--brain-paper);color:var(--brain-ink)}
+.card--paper p{color:var(--brain-ink-2)}
+
+/* ---------- palette ---------- */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:var(--s2);margin:0;padding:0;list-style:none}
+.swatches li{border:2px solid var(--brain-outline);border-radius:12px;overflow:hidden;background:var(--brain-shell-2)}
+.swatches i{display:block;height:44px}
+.swatches b,.swatches small{display:block;padding:0 var(--s2);font-style:normal}
+.swatches b{font-size:13px;font-weight:700;padding-top:var(--s1)}
+.swatches small{font-size:12px;color:var(--brain-disabled);padding-bottom:var(--s1);font-variant-numeric:tabular-nums}
+
+/* ---------- sprite primitives ---------- */
+.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+.sprite{
+  image-rendering:pixelated;
+  background-image:var(--sprite-atlas);
+  background-repeat:no-repeat;
+  /* atlas is authored at native scale; --z is the integer zoom */
+  background-size:calc(1030px * var(--z)) calc(1030px * var(--z));
+  background-position:calc(-1 * var(--sx,0px) * var(--z)) calc(-1 * var(--sy,0px) * var(--z));
+  width:calc(var(--sw) * var(--z));
+  height:calc(var(--sh) * var(--z));
+}
+.zoomrow{display:flex;align-items:flex-end;gap:var(--s5);flex-wrap:wrap}
+.zoomrow figure{margin:0;text-align:center}
+.zoomrow figcaption{font-size:12px;color:var(--brain-disabled);margin-top:var(--s2);font-variant-numeric:tabular-nums}
+.checker{
+  background-color:#221c46;
+  background-image:linear-gradient(45deg,#2b2454 25%,transparent 25%,transparent 75%,#2b2454 75%),
+                   linear-gradient(45deg,#2b2454 25%,transparent 25%,transparent 75%,#2b2454 75%);
+  background-size:16px 16px;background-position:0 0,8px 8px;
+  padding:var(--s3);border-radius:12px;display:inline-block;
+}
+.onpaper{background:var(--brain-paper);padding:var(--s3);border-radius:12px;display:inline-block}
+
+/* ---------- stepped strip animation ---------- */
+.strip{
+  --z:1;
+  width:calc(256px * var(--z)); height:calc(256px * var(--z));
+  image-rendering:pixelated;
+  background-image:var(--sprite-atlas);
+  background-repeat:no-repeat;
+  background-size:calc(1030px * var(--z)) calc(1030px * var(--z));
+  background-position-y:0;
+  animation:drawer 900ms steps(3,jump-none) infinite alternate;
+}
+@keyframes drawer{
+  from{background-position-x:0}
+  to{background-position-x:calc(-516px * var(--z))}
+}
+@media (prefers-reduced-motion:reduce){
+  .strip{animation:none;background-position-x:calc(-516px * var(--z))}
+}
+
+/* ---------- contact sheet ---------- */
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--s4)}
+.sheet figure{margin:0;background:var(--brain-shell-2);border:2px solid var(--brain-outline);border-radius:14px;padding:var(--s3);text-align:center}
+.sheet .box{min-height:136px;display:flex;align-items:center;justify-content:center}
+.sheet figcaption{font-size:12px;color:var(--brain-disabled);margin-top:var(--s2)}
+.sheet b{display:block;font-size:13px;color:var(--brain-paper)}
+
+/* ---------- rules ---------- */
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--s4)}
+.rules ul{margin:var(--s2) 0 0;padding-left:1.15em}
+.rules li{margin-bottom:var(--s1)}
+.yes{border-left:5px solid var(--brain-success)}
+.no{border-left:5px solid var(--brain-hint)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:var(--s2);border-bottom:1px solid var(--brain-outline);vertical-align:top}
+th{color:var(--brain-paper-2);font-weight:700}
+code{font-family:ui-monospace,Consolas,monospace;font-size:13px;background:#1f1a3f;padding:1px 5px;border-radius:5px}
+.card--paper code{background:var(--brain-paper-2)}
+.note{background:var(--brain-hint-soft);color:var(--brain-ink);border:2px solid var(--brain-hint);border-radius:14px;padding:var(--s3);margin-bottom:var(--s4)}
+.note p{color:var(--brain-ink);margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Pocket Brain Lab — sprite style board</h1>
+<p class="meta">2026-07-27 · Change Maker pilot atlas · till, money and product · 10 frames</p>
+
+<div class="note">
+  <p><b>Change Maker only.</b> The pixel treatment was approved on the first three assets, so the
+  Corner Shop set was completed: the till as one interactable machine, the four coin bases, the two
+  note bases and the product. The other eight scenes are still not generated — their sprites wait on
+  the scene-by-scene design, not on this treatment.</p>
+</div>
+
+<h2>1. Palette — exact v1 tokens</h2>
+<div class="card">
+  <h3>Surfaces and ink</h3>
+  <ul class="swatches">
+    <li><i style="background:#fff5dc"></i><b>paper</b><small>#FFF5DC</small></li>
+    <li><i style="background:#f1e3bf"></i><b>paper-2</b><small>#F1E3BF</small></li>
+    <li><i style="background:#2f2845"></i><b>ink</b><small>#2F2845</small></li>
+    <li><i style="background:#655d76"></i><b>ink-2</b><small>#655D76</small></li>
+    <li><i style="background:#3b3159"></i><b>outline</b><small>#3B3159</small></li>
+    <li><i style="background:#171229"></i><b>shadow</b><small>#171229</small></li>
+    <li><i style="background:#2f9e68"></i><b>success</b><small>#2F9E68</small></li>
+    <li><i style="background:#d99416"></i><b>hint</b><small>#D99416</small></li>
+  </ul>
+  <h3>Nine scene accents</h3>
+  <ul class="swatches">
+    <li><i style="background:#ee7b54"></i><b>calc</b><small>#EE7B54</small></li>
+    <li><i style="background:#dda62b"></i><b>signs</b><small>#DDA62B</small></li>
+    <li><i style="background:#3f9fc8"></i><b>lowhigh</b><small>#3F9FC8</small></li>
+    <li><i style="background:#8b63b8"></i><b>stroop</b><small>#8B63B8</small></li>
+    <li><i style="background:#319f91"></i><b>crunch</b><small>#319F91</small></li>
+    <li><i style="background:#5e6fc4"></i><b>clock</b><small>#5E6FC4</small></li>
+    <li><i style="background:#2f9e68"></i><b>change</b><small>#2F9E68</small></li>
+    <li><i style="background:#8255a4"></i><b>wordmem</b><small>#8255A4</small></li>
+    <li><i style="background:#d9783d"></i><b>recall</b><small>#D9783D</small></li>
+  </ul>
+  <h3>Four fixed Stroop colours — never tinted by a scene accent</h3>
+  <ul class="swatches">
+    <li><i style="background:#cf3f4a"></i><b>red</b><small>#CF3F4A</small></li>
+    <li><i style="background:#2775bd"></i><b>blue</b><small>#2775BD</small></li>
+    <li><i style="background:#24845a"></i><b>green</b><small>#24845A</small></li>
+    <li><i style="background:#c28a08"></i><b>yellow</b><small>#C28A08</small></li>
+  </ul>
+</div>
+
+<h2>2. Derived sprite ramps</h2>
+<div class="card">
+  <p>Sprites may use lighter/darker ramps derived from their scene accent, paper and outline.
+  Every ramp used so far is recorded here and in <code>sprites/manifest.json</code>.</p>
+  <h3>Fruit red — used by <code>apple</code> (calc, change, wordmem)</h3>
+  <ul class="swatches">
+    <li><i style="background:#f2685c"></i><b>light</b><small>#F2685C</small></li>
+    <li><i style="background:#d8453e"></i><b>mid</b><small>#D8453E</small></li>
+    <li><i style="background:#9e2c33"></i><b>shade</b><small>#9E2C33</small></li>
+    <li><i style="background:#3e9e63"></i><b>leaf</b><small>#3E9E63</small></li>
+    <li><i style="background:#8a6a34"></i><b>stem</b><small>#8A6A34</small></li>
+  </ul>
+  <h3>Register green — derived from <code>--brain-change</code></h3>
+  <ul class="swatches">
+    <li><i style="background:#5cc98c"></i><b>light</b><small>#5CC98C</small></li>
+    <li><i style="background:#2f9e68"></i><b>mid = accent</b><small>#2F9E68</small></li>
+    <li><i style="background:#1e6b47"></i><b>shade</b><small>#1E6B47</small></li>
+    <li><i style="background:#d9b27e"></i><b>drawer light</b><small>#D9B27E</small></li>
+    <li><i style="background:#b4844a"></i><b>drawer well</b><small>#B4844A</small></li>
+  </ul>
+  <h3>Coin metals — the only ramps allowed on a money base</h3>
+  <ul class="swatches">
+    <li><i style="background:#e6e4ec"></i><b>silver light</b><small>#E6E4EC</small></li>
+    <li><i style="background:#c3c0ce"></i><b>silver mid</b><small>#C3C0CE</small></li>
+    <li><i style="background:#8e8aa0"></i><b>silver shade</b><small>#8E8AA0</small></li>
+    <li><i style="background:#f2ce72"></i><b>gold light</b><small>#F2CE72</small></li>
+    <li><i style="background:#d6a63c"></i><b>gold mid</b><small>#D6A63C</small></li>
+    <li><i style="background:#9e7420"></i><b>gold shade</b><small>#9E7420</small></li>
+  </ul>
+  <h3>Note papers</h3>
+  <ul class="swatches">
+    <li><i style="background:#e9a0a4"></i><b>rose light</b><small>#E9A0A4</small></li>
+    <li><i style="background:#cf6870"></i><b>rose mid</b><small>#CF6870</small></li>
+    <li><i style="background:#9c3f4c"></i><b>rose shade</b><small>#9C3F4C</small></li>
+    <li><i style="background:#d9b27e"></i><b>brown light</b><small>#D9B27E</small></li>
+    <li><i style="background:#b4844a"></i><b>brown mid</b><small>#B4844A</small></li>
+    <li><i style="background:#7e5a2e"></i><b>brown shade</b><small>#7E5A2E</small></li>
+  </ul>
+</div>
+
+<h2>3. Pixel geometry</h2>
+<div class="card">
+  <table>
+    <tr><th>Rule</th><th>Value</th><th>Pilot result</th></tr>
+    <tr><td>Small object grid</td><td>64 × 64 native</td><td><code>apple</code> 64 × 64</td></tr>
+    <tr><td>Medium prop grid</td><td>96 × 96 or 128 × 128</td><td><code>note</code> 128 × 128</td></tr>
+    <tr><td>Wide/large prop grid</td><td>divisible by 16</td><td><code>till</code> 256 × 256</td></tr>
+    <tr><td>Outline</td><td>1–2 native px, dark plum <code>#3B3159</code>, never black</td><td>enforced by palette snap</td></tr>
+    <tr><td>Colours per sprite</td><td>6–10 including outline and highlights</td><td>9 / 8 / 10 / 7</td></tr>
+    <tr><td>Background</td><td>transparent, hard alpha, no soft edge</td><td>chroma-keyed, 45% coverage threshold</td></tr>
+    <tr><td>Padding</td><td>≥ 2 transparent native px around the sprite</td><td>2 px, enforced by the crop window</td></tr>
+    <tr><td>Atlas cells</td><td>fixed size, 2 native px between cells</td><td>256 px cells, 2 px gap</td></tr>
+    <tr><td>Scaling</td><td><code>image-rendering: pixelated</code>, integer multiples</td><td>1× / 2× / 4× shown below</td></tr>
+    <tr><td>Lighting</td><td>soft upper-left, one highlight patch</td><td>consistent across all three</td></tr>
+    <tr><td>Depth</td><td>front-facing, ≤ 12° implied top view</td><td>consistent across all three</td></tr>
+  </table>
+</div>
+
+<h2>4. The Corner Shop set</h2>
+
+<div class="card">
+  <h3>The till — <code>till</code>, 256 × 256 native, 3 frames</h3>
+  <p>One machine, not a register plus a separate drawer. The body's registration point is pinned in
+  every frame; only the drawer travels. Two named regions in <code>manifest.json</code> tell the scene
+  where its DOM layers go: <code>display</code> (52,33 · 94×24) carries the price as text, and
+  <code>drawer</code> (22,163 · 152×52) is where money buttons are laid over the open drawer. The
+  display and the wells are deliberately blank — no value is ever painted into the art.</p>
+  <div class="zoomrow">
+    <figure><div class="checker"><div class="sprite" style="--z:1;--sx:0px;--sy:0px;--sw:256px;--sh:256px"></div></div><figcaption>frame 0 · closed</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:1;--sx:258px;--sy:0px;--sw:256px;--sh:256px"></div></div><figcaption>frame 1 · half</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:1;--sx:516px;--sy:0px;--sw:256px;--sh:256px"></div></div><figcaption>frame 2 · open</figcaption></figure>
+    <figure><div class="checker"><div class="strip"></div></div><figcaption>stepped playback · <code>steps(3)</code></figcaption></figure>
+  </div>
+  <p style="margin-top:var(--s3)"><b>Integration-ready animation states.</b> One strip serves both
+  directions: <code>drawer-open</code> plays frames 0 → 2 at 6 fps (≈500 ms, inside the 640 ms
+  celebrate token) and <code>drawer-close</code> plays the same strip reversed. Under reduced motion
+  neither steps: the scene jumps to the target frame and the whole transition is a ≤120 ms opacity
+  change. Sprite frames step; anything that <em>travels</em> uses a smooth transform.</p>
+</div>
+
+<div class="card">
+  <h3>Coin bases — <code>coin</code>, 64 × 64 native, 4 frames</h3>
+  <p>NT$1, NT$5, NT$10, NT$50. Every face is a blank disc: the numeral is DOM text centred on top, so
+  nothing about the amount lives in the raster. Rising diameter and silver→gold give a second,
+  non-colour cue on top of the value.</p>
+  <div class="zoomrow">
+    <figure><div class="checker"><div class="sprite" style="--z:2;--sx:0px;--sy:258px;--sw:64px;--sh:64px"></div></div><figcaption>NT$1 · frame 0</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:2;--sx:258px;--sy:258px;--sw:64px;--sh:64px"></div></div><figcaption>NT$5 · frame 1</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:2;--sx:516px;--sy:258px;--sw:64px;--sh:64px"></div></div><figcaption>NT$10 · frame 2</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:2;--sx:774px;--sy:258px;--sw:64px;--sh:64px"></div></div><figcaption>NT$50 · frame 3</figcaption></figure>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Note bases — <code>note</code>, 128 × 128 native, 2 frames</h3>
+  <p>NT$100 and NT$500. Stylised learning tokens, not currency: no numerals, no portraits, no serial
+  numbers, no security guilloche. The cream centre panel exists so the DOM value has somewhere legible
+  to sit; the dotted border is the only decoration.</p>
+  <div class="zoomrow">
+    <figure><div class="checker"><div class="sprite" style="--z:2;--sx:0px;--sy:516px;--sw:128px;--sh:128px"></div></div><figcaption>NT$100 · frame 0</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:2;--sx:258px;--sy:516px;--sw:128px;--sh:128px"></div></div><figcaption>NT$500 · frame 1</figcaption></figure>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Product — <code>apple</code>, 64 × 64 native</h3>
+  <p>Serves the Corner Shop product mat, the Fruit Stand and the Library Desk word card. Price and
+  <code>NT$</code> are DOM text placed beside it.</p>
+  <div class="zoomrow">
+    <figure><div class="checker"><div class="sprite" style="--z:1;--sx:0px;--sy:774px;--sw:64px;--sh:64px"></div></div><figcaption>1× · 64 px</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:2;--sx:0px;--sy:774px;--sw:64px;--sh:64px"></div></div><figcaption>2× · 128 px</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:4;--sx:0px;--sy:774px;--sw:64px;--sh:64px"></div></div><figcaption>4× · 256 px</figcaption></figure>
+    <figure><div class="onpaper"><div class="sprite" style="--z:2;--sx:0px;--sy:774px;--sw:64px;--sh:64px"></div></div><figcaption>2× on paper</figcaption></figure>
+  </div>
+</div>
+
+<h2>5. Contact sheet</h2>
+<div class="card">
+  <h3>Native scale (1×)</h3>
+  <div class="sheet">
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:0px;--sy:0px;--sw:256px;--sh:256px"></div></div><b>till f0</b><figcaption>256² · closed</figcaption></figure>
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:258px;--sy:0px;--sw:256px;--sh:256px"></div></div><b>till f1</b><figcaption>256² · half</figcaption></figure>
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:516px;--sy:0px;--sw:256px;--sh:256px"></div></div><b>till f2</b><figcaption>256² · open</figcaption></figure>
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:0px;--sy:258px;--sw:64px;--sh:64px"></div></div><b>coin NT$1</b><figcaption>64² · 8 colours</figcaption></figure>
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:258px;--sy:258px;--sw:64px;--sh:64px"></div></div><b>coin NT$5</b><figcaption>64²</figcaption></figure>
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:516px;--sy:258px;--sw:64px;--sh:64px"></div></div><b>coin NT$10</b><figcaption>64²</figcaption></figure>
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:774px;--sy:258px;--sw:64px;--sh:64px"></div></div><b>coin NT$50</b><figcaption>64²</figcaption></figure>
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:0px;--sy:516px;--sw:128px;--sh:128px"></div></div><b>note NT$100</b><figcaption>128² · 10 colours</figcaption></figure>
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:258px;--sy:516px;--sw:128px;--sh:128px"></div></div><b>note NT$500</b><figcaption>128²</figcaption></figure>
+    <figure><div class="box"><div class="sprite" style="--z:1;--sx:0px;--sy:774px;--sw:64px;--sh:64px"></div></div><b>apple</b><figcaption>64² · 7 colours</figcaption></figure>
+  </div>
+  <h3>4× scale — edge and cluster inspection</h3>
+  <div class="zoomrow" style="margin-top:var(--s3)">
+    <figure><div class="checker"><div class="sprite" style="--z:4;--sx:0px;--sy:258px;--sw:64px;--sh:64px"></div></div><figcaption>NT$1 4×</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:4;--sx:774px;--sy:258px;--sw:64px;--sh:64px"></div></div><figcaption>NT$50 4×</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:4;--sx:0px;--sy:774px;--sw:64px;--sh:64px"></div></div><figcaption>apple 4×</figcaption></figure>
+  </div>
+  <div class="zoomrow" style="margin-top:var(--s4)">
+    <figure><div class="checker"><div class="sprite" style="--z:3;--sx:0px;--sy:516px;--sw:128px;--sh:128px"></div></div><figcaption>NT$100 3×</figcaption></figure>
+    <figure><div class="checker"><div class="sprite" style="--z:2;--sx:516px;--sy:0px;--sw:256px;--sh:256px"></div></div><figcaption>till open 2×</figcaption></figure>
+  </div>
+</div>
+
+<h2>6. Atlas and manifest</h2>
+<div class="card">
+  <p>One atlas per scene plus one shared UI atlas. Rows are objects, columns are state/frames, cells
+  are a fixed 256 px with 2 px of transparent separation. Only the Change Maker pilot atlas exists so far.</p>
+  <div class="checker" style="max-width:100%;overflow:auto">
+    <img class="px" src="../../../assets/brain/sprites/change.png" alt="Change Maker pilot atlas at native scale" width="1030" height="1030" style="max-width:100%;height:auto">
+  </div>
+  <table style="margin-top:var(--s4)">
+    <tr><th>File</th><th>Size</th><th>Bytes</th><th>Budget</th></tr>
+    <tr><td><code>sprites/change.png</code></td><td>1030 × 1030</td><td>≈ 32.6 KB</td><td>256 KB per atlas</td></tr>
+    <tr><td>pack total so far</td><td>4 sprites, 10 frames</td><td>≈ 32.6 KB</td><td>900 KB whole pack</td></tr>
+  </table>
+</div>
+
+<h2>7. What stays DOM / SVG</h2>
+<div class="card card--paper">
+  <div class="rules">
+    <div class="yes"><b>Pixel sprites illustrate</b>
+      <ul>
+        <li>products, props, fixtures, containers</li>
+        <li>register body, drawer, tray, crate, easel, clock frame</li>
+        <li>state art: idle, pressed, open, stamped</li>
+        <li>short mechanical animations</li>
+      </ul>
+    </div>
+    <div class="no"><b>Never rasterised</b>
+      <ul>
+        <li>bilingual instructions and game titles</li>
+        <li>prices, money values, <code>NT$</code>, totals</li>
+        <li>equations, operator glyphs, digits</li>
+        <li>clock hands and exact clock geometry</li>
+        <li>Stroop words, answer labels</li>
+        <li>progress, timers, accessibility text</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2>8. Rejections applied during the pilot</h2>
+<div class="card">
+  <table>
+    <tr><th>Candidate</th><th>Verdict</th><th>Reason</th></tr>
+    <tr><td>apple, variant B</td><td>rejected</td><td>Stem and leaf read as one cluster at 64 px; variant A separates them.</td></tr>
+    <tr><td>standalone register + drawer sprites</td><td>superseded</td><td>Two objects could never share one open/close animation. Replaced by the single <code>till</code> machine; the source PNGs stay in <code>sprites/src/</code>.</td></tr>
+    <tr><td>till, variant A</td><td>rejected</td><td>Five wells in one row cannot hold six denominations. Variant B's 2 × 4 well grid takes four coins on one row and two notes on the other.</td></tr>
+    <tr><td>coin strip, variant B</td><td>rejected</td><td>The generated cells were unequal widths, so equal-width frame splitting would have mis-cut the set.</td></tr>
+    <tr><td>generated cell divider lines</td><td>removed</td><td>The coin strip arrived with lines drawn on the cell edges. Dropped by insetting each frame's usable area during downsampling, not by painting over them.</td></tr>
+    <tr><td>animation-strip drift</td><td>corrected</td><td>Bodies drifted several native px across frames. Fixed by pinning each frame's own bounding-box origin, so the registration point holds.</td></tr>
+    <tr><td>generated contact shadows</td><td>discarded</td><td>They arrived as soft transparency over the backdrop. §3.2 requires short opaque offsets, so contact shadows are authored in CSS.</td></tr>
+    <tr><td>any baked numeral</td><td>excluded in every prompt</td><td>Coin faces, note panels, the till display and the drawer wells are all deliberately blank. Every value is DOM text.</td></tr>
+  </table>
+</div>
+<h2>9. Open questions for Papa</h2>
+<div class="card card--paper">
+  <ol>
+    <li><b>Drawer depth.</b> The drawer opening is 52 native px deep. At 2× that is 104 CSS px, which
+      holds one row of tokens cleanly. Six denominations need two rows (≈141 CSS px), so the bottom
+      row sits about 37 px proud of the drawer front on the hard tier. Deepen the drawer in the art,
+      or accept it as a full till?</li>
+    <li><b>Machine size.</b> The till renders at 2× — 386 × 504 CSS px — with the tray and controls
+      beside it. That is the largest it can be and still leave the answer controls on a 1280 × 800
+      tablet. Bigger means the controls move below the fold.</li>
+    <li><b>Drag and drop.</b> The art is ready for it: the wells are real targets and the tokens are
+      already positioned over them. But the approved guidelines forbid drag in slices 34–37 and
+      require every answer to work by tap. The pilot is tap-only; drag can be layered on later
+      without touching a single sprite. Confirm that order.</li>
+    <li><b>Sprite density.</b> Small objects are 64², medium props 128², the till 256². A 64² sprite
+      cannot go below 1×, which is why the compact product tile budgets 68 px rather than shrinking
+      to the old 42 px box.</li>
+  </ol>
+</div>
+
+</div>
+</body>
+</html>

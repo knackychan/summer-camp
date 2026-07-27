@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pocket Brain Lab — visual reference</title>
+<link rel="stylesheet" href="../../../css/brain-sprites.css">
+<script src="../../../js/brain-audio-cues.js"></script>
+<style>
+:root {
+  --brain-backdrop: #17132f;
+  --brain-shell: #27214f;
+  --brain-shell-2: #332b66;
+  --brain-paper: #fff5dc;
+  --brain-paper-2: #f1e3bf;
+  --brain-ink: #2f2845;
+  --brain-ink-2: #655d76;
+  --brain-outline: #3b3159;
+  --brain-shadow: #171229;
+  --brain-white: #fffdf7;
+  --brain-success: #2f9e68;
+  --brain-success-soft: #dff4e8;
+  --brain-hint: #d99416;
+  --brain-hint-soft: #fff0c7;
+  --brain-focus: #68c8ff;
+  --brain-disabled: #aaa3b6;
+  --brain-calc: #ee7b54;
+  --brain-signs: #dda62b;
+  --brain-lowhigh: #3f9fc8;
+  --brain-stroop: #8b63b8;
+  --brain-crunch: #319f91;
+  --brain-clock: #5e6fc4;
+  --brain-change: #2f9e68;
+  --brain-wordmem: #8255a4;
+  --brain-recall: #d9783d;
+  --brain-red: #cf3f4a;
+  --brain-blue: #2775bd;
+  --brain-green: #24845a;
+  --brain-yellow: #c28a08;
+  --kid: #ff6fb5;
+  --brain-scene-accent: var(--brain-change);
+  --brain-motion-press: 120ms;
+  --brain-motion-snap: 180ms;
+  --brain-motion-move: 320ms;
+  --brain-motion-reveal: 480ms;
+  --brain-motion-celebrate: 640ms;
+  --brain-ease-out: cubic-bezier(.2,.8,.2,1);
+  --brain-ease-settle: cubic-bezier(.34,1.35,.64,1);
+  --brain-ease-standard: cubic-bezier(.4,0,.2,1);
+}
+* { box-sizing: border-box; }
+html { color-scheme: dark; }
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(104,200,255,.1), transparent 24rem),
+    var(--brain-backdrop);
+  color: var(--brain-white);
+  font-family: Nunito, ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+button { font: inherit; }
+.reference {
+  width: min(1400px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+}
+.reference-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+.eyebrow {
+  color: #a79fd6;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+h1, h2, h3, .display {
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+}
+h1 {
+  margin: 6px 0;
+  font-size: clamp(34px, 5vw, 62px);
+  line-height: .98;
+}
+.lead {
+  max-width: 760px;
+  margin: 0;
+  color: #c8c2ea;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.reference-badge {
+  align-self: start;
+  border: 2px solid #51478a;
+  border-radius: 999px;
+  padding: 9px 14px;
+  color: #c8c2ea;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px;
+  margin-bottom: 16px;
+  border: 2px solid #51478a;
+  border-radius: 18px;
+  background: #211b43;
+}
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.control-label {
+  margin-right: 3px;
+  color: #aaa3d2;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.control-btn {
+  min-height: 42px;
+  border: 2px solid #51478a;
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: #332b66;
+  color: #f8f5ff;
+  font-weight: 900;
+  cursor: pointer;
+}
+.control-btn[aria-pressed="true"] {
+  border-color: var(--brain-focus);
+  background: #443a7d;
+  box-shadow: 0 0 0 2px rgba(104,200,255,.2);
+}
+.control-btn:focus-visible,
+.brain-button:focus-visible,
+.money-token:focus-visible {
+  outline: 4px solid var(--brain-focus);
+  outline-offset: 3px;
+}
+.demo-frame {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  min-height: 760px;
+  border: 2px solid #51478a;
+  border-radius: 28px;
+  background: var(--brain-backdrop);
+  box-shadow: 0 18px 50px rgba(0,0,0,.32);
+}
+.brain-round {
+  --brain-scene-accent: var(--brain-change);
+  min-height: 760px;
+  border-top: 4px solid var(--kid);
+  background: var(--brain-backdrop);
+}
+.brain-round__header {
+  display: grid;
+  grid-template-columns: minmax(120px,1fr) auto minmax(120px,1fr);
+  align-items: center;
+  min-height: 64px;
+  padding: 10px 20px;
+  background: linear-gradient(180deg,var(--brain-shell-2),var(--brain-shell));
+}
+.brain-round__header .right { justify-self: end; }
+.brain-round__identity {
+  text-align: center;
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+}
+.brain-round__identity strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1;
+}
+.brain-round__identity span {
+  display: block;
+  margin-top: 3px;
+  color: #c8c2ea;
+  font-size: 14px;
+  font-weight: 800;
+}
+.brain-quiet {
+  justify-self: start;
+  min-height: 44px;
+  border: 2px solid #5c5292;
+  border-radius: 14px;
+  padding: 8px 13px;
+  background: transparent;
+  color: #f8f5ff;
+  font-weight: 900;
+}
+.brain-quiet.right { justify-self: end; }
+.brain-round__status {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 20px;
+  padding: 11px 22px;
+  background: var(--brain-shell);
+  border-top: 1px solid #453b7a;
+}
+.brain-progress {
+  display: flex;
+  gap: 7px;
+}
+.brain-progress__pip {
+  width: 16px;
+  height: 10px;
+  border: 2px solid #7167a3;
+  border-radius: 999px;
+}
+.brain-progress__pip.done {
+  border-color: #d8d2ef;
+  background: #d8d2ef;
+}
+.brain-progress__pip.current {
+  width: 26px;
+  border-color: var(--brain-scene-accent);
+  background: var(--brain-scene-accent);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.12);
+}
+.brain-clock {
+  color: #ded9f2;
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.brain-scene {
+  min-height: 635px;
+  padding: 24px;
+  color: var(--brain-ink);
+  background: var(--brain-paper);
+}
+.shop {
+  position: relative;
+  width: min(100%, 1000px);
+  min-height: 585px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 3px solid var(--brain-outline);
+  border-radius: 26px;
+  padding: 24px;
+  background:
+    linear-gradient(var(--brain-paper-2),var(--brain-paper-2)) top/100% 104px no-repeat,
+    var(--brain-paper);
+  box-shadow: 0 7px 0 var(--brain-shadow);
+}
+.shop-awning {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 18px;
+  opacity: .55;
+  background: repeating-linear-gradient(90deg,var(--brain-change) 0 38px,var(--brain-white) 38px 76px);
+}
+.shop-summary {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 4fr 4fr 4fr;
+  gap: 16px;
+  align-items: stretch;
+  margin-top: 8px;
+}
+.shop-panel {
+  min-width: 0;
+  border: 3px solid var(--brain-outline);
+  border-radius: 18px;
+  background: var(--brain-white);
+  box-shadow: 0 5px 0 rgba(59,49,89,.22);
+}
+.product-card {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 142px;
+  padding: 14px;
+}
+.product-picture {
+  display: grid;
+  place-items: center;
+  width: 78px;
+  height: 92px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 15px 15px 22px 22px;
+  background: #f4b95f;
+}
+.product-picture svg { width: 48px; height: 64px; }
+/* Pixel-sprite instances. Coordinates come straight from
+   assets/brain/sprites/manifest.json; .brain-sprite lives in css/brain-sprites.css. */
+.brain-sprite {
+  background-image: url("../../../assets/brain/sprites/change.png");
+  --sprite-atlas-w: 1030px;
+  --sprite-atlas-h: 1030px;
+  --sprite-step: 258px;
+}
+.sprite-till  { --sprite-x: 0px; --sprite-y: 0px;   --sprite-w: 256px; --sprite-h: 256px;
+                --sprite-frames: 3; --sprite-duration: 500ms; }
+.sprite-coin  { --sprite-x: 0px; --sprite-y: 258px; --sprite-w: 64px;  --sprite-h: 64px; }
+.sprite-note  { --sprite-x: 0px; --sprite-y: 516px; --sprite-w: 128px; --sprite-h: 128px; }
+.sprite-apple { --sprite-x: 0px; --sprite-y: 774px; --sprite-w: 64px;  --sprite-h: 64px; }
+
+/* The till is ONE machine. Its native content box is 193x252 inside the padded 256
+   square, so the wrapper is sized to the content and clips the empty remainder.
+   Everything interactive is a DOM layer positioned over a named region from
+   sprites/manifest.json - the machine art itself is never a control. */
+.till {
+  --sprite-zoom: 2;
+  position: relative;
+  width: calc(193px * var(--sprite-zoom));
+  height: calc(252px * var(--sprite-zoom));
+  overflow: hidden;
+  flex: none;
+}
+.till > .brain-sprite {
+  position: absolute;
+  left: calc(-2px * var(--sprite-zoom));
+  top: calc(-2px * var(--sprite-zoom));
+}
+/* display region 52,33 94x24 native - the blank cream panel */
+.till-display {
+  position: absolute;
+  left: calc(52px * var(--sprite-zoom));
+  top: calc(33px * var(--sprite-zoom));
+  width: calc(94px * var(--sprite-zoom));
+  height: calc(24px * var(--sprite-zoom));
+  display: grid;
+  place-items: center;
+  color: var(--brain-ink);
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-size: calc(8px * var(--sprite-zoom));
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  white-space: nowrap;
+}
+/* drawer region 22,163 152x52 native. Tokens sit ON TOP of the open drawer, which is
+   the whole point: the money is in the machine, not in a separate panel. */
+.till-drawer {
+  position: absolute;
+  left: calc(22px * var(--sprite-zoom));
+  top: calc(163px * var(--sprite-zoom));
+  width: calc(152px * var(--sprite-zoom));
+  height: calc(52px * var(--sprite-zoom));
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 1;
+}
+/* Closed drawer: no money reachable, and nothing focusable hiding behind the front. */
+.till[data-drawer="closed"] .till-drawer { visibility: hidden; }
+.product-picture.pixel {
+  width: 78px;
+  height: 92px;
+  background: var(--brain-paper);
+  border-radius: 15px;
+}
+.product-picture.pixel .brain-sprite { --sprite-zoom: 1; }
+.product-name {
+  color: var(--brain-ink-2);
+  font-size: 14px;
+  font-weight: 900;
+}
+.money-big {
+  margin-top: 5px;
+  color: var(--brain-ink);
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-size: clamp(31px,4vw,48px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  line-height: 1;
+}
+.register {
+  position: relative;
+  min-height: 142px;
+  padding: 18px;
+  border-color: var(--brain-outline);
+  background: var(--brain-change);
+}
+.register::before {
+  content: "";
+  position: absolute;
+  inset: 18px 18px auto;
+  height: 72px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 12px;
+  background: #263e36;
+}
+.register-screen {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-height: 72px;
+  color: #fffbe9;
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-size: clamp(20px,2.5vw,32px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.register-label {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  text-align: center;
+  color: #173c2e;
+  font-size: 13px;
+  font-weight: 900;
+}
+.payment {
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-height: 142px;
+  padding: 16px;
+}
+.payment-label {
+  color: var(--brain-ink-2);
+  font-size: 13px;
+  font-weight: 900;
+}
+.note {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  min-height: 66px;
+  margin-top: 8px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: #b8d9be;
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+}
+.note::after {
+  content: "✦";
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 2px solid var(--brain-outline);
+  border-radius: 50%;
+  color: var(--brain-outline);
+}
+.customer {
+  position: absolute;
+  right: 14px;
+  top: 62px;
+  width: 52px;
+  height: 52px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 50% 50% 45% 45%;
+  background: #9a8ab8;
+  opacity: .16;
+}
+.customer::after {
+  content: "";
+  position: absolute;
+  width: 72px;
+  height: 42px;
+  left: -13px;
+  top: 42px;
+  border-radius: 50% 50% 0 0;
+  background: #9a8ab8;
+}
+/* The machine takes the left of the counter; the tray and controls sit beside it so
+   the till can be large without pushing the answer controls off a landscape tablet. */
+.shop-work {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  align-items: start;
+  gap: 16px;
+  margin-top: 18px;
+}
+/* No panel around the machine: the till carries its own outline and contact shadow,
+   and a second frame around it would be decoration competing with the task. */
+.drawer {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  justify-self: center;
+  padding: 0 8px;
+}
+.tray, .shop-actions { grid-column: 2; }
+.drawer-label,
+.tray-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--brain-ink-2);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+/* A money token is a real <button> whose face is a pixel sprite and whose value is
+   DOM text on top: nothing about the amount lives in the raster. The button box is the
+   64px hit area; the sprite inside is the art. */
+.money-token {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brain-ink);
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform var(--brain-motion-press);
+}
+.money-token .brain-sprite { grid-area: 1/1; --sprite-zoom: 1; }
+.money-token span {
+  grid-area: 1/1;
+  z-index: 1;
+  /* paper halo so a numeral stays AA-legible on silver, gold and rose alike */
+  text-shadow: 0 1px 0 var(--brain-paper), 0 -1px 0 var(--brain-paper),
+               1px 0 0 var(--brain-paper), -1px 0 0 var(--brain-paper);
+}
+.money-token.note-token span { font-size: 21px; }
+.money-token:active { transform: translateY(3px); }
+.tray {
+  min-height: 160px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 20px;
+  padding: 14px;
+  background: #eee4c8;
+  box-shadow: inset 0 6px 0 rgba(59,49,89,.13);
+  transition: border-color var(--brain-motion-snap),background var(--brain-motion-snap);
+}
+.tray.success {
+  border-color: var(--brain-success);
+  background: var(--brain-success-soft);
+}
+.tray.hint {
+  border-color: var(--brain-hint);
+  background: var(--brain-hint-soft);
+}
+.tray-total {
+  color: var(--brain-ink);
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+.tray-groups {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-height: 76px;
+}
+.tray-empty {
+  align-self: center;
+  color: #8b8298;
+  font-weight: 900;
+}
+.tray-group {
+  display: grid;
+  place-items: center;
+  min-width: 60px;
+  min-height: 58px;
+  border: 2px solid var(--brain-outline);
+  border-radius: 14px;
+  background: var(--brain-white);
+  color: var(--brain-ink);
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-weight: 900;
+  animation: token-land var(--brain-motion-move) var(--brain-ease-settle);
+}
+.tray-group small {
+  color: var(--brain-ink-2);
+  font-family: Nunito,system-ui,sans-serif;
+}
+.shop-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: end;
+  gap: 10px;
+}
+.brain-button {
+  min-height: 60px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 15px;
+  padding: 10px 13px;
+  background: var(--brain-white);
+  color: var(--brain-ink);
+  box-shadow: 0 4px 0 rgba(59,49,89,.3);
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-weight: 900;
+  cursor: pointer;
+}
+.brain-button.primary {
+  grid-column: 1/-1;
+  background: var(--brain-change);
+  color: #153a2d;
+}
+.brain-button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+.feedback {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 118px;
+  width: min(520px,calc(100% - 40px));
+  transform: translateX(-50%);
+  border: 3px solid var(--brain-hint);
+  border-radius: 16px;
+  padding: 12px 16px;
+  background: var(--brain-hint-soft);
+  color: var(--brain-ink);
+  text-align: center;
+  font-weight: 900;
+  animation: feedback-in var(--brain-motion-snap) var(--brain-ease-out);
+}
+.receipt {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 128px;
+  width: 130px;
+  min-height: 112px;
+  transform: translateX(-50%) rotate(-2deg);
+  border: 2px dashed var(--brain-outline);
+  padding: 14px 8px;
+  background: var(--brain-white);
+  text-align: center;
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-weight: 900;
+  animation: receipt-rise var(--brain-motion-celebrate) var(--brain-ease-out);
+}
+.receipt strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--brain-success);
+  font-size: 22px;
+  transform: rotate(-5deg);
+}
+.tot-compare {
+  display: grid;
+  place-items: center;
+  min-height: 520px;
+}
+.tot-card {
+  width: min(680px,100%);
+  border: 3px solid var(--brain-outline);
+  border-radius: 24px;
+  padding: 28px;
+  background: var(--brain-white);
+  box-shadow: 0 7px 0 rgba(59,49,89,.25);
+  text-align: center;
+}
+.tot-card h2 {
+  margin: 0 0 4px;
+  font-size: clamp(26px,4vw,42px);
+}
+.tot-card p {
+  margin: 0 0 24px;
+  color: var(--brain-ink-2);
+  font-weight: 900;
+}
+.tot-coins {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+}
+.tot-coins .money-token {
+  min-width: 128px;
+  min-height: 128px;
+  font-size: 30px;
+}
+.tot-coins .money-token .brain-sprite { --sprite-zoom: 2; }
+.compact .demo-frame { width: min(430px,100%); margin-inline: auto; }
+.compact .brain-round__header {
+  grid-template-columns: auto 1fr auto;
+  padding-inline: 10px;
+}
+.compact .brain-round__identity strong { font-size: 18px; }
+.compact .brain-round__identity span { font-size: 12px; }
+.compact .brain-scene { padding: 10px; }
+.compact .shop { padding: 14px; }
+.compact .shop-awning,.compact .customer { display: none; }
+.compact .shop-summary {
+  grid-template-columns: 1fr 1fr;
+}
+.compact .register { grid-column: 1/-1; grid-row: 2; }
+.compact .product-card {
+  grid-template-columns: 56px 1fr;
+  min-height: 118px;
+  padding: 10px;
+}
+.compact .product-picture { width: 54px; height: 70px; }
+.compact .payment { min-height: 118px; }
+.compact .shop-work { grid-template-columns: 1fr; }
+.compact .drawer { grid-column: 1; }
+.compact .shop-actions { grid-template-columns: 1fr 1fr; }
+.compact .money-big { font-size: 31px; }
+.compact .brain-round__status { padding-inline: 12px; }
+.compact .brain-progress__pip:nth-child(n+7) { display: none; }
+.reduced *, .reduced *::before, .reduced *::after {
+  animation-duration: 1ms!important;
+  transition-duration: 1ms!important;
+}
+@keyframes token-land {
+  from { opacity: 0; transform: translateY(-12px) scale(.94); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes feedback-in {
+  from { opacity: 0; transform: translate(-50%,8px); }
+  to { opacity: 1; transform: translate(-50%,0); }
+}
+@keyframes receipt-rise {
+  0% { opacity: 0; transform: translate(-50%,20px) rotate(-2deg); }
+  55% { opacity: 1; transform: translate(-50%,0) rotate(-2deg); }
+  75% { transform: translate(-50%,0) rotate(-6deg) scale(1.03); }
+  100% { transform: translate(-50%,0) rotate(-2deg); }
+}
+.reference-section {
+  margin-top: 42px;
+}
+.reference-section h2 {
+  margin: 0 0 8px;
+  font-size: clamp(28px,4vw,44px);
+}
+.section-note {
+  max-width: 760px;
+  margin: 0 0 20px;
+  color: #b9b2db;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.world-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 16px;
+}
+.world-card {
+  --world: var(--brain-change);
+  min-height: 270px;
+  overflow: hidden;
+  border: 2px solid #51478a;
+  border-radius: 22px;
+  background: var(--brain-paper);
+  color: var(--brain-ink);
+  box-shadow: 0 7px 0 rgba(0,0,0,.24);
+}
+.world-card header {
+  padding: 14px 16px;
+  border-top: 6px solid var(--world);
+  background: var(--brain-white);
+}
+.world-card h3 { margin: 0; font-size: 21px; }
+.world-card header span {
+  color: var(--brain-ink-2);
+  font-size: 13px;
+  font-weight: 900;
+}
+.world-visual {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  padding: 16px;
+  background: var(--brain-paper);
+}
+.world-rule {
+  margin: 0;
+  padding: 0 16px 16px;
+  color: var(--brain-ink-2);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+.mini-equation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: Fredoka,ui-rounded,sans-serif;
+  font-size: 30px;
+  font-weight: 900;
+}
+.mini-crate {
+  display: flex;
+  gap: 3px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 10px;
+  padding: 8px;
+  background: #d9aa6c;
+}
+.mini-fruit {
+  width: 17px;
+  height: 17px;
+  border: 2px solid var(--brain-outline);
+  border-radius: 50%;
+  background: var(--world);
+}
+.mini-bridge {
+  display: grid;
+  grid-template-columns: 54px 54px 54px;
+  gap: 7px;
+  align-items: end;
+}
+.mini-block {
+  display: grid;
+  place-items: center;
+  height: 54px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 9px;
+  background: #d9aa6c;
+  font-family: Fredoka,ui-rounded,sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+}
+.mini-block.gap { border-style: dashed; background: var(--brain-white); color: var(--world); }
+.mini-doors {
+  display: grid;
+  grid-template-columns: repeat(3,58px);
+  gap: 8px;
+}
+.mini-door {
+  display: grid;
+  place-items: center;
+  height: 74px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 12px 12px 5px 5px;
+  background: #d9e7ea;
+  font-family: Fredoka,ui-rounded,sans-serif;
+  font-size: 25px;
+  font-weight: 900;
+}
+.mini-paint {
+  text-align: center;
+}
+.mini-word {
+  font-family: Fredoka,ui-rounded,sans-serif;
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--brain-red);
+}
+.mini-pots { display:flex; gap:8px; margin-top:12px; }
+.mini-pot { width:34px;height:30px;border:3px solid var(--brain-outline);border-radius:4px 4px 10px 10px; }
+.mini-field {
+  display: grid;
+  grid-template-columns: repeat(8,1fr);
+  gap: 3px;
+  width: 230px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 13px;
+  padding: 10px;
+  background: var(--brain-white);
+  font-family: Fredoka,ui-rounded,sans-serif;
+  font-weight: 900;
+}
+.mini-field .target { color: var(--world); outline: 2px solid var(--world); border-radius: 50%; text-align:center; }
+.mini-clock {
+  width: 118px;
+  height: 118px;
+}
+.mini-register {
+  display: grid;
+  place-items: center;
+  width: 150px;
+  height: 90px;
+  border: 3px solid var(--brain-outline);
+  border-radius: 16px;
+  background: var(--world);
+}
+.mini-register span {
+  border: 3px solid var(--brain-outline);
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: #263e36;
+  color: white;
+  font-family: Fredoka,ui-rounded,sans-serif;
+  font-weight: 900;
+}
+.mini-cards { display:flex; gap:8px; }
+.mini-card {
+  display:grid;
+  place-items:center;
+  width:52px;height:68px;
+  border:3px solid var(--brain-outline);
+  border-radius:10px;
+  background:var(--brain-white);
+  font-family:Fredoka,ui-rounded,sans-serif;
+  font-weight:900;
+}
+.mini-card.cover { background:var(--world); color:white; }
+.mini-parcels { display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center; }
+.mini-parcel {
+  display:grid;place-items:center;
+  width:94px;height:66px;
+  border:3px solid var(--brain-outline);
+  border-radius:10px;
+  background:#d9aa6c;
+  font-family:Fredoka,ui-rounded,sans-serif;
+  font-size:22px;font-weight:900;
+}
+.mini-parcel.cover { background:var(--world);color:white; }
+.token-board {
+  display: grid;
+  grid-template-columns: repeat(6,1fr);
+  gap: 12px;
+}
+.swatch {
+  overflow: hidden;
+  border: 2px solid #51478a;
+  border-radius: 15px;
+  background: #211b43;
+}
+.swatch-color { height: 72px; background: var(--swatch); }
+.swatch-text { padding: 10px; font-size: 12px; font-weight: 900; color:#d9d4ee; }
+.reference-foot {
+  margin: 42px 0 16px;
+  border-top: 1px solid #51478a;
+  padding-top: 18px;
+  color: #a79fd6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (max-width: 900px) {
+  .reference-head { grid-template-columns: 1fr; }
+  .reference-badge { justify-self: start; }
+  .world-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .token-board { grid-template-columns: repeat(3,1fr); }
+}
+@media (max-width: 620px) {
+  .reference { padding: 12px; }
+  .demo-frame { border-radius: 18px; }
+  .brain-round,.brain-round__header,.brain-round__status,.brain-scene {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .brain-round { overflow: hidden; }
+  .brain-round__header { grid-template-columns: auto minmax(0,1fr) auto; padding-inline: 8px; }
+  .eyebrow { font-size: 10px; letter-spacing: .1em; }
+  .brain-round__identity { min-width: 0; }
+  .brain-round__identity strong { overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+  .brain-round__identity span { font-size: 11px; }
+  .brain-quiet { min-width: 46px; padding-inline: 9px; font-size: 12px; }
+  .brain-scene { padding: 8px; }
+  .shop {
+    width: calc(100vw - 38px);
+    min-width: 0;
+    max-width: calc(100vw - 38px);
+    padding: 12px;
+  }
+  .shop-awning,.customer { display:none; }
+  .brain-round__status { grid-template-columns: minmax(0,1fr) auto; gap: 8px; padding-inline: 10px; }
+  .brain-progress { gap: 5px; min-width: 0; }
+  .brain-progress__pip { width: 13px; }
+  .brain-progress__pip.current { width: 21px; }
+  .brain-progress__pip:nth-child(n+7) { display: none; }
+  .brain-clock { font-size: 0; }
+  .brain-clock::after { content: "0:24"; font-size: 14px; }
+  .shop-summary { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .shop-summary > * { min-width: 0; }
+  .register { grid-column:1/-1; grid-row:2; }
+  .product-card { grid-template-columns: 42px minmax(0,1fr); gap: 6px; padding: 8px; }
+  .product-picture { width:42px;height:58px; }
+  .product-picture svg { width: 34px; height: 48px; }
+  .payment { min-width: 0; padding: 8px; }
+  .note { min-width: 0; padding: 6px 8px; font-size: 21px; }
+  .note::after { width: 30px; height: 30px; }
+  .money-big { font-size: 26px; }
+  .register-screen { font-size: 22px; }
+  .money-token { min-width: 0; }
+  .shop-work { width:100%;min-width:0;grid-template-columns:minmax(0,1fr); }
+  .drawer,.tray,.shop-actions { width:100%;min-width:0; }
+  .drawer { grid-column:1; }
+  .shop-actions { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .tray-total { font-size: 27px; }
+  .world-grid { grid-template-columns:1fr; }
+  .token-board { grid-template-columns:repeat(2,1fr); }
+  .controls { align-items:flex-start; }
+  .control-group { flex-wrap:wrap; }
+}
+@media (max-width: 480px) {
+  .brain-round__identity strong { font-size: 14px; }
+  .brain-round__identity span { display: none; }
+  .brain-quiet { padding-inline: 7px; font-size: 11px; }
+  .shop-summary { grid-template-columns: minmax(0,1fr); }
+  .product-card { grid-column: 1; grid-row: 1; }
+  .payment { grid-column: 1; grid-row: 2; }
+  .register { grid-column: 1; grid-row: 3; }
+}
+/* Short landscape shrinks the machine one integer step before touching any control. */
+@media (max-height: 650px) and (orientation: landscape) {
+  .till { --sprite-zoom: 1; }
+  .till-drawer { gap: 6px; }
+}
+@media (max-width: 620px) {
+  .shop-work { grid-template-columns: minmax(0,1fr); }
+  .drawer { grid-column: 1; grid-row: auto; }
+  .tray, .shop-actions { grid-column: 1; }
+  /* A 64-native sprite cannot go below 1x without breaking the pixel grid, so the
+     compact product tile budgets 64 px instead of shrinking to the 42 px SVG box. */
+  .product-picture.pixel { width: 68px; height: 68px; }
+  .product-card { grid-template-columns: 68px minmax(0,1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after {
+    animation-duration: 1ms!important;
+    animation-iteration-count: 1!important;
+    transition-duration: 1ms!important;
+  }
+}
+</style>
+</head>
+<body>
+<main class="reference" id="reference">
+  <header class="reference-head">
+    <div>
+      <div class="eyebrow">Summer Quest · visual implementation reference</div>
+      <h1>Pocket Brain Lab</h1>
+      <p class="lead">Interactive reference for the Brain Gym redesign. This file fixes hierarchy, colour, shape, responsive composition and feedback language. It is not production code and does not include scoring, persistence or the daily gate.</p>
+    </div>
+    <div class="reference-badge">REFERENCE PROTOTYPE · 2026-07-27</div>
+  </header>
+
+  <section class="controls" aria-label="Preview controls">
+    <div class="control-group">
+      <span class="control-label">Tier</span>
+      <button class="control-btn" data-tier="tot" aria-pressed="false">Tot</button>
+      <button class="control-btn" data-tier="mid" aria-pressed="true">Mid</button>
+      <button class="control-btn" data-tier="hard" aria-pressed="false">Hard</button>
+    </div>
+    <div class="control-group">
+      <span class="control-label">State</span>
+      <button class="control-btn" data-preview-state="active" aria-pressed="true">Active</button>
+      <button class="control-btn" data-preview-state="correct" aria-pressed="false">Correct</button>
+      <button class="control-btn" data-preview-state="corrective" aria-pressed="false">Corrective</button>
+    </div>
+    <div class="control-group">
+      <span class="control-label">Viewport</span>
+      <button class="control-btn" id="compactToggle" aria-pressed="false">Compact</button>
+    </div>
+    <div class="control-group">
+      <span class="control-label">Motion</span>
+      <button class="control-btn" id="motionToggle" aria-pressed="false">Reduced</button>
+    </div>
+    <div class="control-group">
+      <span class="control-label">Audio</span>
+      <button class="control-btn" id="soundToggle" aria-pressed="true">Sound on</button>
+    </div>
+  </section>
+
+  <section class="demo-frame" aria-label="Change Maker reference">
+    <div class="brain-round brain-round--change">
+      <header class="brain-round__header">
+        <button class="brain-quiet" type="button">Later<br>待會再玩</button>
+        <div class="brain-round__identity">
+          <strong>Change Maker · 找零錢</strong>
+          <span>Corner Shop · 街角小店</span>
+        </div>
+        <button class="brain-quiet right" type="button" id="insideSound" aria-label="Toggle sound">🔊</button>
+      </header>
+      <div class="brain-round__status">
+        <div class="brain-progress" aria-label="Question 3 of 10">
+          <span class="brain-progress__pip done"></span>
+          <span class="brain-progress__pip done"></span>
+          <span class="brain-progress__pip current"></span>
+          <span class="brain-progress__pip"></span>
+          <span class="brain-progress__pip"></span>
+          <span class="brain-progress__pip"></span>
+          <span class="brain-progress__pip"></span>
+          <span class="brain-progress__pip"></span>
+          <span class="brain-progress__pip"></span>
+          <span class="brain-progress__pip"></span>
+        </div>
+        <output class="brain-clock" id="clock">Time 時間 · 0:24</output>
+      </div>
+      <div class="brain-scene" id="scene"></div>
+    </div>
+  </section>
+
+  <section class="reference-section">
+    <h2>Nine stations, one visual language</h2>
+    <p class="section-note">These are composition thumbnails, not alternate art directions. Every station uses paper surfaces, plum outlines, short contact shadows, one accent and a still thinking state.</p>
+    <div class="world-grid">
+      <article class="world-card" style="--world:var(--brain-calc)">
+        <header><h3>Fruit Stand</h3><span>Calculations · 計算</span></header>
+        <div class="world-visual">
+          <div class="mini-equation">
+            <span class="mini-crate"><i class="mini-fruit"></i><i class="mini-fruit"></i></span>
+            <b>+</b>
+            <span class="mini-crate"><i class="mini-fruit"></i></span>
+            <b>= ?</b>
+          </div>
+        </div>
+        <p class="world-rule">Groups become still before answering. Higher tiers center a large equation card.</p>
+      </article>
+      <article class="world-card" style="--world:var(--brain-signs)">
+        <header><h3>Bridge Workshop</h3><span>Sign Finder · 找符號</span></header>
+        <div class="world-visual">
+          <div class="mini-bridge"><span class="mini-block">7</span><span class="mini-block gap">?</span><span class="mini-block">3</span></div>
+        </div>
+        <p class="world-rule">Operator tiles enter the bridge gap. Nothing collapses on a corrective answer.</p>
+      </article>
+      <article class="world-card" style="--world:var(--brain-lowhigh)">
+        <header><h3>Lift Lobby</h3><span>Low to High · 由小到大</span></header>
+        <div class="world-visual">
+          <div class="mini-doors"><span class="mini-door">?</span><span class="mini-door">?</span><span class="mini-door">?</span></div>
+        </div>
+        <p class="world-rule">Remember positions, then tap closed doors from the smallest hidden number upward.</p>
+      </article>
+      <article class="world-card" style="--world:var(--brain-stroop)">
+        <header><h3>Paint Studio</h3><span>Color Words · 顏色字</span></header>
+        <div class="world-visual">
+          <div class="mini-paint"><div class="mini-word">BLUE</div><div class="mini-pots"><i class="mini-pot" style="background:var(--brain-red)"></i><i class="mini-pot" style="background:var(--brain-blue)"></i><i class="mini-pot" style="background:var(--brain-green)"></i><i class="mini-pot" style="background:var(--brain-yellow)"></i></div></div>
+        </div>
+        <p class="world-rule">Task colours appear only in the stimulus and four fixed paint pots.</p>
+      </article>
+      <article class="world-card" style="--world:var(--brain-crunch)">
+        <header><h3>Field Scanner</h3><span>Number Cruncher · 數一數</span></header>
+        <div class="world-visual">
+          <div class="mini-field"><span>3</span><span>8</span><span class="target">5</span><span>1</span><span>7</span><span>0</span><span>2</span><span class="target">5</span><span>9</span><span>4</span><span>6</span><span>3</span><span>1</span><span class="target">5</span><span>8</span><span>2</span></div>
+        </div>
+        <p class="world-rule">One entrance scan, then a completely fixed field while counting.</p>
+      </article>
+      <article class="world-card" style="--world:var(--brain-clock)">
+        <header><h3>Train Station Clock</h3><span>Time Lapse · 時鐘</span></header>
+        <div class="world-visual">
+          <svg class="mini-clock" viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="53" fill="#fffdf7" stroke="#3b3159" stroke-width="4"/>
+            <g fill="#3b3159"><circle cx="60" cy="14" r="3"/><circle cx="106" cy="60" r="3"/><circle cx="60" cy="106" r="3"/><circle cx="14" cy="60" r="3"/></g>
+            <line x1="60" y1="60" x2="39" y2="43" stroke="#3b3159" stroke-width="7" stroke-linecap="round"/>
+            <line x1="60" y1="60" x2="60" y2="19" stroke="#5e6fc4" stroke-width="5" stroke-linecap="round"/>
+            <circle cx="60" cy="60" r="6" fill="#3b3159"/>
+          </svg>
+        </div>
+        <p class="world-rule">Hands never tick while thinking. The train arrives only after feedback.</p>
+      </article>
+      <article class="world-card" style="--world:var(--brain-change)">
+        <header><h3>Corner Shop</h3><span>Change Maker · 找零錢</span></header>
+        <div class="world-visual"><div class="mini-register"><span>50 − 37</span></div></div>
+        <p class="world-rule">Price, payment and the child’s tray total occupy three distinct spatial homes.</p>
+      </article>
+      <article class="world-card" style="--world:var(--brain-wordmem)">
+        <header><h3>Library Desk</h3><span>Word Memory · 記單字</span></header>
+        <div class="world-visual"><div class="mini-cards"><span class="mini-card">CAT</span><span class="mini-card">BOOK</span><span class="mini-card cover">?</span></div></div>
+        <p class="world-rule">Cards remain absolutely still throughout the study phase.</p>
+      </article>
+      <article class="world-card" style="--world:var(--brain-recall)">
+        <header><h3>Parcel Relay</h3><span>Math Recall · 記憶計算</span></header>
+        <div class="world-visual"><div class="mini-parcels"><span class="mini-parcel cover">Previous</span><span class="mini-parcel">12 + 9</span></div></div>
+        <p class="world-rule">The covered previous shelf and current parcel never swap positions.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="reference-section">
+    <h2>Approved v1 palette</h2>
+    <p class="section-note">Scene JavaScript uses semantic CSS tokens; it does not introduce colour literals.</p>
+    <div class="token-board">
+      <div class="swatch"><div class="swatch-color" style="--swatch:var(--brain-paper)"></div><div class="swatch-text">Paper · #FFF5DC</div></div>
+      <div class="swatch"><div class="swatch-color" style="--swatch:var(--brain-outline)"></div><div class="swatch-text">Outline · #3B3159</div></div>
+      <div class="swatch"><div class="swatch-color" style="--swatch:var(--brain-success)"></div><div class="swatch-text">Success · #2F9E68</div></div>
+      <div class="swatch"><div class="swatch-color" style="--swatch:var(--brain-hint)"></div><div class="swatch-text">Hint · #D99416</div></div>
+      <div class="swatch"><div class="swatch-color" style="--swatch:var(--brain-change)"></div><div class="swatch-text">Change · #2F9E68</div></div>
+      <div class="swatch"><div class="swatch-color" style="--swatch:var(--brain-wordmem)"></div><div class="swatch-text">Memory · #8255A4</div></div>
+    </div>
+  </section>
+
+  <footer class="reference-foot">
+    Normative specification: <code>implementation-guidelines.md</code>. This prototype deliberately uses inline CSS/SVG and synthesized preview audio so it opens as one file. Production implementation must use the planned modules, shared services, repository SVG assets, documented MP3 cues, tests and service-worker coverage.
+  </footer>
+</main>
+<script>
+(function () {
+  "use strict";
+
+  const reference = document.getElementById("reference");
+  const scene = document.getElementById("scene");
+  const compactToggle = document.getElementById("compactToggle");
+  const motionToggle = document.getElementById("motionToggle");
+  const soundToggle = document.getElementById("soundToggle");
+  const insideSound = document.getElementById("insideSound");
+  const clock = document.getElementById("clock");
+
+  const state = {
+    tier: "mid",
+    preview: "active",
+    compact: false,
+    reduced: false,
+    sound: true,
+    pieces: []
+  };
+
+  const configs = {
+    mid: {
+      product: "Apple",
+      productZh: "蘋果",
+      price: 37,
+      paid: 50,
+      answer: 13,
+      denominations: [50,10,5,1],
+      noteClass: ""
+    },
+    hard: {
+      product: "Notebook",
+      productZh: "筆記本",
+      price: 376,
+      paid: 500,
+      answer: 124,
+      denominations: [500,100,50,10,5,1],
+      noteClass: "violet"
+    }
+  };
+
+  // Placeholder sound pack from js/brain-audio-cues.js. This preview stands in for the
+  // shared audio service that slice 34 owns: one context, unlocked by a user gesture,
+  // global mute as the source of truth, and every live cue stopped on mute.
+  let audioContext = null;
+  let live = [];
+  function play(cue,rate) {
+    if (!state.sound || !window.SQBrainCues) return;
+    try {
+      audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === "suspended") audioContext.resume();
+      live = live.filter(handle => handle.until > audioContext.currentTime);
+      if (live.length >= 4) return;                       // max 4 simultaneous effects
+      const handle = SQBrainCues.renderCue(audioContext,null,cue,{rate: rate || 1});
+      if (!handle) { console.warn("unknown cue",cue); return; }
+      handle.until = audioContext.currentTime + SQBrainCues.cueDuration(cue);
+      live.push(handle);
+    } catch (_) {}
+  }
+  function stopAllSound() {
+    live.forEach(handle => handle.stop());
+    live = [];
+  }
+  // Deterministic +/-3% pitch variation so repeated taps are not mechanical, without
+  // making anything about the round nondeterministic.
+  function tapSound(value) {
+    const cue = Number(value) >= 100 ? "note-place" : "coin-" + value;
+    const known = SQBrainCues && SQBrainCues.CUES[cue] ? cue : "token-place";
+    play(known,1 + ((state.pieces.length % 3) - 1) * 0.03);
+  }
+  function successSound() { play("success"); }
+
+  // Frame index per denomination, straight from sprites/manifest.json "values".
+  const COIN_FRAMES = {1:0, 5:1, 10:2, 50:3};
+  const NOTE_FRAMES = {100:0, 500:1};
+  function moneyToken(value) {
+    const isNote = value >= 100;
+    const frame = isNote ? NOTE_FRAMES[value] : COIN_FRAMES[value];
+    return '<button class="money-token ' + (isNote ? "note-token" : "coin") + '" data-value="' + value +
+           '" aria-label="Add NT$' + value + '">' +
+             '<span class="brain-sprite ' + (isNote ? "sprite-note" : "sprite-coin") +
+             '" style="--sprite-frame:' + frame + '"></span>' +
+             '<span>NT$' + value + '</span>' +
+           '</button>';
+  }
+  function groupedPieces() {
+    const counts = {};
+    state.pieces.forEach(value => { counts[value] = (counts[value] || 0) + 1; });
+    return Object.keys(counts).sort((a,b) => Number(b)-Number(a)).map(value => ({
+      value: Number(value),
+      count: counts[value]
+    }));
+  }
+  function total() {
+    return state.pieces.reduce((sum,value) => sum + value,0);
+  }
+  // mid uses the generated pixel sprite; hard is still the placeholder SVG because the
+  // notebook sprite is held behind the pixel-treatment approval gate.
+  function productPicture(tier) {
+    if (tier === "mid") {
+      return '<div class="product-picture pixel">' +
+               '<span class="brain-sprite sprite-apple" role="img" aria-label="Apple 蘋果"></span>' +
+             '</div>';
+    }
+    return '<div class="product-picture">' + productSvg(tier) + '</div>';
+  }
+  function productSvg(tier) {
+    if (tier === "hard") {
+      return '<svg viewBox="0 0 60 76" aria-hidden="true"><rect x="9" y="6" width="43" height="64" rx="6" fill="#c7b5dc" stroke="#3b3159" stroke-width="4"/><path d="M18 6v64M24 18h19M24 29h19M24 40h15" fill="none" stroke="#3b3159" stroke-width="3" stroke-linecap="round"/></svg>';
+    }
+    return '<svg viewBox="0 0 60 76" aria-hidden="true"><path d="M22 5h16v11l8 10v38c0 5-4 8-8 8H22c-4 0-8-3-8-8V26l8-10z" fill="#f7d477" stroke="#3b3159" stroke-width="4" stroke-linejoin="round"/><path d="M14 35h32v24H14z" fill="#ee7b54" stroke="#3b3159" stroke-width="3"/><path d="M24 12h12" stroke="#3b3159" stroke-width="4" stroke-linecap="round"/></svg>';
+  }
+  function renderTot() {
+    scene.innerHTML =
+      '<div class="tot-compare"><div class="tot-card">' +
+        '<h2>Which is worth more?</h2><p>哪個比較多錢？</p>' +
+        '<div class="tot-coins">' +
+          // Tot compares two coins at 2x so the size difference is unmissable without reading.
+          '<button class="money-token coin" data-tot-value="1" aria-label="NT$1">' +
+            '<span class="brain-sprite sprite-coin" style="--sprite-frame:0"></span><span>NT$1</span></button>' +
+          '<button class="money-token coin" data-tot-value="10" aria-label="NT$10">' +
+            '<span class="brain-sprite sprite-coin" style="--sprite-frame:2"></span><span>NT$10</span></button>' +
+        '</div>' +
+        (state.preview === "corrective" ? '<div class="feedback">Look at the number: NT$10 · 看數字：NT$10</div>' : '') +
+      '</div></div>';
+    clock.hidden = true;
+    scene.querySelectorAll("[data-tot-value]").forEach(button => {
+      button.addEventListener("click", function () {
+        tapSound(this.dataset.totValue);
+        state.preview = this.dataset.totValue === "10" ? "correct" : "corrective";
+        syncControlButtons();
+        render();
+        if (state.preview === "correct") successSound();
+      });
+    });
+  }
+  function renderShop() {
+    const cfg = configs[state.tier];
+    const groups = groupedPieces();
+    const trayTotal = total();
+    const feedbackClass = state.preview === "correct" ? " success" : state.preview === "corrective" ? " hint" : "";
+    const groupHtml = groups.length
+      ? groups.map(group => '<span class="tray-group"><b>NT$' + group.value + '</b><small>×' + group.count + '</small></span>').join("")
+      : '<span class="tray-empty">Tap money to build the change · 點選錢幣來找錢</span>';
+    const feedback = state.preview === "corrective"
+      ? '<div class="feedback">Count NT$' + cfg.answer + ' · 數一數 NT$' + cfg.answer + '</div>'
+      : '';
+    const receipt = state.preview === "correct"
+      ? '<div class="receipt">CHANGE 找錢<strong>NT$' + cfg.answer + '</strong></div>'
+      : '';
+
+    scene.innerHTML =
+      '<div class="shop">' +
+        '<div class="shop-awning" aria-hidden="true"></div>' +
+        '<div class="shop-summary">' +
+          '<section class="shop-panel product-card">' +
+            productPicture(state.tier) +
+            '<div><div class="product-name">' + cfg.product + ' · ' + cfg.productZh + '</div><div class="money-big">NT$' + cfg.price + '</div></div>' +
+          '</section>' +
+          '<section class="shop-panel register">' +
+            '<div class="register-screen">NT$' + cfg.paid + ' − NT$' + cfg.price + '</div>' +
+            '<div class="register-label">Make the change · 請找錢</div>' +
+          '</section>' +
+          '<section class="shop-panel payment">' +
+            '<div class="payment-label">Paid · 已付</div>' +
+            '<div class="note ' + cfg.noteClass + '"><span>NT$' + cfg.paid + '</span></div>' +
+            '<span class="customer" aria-hidden="true"></span>' +
+          '</section>' +
+        '</div>' +
+        '<div class="shop-work">' +
+          '<section class="drawer">' +
+            '<div class="drawer-label"><span>Cash drawer · 收銀機抽屜</span><span>Tap to add · 點一下加入</span></div>' +
+            // One machine. The drawer strip steps 0 -> 2 once on entry; the money lives
+            // ON the open drawer, layered over it, never in a separate panel.
+            '<div class="till" data-drawer="open">' +
+              '<span class="brain-sprite sprite-till brain-sprite--play" aria-hidden="true"></span>' +
+              '<output class="till-display">NT$' + cfg.paid + ' − NT$' + cfg.price + '</output>' +
+              '<div class="till-drawer">' +
+                cfg.denominations.map(moneyToken).join("") +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+          '<section class="tray' + feedbackClass + '">' +
+            '<div class="tray-label"><span>Your change · 你找的錢</span><output class="tray-total">NT$' + trayTotal + '</output></div>' +
+            '<div class="tray-groups">' + groupHtml + '</div>' +
+          '</section>' +
+          '<div class="shop-actions">' +
+            '<button class="brain-button" id="undo" ' + (!state.pieces.length ? 'disabled' : '') + '>Undo<br>上一步</button>' +
+            '<button class="brain-button" id="clear" ' + (!state.pieces.length ? 'disabled' : '') + '>Clear tray<br>清空托盤</button>' +
+            '<button class="brain-button primary" id="give" ' + (!state.pieces.length ? 'disabled' : '') + '>Give change · 找錢</button>' +
+          '</div>' +
+        '</div>' +
+        feedback + receipt +
+      '</div>';
+
+    clock.hidden = false;
+    scene.querySelectorAll("[data-value]").forEach(button => {
+      button.addEventListener("click", function () {
+        const value = Number(this.dataset.value);
+        state.pieces.push(value);
+        state.preview = "active";
+        tapSound(value);
+        syncControlButtons();
+        render();
+      });
+    });
+    document.getElementById("undo").addEventListener("click", function () {
+      state.pieces.pop();
+      state.preview = "active";
+      play("token-pick");
+      syncControlButtons();
+      render();
+    });
+    document.getElementById("clear").addEventListener("click", function () {
+      state.pieces = [];
+      state.preview = "active";
+      play("paper-slide");
+      syncControlButtons();
+      render();
+    });
+    document.getElementById("give").addEventListener("click", function () {
+      state.preview = total() === cfg.answer ? "correct" : "corrective";
+      syncControlButtons();
+      render();
+      // correct: drawer bell + receipt stamp. corrective: paper, never a buzzer.
+      if (state.preview === "correct") { play("stamp"); successSound(); }
+      else play("paper-slide");
+    });
+  }
+  function render() {
+    if (state.tier === "tot") renderTot();
+    else renderShop();
+  }
+  function syncControlButtons() {
+    document.querySelectorAll("[data-tier]").forEach(button => {
+      button.setAttribute("aria-pressed",String(button.dataset.tier === state.tier));
+    });
+    document.querySelectorAll("[data-preview-state]").forEach(button => {
+      button.setAttribute("aria-pressed",String(button.dataset.previewState === state.preview));
+    });
+    compactToggle.setAttribute("aria-pressed",String(state.compact));
+    motionToggle.setAttribute("aria-pressed",String(state.reduced));
+    soundToggle.setAttribute("aria-pressed",String(state.sound));
+    soundToggle.textContent = state.sound ? "Sound on" : "Muted";
+    insideSound.textContent = state.sound ? "🔊" : "🔇";
+    reference.classList.toggle("compact",state.compact);
+    reference.classList.toggle("reduced",state.reduced);
+  }
+  document.querySelectorAll("[data-tier]").forEach(button => {
+    button.addEventListener("click",function () {
+      state.tier = this.dataset.tier;
+      state.preview = "active";
+      state.pieces = [];
+      syncControlButtons();
+      render();
+    });
+  });
+  document.querySelectorAll("[data-preview-state]").forEach(button => {
+    button.addEventListener("click",function () {
+      state.preview = this.dataset.previewState;
+      if (state.tier !== "tot") {
+        const cfg = configs[state.tier];
+        if (state.preview === "correct") state.pieces = state.tier === "mid" ? [10,1,1,1] : [100,10,10,1,1,1,1];
+        if (state.preview === "corrective") state.pieces = [10];
+        if (state.preview === "active") state.pieces = [];
+        if (state.preview === "correct" && total() !== cfg.answer) state.pieces = [cfg.answer];
+      }
+      syncControlButtons();
+      render();
+      if (state.preview === "correct") successSound();
+    });
+  });
+  compactToggle.addEventListener("click",function () {
+    state.compact = !state.compact;
+    syncControlButtons();
+  });
+  motionToggle.addEventListener("click",function () {
+    state.reduced = !state.reduced;
+    syncControlButtons();
+  });
+  function toggleSound() {
+    state.sound = !state.sound;
+    syncControlButtons();
+    if (state.sound) play("ui-tap"); else stopAllSound();
+  }
+  soundToggle.addEventListener("click",toggleSound);
+  insideSound.addEventListener("click",toggleSound);
+
+  // Review-capture bootstrap: ?tier=mid&preview=corrective&compact=true&reduced=true lets a
+  // headless screenshot pass land on an exact state without clicking. Preview only.
+  new URLSearchParams(location.search).forEach(function (value,key) {
+    if (key === "tier" || key === "preview") state[key] = value;
+    else if (key === "compact" || key === "reduced" || key === "sound") state[key] = value === "true";
+    else if (key === "pieces") state.pieces = value.split(",").filter(Boolean).map(Number);
+  });
+  if (state.preview === "correct" && !state.pieces.length && state.tier !== "tot") {
+    state.pieces = state.tier === "mid" ? [10,1,1,1] : [100,10,10,1,1,1,1];
+  }
+  if (state.preview === "corrective" && !state.pieces.length && state.tier !== "tot") state.pieces = [10];
+
+  syncControlButtons();
+  render();
+})();
+</script>
+</body>
+</html>

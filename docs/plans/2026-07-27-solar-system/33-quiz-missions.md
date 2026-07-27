@@ -4,7 +4,7 @@
 
 **Goal:** Quiz missions that make the knowledge stick — "Tap 火星 / Mars", "Which planet is the biggest?" — answered by tapping planets **in the 3D scene**, with stars flowing through the existing ledger.
 
-**Architecture:** Question generation and grading live in a new pure module `js/games/solar-quiz.js` (no Three.js — node-testable). Questions are **computed from `solar-data.js`** (design D6): name-identification from `name`/`tz`, superlatives from `flags` plus computed `au`/`diameterKm` extrema. Hand-writing a question is forbidden — a fact and its answer can never drift apart. The scene's existing raycast (slice 31) is the answer mechanism; the quiz UI is DOM overlay.
+**Architecture:** Question generation and grading live in a new pure module `js/games/solar-quiz.js` (no Three.js — node-testable). Questions are **computed from `solar-data.js`** (design D6): name-identification from `name`/`tz`, superlatives from `flags` plus computed `au`/`diameterKm` extrema. Hand-writing a question is forbidden — a fact and its answer can never drift apart. The scene's existing raycast (slice 31) is the answer mechanism; the quiz UI is DOM overlay. Entering Quiz mode **forces unfocus and hides the info card** (D8 — a tap during quiz is an answer, never a focus request; tech-spec §12).
 
 **Tech Stack:** ES modules, `node:test`, `scripts/check.mjs`.
 
