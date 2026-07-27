@@ -277,6 +277,8 @@ code { color: var(--star); }
   flex-direction: column;
   gap: 6px;
 }
+.cell__who { display: none; font-size: 11.5px; margin-bottom: 2px; }
+.cell__moved { color: var(--text-3); }
 .cell__t { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
 .cell__t span { display: block; font-weight: 400; color: var(--text-3); font-size: 11.5px; }
 .cell__b { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: auto; }
@@ -486,6 +488,9 @@ textarea.inp { height: auto; min-height: 68px; padding: 8px 10px; resize: vertic
   .board__h:not([data-kid="all"]) { border-top: 1px solid var(--border-hairline); }
   .board__t { background: transparent; padding: 10px 12px 2px; }
   .board__t small { display: inline; margin-left: 6px; }
+  /* Stacked cells lose their kid column header — name each one instead. The
+     headers stay put: they still carry each kid's star total. */
+  .cell__who { display: inline-flex; }
 
   .tbl thead { display: none; }
   .tbl, .tbl tbody, .tbl tr, .tbl td { display: block; width: 100%; }

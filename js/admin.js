@@ -15,7 +15,7 @@
     ["captain","Captain"]
   ];
 
-  let client=null, session=null, today="", realtimeChannel=null;
+  let client=null, session=null, today="", realtimeChannel=null, realtimeStatus="";
   let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[],acts:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={}, adminPinFeedback={};
@@ -47,7 +47,18 @@
   function saveChatFilters(){
     localStorage.setItem(CHAT_KEY,JSON.stringify(chatFilters));
   }
-  let chatStuckToBottom=true, chatUnseen=0;
+  let chatStuckToBottom=true, chatUnseen=0, chatSeenCount=0, showArchived=false;
+
+  /* Papa's note for today. Stored as one column joined by NOTE_SEP; split on
+     read so a save/reload cycle cannot fold the 中文 half into the English one. */
+  const NOTE_SEP="\n---\n";
+  let papaNote={en:"",zh:""};
+  function setNote(body){
+    var text=String(body||"");
+    var at=text.indexOf(NOTE_SEP);
+    papaNote=at<0?{en:text,zh:""}:{en:text.slice(0,at),zh:text.slice(at+NOTE_SEP.length)};
+  }
+  const noteJoined=()=>papaNote.en+(papaNote.zh?NOTE_SEP+papaNote.zh:"");
 
   const $=id=>document.getElementById(id);
   const show=(id,on)=>{var el=$(id);if(el)el.classList.toggle("hidden",!on);};
@@ -152,9 +163,12 @@
   }
 
   async function openDashboard(){
-    show("login",false); show("view-locked",false); show("logoutBtn",true);
+    show("login",false); show("view-locked",false);
     $("app").classList.remove("is-locked");
     $("navLogout").classList.remove("hidden");
+    /* Re-route now that the shell is reachable — go() refused to leave
+       view-locked while is-locked was set. */
+    if(window.sqGo)window.sqGo((location.hash||"#today").slice(1));
     today=dayISO(0);
     $("boardDate").textContent=new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"Asia/Taipei"})+" · Asia/Taipei";
     updateNotifyState();
@@ -162,7 +176,7 @@
     subscribeRealtime();
   }
 
-  async function loadAll(){
+  async function loadAll(skipRouteRender){
     const start=dayISO(-13);
     const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
@@ -190,8 +204,11 @@
     (overrides.data||[]).forEach(function(r){
       (overridesRaw[r.kid_id]=overridesRaw[r.kid_id]||{})[r.block_idx]=r.t;
     });
-    var noteEl=$("noteBody");
-    if(noteEl)noteEl.value=note.data&&note.data.body?note.data.body:"";
+    /* The note lives in module state, not in the DOM. Seeding #noteBody here
+       silently did nothing: renderNote() creates that textarea, so on load it
+       does not exist yet and the saved message never reached the editor. */
+    setNote(note.data&&note.data.body?note.data.body:"");
+    if(skipRouteRender){updateNavCounts();renderDockConversation();return;}
     renderForRoute(currentRoute);
   }
 
@@ -213,6 +230,14 @@
   };
 
   function renderForRoute(route){
+    /* Every render replaces whole subtrees, so a realtime event landing while
+       Papa types wiped the field under the caret. preserveFocus restores the
+       focused control, its value and its scroll position around the render. */
+    if(window.preserveFocus)window.preserveFocus(function(){renderRoute(route);});
+    else renderRoute(route);
+  }
+
+  function renderRoute(route){
     currentRoute=route;
     updateNavCounts();
     if(route==="today"||!route){
@@ -340,7 +365,7 @@
           rowsHtml+=boardCell(kid,i);
         });
         return rowsHtml;
-      }).join(""):""+
+      }).join("")+
     '</div>';
     bindScheduleBlocks();
   }
@@ -378,8 +403,12 @@
       actions='<button class="btn btn--sm btn--primary" data-accept="'+kid+':'+i+'">Accept</button><button class="btn btn--sm" data-removeblock="'+kid+':'+i+'">Remove</button>';
     }
 
+    /* The kid chip is hidden on the wide grid (the column header names them) but
+       shown once the board stacks to one column, where a bare cell is otherwise
+       unattributable. Colour never carries the meaning alone. */
     return '<div class="cell '+stateClass+'" data-kid="'+kid+'" data-block="'+i+'" draggable="'+(timed&&!removed?"true":"false")+'">'+
-      '<div class="cell__t">'+b.title+' <span>'+b.tz+'</span>'+(moved?' <span style="color:var(--text-3)">moved</span>':'')+'</div>'+
+      '<span class="who k-'+kid+' cell__who"><span class="who__m">'+esc(kidName(kid)[0])+'</span><b>'+esc(kidName(kid))+'</b></span>'+
+      '<div class="cell__t">'+esc(b.title)+' <span>'+esc(b.tz)+'</span>'+(moved?' <span class="cell__moved">moved</span>':'')+'</div>'+
       '<div class="cell__b">'+statusTag+
       '<div class="cell__acts">'+actions+'</div></div>'+
     '</div>';
@@ -653,7 +682,7 @@
         kinds.map(function(c){return '<button class="chip'+(ledgerFilter.kind===c.key?'" aria-pressed="true"':'')+'" data-ledkind="'+c.key+'">'+esc(c.label)+'</button>';}).join("")+'</div>';
     }
     el.innerHTML='<div class="tbl-wrap"><table class="tbl"><thead><tr>'+
-      '<th style="width:110px">When</th><th style="width:130px">Kid</th><th style="width:64px" style="text-align:right">Δ</th><th>Reason</th><th style="width:110px">Source</th><th style="width:86px"></th>'+
+      '<th style="width:110px">When</th><th style="width:130px">Kid</th><th style="width:64px;text-align:right">Δ</th><th>Reason</th><th style="width:110px">Source</th><th style="width:86px"></th>'+
     '</tr></thead><tbody>'+
     visible.map(function(r){return '<tr>'+
       '<td data-l="When" class="num">'+fmt(r.created_at)+'</td>'+
@@ -735,7 +764,7 @@
     var el=$("ledgerRecent");
     if(!el)return;
     var recent=rows.ledger.slice(0,8);
-    el.innerHTML=recent.length?'<table class="tbl"><thead><tr><th style="width:74px">Time</th><th style="width:130px">Kid</th><th style="width:64px" style="text-align:right">Δ</th><th>Reason</th><th style="width:110px">Source</th><th style="width:86px"></th></tr></thead><tbody>'+
+    el.innerHTML=recent.length?'<table class="tbl"><thead><tr><th style="width:74px">Time</th><th style="width:130px">Kid</th><th style="width:64px;text-align:right">Δ</th><th>Reason</th><th style="width:110px">Source</th><th style="width:86px"></th></tr></thead><tbody>'+
       recent.map(function(r){
         return '<tr><td data-l="Time" class="num">'+timeOnly(r.created_at)+'</td>'+
           '<td data-l="Kid"><span class="who k-'+r.kid_id+'"><span class="who__m">'+esc(kidName(r.kid_id)[0])+'</span><b>'+esc(kidName(r.kid_id))+'</b></span></td>'+
@@ -791,7 +820,6 @@
         }).join("");
     }
 
-    var showArchived=false; /* ponytail: default off, toggle via inbox route */
     var filters={
       kid:chatFilters.kid,
       types:chatFilters.types,
@@ -802,8 +830,9 @@
 
     var pin=$("chatPin");
     if(pin){
-      var noteEl=$("noteBody");
-      var noteText=noteEl?noteEl.value.trim():"";
+      /* Read module state, not #noteBody — that textarea only exists while the
+         Content route is rendered, so the pin always read empty elsewhere. */
+      var noteText=papaNote.en.trim()||papaNote.zh.trim();
       pin.innerHTML=noteText
         ?'<span class="lbl">Pinned</span><p>'+esc(noteText)+' <button class="btn btn--sm btn--quiet" data-goto="content" style="height:20px;padding:0 5px">Edit</button></p>'
         :'<span class="lbl">Pinned</span><p style="color:var(--text-3)">No message for today yet <button class="btn btn--sm btn--quiet" data-goto="content" style="height:20px;padding:0 5px">Write</button></p>';
@@ -834,10 +863,15 @@
     if(chatStuckToBottom){
       box.scrollTop=box.scrollHeight;
       chatUnseen=0;
+      chatSeenCount=visible.length;
       show("chatJump",false);
     }else{
-      chatUnseen=visible.length;
-      show("chatJump",true);
+      /* Rows arrived since Papa scrolled up — not every row on screen, which
+         is what made the jump button appear on any upward scroll. */
+      chatUnseen=Math.max(0,visible.length-chatSeenCount);
+      var jump=$("chatJump");
+      if(jump)jump.textContent=chatUnseen>1?chatUnseen+" new messages ↓":"New message ↓";
+      show("chatJump",chatUnseen>0);
     }
 
     var db=$("dockBadge");
@@ -921,7 +955,8 @@
     var el=$("inboxStream");
     if(!el)return;
     var stream=chatStream();
-    var showArchived=true;
+    /* Was a hardcoded `true` shadowing the module flag, so the Archived button
+       that sits in this sheet's head could never hide anything. */
     var filters={
       kid:chatFilters.kid,
       types:chatFilters.types,
@@ -1239,21 +1274,22 @@
     var el=$("notePanel");
     if(!el)return;
     el.innerHTML='<div class="grid-2">'+
-      '<label class="field"><span class="lbl">English</span><textarea class="inp" id="noteBody">'+esc(($("noteBody")&&$("noteBody").value)||"")+'</textarea></label>'+
-      '<label class="field"><span class="lbl">繁體中文</span><textarea class="inp" id="noteBodyZh" lang="zh-Hant">'+esc(($("noteBodyZh")&&$("noteBodyZh").value)||"")+'</textarea></label></div>'+
+      '<label class="field"><span class="lbl">English</span><textarea class="inp" id="noteBody">'+esc(papaNote.en)+'</textarea></label>'+
+      '<label class="field"><span class="lbl">繁體中文</span><textarea class="inp" id="noteBodyZh" lang="zh-Hant">'+esc(papaNote.zh)+'</textarea></label></div>'+
       '<div style="display:flex;gap:8px;align-items:center">'+
       '<button class="btn btn--primary" id="saveNoteBtn">Save message</button>'+
       '<span class="tbl__note" id="noteStatus"></span></div>';
+    $("noteBody").oninput=function(){papaNote.en=this.value;};
+    $("noteBodyZh").oninput=function(){papaNote.zh=this.value;};
     $("saveNoteBtn").onclick=async function(){
-      var body=$("noteBody").value.trim();
-      var bodyZh=$("noteBodyZh").value.trim();
-      var fullBody=body+(bodyZh?"\n---\n"+bodyZh:"");
+      papaNote.en=$("noteBody").value.trim();
+      papaNote.zh=$("noteBodyZh").value.trim();
       var status=$("noteStatus");
       status.textContent="";
-      if(!body&&!bodyZh){status.textContent="Write a message first.";return;}
-      const {error}=await client.from("papa_notes").upsert({day:today,body:fullBody});
+      if(!papaNote.en&&!papaNote.zh){status.textContent="Write a message first.";return;}
+      const {error}=await client.from("papa_notes").upsert({day:today,body:noteJoined()});
       status.textContent=error?error.message:"Saved";
-      if(!error){status.classList.add("message--ok");}
+      if(!error){status.classList.add("message--ok");renderDockConversation();}
     };
   }
 
@@ -1405,11 +1441,13 @@
       var banner=$("notifyBanner");
       if(banner)banner.classList.remove("hidden");
     }
-    /* Update live dot */
+    /* The dot reports the realtime channel, not merely "a session exists" —
+       it read Live with the socket down. */
+    var on=realtimeStatus==="SUBSCRIBED";
     var live=$("liveDot");
-    if(live){live.classList.toggle("live--on",!!session);live.classList.toggle("live--off",!session);}
+    if(live){live.classList.toggle("live--on",on);live.classList.toggle("live--off",!on);}
     var ll=$("liveLabel");
-    if(ll)ll.textContent=!!session?"Live":"Offline";
+    if(ll)ll.textContent=on?"Live":session?"Reconnecting":"Offline";
   }
 
   function pushNotify(title,body,kind){
@@ -1473,13 +1511,13 @@
     if(realtimeChannel)return;
     var live=function(table){
       return function(payload){
-        var note=notificationFor(table,payload);
-        if(note)pushNotify(note.title,note.body,note.kind);
-        loadAll().then(function(){
-          /* Determine which routes to refresh */
-          var routes=TABLE_ROUTES_MAP[table]||[];
-          if(routes.length&&routes.indexOf(currentRoute)<0)return;
-        });
+        var n=notificationFor(table,payload);
+        if(n)pushNotify(n.title,n.body,n.kind);
+        /* Data always refreshes (nav counts and the dock read from it); the
+           route render is what we skip. The old code re-rendered regardless —
+           the TABLE_ROUTES check sat inside an empty .then and did nothing. */
+        var routes=TABLE_ROUTES_MAP[table]||[];
+        loadAll(routes.length&&routes.indexOf(currentRoute)<0);
       };
     };
     realtimeChannel=client.channel("p1-admin")
@@ -1494,7 +1532,7 @@
       .on("postgres_changes",{event:"*",schema:"public",table:"day_redos"},live("day_redos"))
       .on("postgres_changes",{event:"*",schema:"public",table:"act_done"},live("act_done"))
       .on("postgres_changes",{event:"UPDATE",schema:"public",table:"kids"},live("kids"))
-      .subscribe();
+      .subscribe(function(status){realtimeStatus=status;updateNotifyState();});
   }
 
   /* ---- Event wiring ---- */
@@ -1508,7 +1546,10 @@
     openDashboard();
   };
   $("navLogout").onclick=async function(){await client.auth.signOut();location.reload();};
-  $("refreshBtn").onclick=loadAll;
+  /* Wrapped, not passed by reference: the click event would land in
+     loadAll's skipRouteRender parameter and suppress the very re-render
+     the Refresh button exists to trigger. */
+  $("refreshBtn").onclick=function(){loadAll();};
   $("resetAcceptedBtn").onclick=resetAcceptedDay;
   $("chatStream").onscroll=function(){
     var box=$("chatStream");
@@ -1543,8 +1584,16 @@
   document.addEventListener("click",function(e){
     var dis=e.target.closest("[data-dismiss]");
     if(dis){var note=dis.closest(".note");if(note)note.classList.add("hidden");}
+    /* This used to only sqGo("inbox") — a route we are already on — so the
+       Archived button rendered, clicked, and changed nothing. */
     var toggle=e.target.closest("[data-togglearchived]");
-    if(toggle){window.sqGo&&window.sqGo("inbox");}
+    if(toggle){
+      showArchived=!showArchived;
+      toggle.setAttribute("aria-pressed",showArchived?"true":"false");
+      toggle.textContent=showArchived?"Hide archived":"Archived";
+      renderInboxView();
+      renderDockConversation();
+    }
   });
 
   init().catch(function(e){show("configState",true);var cp=$("configState");if(cp){var p=cp.querySelector("p");if(p)p.textContent=e.message;}});

@@ -31,7 +31,11 @@
   --p-kid-1:       #0F7C55;
   --p-kid-2:       #B3306E;
   --p-kid-3:       #1857C4;
+  /* Ink laid ON a kid hue (the initial in .who__m). Dark hues take white,
+     bright hues take near-black — never assume one works for both. */
+  --p-invert-ink:  #FFFFFF;
   --p-shadow:      rgba(20, 24, 29, 0.06);
+  --p-shadow-2:    rgba(20, 24, 29, 0.28);
   --p-backdrop:    #0C1014;
 }
 
@@ -60,7 +64,9 @@
     --p-kid-1:       #3DDC97;
     --p-kid-2:       #FF6FB5;
     --p-kid-3:       #6BB6FF;
+    --p-invert-ink:  #10151A;
     --p-shadow:      rgba(0, 0, 0, 0.5);
+    --p-shadow-2:    rgba(0, 0, 0, 0.8);
     --p-backdrop:    #0A0D0F;
   }
 }
@@ -89,7 +95,9 @@
   --p-kid-1:       #46E0A0;
   --p-kid-2:       #FF78B8;
   --p-kid-3:       #73BCFF;
+  --p-invert-ink:  #181C21;
   --p-shadow:      rgba(0, 0, 0, 0.5);
+  --p-shadow-2:    rgba(0, 0, 0, 0.8);
   --p-backdrop:    #0C0F12;
 }
 
@@ -118,7 +126,9 @@
     --p-kid-1:       #40DE9C;
     --p-kid-2:       #FC72B4;
     --p-kid-3:       #6DB8FF;
+    --p-invert-ink:  #111418;
     --p-shadow:      rgba(0, 0, 0, 0.55);
+    --p-shadow-2:    rgba(0, 0, 0, 0.8);
     --p-backdrop:    #0A0C0F;
   }
 }
@@ -129,7 +139,7 @@
   --surface-sheet:     var(--p-sheet);
   --surface-sheet-2:   var(--p-sheet-2);
   --surface-inset:     var(--p-sheet-3);
-  --text-invert:       #FFFFFF;
+  --text-invert:       var(--p-invert-ink);
   --text-1:            var(--p-ink);
   --text-2:            var(--p-ink-2);
   --text-3:            var(--p-ink-3);
@@ -148,7 +158,7 @@
   --kid-lucien:        var(--p-kid-1);
   --kid-lili:          var(--p-kid-2);
   --kid-luis:          var(--p-kid-3);
-  --shadow:            0 1px 2px var(--p-shadow), 0 8px 24px -12px rgba(20, 24, 29, 0.28);
+  --shadow:            0 1px 2px var(--p-shadow), 0 8px 24px -12px var(--p-shadow-2);
   --backdrop:          var(--p-backdrop);
   --r:                 4px;
   --pad:               20px;
@@ -157,11 +167,6 @@
   --dock-w:            372px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.8);
-  }
-}
 
 /* ---------- kid identity classes ---------- */
 .k-lucien { --kid: var(--kid-lucien); }

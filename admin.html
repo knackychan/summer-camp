@@ -3,7 +3,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#EBEEF1">
+<meta name="theme-color" content="#EBEEF1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D1114" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Summer Quest">
 <link rel="manifest" href="manifest.webmanifest">
@@ -22,7 +23,7 @@
 
 <div class="scrim" id="scrim" hidden></div>
 
-<div class="app" id="app">
+<div class="app is-locked" id="app">
   <!-- ================= NAV ================= -->
   <nav class="nav" id="nav" aria-label="Sections">
     <div class="nav__brand">
@@ -89,7 +90,7 @@
   <!-- ================= MAIN ================= -->
   <main class="main">
     <header class="top">
-      <button class="btn btn--quiet btn--icon only-narrow-mobile" id="navBtn" aria-label="Open sections" aria-expanded="false" style="display:none">
+      <button class="btn btn--quiet btn--icon only-narrow-mobile" id="navBtn" aria-label="Open sections" aria-expanded="false">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
       </button>
 

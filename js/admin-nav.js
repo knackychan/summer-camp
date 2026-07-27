@@ -3,12 +3,15 @@
   const $ = function(id) { return document.getElementById(id); };
 
   var TITLES = { today:"Today", inbox:"Inbox", stars:"Stars", kids:"Kids", content:"Content", reports:"Reports", settings:"Settings" };
+  var lastRoute = "today";
 
   function go(route) {
     if (!TITLES[route]) route = "today";
     var locked = $("app").classList.contains("is-locked");
+    /* While locked, the only reachable view is the config/login panel. Routing
+       past it is what used to leave a signed-out Papa staring at a blank Today. */
     document.querySelectorAll(".view").forEach(function(v) {
-      v.hidden = v.id !== "view-" + route;
+      v.hidden = locked ? v.id !== "view-locked" : v.id !== "view-" + route;
     });
     document.querySelectorAll(".nav a").forEach(function(a) {
       if (a.dataset.route === route) a.setAttribute("aria-current", "page");
@@ -20,17 +23,30 @@
     var sc = $("scroll");
     if (sc) sc.scrollTop = 0;
     if (location.hash !== "#" + route) history.replaceState(null, "", "#" + route);
+    lastRoute = route;
     closeNav();
     /* Dispatch so admin.js can re-render for the new route */
     window.dispatchEvent(new CustomEvent("sq-route", { detail: { route: route } }));
   }
 
+  /* Nav anchors are left alone: the browser sets the hash, hashchange routes,
+     and Back/Forward work for free. Buttons carrying data-goto are not
+     anchors, so they set the hash themselves. */
   document.addEventListener("click", function(e) {
-    var nav = e.target.closest(".nav a[data-route]");
-    if (nav) { e.preventDefault(); go(nav.dataset.route); return; }
+    if (!e.target || !e.target.closest) return;
+    if (e.target.closest(".nav a[data-route]")) { closeNav(); return; }
 
     var goto = e.target.closest("[data-goto]");
-    if (goto) { go(goto.dataset.goto); return; }
+    if (goto && TITLES[goto.dataset.goto]) {
+      if (location.hash === "#" + goto.dataset.goto) go(goto.dataset.goto);
+      else location.hash = "#" + goto.dataset.goto;
+    }
+  });
+
+  addEventListener("hashchange", function() {
+    var route = (location.hash || "#today").slice(1);
+    if (!TITLES[route]) route = "today";
+    if (route !== lastRoute) go(route);
   });
 
   /* ---- drawers ---- */
@@ -79,12 +95,12 @@
     if (e.key === "Escape") { closeNav(); setDock(false); }
   });
 
-  function syncNarrow() {
-    var btn = $("navBtn");
-    if (btn) btn.style.display = innerWidth <= 820 ? "inline-flex" : "none";
-  }
-  addEventListener("resize", syncNarrow);
-  syncNarrow();
+  /* Back/forward and hand-edited hashes have to route. go() uses replaceState
+     for the canonical form, so only a real user navigation lands here. */
+  addEventListener("hashchange", function() {
+    var route = (location.hash || "#today").slice(1);
+    if (TITLES[route]) go(route);
+  });
 
   /* ---- live Taipei clock ---- */
   function tick() {

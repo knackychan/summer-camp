@@ -38,3 +38,29 @@ A token split guaranteed only by convention rots on the third busy evening. Slic
 ## Notes
 
 - Deliberately **not** built (design §7): a live palette editor, theme sync via `family_settings`, per-component L3 tokens. `localStorage` and one block of primitives are enough, and every one of those additions would be speculative.
+
+## Amendment — 2026-07-27, post-review
+
+The graphite theme did **not** ship with zero edits outside the L1 block. Two
+tokens were missing from the split and are now recorded here as required above:
+
+1. **`--p-invert-ink`** — the ink laid *on* any strong coloured fill: the initial
+   in `.who__m`, the `.btn--danger` hover, the `.btn__count` pill.
+   `admin-prototype.html:481` handled this with a raw
+   `@media (prefers-color-scheme: dark) { .who__m { color: #10151A; } }`; the port
+   left `--text-invert` as a hard `#FFFFFF` at L2, which measured **1.69:1**
+   on graphite Lucien and 1.77–2.56:1 across every dark scheme. The contrast gate
+   did not catch it because `resolveL2` had no entry for the pair, so it was never
+   evaluated. Fixed by backing `--text-invert` with an L1 primitive per theme ×
+   scheme, and by checking it against all three kid hues plus the late and now
+   fills. Five pairs now fail if that primitive is set back to white.
+
+2. **`--p-shadow-2`** — `--shadow`'s long-throw layer was a hardcoded
+   `rgba(20,24,29,.28)` sitting at L2, with a duplicate `--shadow` override in a
+   dark media query. Swapping the L1 block could not change it, which is exactly
+   the guarantee this slice exists to make. Now an L1 primitive; the duplicate
+   override is gone.
+
+Lesson for the next palette: a token pair that is never *checked* is not
+protected. When adding a colour that sits on top of another token, add the pair
+to `resolveL2`'s map and a `checkThemePair` line in the same commit.

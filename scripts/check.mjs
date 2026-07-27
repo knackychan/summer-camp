@@ -17,7 +17,7 @@ const assertPair = (value, where) => {
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
-const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/sync.js", "js/admin.js", "sw.js"];
+const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/sync.js", "js/admin-nav.js", "js/admin.js", "sw.js"];
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -41,6 +41,16 @@ for (const file of runtimeFiles) {
   if (/\?\./.test(text)) fail("android 8 syntax", `${file} contains optional chaining`);
   if (/\?\?/.test(text)) fail("android 8 syntax", `${file} contains nullish coalescing`);
   if (/\.flatMap\s*\(/.test(text)) fail("android 8 syntax", `${file} contains Array.prototype.flatMap`);
+}
+
+// Every shipped .js must actually parse. Only index.html's inline script was
+// checked before, which is how a stray `:` in js/admin.js shipped green and
+// killed the whole admin app while this script said "passed".
+for (const file of runtimeFiles.filter((f) => f.endsWith(".js"))) {
+  const parsed = spawnSync(process.execPath, ["--check", fileURLToPath(new URL(file, root))], { encoding: "utf8" });
+  if (parsed.status !== 0) {
+    fail("syntax", `${file}: ${(parsed.stderr || parsed.stdout || "node --check failed").trim().split("\n").slice(0, 4).join(" ")}`);
+  }
 }
 
 try {
@@ -261,7 +271,11 @@ if (!adminHtml.includes("helpClaims") && !/helpClaims/.test(readFileSync(new URL
   const adminJs = readFileSync(new URL("js/admin.js", root), "utf8");
   const adminNavJs = existsSync(new URL("js/admin-nav.js", root)) ? readFileSync(new URL("js/admin-nav.js", root), "utf8") : "";
   const allJs = adminJs + "\n" + adminNavJs;
-  const idRefs = [...allJs.matchAll(/\$\("([^"]+)"\)/g)].map(m => m[1]);
+  // show("id", on) resolves through $() too, so its literals need the same
+  // check — that gap let show("logoutBtn") survive the shell rebuild that
+  // deleted the element.
+  const idRefs = [...allJs.matchAll(/\$\("([^"]+)"\)/g)].map(m => m[1])
+    .concat([...allJs.matchAll(/\bshow\("([^"]+)"/g)].map(m => m[1]));
   const uniqueIds = [...new Set(idRefs)];
   const adminHtmlLower = adminHtml.toLowerCase();
   for (const id of uniqueIds) {
@@ -396,15 +410,16 @@ try {
     var currentTheme = "root";
     var currentScheme = "light";
     var lines = cssText.split("\n");
+    var themeDepth = -1, schemeDepth = -1, depth = 0;
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i].trim();
       if (/\[data-admin-theme/.test(line)) {
         var m = line.match(/"([^"]+)"/);
         currentTheme = m ? m[1] : "root";
+        themeDepth = depth;
       } else if (/@media\s*\(prefers-color-scheme:\s*dark\)/.test(line)) {
         currentScheme = "dark";
-      } else if (line === "}" && currentScheme === "dark") {
-        currentScheme = "light";
+        schemeDepth = depth;
       }
       var vMatch = line.match(/--p-([a-z0-9-]+)\s*:\s*([^;]+);/);
       if (vMatch) {
@@ -412,6 +427,12 @@ try {
         if (!variables[currentTheme][currentScheme]) variables[currentTheme][currentScheme] = {};
         variables[currentTheme][currentScheme][vMatch[1]] = vMatch[2].trim();
       }
+      // Track brace depth so a theme/scheme block ends where it actually ends.
+      // The old "reset on a bare }" heuristic left currentTheme pinned to the
+      // last theme seen, silently misfiling every L1 default declared after it.
+      depth += (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+      if (themeDepth >= 0 && depth <= themeDepth) { currentTheme = "root"; themeDepth = -1; }
+      if (schemeDepth >= 0 && depth <= schemeDepth) { currentScheme = "light"; schemeDepth = -1; }
     }
     return variables;
   }
@@ -468,7 +489,8 @@ try {
       "star": "star",
       "kid-lucien": "kid-1",
       "kid-lili": "kid-2",
-      "kid-luis": "kid-3"
+      "kid-luis": "kid-3",
+      "text-invert": "invert-ink"
     };
     var pName = map[l2Name];
     if (!pName) return null;
@@ -484,7 +506,12 @@ try {
   function checkThemePair(fgL2, bgL2, desc, theme, scheme, vars) {
     var fg = resolveL2(fgL2, vars);
     var bg = resolveL2(bgL2, vars);
-    if (!fg || !bg) return;
+    // A pair that cannot be resolved used to skip in silence, which is how the
+    // gate could report green while checking nothing. Say so instead.
+    if (!fg || !bg) {
+      fail("admin tokens: contrast", theme + "/" + scheme + " " + desc + " — could not resolve " + (fg ? bgL2 : fgL2) + " to a colour");
+      return;
+    }
     var ratio = contrast(fg, bg);
     var threshold = desc.includes("large") ? 3 : 4.5;
     if (ratio < threshold) {
@@ -528,6 +555,16 @@ try {
         checkThemePair("kid-lucien", "surface-sheet", "Lucien hue on sheet (large)", theme, scheme, vars);
         checkThemePair("kid-lili", "surface-sheet", "Lili hue on sheet (large)", theme, scheme, vars);
         checkThemePair("kid-luis", "surface-sheet", "Luis hue on sheet (large)", theme, scheme, vars);
+
+        // Ink laid ON a strong coloured fill: the initial in .who__m, the
+        // .btn--danger hover, the .btn__count pill. Nothing checked these pairs
+        // before, which is how white-on-#46E0A0 (1.69:1) shipped through a gate
+        // called "contrast".
+        checkThemePair("text-invert", "kid-lucien", "Lucien initial on hue (large)", theme, scheme, vars);
+        checkThemePair("text-invert", "kid-lili", "Lili initial on hue (large)", theme, scheme, vars);
+        checkThemePair("text-invert", "kid-luis", "Luis initial on hue (large)", theme, scheme, vars);
+        checkThemePair("text-invert", "status-late", "invert ink on late fill", theme, scheme, vars);
+        checkThemePair("text-invert", "status-now", "invert ink on now fill", theme, scheme, vars);
 
         // Backgrounds of status tags (tag text on tag bg)
         checkThemePair("text-1", "surface-sheet-2", "text on sheet-2", theme, scheme, vars);
