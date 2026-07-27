@@ -17,7 +17,7 @@ const assertPair = (value, where) => {
 const indexHtml = readFileSync(new URL("index.html", root), "utf8");
 const adminHtml = readFileSync(new URL("admin.html", root), "utf8");
 const schemaSql = readFileSync(new URL("supabase/schema.sql", root), "utf8");
-const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/brain-audio-cues.js", "js/sync.js", "js/admin-nav.js", "js/admin.js", "sw.js"];
+const runtimeFiles = ["index.html", "admin.html", "js/day.js", "js/day-data.js", "js/act-data.js", "js/learn-data.js", "js/time-core.js", "js/chat-core.js", "js/lock-core.js", "js/pinpad.js", "js/papa-tools.js", "js/drills.js", "js/brain-data.js", "js/brain-core.js", "js/brain-ui.js", "js/brain-audio-cues.js", "js/sync.js", "js/admin-nav.js", "js/admin.js", "sw.js", "js/games/solar-data.js"];
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (scriptMatches.length !== 1) {
   fail("script extraction", `expected 1 inline script, found ${scriptMatches.length}`);
@@ -730,6 +730,28 @@ try {
       });
     });
   }
+}
+
+try {
+  var solarMod = await import(new URL("js/games/solar-data.js", root));
+  var SOLAR_D = solarMod.SOLAR;
+  var PLANETS_D = solarMod.PLANETS;
+  assertPair([SOLAR_D.name, SOLAR_D.tz], "solar.sun.name");
+  SOLAR_D.facts.forEach(function (f, i) { assertPair([f.en, f.tz], "solar.sun.fact" + i); });
+  if (PLANETS_D.length !== 8) fail("solar", "expected 8 planets, got " + PLANETS_D.length);
+  var seenSolar = new Set();
+  for (var pi = 0; pi < PLANETS_D.length; pi++) {
+    var pv = PLANETS_D[pi];
+    if (seenSolar.has(pv.id)) fail("solar", "duplicate planet id " + pv.id);
+    seenSolar.add(pv.id);
+    assertPair([pv.name, pv.tz], "solar." + pv.id + ".name");
+    if (pv.type) assertPair([pv.type.en, pv.type.tz], "solar." + pv.id + ".type");
+    if (pv.desc) assertPair([pv.desc.en, pv.desc.tz], "solar." + pv.id + ".desc");
+    (pv.facts || []).forEach(function (f, i) { assertPair([f.en, f.tz], "solar." + pv.id + ".fact" + i); });
+    if ((pv.facts || []).length !== 3) fail("solar", pv.id + ": exactly 3 facts required");
+  }
+} catch (error) {
+  fail("solar data load", error.message);
 }
 
 if (failures.length) {
