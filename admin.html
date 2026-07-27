@@ -1,177 +1,320 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-admin-theme="">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
 <meta name="theme-color" content="#201A40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Summer Quest">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
-<title>Summer Quest Admin</title>
+<title>Summer Quest — Operations</title>
 <link rel="stylesheet" href="css/admin-tokens.css">
+<link rel="stylesheet" href="css/admin-shell.css">
 <link rel="stylesheet" href="css/admin.css">
-<main class="app-shell is-locked" id="shell">
-  <header class="app-top">
-    <div>
-      <h1 class="page-title">Summer Quest Admin</h1>
-      <p class="page-subtitle">Papa dashboard</p>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<div class="app" id="app">
+  <!-- ================= NAV ================= -->
+  <nav class="nav" id="nav" aria-label="Sections">
+    <div class="nav__brand">
+      <span class="mark" aria-hidden="true">SQ</span>
+      <div>
+        <b>Summer Quest</b>
+        <small>Operations</small>
+      </div>
     </div>
-    <button class="btn btn--secondary hidden" id="logoutBtn">Sign out</button>
-  </header>
 
-  <div class="col-center">
-    <section class="panel" id="configState">
-      <h2 class="section-title">Config needed</h2>
-      <p>Create <code>js/config.js</code> from <code>js/config.example.js</code>.</p>
-    </section>
+    <div class="nav__body">
+      <div class="nav__group">
+        <span class="lbl">Run the day</span>
+        <a href="#today" data-route="today" aria-current="page">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="1.7" y="2.7" width="12.6" height="11.6" rx="1"/><path d="M1.7 6.2h12.6M5.3 1.4v2.6M10.7 1.4v2.6"/></svg>
+          <span>Today</span>
+        </a>
+        <a href="#inbox" data-route="inbox">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M1.8 8.6h3.1l1.2 2h3.8l1.2-2h3.1"/><path d="M1.8 8.6 3.6 2.9h8.8l1.8 5.7v3.8a1 1 0 0 1-1 1H2.8a1 1 0 0 1-1-1z"/></svg>
+          <span>Inbox</span>
+          <em class="nav__count" id="navCountInbox" data-zero="1">0</em>
+        </a>
+        <a href="#stars" data-route="stars">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M8 1.9 9.9 6l4.4.5-3.3 3 .9 4.4L8 11.7 4.1 13.9l.9-4.4-3.3-3L6.1 6z" stroke-linejoin="round"/></svg>
+          <span>Stars</span>
+        </a>
+      </div>
 
-    <section class="panel hidden" id="login">
-      <h2 class="section-title">Login</h2>
-      <label class="field">
-        <span>Email</span>
-        <input class="input" id="email" type="email" autocomplete="email">
-      </label>
-      <label class="field">
-        <span>Password</span>
-        <input class="input" id="password" type="password" autocomplete="current-password">
-      </label>
-      <p class="message message--error" id="loginErr"></p>
-      <button class="btn" id="loginBtn">Sign in</button>
-    </section>
+      <div class="nav__group">
+        <span class="lbl">Manage</span>
+        <a href="#kids" data-route="kids">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="5.6" cy="5.4" r="2.5"/><path d="M1.4 13.6c0-2.3 1.9-3.9 4.2-3.9s4.2 1.6 4.2 3.9"/><path d="M10.8 3.3a2.4 2.4 0 0 1 0 4.5M11.6 10.1c1.8.3 3 1.7 3 3.5"/></svg>
+          <span>Kids</span>
+        </a>
+        <a href="#content" data-route="content">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2.4 2.6h11.2v10.8H2.4z"/><path d="M5.1 5.6h5.8M5.1 8h5.8M5.1 10.4h3.4"/></svg>
+          <span>Content</span>
+        </a>
+        <a href="#reports" data-route="reports">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 13.6h12.2"/><path d="M4.3 13.4V8.1M7.6 13.4V4.4M10.9 13.4V6.6M14 13.4v-3"/></svg>
+          <span>Reports</span>
+        </a>
+      </div>
 
-    <section id="dash" class="hidden">
-      <section class="panel">
-        <div class="section-head">
-          <h2 class="section-title">Today at a glance</h2>
-        </div>
-        <p class="hint">Drag blocks to change order. Use the time field for exact moves. Accept, undo, remove, or add blocks back from each kid's list.</p>
-        <div class="kid-grid" id="overview"></div>
+      <div class="nav__group">
+        <span class="lbl">System</span>
+        <a href="#settings" data-route="settings">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="2.3"/><path d="M8 1.6v1.7M8 12.7v1.7M14.4 8h-1.7M3.3 8H1.6M12.5 3.5l-1.2 1.2M4.7 11.3l-1.2 1.2M12.5 12.5l-1.2-1.2M4.7 4.7 3.5 3.5"/></svg>
+          <span>Settings</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="nav__foot">
+      <span class="avatar" aria-hidden="true">P</span>
+      <div>
+        <b id="navUser">Papa</b>
+        <span id="navStatus">Signed in</span>
+      </div>
+      <button class="btn btn--quiet btn--sm" id="navLogout" title="Sign out" style="margin-left:auto">Sign out</button>
+    </div>
+  </nav>
+
+  <!-- ================= MAIN ================= -->
+  <main class="main">
+    <header class="top">
+      <button class="btn btn--quiet btn--icon only-narrow-mobile" id="navBtn" aria-label="Open sections" aria-expanded="false" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+      </button>
+
+      <h1 id="routeTitle">Today</h1>
+
+      <div class="clock" id="clock">
+        <b class="clock__d" id="clockDate"></b>
+        <span class="num" id="clockT">--:--</span>
+        <span class="tz" style="font-size:12px">Asia/Taipei</span>
+      </div>
+
+      <span class="live" id="liveDot" title="Realtime">
+        <span class="dot"></span> <span id="liveLabel">Live</span>
+      </span>
+
+      <div class="top__spacer"></div>
+
+      <div class="top__acts">
+        <button class="btn hide-sm" id="refreshBtn">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M13.7 8a5.7 5.7 0 1 1-1.7-4"/><path d="M13.4 1.3v3h-3"/></svg>
+          Refresh
+        </button>
+        <button class="btn btn--primary" id="grantBtn" data-goto="stars">Grant stars</button>
+        <button class="btn only-narrow-dock" id="dockBtn" aria-expanded="false" aria-controls="dock">
+          Inbox <em class="btn__count" id="dockCount">0</em>
+        </button>
+      </div>
+    </header>
+
+    <div class="scroll" id="scroll">
+
+      <!-- ============ LOCKED / LOGIN ============ -->
+      <section class="view" id="view-locked">
+        <section class="panel" id="configState">
+          <h2 class="section-title">Config needed</h2>
+          <p>Create <code>js/config.js</code> from <code>js/config.example.js</code>.</p>
+        </section>
+
+        <section class="panel hidden" id="login">
+          <h2 class="section-title">Login</h2>
+          <label class="field">
+            <span>Email</span>
+            <input class="input" id="email" type="email" autocomplete="email">
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input class="input" id="password" type="password" autocomplete="current-password">
+          </label>
+          <p class="message message--error" id="loginErr"></p>
+          <button class="btn" id="loginBtn">Sign in</button>
+        </section>
       </section>
 
-      <details class="fold" data-fold="note">
-        <summary>Papa's daily message<span class="fold__count" id="foldCountNote"></span></summary>
-        <div class="fold__body">
-          <p class="compact-copy" id="noteDay"></p>
-          <label class="field">
-            <span>Message for today</span>
-            <textarea class="input textarea" id="noteBody" placeholder="Have a brave, kind day!"></textarea>
-          </label>
-          <p class="message message--ok" id="noteStatus"></p>
-          <button class="btn" id="saveNoteBtn">Save message</button>
+      <!-- ============ TODAY ============ -->
+      <section class="view" id="view-today" hidden>
+        <div id="band"></div>
+        <section id="queueSheet" class="sheet">
+          <div class="sheet__head"><h2>Waiting on you</h2></div>
+          <div id="queue"></div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head">
+            <h2>Day board</h2>
+            <span class="lbl" id="boardDate"></span>
+            <div class="sheet__tools">
+              <button class="btn btn--sm btn--danger" id="resetAcceptedBtn">Reset day</button>
+            </div>
+          </div>
+          <div class="tbl-wrap" id="overview"></div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head">
+            <h2>Recent stars</h2>
+            <div class="sheet__tools">
+              <button class="btn btn--sm" data-goto="stars">Full ledger</button>
+            </div>
+          </div>
+          <div class="tbl-wrap" id="ledgerRecent"></div>
+        </section>
+      </section>
+
+      <!-- ============ INBOX ============ -->
+      <section class="view" id="view-inbox" hidden>
+        <section class="sheet">
+          <div class="sheet__head">
+            <h2>Conversation</h2>
+            <div class="sheet__tools">
+              <div class="chips" role="group" aria-label="Filter by type" id="chatTypeFilter"></div>
+              <button class="btn btn--sm" data-togglearchived>Archived</button>
+            </div>
+          </div>
+          <div class="tbl-wrap" id="inboxStream"><p class="chat-empty">Nothing here</p></div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head"><h2>Proof gallery</h2></div>
+          <div class="sheet__pad">
+            <button class="btn" id="galleryBtn">Dinner gallery</button>
+            <div id="proofs"></div>
+          </div>
+        </section>
+      </section>
+
+      <!-- ============ STARS ============ -->
+      <section class="view" id="view-stars" hidden>
+        <section class="sheet">
+          <div class="sheet__head">
+            <h2>Grant stars</h2>
+            <span class="lbl">writes one ledger row · reversible</span>
+          </div>
+          <div id="grants"></div>
+          <div class="sheet__foot">Totals are the sum of the ledger, never a stored counter. Undo any row below.</div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head">
+            <h2>Ledger</h2>
+            <div class="sheet__tools" id="ledgerFilters"></div>
+          </div>
+          <div class="tbl-wrap" id="ledger"></div>
+          <div class="sheet__foot" id="ledgerFoot"></div>
+        </section>
+      </section>
+
+      <!-- ============ KIDS ============ -->
+      <section class="view" id="view-kids" hidden>
+        <section class="sheet">
+          <div class="sheet__head"><h2>Kids</h2></div>
+          <div class="tbl-wrap" id="kidsTable"></div>
+        </section>
+        <section class="sheet" id="kidDetail" hidden></section>
+      </section>
+
+      <!-- ============ CONTENT ============ -->
+      <section class="view" id="view-content" hidden>
+        <section class="sheet">
+          <div class="sheet__head">
+            <h2>Papa's message for today</h2>
+            <span class="lbl">shown on every kid's My Day</span>
+          </div>
+          <div class="sheet__pad" id="notePanel"></div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head">
+            <h2>Day template</h2>
+            <span class="lbl">read-only · edited in js/day-data.js</span>
+          </div>
+          <div class="tbl-wrap" id="dayTemplate"></div>
+        </section>
+      </section>
+
+      <!-- ============ REPORTS ============ -->
+      <section class="view" id="view-reports" hidden>
+        <section class="sheet">
+          <div class="sheet__head">
+            <h2>Last 14 days</h2>
+            <div class="sheet__tools">
+              <div class="chips" role="group" aria-label="Metric" id="reportMetrics"></div>
+            </div>
+          </div>
+          <div class="tbl-wrap" id="history"></div>
+          <div class="sheet__foot">Counts, not scores. Nothing here is shown to a kid.</div>
+        </section>
+      </section>
+
+      <!-- ============ SETTINGS ============ -->
+      <section class="view" id="view-settings" hidden>
+        <div class="note note--error hidden" id="notifyBanner">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M8 2.2 14.6 13H1.4z"/><path d="M8 6.4v3M8 11.3v.1"/></svg>
+          <div><b>Windows notifications are blocked</b>
+            Allow notifications for this site in the address bar, then reload.</div>
+          <button class="btn btn--sm btn--quiet note__x" aria-label="Dismiss" data-dismiss>✕</button>
         </div>
-      </details>
 
-      <details class="fold" data-fold="acts">
-        <summary>Activities ticked today<span class="fold__count" id="foldCountActs"></span></summary>
-        <div class="fold__body">
-          <p class="hint">Revoke takes the star back and un-ticks the activity, so the kid can do it for real and earn it again today.</p>
-          <div class="kid-grid" id="actsToday"></div>
-        </div>
-      </details>
+        <section class="sheet">
+          <div class="sheet__head"><h2>Access</h2></div>
+          <div class="sheet__pad" id="accessPanel"></div>
+        </section>
 
-      <details class="fold" data-fold="proofs">
-        <summary>Proof gallery<span class="fold__count" id="foldCountProofs"></span></summary>
-        <div class="fold__body">
-          <button class="btn btn--secondary" id="galleryBtn">🍽 Dinner gallery</button>
-          <div id="proofs"></div>
-        </div>
-      </details>
+        <section class="sheet">
+          <div class="sheet__head"><h2>Day behaviour</h2></div>
+          <div class="sheet__pad" id="behaviourPanel"></div>
+        </section>
 
-      <details class="fold" data-fold="history">
-        <summary>14-day history<span class="fold__count" id="foldCountHistory"></span></summary>
-        <div class="fold__body"><div id="history"></div></div>
-      </details>
+        <section class="sheet">
+          <div class="sheet__head"><h2>Danger zone</h2><span class="lbl">writes ledger rows · not silent</span></div>
+          <div class="tbl-wrap" id="dangerZone"></div>
+        </section>
+      </section>
 
-      <details class="fold" data-fold="ledger">
-        <summary>Ledger<span class="fold__count" id="foldCountLedger"></span></summary>
-        <div class="fold__body"><div id="ledger"></div></div>
-      </details>
+    </div>
+  </main>
 
-      <details class="fold" data-fold="settings">
-        <summary>Settings<span class="fold__count" id="foldCountSettings"></span></summary>
-        <div class="fold__body">
-          <div class="kid-grid" id="pinSettings"></div>
-          <div class="kid-card" id="adminPinSettings"></div>
-        </div>
-      </details>
-    </section>
-  </div>
+  <!-- ================= DOCK ================= -->
+  <aside class="dock" id="dock" aria-label="Conversation">
+    <div class="dock__h">
+      <h2>Conversation</h2>
+      <span class="tag tag--now" id="dockBadge">0</span>
+      <button class="btn btn--quiet btn--icon" id="notifyToggleBtn" title="Desktop notifications" aria-label="Notifications">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 6.6a4 4 0 1 1 8 0c0 3 1.2 4.2 1.2 4.2H2.8S4 9.6 4 6.6z"/><path d="M6.6 13.2a1.6 1.6 0 0 0 2.8 0"/></svg>
+      </button>
+      <button class="btn btn--quiet btn--icon only-narrow-dock" id="dockClose" aria-label="Close conversation">✕</button>
+    </div>
 
-  <aside class="rail rail--left hidden" id="railLeft">
-    <section class="panel">
-      <div class="section-head">
-        <h2 class="section-title">Today</h2>
-        <span class="pill" id="todayLabel"></span>
-      </div>
+    <figure class="pin" id="chatPin"></figure>
+
+    <div class="dock__f">
+      <div class="chips" role="group" aria-label="Filter by kid" id="chatKidFilter"></div>
+      <div class="chips" role="group" aria-label="Filter by kind" id="dockTypeFilter"></div>
+    </div>
+
+    <div class="stream" id="chatStream" role="log" aria-live="polite"></div>
+
+    <button class="btn chat-jump hidden" id="chatJump">New messages ↓</button>
+
+    <div class="dock__send">
       <div class="row">
-        <button class="btn btn--secondary" id="refreshBtn">Refresh</button>
-        <button class="btn btn--danger" id="resetAcceptedBtn">Reset day</button>
-      </div>
-      <label class="toggle-line"><input type="checkbox" id="removedCredited" checked> Removed blocks earn stars</label>
-    </section>
-
-    <section class="panel grant-panel">
-      <h2 class="section-title">Grant stars</h2>
-      <div class="kid-grid" id="grants"></div>
-    </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <h2 class="section-title">🧾 Recent</h2>
-        <button class="btn btn--secondary" id="ledgerAllBtn">All ▸</button>
-      </div>
-      <div class="ledger-recent" id="ledgerRecent"></div>
-    </section>
-
-    <section class="panel">
-      <h2 class="section-title">App locks</h2>
-      <p class="muted">Pause the whole app, or lock one category while My Day stays available.</p>
-      <div id="applocks" class="kid-grid"></div>
-    </section>
-  </aside>
-
-  <aside class="rail rail--right hidden" id="railRight">
-    <section class="panel chat-panel">
-      <div class="section-head">
-        <h2 class="section-title">💬 Conversation</h2>
-        <span class="pill gold" id="chatNeedsBadge">0</span>
-        <button class="btn btn--secondary btn--icon" id="notifyEnableBtn" title="Windows notifications">🔔</button>
-        <button class="btn btn--secondary btn--icon" id="notifyClearBtn" title="Clear feed">🧹</button>
-      </div>
-      <p class="pill" id="notifyStatus">Dashboard only</p>
-
-      <div class="chat-filters" id="chatKidFilter" role="group" aria-label="Filter by kid"></div>
-      <div class="chat-filters" id="chatTypeFilter" role="group" aria-label="Filter by kind"></div>
-
-      <div class="chat-pin" id="chatPin"></div>
-
-      <div class="chat-stream" id="chatStream" role="log" aria-live="polite"></div>
-      <button class="btn chat-jump hidden" id="chatJump">New messages ↓</button>
-
-      <p class="message message--error" id="helpClaimsStatus"></p>
-
-      <div class="chat-send">
-        <select class="input" id="chatTo" aria-label="Send to">
-          <option value="all">All</option>
+        <select id="chatTo" aria-label="Send to">
+          <option value="all">All three</option>
           <option value="lucien">Lucien</option>
           <option value="lili">Lili</option>
           <option value="luis">Luis</option>
         </select>
-        <textarea class="input textarea chat-input" id="chatBody" rows="2" placeholder="Message…"></textarea>
-        <button class="btn btn--icon" id="chatSend" title="Send">↑</button>
+        <span class="tbl__note">appears on My Day</span>
       </div>
-      <label class="toggle-line"><input type="checkbox" id="showArchivedAsks"> Show archived</label>
-    </section>
-
-    <details class="fold" data-fold="notify">
-      <summary>🔔 Raw feed<span class="fold__count" id="foldCountNotify"></span></summary>
-      <div class="fold__body">
-        <div class="notify-feed" id="notifyFeed" role="log" aria-live="polite"></div>
+      <div class="row">
+        <textarea class="inp" id="chatBody" rows="2" placeholder="Message…" style="min-height:44px"></textarea>
+        <button class="btn btn--primary btn--icon" id="chatSend" style="height:44px" aria-label="Send">↑</button>
       </div>
-    </details>
+    </div>
   </aside>
-</main>
+</div>
+
 <div class="gallery hidden" id="gallery" role="dialog" aria-label="Dinner gallery">
   <img id="galleryImg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="Family photo of the day">
   <p id="galleryCap"></p>
@@ -181,7 +324,8 @@
     <button class="btn" id="galleryClose">Close</button>
   </div>
 </div>
-<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span></div>
+
 <script src="js/config.js"></script>
 <script src="js/day.js"></script>
 <script src="js/day-data.js"></script>
@@ -189,6 +333,7 @@
 <script src="js/learn-data.js"></script>
 <script src="js/time-core.js"></script>
 <script src="js/chat-core.js"></script>
+<script src="js/admin-nav.js"></script>
 <script src="js/admin.js"></script>
 <script>
 if("serviceWorker" in navigator){

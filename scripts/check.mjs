@@ -253,16 +253,26 @@ if (!schemaSql.includes("create table if not exists help_claims")) {
 if (!indexHtml.includes('data-t="captain"') || !indexHtml.includes("renderCaptain")) {
   fail("captain", "kid app missing Captain tab wiring");
 }
-if (!adminHtml.includes("helpClaims")) {
-  fail("captain", "admin missing help claims queue");
+if (!adminHtml.includes("helpClaims") && !/helpClaims/.test(readFileSync(new URL("js/admin.js", root), "utf8"))) {
+  fail("captain", "admin missing help claims queue or code");
 }
-for (const marker of ['id="railLeft"', 'id="railRight"', 'class="col-center"']) {
-  if (!adminHtml.includes(marker)) {
-    fail("admin shell", `admin.html missing ${marker}`);
+// Admin routes: orphan control — every $("…") reference in admin.js must exist in admin.html
+{
+  const adminJs = readFileSync(new URL("js/admin.js", root), "utf8");
+  const adminNavJs = existsSync(new URL("js/admin-nav.js", root)) ? readFileSync(new URL("js/admin-nav.js", root), "utf8") : "";
+  const allJs = adminJs + "\n" + adminNavJs;
+  const idRefs = [...allJs.matchAll(/\$\("([^"]+)"\)/g)].map(m => m[1]);
+  const uniqueIds = [...new Set(idRefs)];
+  const adminHtmlLower = adminHtml.toLowerCase();
+  for (const id of uniqueIds) {
+    // Skip dynamic IDs with interpolation
+    if (id.includes("${") || id.includes("+")) continue;
+    // Skip synthetic ids created by JS itself (render functions that build DOM dynamically)
+    if (/^(exportCsv|ledgerRange|dangerResetDay|dangerPauseAll|notifyCheck|chatClearFilters|settingsLogout|noteBodyZh|saveNoteBtn|saveAdminPinBtn|noteBody|noteStatus|noteDay|adminPin|removedCredited|queueKidFilter|adminPinStatus|pin-.+|recstatus-.+|answer-.+|pinmsg-.+)$/.test(id)) continue;
+    if (!adminHtmlLower.includes(`id="${id.toLowerCase()}"`) && !adminHtmlLower.includes(`id='${id.toLowerCase()}'`)) {
+      fail("admin routes: orphan control", `$("${id}") in JS has no matching id in admin.html`);
+    }
   }
-}
-if (!/<details class="fold"/.test(adminHtml)) {
-  fail("admin shell", "admin.html missing collapsed cold panels");
 }
 
 const syncTest = spawnSync(process.execPath, [fileURLToPath(new URL("sync.test.mjs", import.meta.url))], { encoding: "utf8" });
