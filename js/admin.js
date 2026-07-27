@@ -218,7 +218,7 @@
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
-      client.from("stars_ledger").select("*").order("created_at",{ascending:false}).limit(30),
+      client.from("stars_ledger").select("*").order("created_at",{ascending:false}).limit(150),
       client.from("asks").select("*").order("created_at",{ascending:false}).limit(80),
       client.from("papa_notes").select("body").eq("day",today).maybeSingle(),
       client.from("passes").select("*").order("created_at",{ascending:false}).limit(80),
@@ -608,8 +608,16 @@
   /* Activities a kid ticked today. Each tick granted exactly 1 ⭐ (index.html actDone),
      so revoking is always −1 plus deleting the act_done row — the tablet re-hydrates
      actsDay.done from act_done, so the activity goes back to un-ticked and re-earnable. */
-  const actLabel=i=>BANK[i]?`${BANK[i].icon} ${BANK[i].cat} ${BANK[i].catz}`:`Activity #${i}`;
-  const actDetail=(i,kid)=>BANK[i]?`${BANK[i][kid]||""} ${(BANK[i].z&&BANK[i].z[kid])||""}`.trim():"";
+  const actLabel=i=>{
+    const lg=i>=LEARN_BASE?learnGuideAt(i):null;
+    if(lg)return `${lg.icon} ${lg.title} ${lg.tz}`;
+    return BANK[i]?`${BANK[i].icon} ${BANK[i].cat} ${BANK[i].catz}`:`Activity #${i}`;
+  };
+  const actDetail=(i,kid)=>{
+    const lg=i>=LEARN_BASE?learnGuideAt(i):null;
+    if(lg)return `Learn guide — ${(lg[kid]||[]).length} steps, self-claimed`;
+    return BANK[i]?`${BANK[i][kid]||""} ${(BANK[i].z&&BANK[i].z[kid])||""}`.trim():"";
+  };
 
   function renderActsToday(){
     $("actsToday").innerHTML=Object.entries(KIDS).map(([id,k])=>{
@@ -643,7 +651,7 @@
       return;
     }
     const {error}=await client.from("stars_ledger").insert({
-      kid_id:kid,delta:-1,reason:`Activity revoked: ${BANK[i]?BANK[i].cat:"#"+i}`,
+      kid_id:kid,delta:-1,reason:`Revoked · ${actLabel(i)}`,
       source:"admin",granted_by:session.user.id
     });
     if(error){writeFailed(error);await loadAll();return;}
@@ -674,7 +682,7 @@
         if(!r)return;
         if(!confirm(`Revoke ${r.delta} ⭐ from ${kidName(r.kid_id)} — "${r.reason}"?`))return;
         const {error}=await client.from("stars_ledger").insert({
-          kid_id:r.kid_id,delta:-r.delta,reason:`Revoked: ${r.reason}`,
+          kid_id:r.kid_id,delta:-r.delta,reason:`Revoked · ${r.reason}`,
           source:"admin",granted_by:session.user.id
         });
         if(error){writeFailed(error);return;}
@@ -684,14 +692,112 @@
     });
   }
 
+  /* Star kinds. Matched on the reason prefix the kid app writes
+     (`Kind 中文 · where · what`), longest/most specific first. Rows written by
+     older builds fall through to "other", which is exactly the bucket Papa
+     wants to see shrink to zero. */
+  const STAR_KINDS=[
+    {key:"unlabelled",label:"⚠️ Unlabelled",test:r=>/^Unlabelled|^App progress/.test(r)},
+    {key:"revoked",   label:"↩️ Revoked",   test:r=>/^Revoked|^Star reset|^Day reset/.test(r)},
+    {key:"mission",   label:"🎯 Mission",   test:r=>/^Mission |^My Day mission/.test(r)},
+    {key:"practice",  label:"🥋 Practice",  test:r=>/^Practice /.test(r)},
+    {key:"activity",  label:"🧹 Activity",  test:r=>/^Activity /.test(r)},
+    {key:"learn",     label:"🧭 Learn",     test:r=>/^Learn /.test(r)},
+    {key:"bonus",     label:"🌟 Bonus",     test:r=>/^Bonus |^Day complete/.test(r)},
+    {key:"outing",    label:"🚶 Outing",    test:r=>/^Outing |^Removed block/.test(r)},
+    {key:"captain",   label:"🤝 Captain",   test:r=>/^captain help/i.test(r)}
+  ];
+  function starKind(r){
+    const reason=String((r&&r.reason)||"");
+    const hit=STAR_KINDS.find(function(k){return k.test(reason);});
+    if(hit)return hit;
+    return {key:r&&r.source==="admin"?"papa":"other",
+            label:r&&r.source==="admin"?"👨 Papa":"❓ Other"};
+  }
+
+  /* Ledger filters live in memory only — Papa opens the fold to answer one
+     question, not to keep a saved view. */
+  let ledgerFilter={kid:"all",kind:"all",todayOnly:false};
+
+  function ledgerVisible(){
+    return rows.ledger.filter(function(r){
+      if(ledgerFilter.kid!=="all"&&r.kid_id!==ledgerFilter.kid)return false;
+      if(ledgerFilter.kind!=="all"&&starKind(r).key!==ledgerFilter.kind)return false;
+      if(ledgerFilter.todayOnly&&String(r.created_at||"").slice(0,10)!==today)return false;
+      return true;
+    });
+  }
+
+  /* One row per kid: where today's stars actually came from. This is the
+     "what are they doing to earn these" answer, before the raw table. */
+  function ledgerSummaryHtml(){
+    const todays=rows.ledger.filter(function(r){
+      return String(r.created_at||"").slice(0,10)===today&&r.delta>0;
+    });
+    return `<div class="ledger-summary">${Object.entries(KIDS).map(function(e){
+      const id=e[0], k=e[1];
+      const mine=todays.filter(function(r){return r.kid_id===id;});
+      const byKind=new Map();
+      mine.forEach(function(r){
+        const kind=starKind(r);
+        const cur=byKind.get(kind.key)||{label:kind.label,stars:0,n:0};
+        cur.stars+=r.delta; cur.n++;
+        byKind.set(kind.key,cur);
+      });
+      const total=mine.reduce(function(s,r){return s+r.delta;},0);
+      const chips=[...byKind.values()].sort(function(a,b){return b.stars-a.stars;})
+        .map(function(c){return `<span class="pill">${esc(c.label)} ${c.stars}⭐ ×${c.n}</span>`;}).join("");
+      return `<div class="ledger-summary__kid" style="--kid-color:${k.color}">
+        <b>${esc(k.name)}</b> <span class="gold">+${total}⭐ today</span>
+        <div class="chat-filters">${chips||`<span class="pill">nothing yet</span>`}</div>
+      </div>`;
+    }).join("")}</div>`;
+  }
+
+  function ledgerFiltersHtml(){
+    const kinds=[{key:"all",label:"All kinds"}].concat(STAR_KINDS.map(function(k){
+      return {key:k.key,label:k.label};
+    })).concat([{key:"papa",label:"👨 Papa"},{key:"other",label:"❓ Other"}]);
+    const kidChips=[{key:"all",label:"All kids"}].concat(Object.entries(KIDS).map(function(e){
+      return {key:e[0],label:e[1].name};
+    }));
+    const chip=(on,val,attr,label)=>
+      `<button class="chip${on?" is-on":""}" data-${attr}="${val}">${esc(label)}</button>`;
+    return `<div class="chat-filters">${kidChips.map(function(c){
+        return chip(ledgerFilter.kid===c.key,c.key,"ledkid",c.label);
+      }).join("")}
+      ${chip(ledgerFilter.todayOnly,"1","ledtoday","Today only")}</div>
+      <div class="chat-filters">${kinds.map(function(c){
+        return chip(ledgerFilter.kind===c.key,c.key,"ledkind",c.label);
+      }).join("")}</div>`;
+  }
+
   function renderLedger(){
-    $("ledger").innerHTML=`<table class="table"><thead><tr>
-      <th>Time</th><th>Kid</th><th>Delta</th><th>Reason</th><th>Source</th><th></th>
-    </tr></thead><tbody>${rows.ledger.map(function(r){return `<tr>
+    const visible=ledgerVisible();
+    $("ledger").innerHTML=ledgerSummaryHtml()+ledgerFiltersHtml()+
+      `<p class="compact-copy">${visible.length} of ${rows.ledger.length} rows</p>`+
+      `<div class="table-scroll"><table class="table"><thead><tr>
+      <th>Time</th><th>Kid</th><th>Delta</th><th>Kind</th><th>What earned it</th><th>Source</th><th></th>
+    </tr></thead><tbody>${visible.map(function(r){return `<tr>
       <td>${fmt(r.created_at)}</td><td>${kidName(r.kid_id)}</td><td>${r.delta>0?"+":""}${r.delta}</td>
+      <td>${esc(starKind(r).label)}</td>
       <td>${esc(r.reason)}</td><td>${esc(r.source)}</td>
       <td>${ledgerActionsHtml(r)}</td>
-    </tr>`;}).join("")}</tbody></table>`;
+    </tr>`;}).join("")}</tbody></table></div>`;
+    bindLedgerFilters();
+    bindLedgerActions();
+  }
+
+  function bindLedgerFilters(){
+    document.querySelectorAll("[data-ledkid]").forEach(function(b){
+      b.onclick=function(){ledgerFilter.kid=b.dataset.ledkid;renderLedger();};
+    });
+    document.querySelectorAll("[data-ledkind]").forEach(function(b){
+      b.onclick=function(){ledgerFilter.kind=b.dataset.ledkind;renderLedger();};
+    });
+    document.querySelectorAll("[data-ledtoday]").forEach(function(b){
+      b.onclick=function(){ledgerFilter.todayOnly=!ledgerFilter.todayOnly;renderLedger();};
+    });
   }
 
   /* Rail view: confirmation, not audit. Last 8 rows so Papa can see a grant land
@@ -704,7 +810,7 @@
       return `<div class="ledger-row" style="--kid-color:${k.color}">
         <span class="muted">${timeOnly(r.created_at)}</span>
         <span class="ledger-row__delta ${r.delta>0?"gold":"bad"}">${r.delta>0?"+":""}${r.delta}</span>
-        <span class="ledger-row__why"><b>${esc(k.name)}</b> ${esc(r.reason)}</span>
+        <span class="ledger-row__why"><b>${esc(k.name)}</b> ${esc(starKind(r).label)} ${esc(r.reason)}</span>
         ${ledgerActionsHtml(r)}
       </div>`;
     }).join(""):`<p class="compact-copy">No stars yet today</p>`;

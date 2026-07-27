@@ -8,7 +8,9 @@
      means local `stars` moved without a matching noteStars() call — a bug, not
      a normal path — so it gets labelled loudly instead of hidden in the generic
      catch-all bucket that used to make the ledger unauditable. */
-  const UNLABELLED="Unlabelled — check the app 未標註（請檢查）";
+  /* English only: no kid ever sees this string, it exists for the admin ledger
+     (kid-facing reasons below stay bilingual). */
+  const UNLABELLED="Unlabelled — check the app";
 
   /* A "best score" stat: the six existing games, or any brain-gym key.
      Prefix rule on purpose — adding a brain game must not require editing sync.js. */

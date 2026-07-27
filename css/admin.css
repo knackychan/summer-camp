@@ -1020,6 +1020,32 @@ p {
   overflow-y: auto;
 }
 
+/* Ledger fold: the per-kid "where did today's stars come from" band sits above
+   the raw table, so the answer is visible before any scrolling. */
+.ledger-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ledger-summary__kid {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #151127;
+  border-left: 3px solid var(--kid-color, var(--blue));
+}
+
+.ledger-summary__kid .chat-filters {
+  margin-top: 6px;
+}
+
+/* The reason column is deliberately long — let the table scroll instead of
+   letting it push the whole dashboard sideways. */
+.table-scroll {
+  overflow-x: auto;
+}
+
 .ledger-row {
   display: grid;
   grid-template-columns: auto 34px minmax(0, 1fr) auto;
