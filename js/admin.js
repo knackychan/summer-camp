@@ -1544,7 +1544,12 @@
         '<option value="">Ops (default)</option>'+
         '<option value="graphite"'+(localStorage.getItem("sq-admin-theme")==="graphite"?" selected":"")+'>Graphite</option>'+
       '</select></div>'+
-      '<p class="message pin-message '+(fb.type==="ok"?"message--ok":fb.type==="error"?"message--error":"")+'" id="adminPinStatus" aria-live="polite">'+(fb.text||"")+'</p>';
+      '<p class="message pin-message '+(fb.type==="ok"?"message--ok":fb.type==="error"?"message--error":"")+'" id="adminPinStatus" aria-live="polite">'+(fb.text||"")+'</p>'+
+      '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-hairline)">'+
+      '<span class="lbl" style="display:block;margin-bottom:6px">Preview &amp; test</span>'+
+      '<p class="field__hint" style="margin-bottom:8px">Open the kid app to try every function yourself: pick any kid profile, tap 🔧 Papa (enter the Papa PIN above), then 🧪 Test mode — every time-lock and app-pause is off for the rest of today. Turn it off from the same menu when done. Testing writes real stars/ticks like a normal play session; use Danger Zone below to reset a kid\'s day or stars afterward if needed.</p>'+
+      '<a class="btn" href="index.html" target="_blank" rel="noopener">🧪 Open kid app ↗</a>'+
+      '</div>';
     $("saveAdminPinBtn").onclick=saveAdminPin;
     $("settingsLogout").onclick=function(){client.auth.signOut().then(function(){location.reload();});};
     var ts=$("themeSelect");

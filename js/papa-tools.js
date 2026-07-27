@@ -3,6 +3,7 @@
   const KID_LABELS={all:"All 全部",lucien:"Lucien",lili:"Lili",luis:"Luis"};
   function open(){window.SQPin.show({title:"Papa tools 爸爸工具",onOk:menu});}
   function menu(){
+    const on=window.sqTestMode&&window.sqTestMode.isOn();
     const o=document.createElement("div");
     o.className="overlay";
     o.innerHTML=`<div class="card" style="max-width:380px">
@@ -10,6 +11,7 @@
       <div class="vrow">
         <button class="btn" id="ptResched">⏰ Reschedule today 調整今天時間</button>
         <button class="btn" id="ptOuting">🚶 Outing 出遊</button>
+        <button class="btn" id="ptTest">${on?"🧪 Test mode: ON — tap to turn off":"🧪 Test mode 測試模式（今天解鎖全部）"}</button>
         <button class="btn small" id="ptClose">Close 關閉</button>
       </div>
       <div id="ptBody"></div>
@@ -18,6 +20,10 @@
     o.querySelector("#ptClose").onclick=function(){o.remove();};
     o.querySelector("#ptResched").onclick=function(){resched(o.querySelector("#ptBody"),"all");};
     o.querySelector("#ptOuting").onclick=function(){outing(o.querySelector("#ptBody"));};
+    o.querySelector("#ptTest").onclick=function(){
+      if(window.sqTestMode)window.sqTestMode.set(!on);
+      o.remove();
+    };
   }
   function resched(el,scope){
     const raw=window.sqOverridesRaw();
