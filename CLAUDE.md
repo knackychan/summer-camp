@@ -10,7 +10,7 @@ Family summer app: 3 kid profiles on tablets + Papa admin. Static site (GitHub P
 - **Offline-first:** games and My Day must work with wifi off. Sync is additive; the app never blocks on network. Missing config.js ⇒ clean local-only mode.
 - **Don't touch working gameplay** (games, vocab data, mission pools, seeding) unless the task explicitly says so. Mission *assignment* stays client-side and date-seeded; only *state* syncs.
 - **Stars are a ledger** (sum of stars_ledger deltas), never a stored counter.
-- **Never delete project files.** No plan, design doc, prototype or asset gets removed because it looks superseded — `admin-prototype.html` is the reference the admin shell was ported from and stays in the repo. Supersede by writing a newer doc that says so; if a file is genuinely obsolete, say so and let Papa decide. A slice that says "delete X" is amended, not obeyed (decision 2026-07-27).
+- **Never delete project files.** No plan, design doc, prototype or asset gets removed because it looks superseded — `docs/plans/2026-07-27-admin-ops-redesign/admin-prototype.html` is the reference the admin shell was ported from and stays in the repo. Supersede by writing a newer doc that says so; if a file is genuinely obsolete, say so and let Papa decide. A slice that says "delete X" is amended, not obeyed (decision 2026-07-27).
 - Tablet-first UI: coarse-pointer targets, no hover-dependent interactions.
 
 ## Workflow

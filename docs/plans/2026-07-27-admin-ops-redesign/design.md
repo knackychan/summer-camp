@@ -4,7 +4,7 @@
 **Status:** approved by Papa (brainstorm session, Claude Code)
 **Scope:** `admin.html`, `css/admin*.css`, `js/admin.js`, `js/admin-nav.js` (new), `scripts/check.mjs`, one line in `CLAUDE.md`. **No kid-facing change** — `index.html`, `js/*-data.js`, game code and `supabase/schema.sql` are untouched.
 **Supersedes:** `docs/plans/2026-07-26-admin-layout/design.md` (slices 12–14) for admin *layout*. Its behavioural decisions D1–D5 and D8 survive and are restated below; D6, D7 and the three-column shell are replaced. Every non-negotiable in `CLAUDE.md` stands unchanged.
-**Reference build:** `admin-prototype.html` at the repo root — a working standalone prototype of the target. It is the visual contract for slices 20–29 and is deleted in slice 29.
+**Reference build:** `admin-prototype.html`, kept alongside this design in `docs/plans/2026-07-27-admin-ops-redesign/` — a working standalone prototype of the target. It is the visual contract for slices 20–29 and is **retained permanently** (amended 2026-07-27, Papa: nothing is deleted from this project).
 **Slices:** `19` … `29` (numbering continues the global sequence; 01–08 homework-lock, 09–11 brain-gym, 12–14 admin-layout, 15–18 game-platform).
 
 ---
@@ -209,7 +209,7 @@ Theme selection: `data-admin-theme` on `<html>`, persisted in `localStorage["sq-
 | Colour sweep (A12) misses a literal and a theme swap looks broken | The three check rules are what make the sweep provable. Slice 19 is not done until they are green. |
 | Contrast gate blocks a palette Papa wants | The gate reports the failing pair and its ratio, so the fix is one value, not a hunt. Threshold is WCAG AA, not AAA. |
 | Preserving typing across a realtime re-render (A9) is fiddly | Scoped to the active element only: id, value, `selectionStart/End`, and the nearest scroll container's `scrollTop`. Covered by a unit test in slice 20. |
-| The prototype drifts from the build | `admin-prototype.html` is the visual contract for 20–29 and is deleted in slice 29. It is never loaded by the app and never referenced by `sw.js`. |
+| The prototype drifts from the build | `admin-prototype.html` is the visual contract for 20–29 and is kept for good. It is never loaded by the app and never referenced by `sw.js`. When the build and the prototype disagree, check which one is right before assuming the prototype is stale — the white-on-kid-hue contrast bug was a port error, caught by reading it. |
 
 ---
 
@@ -223,4 +223,4 @@ Theme selection: `data-admin-theme` on `<html>`, persisted in `localStorage["sq-
 - No `<details class="fold">`, no `sq-admin-folds` key, no dead CSS block from A11 remains.
 - At 820px the page renders as one column with no horizontal scroll and no hover-only action.
 - `CLAUDE.md` records D23 so the bilingual invariant and the code agree.
-- `admin-prototype.html` is deleted.
+- `admin-prototype.html` is retained in `docs/plans/2026-07-27-admin-ops-redesign/`, unreferenced by any shipped page.
