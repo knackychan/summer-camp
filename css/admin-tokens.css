@@ -65,6 +65,64 @@
   }
 }
 
+/* ---------- Theme: graphite — cool near-black ops ground ---------- */
+[data-admin-theme="graphite"] {
+  --p-ground:      #181C21;
+  --p-sheet:       #1F242A;
+  --p-sheet-2:     #262C33;
+  --p-sheet-3:     #2A3139;
+  --p-ink:         #E1E6EB;
+  --p-ink-2:       #A0AAB3;
+  --p-ink-3:       #79838C;
+  --p-rule:        #2E3640;
+  --p-rule-2:      #3D4854;
+  --p-signal:      #E1E6EB;
+  --p-signal-ink:  #181C21;
+  --p-focus:       #7BAFFF;
+  --p-alert:       #FF8F80;
+  --p-alert-bg:    #2C1816;
+  --p-warn:        #F5BE5A;
+  --p-warn-bg:     #2C2212;
+  --p-good:        #55DBA8;
+  --p-good-bg:     #142821;
+  --p-star:        #F5CA4A;
+  --p-kid-1:       #46E0A0;
+  --p-kid-2:       #FF78B8;
+  --p-kid-3:       #73BCFF;
+  --p-shadow:      rgba(0, 0, 0, 0.5);
+  --p-backdrop:    #0C0F12;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-admin-theme="graphite"] {
+    /* graphite in dark scheme — slightly cooler, deeper */
+    --p-ground:      #111418;
+    --p-sheet:       #181C20;
+    --p-sheet-2:     #1E2328;
+    --p-sheet-3:     #23282F;
+    --p-ink:         #DDE3E9;
+    --p-ink-2:       #98A2AD;
+    --p-ink-3:       #717A84;
+    --p-rule:        #283039;
+    --p-rule-2:      #36414C;
+    --p-signal:      #DDE3E9;
+    --p-signal-ink:  #111418;
+    --p-focus:       #76A8F8;
+    --p-alert:       #FD8A7A;
+    --p-alert-bg:    #261613;
+    --p-warn:        #F0BA54;
+    --p-warn-bg:     #261E10;
+    --p-good:        #4FD8A4;
+    --p-good-bg:     #11241E;
+    --p-star:        #F2C842;
+    --p-kid-1:       #40DE9C;
+    --p-kid-2:       #FC72B4;
+    --p-kid-3:       #6DB8FF;
+    --p-shadow:      rgba(0, 0, 0, 0.55);
+    --p-backdrop:    #0A0C0F;
+  }
+}
+
 /* ---------- L2 · semantics · components use ONLY these ---------- */
 :root {
   --surface-page:      var(--p-ground);

@@ -1289,9 +1289,21 @@
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
       '<button class="btn btn--primary" id="saveAdminPinBtn">Save</button>'+
       '<button class="btn" id="settingsLogout">Sign out</button></div>'+
+      '<div style="margin-top:12px"><span class="lbl" style="display:block;margin-bottom:6px">Theme</span>'+
+      '<select class="inp" id="themeSelect" style="width:auto;height:30px;font-size:13px">'+
+        '<option value="">Ops (default)</option>'+
+        '<option value="graphite"'+(localStorage.getItem("sq-admin-theme")==="graphite"?" selected":"")+'>Graphite</option>'+
+      '</select></div>'+
       '<p class="message pin-message '+(fb.type==="ok"?"message--ok":fb.type==="error"?"message--error":"")+'" id="adminPinStatus" aria-live="polite">'+(fb.text||"")+'</p>';
     $("saveAdminPinBtn").onclick=saveAdminPin;
     $("settingsLogout").onclick=function(){client.auth.signOut().then(function(){location.reload();});};
+    var ts=$("themeSelect");
+    if(ts)ts.onchange=function(){
+      var v=ts.value;
+      if(v)document.documentElement.setAttribute("data-admin-theme",v);
+      else document.documentElement.removeAttribute("data-admin-theme");
+      localStorage.setItem("sq-admin-theme",v);
+    };
   }
 
   async function saveAdminPin(){

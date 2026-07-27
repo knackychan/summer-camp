@@ -268,7 +268,7 @@ if (!adminHtml.includes("helpClaims") && !/helpClaims/.test(readFileSync(new URL
     // Skip dynamic IDs with interpolation
     if (id.includes("${") || id.includes("+")) continue;
     // Skip synthetic ids created by JS itself (render functions that build DOM dynamically)
-    if (/^(exportCsv|ledgerRange|dangerResetDay|dangerPauseAll|notifyCheck|chatClearFilters|settingsLogout|noteBodyZh|saveNoteBtn|saveAdminPinBtn|noteBody|noteStatus|noteDay|adminPin|removedCredited|queueKidFilter|adminPinStatus|pin-.+|recstatus-.+|answer-.+|pinmsg-.+)$/.test(id)) continue;
+    if (/^(exportCsv|ledgerRange|dangerResetDay|dangerPauseAll|notifyCheck|chatClearFilters|settingsLogout|noteBodyZh|saveNoteBtn|saveAdminPinBtn|noteBody|noteStatus|noteDay|adminPin|removedCredited|queueKidFilter|adminPinStatus|pin-.+|recstatus-.+|answer-.+|pinmsg-.+|themeSelect)$/.test(id)) continue;
     if (!adminHtmlLower.includes(`id="${id.toLowerCase()}"`) && !adminHtmlLower.includes(`id='${id.toLowerCase()}'`)) {
       fail("admin routes: orphan control", `$("${id}") in JS has no matching id in admin.html`);
     }
@@ -364,6 +364,174 @@ try {
         if (/color-mix\(in srgb,\s*var\(--/.test(line)) return;
         fail("admin tokens: colour literal in JS", `js/admin.js:${i + 1} "${line.trim()}"`);
       }
+    });
+  }
+}
+
+// Admin tokens: WCAG contrast gate
+{
+  function hexToRgb(hex) {
+    var h = hex.replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  function srgb(rgb) {
+    return rgb.map(function(c) {
+      c = c / 255;
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+  }
+  function luminance(rgb) {
+    var s = srgb(rgb);
+    return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2];
+  }
+  function contrast(a, b) {
+    var l1 = luminance(a), l2 = luminance(b);
+    var lighter = Math.max(l1, l2), darker = Math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  function parseTokens(cssText) {
+    var variables = {};
+    var currentTheme = "root";
+    var currentScheme = "light";
+    var lines = cssText.split("\n");
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (/\[data-admin-theme/.test(line)) {
+        var m = line.match(/"([^"]+)"/);
+        currentTheme = m ? m[1] : "root";
+      } else if (/@media\s*\(prefers-color-scheme:\s*dark\)/.test(line)) {
+        currentScheme = "dark";
+      } else if (line === "}" && currentScheme === "dark") {
+        currentScheme = "light";
+      }
+      var vMatch = line.match(/--p-([a-z0-9-]+)\s*:\s*([^;]+);/);
+      if (vMatch) {
+        if (!variables[currentTheme]) variables[currentTheme] = {};
+        if (!variables[currentTheme][currentScheme]) variables[currentTheme][currentScheme] = {};
+        variables[currentTheme][currentScheme][vMatch[1]] = vMatch[2].trim();
+      }
+    }
+    return variables;
+  }
+
+  function resolveL1(themeVars, name) {
+    var v = themeVars[name];
+    if (v && v.startsWith("var(--p-")) {
+      var ref = v.match(/var\(--p-([a-z0-9-]+)\)/);
+      if (ref) return resolveL1(themeVars, ref[1]);
+    }
+    return v;
+  }
+
+  function colorValue(tokenVal, themeVars) {
+    if (!tokenVal) return null;
+    if (tokenVal.startsWith("#") && /^#[0-9A-Fa-f]{3,8}$/.test(tokenVal)) return hexToRgb(tokenVal);
+    if (tokenVal.startsWith("var(--p-")) {
+      var m = tokenVal.match(/var\(--p-([a-z0-9-]+)\)/);
+      if (m) return colorValue(resolveL1(themeVars, m[1]), themeVars);
+    }
+    if (tokenVal.startsWith("rgba(")) {
+      var rgba = tokenVal.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (rgba) return [parseInt(rgba[1]), parseInt(rgba[2]), parseInt(rgba[3])];
+    }
+    if (tokenVal.startsWith("color-mix")) {
+      var hex = tokenVal.match(/#[0-9A-Fa-f]{3,8}/);
+      if (hex) return hexToRgb(hex[0]);
+      // color-mix with var(--backdrop) — approximate from backdrop token
+      if (tokenVal.includes("--backdrop")) return null;
+    }
+    return null;
+  }
+
+  function resolveL2(l2Name, themeVars) {
+    // L2 semantic names are in :root level of tokens.css
+    // They map var(--surface-page) → var(--p-ground) etc.
+    // We need to resolve them through the theme's L1 values
+    var map = {
+      "surface-page": "ground",
+      "surface-sheet": "sheet",
+      "surface-sheet-2": "sheet-2",
+      "surface-inset": "sheet-3",
+      "text-1": "ink",
+      "text-2": "ink-2",
+      "text-3": "ink-3",
+      "action-bg": "signal",
+      "action-fg": "signal-ink",
+      "status-late": "alert",
+      "status-late-bg": "alert-bg",
+      "status-now": "warn",
+      "status-now-bg": "warn-bg",
+      "status-done": "good",
+      "status-done-bg": "good-bg",
+      "star": "star",
+      "kid-lucien": "kid-1",
+      "kid-lili": "kid-2",
+      "kid-luis": "kid-3"
+    };
+    var pName = map[l2Name];
+    if (!pName) return null;
+    var val = themeVars[pName];
+    if (!val) return null;
+    if (val.startsWith("var(--p-")) {
+      var m = val.match(/var\(--p-([a-z0-9-]+)\)/);
+      if (m) val = resolveL1(themeVars, m[1]);
+    }
+    return colorValue(val, themeVars);
+  }
+
+  function checkThemePair(fgL2, bgL2, desc, theme, scheme, vars) {
+    var fg = resolveL2(fgL2, vars);
+    var bg = resolveL2(bgL2, vars);
+    if (!fg || !bg) return;
+    var ratio = contrast(fg, bg);
+    var threshold = desc.includes("large") ? 3 : 4.5;
+    if (ratio < threshold) {
+      fail("admin tokens: contrast",
+        theme + "/" + scheme + " " + desc + " (" + fgL2 + " on " + bgL2 + ") ratio " + ratio.toFixed(2) + " < " + threshold + ":1");
+    }
+  }
+
+  var tokensPath = new URL("css/admin-tokens.css", root);
+  if (existsSync(tokensPath)) {
+    var tokensText = readFileSync(tokensPath, "utf8");
+    var allVars = parseTokens(tokensText);
+    var themes = Object.keys(allVars);
+
+    themes.forEach(function(theme) {
+      var schemes = Object.keys(allVars[theme] || {});
+      schemes.forEach(function(scheme) {
+        var vars = allVars[theme][scheme] || {};
+
+        // Body text on page, sheet, inset
+        checkThemePair("text-1", "surface-page", "body text on page", theme, scheme, vars);
+        checkThemePair("text-1", "surface-sheet", "body text on sheet", theme, scheme, vars);
+        checkThemePair("text-1", "surface-inset", "body text on inset", theme, scheme, vars);
+
+        // Muted text
+        checkThemePair("text-2", "surface-sheet", "muted text on sheet", theme, scheme, vars);
+
+        // Subdued text
+        checkThemePair("text-3", "surface-sheet", "subdued text on sheet (large)", theme, scheme, vars);
+
+        // Action button
+        checkThemePair("action-fg", "action-bg", "action button text", theme, scheme, vars);
+
+        // Status tags on sheet
+        checkThemePair("status-late", "surface-sheet", "late status on sheet (large)", theme, scheme, vars);
+        checkThemePair("status-now", "surface-sheet", "now status on sheet (large)", theme, scheme, vars);
+        checkThemePair("status-done", "surface-sheet", "done status on sheet (large)", theme, scheme, vars);
+        checkThemePair("star", "surface-sheet", "star text on sheet (large)", theme, scheme, vars);
+
+        // Kid hues on sheet
+        checkThemePair("kid-lucien", "surface-sheet", "Lucien hue on sheet (large)", theme, scheme, vars);
+        checkThemePair("kid-lili", "surface-sheet", "Lili hue on sheet (large)", theme, scheme, vars);
+        checkThemePair("kid-luis", "surface-sheet", "Luis hue on sheet (large)", theme, scheme, vars);
+
+        // Backgrounds of status tags (tag text on tag bg)
+        checkThemePair("text-1", "surface-sheet-2", "text on sheet-2", theme, scheme, vars);
+      });
     });
   }
 }
