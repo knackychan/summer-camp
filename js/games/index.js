@@ -14,6 +14,9 @@ export var MANIFEST = [
   { id: "orc",      brain: false, keyboard: true,  bestKey: "orc",     meta: { icon: "\u2694\ufe0f", title: "Orc Attack",    tz: "\u534a\u7378\u4eba\u4f86\u8972", blurb: "Type to defend the hero" } },
   { id: "vocab",    brain: false, keyboard: true,  bestKey: "shop",    meta: { icon: "\ud83e\uddd9", title: "Word Wizard",   tz: "\u6587\u5b57\u5deb\u5e2b", blurb: "Learn English words" } },
 
+  { id: "solar",    brain: false, keyboard: false, bestKey: null,      legacy: false,
+    meta: { icon: "\ud83e\ude90", title: "Solar System", tz: "\u592a\u967d\u7cfb", blurb: "Explore the planets" } },
+
   { id: "calc",     brain: true,  keyboard: false, bestKey: null, meta: { icon: "\u2795", title: "Calculations",    tz: "\u8a08\u7b97",     blurb: "Quick sums" } },
   { id: "signs",    brain: true,  keyboard: false, bestKey: null, meta: { icon: "\u2753", title: "Sign Finder",     tz: "\u627e\u7b26\u865f",   blurb: "Find the missing sign" } },
   { id: "lowhigh",  brain: true,  keyboard: false, bestKey: null, meta: { icon: "\ud83d\udd22", title: "Low to High",     tz: "\u7531\u5c0f\u5230\u5927", blurb: "Remember and order" } },

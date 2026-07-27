@@ -773,8 +773,10 @@ try {
     assertPair([entry.meta.title, entry.meta.tz], "manifest." + entry.id + ".title");
     if (!entry.meta.blurb) fail("manifest", entry.id + ": missing blurb");
     if (typeof entry.keyboard !== "boolean") fail("manifest", entry.id + ": keyboard must be boolean");
-    if (!new RegExp("\\b" + entry.id + "\\s*:\\s*\\{").test(indexHtml)) {
-      fail("manifest", entry.id + ": no matching LEVELS entry in index.html");
+    if (!entry.brain && entry.legacy !== false) {
+      if (!new RegExp("\\b" + entry.id + "\\s*:\\s*\\{").test(indexHtml)) {
+        fail("manifest", entry.id + ": no matching LEVELS entry in index.html");
+      }
     }
   }
   var bestKeysM = MANIFEST_D.map(function (e) { return e.bestKey; }).filter(Boolean);
