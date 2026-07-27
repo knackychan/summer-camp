@@ -23,6 +23,9 @@ test("solar module exports the expected contract without touching vendor files",
   assert.equal(solar.focusDistance("sun", 2), 18);
   assert.equal(solar.focusDistance("mercury", 0.3), 7);
   assert.equal(solar.focusDistance("jupiter", 1.2), 9.6);
+  assert.equal(solar.focusPanLimit("sun", 2), 9);
+  assert.equal(solar.focusPanLimit("mercury", 0.3), 2.5);
+  assert.equal(solar.focusPanLimit("jupiter", 1.2), 3.5999999999999996);
   assert.equal(solar.bodyOpacity("earth", null), 1);
   assert.equal(solar.bodyOpacity("earth", "earth"), 1);
   assert.equal(solar.bodyOpacity("earth", "sun"), 0.82);

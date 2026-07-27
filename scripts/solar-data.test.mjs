@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { SOLAR, PLANETS } from "../js/games/solar-data.js";
 
 test("sun and exactly eight planets, ordered by distance", function () {
+  assert.equal(SOLAR.id, "sun");
   assert.ok(SOLAR.name && SOLAR.tz);
+  assert.equal(typeof SOLAR.diameterKm, "number");
+  assert.ok(SOLAR.type && SOLAR.type.en && SOLAR.type.tz);
+  assert.ok(SOLAR.desc && SOLAR.desc.en && SOLAR.desc.tz);
+  assert.ok(Array.isArray(SOLAR.facts) && SOLAR.facts.length === 3);
   assert.equal(PLANETS.length, 8);
   for (var i = 1; i < PLANETS.length; i++) {
     assert.ok(PLANETS[i].au > PLANETS[i - 1].au, PLANETS[i].id + " out of order");

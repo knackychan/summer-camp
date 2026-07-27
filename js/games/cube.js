@@ -12,7 +12,7 @@ function pauseOnHidden() {
       cancelAnimationFrame(R.raf);
       R.raf = null;
     } else {
-      R.clock.start();
+      R.timer.reset();
       R.raf = requestAnimationFrame(tick);
     }
   }
@@ -22,7 +22,8 @@ function pauseOnHidden() {
 
 function tick() {
   if (!R) return;
-  var dt = Math.min(R.clock.getDelta(), 0.1);
+  R.timer.update();
+  var dt = Math.min(R.timer.getDelta(), 0.1);
   R.cube.rotation.x += 0.4 * dt;
   R.cube.rotation.y += 0.6 * dt;
   R.renderer.render(R.scene, R.camera);
@@ -90,7 +91,7 @@ export default {
     R.cube = new THREE.Mesh(geo, mat);
     R.scene.add(R.cube);
 
-    R.clock = new THREE.Clock();
+    R.timer = new THREE.Timer();
     R.resize = function () {
       var w = Math.max(mount.clientWidth || 640, 1);
       var h = Math.max(mount.clientHeight || 320, 1);
@@ -123,7 +124,7 @@ export default {
     R.cube = null;
     R.scene = null;
     R.camera = null;
-    R.clock = null;
+    if (R.timer) { R.timer.dispose(); R.timer = null; }
     R = null;
   }
 };

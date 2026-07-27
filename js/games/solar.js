@@ -19,6 +19,7 @@ export function bodyOpacity(bodyId, focusId) {
   if (!focusId || bodyId === focusId) return 1;
   return focusId === "sun" ? 0.82 : 0.55;
 }
+export function focusPanLimit(id, size) { return id === "sun" ? 9 : Math.max(2.5, Math.min(8, size * 3)); }
 export function photoIsVendored(path) { return !!AVAILABLE_PHOTOS[path]; }
 export function bodyNamePair(body) { return [body.name, body.tz]; }
 
@@ -266,7 +267,7 @@ export default {
     R.scene.add(pointLight);
 
     /* Stars */
-    var starCount = 1500;
+    var starCount = 950;
     var starGeo = new THREE.BufferGeometry();
     var positions = new Float32Array(starCount * 3);
     var colors = new Float32Array(starCount * 3);
@@ -284,7 +285,7 @@ export default {
     starGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     starGeo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     R.stars = new THREE.Points(starGeo, new THREE.PointsMaterial({
-      size: 1.6, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false
+      size: 0.75, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.72, depthWrite: false
     }));
     R.scene.add(R.stars);
 
@@ -558,6 +559,7 @@ export default {
       R.focusCardId = bodyId;
 
       var cEl = R.infocard;
+      cEl.classList.remove("hidden");
       cEl.querySelector("#icclass").textContent = b.type.en + " \u00b7 " + b.type.tz;
       cEl.querySelector("#icname").innerHTML = b.name + " <span>" + b.tz + "</span>";
       cEl.querySelector("#icdesc").textContent = b.desc.en;
@@ -619,10 +621,13 @@ export default {
     function focusOn(bodyEntry) {
       R.focus = bodyEntry;
       R.controls.minDistance = Math.max(bodyEntry.size * 4, 4);
-      R.controls.maxPolarAngle = 1.2;
-      R.controls.minPolarAngle = 0.5;
+      R.controls.maxPolarAngle = 1.45;
+      R.controls.minPolarAngle = 0.15;
+      R.controls.enablePan = true;
       R.focusStart = performance.now();
       R.focusDuration = 1200;
+      R.focusPanOffset = new R.THREE.Vector3(0, 0, 0);
+      R.lastFocusTarget = null;
       openCard(bodyEntry);
     }
 
@@ -651,6 +656,7 @@ export default {
           R.controls.minDistance = 10;
           R.controls.maxPolarAngle = 1.45;
           R.controls.minPolarAngle = 0.15;
+          R.controls.enablePan = false;
         }
       }
       requestAnimationFrame(anim);
@@ -676,8 +682,8 @@ export default {
         doTap(e);
       }
     }
-    function onDblClick() {
-      if (R.focus) { closeCard(); }
+    function onDblClick(e) {
+      e.preventDefault();
     }
 
     function doTap(e) {
@@ -720,16 +726,26 @@ export default {
       ctx.sfx.pop();
       var bd = findBody(bodyId);
       if (!bd) return;
-      var pair = bodyNamePair(bd.data);
-      ctx.sayPair(pair[0], pair[1]);
 
-      if (R.focus && R.focus.id === bodyId) {
-        openCard(bd);
+      if (bodyId === "sun") {
+        if (R.focus && R.focus.id === bodyId) {
+          return;
+        } else {
+          var sunPair = bodyNamePair(bd.data);
+          ctx.sayPair(sunPair[0], sunPair[1]);
+          focusOn(bd);
+        }
+      } else if (R.focus && R.focus.id === bodyId) {
+        return;
       } else if (R.focus) {
         /* Refocus on different body */
         closeCard();
+        var refocusPair = bodyNamePair(bd.data);
+        ctx.sayPair(refocusPair[0], refocusPair[1]);
         focusOn(bd);
       } else {
+        var pair = bodyNamePair(bd.data);
+        ctx.sayPair(pair[0], pair[1]);
         focusOn(bd);
       }
     }
@@ -760,7 +776,7 @@ export default {
       if (document.hidden) {
         if (R.raf) { cancelAnimationFrame(R.raf); R.raf = null; }
       } else {
-        if (R.clock) R.clock.start();
+        if (R.timer) R.timer.reset();
         R.raf = requestAnimationFrame(tick);
       }
     }
@@ -788,11 +804,12 @@ export default {
     }, 100);
 
     /* ====== Main loop ====== */
-    R.clock = new THREE.Clock();
+    R.timer = new THREE.Timer();
 
     function tick() {
       if (!R) return;
-      var dt = Math.min(R.clock.getDelta(), 0.1);
+      R.timer.update();
+      var dt = Math.min(R.timer.getDelta(), 0.1);
 
       /* Advance sim */
       var perSec = daysPerSec(R.speedId);
@@ -816,22 +833,30 @@ export default {
         }
       });
 
+      R.controls.update();
+
       /* Focus rig */
       if (R.focus && focusWorldPos) {
-        R.controls.target.lerp(focusWorldPos, 0.07);
+        if (R.lastFocusTarget) {
+          R.focusPanOffset.add(R.controls.target.clone().sub(R.lastFocusTarget));
+          var panLimit = focusPanLimit(R.focus.id, R.focus.size);
+          if (R.focusPanOffset.length() > panLimit) R.focusPanOffset.setLength(panLimit);
+        }
+        var desiredTarget = focusWorldPos.clone().add(R.focusPanOffset);
+        var viewDir = R.camera.position.clone().sub(R.controls.target).normalize();
+        R.controls.target.lerp(desiredTarget, 0.07);
         var focusDist = focusDistance(R.focus.id, R.focus.size);
         var curDist = R.camera.position.distanceTo(R.controls.target);
         var targetDist = focusDist;
         var t = Math.min(1, (performance.now() - R.focusStart) / R.focusDuration);
         t = 1 - Math.pow(1 - t, 3);
-        R.camera.position.copy(R.controls.target).add(
-          R.camera.position.clone().sub(R.controls.target).normalize().multiplyScalar(curDist + (targetDist - curDist) * t)
-        );
+        R.camera.position.copy(R.controls.target).add(viewDir.multiplyScalar(curDist + (targetDist - curDist) * t));
+        R.lastFocusTarget = R.controls.target.clone();
       } else if (!R.focus) {
         R.controls.target.lerp(new R.THREE.Vector3(0, 0, 0), 0.08);
+        R.focusPanOffset = null;
+        R.lastFocusTarget = null;
       }
-
-      R.controls.update();
       R.renderer.render(R.scene, R.camera);
       R.raf = requestAnimationFrame(tick);
     }
@@ -860,7 +885,8 @@ export default {
       R.renderer = null;
     }
     if (R.uiRoot && R.uiRoot.parentNode) { R.uiRoot.parentNode.removeChild(R.uiRoot); R.uiRoot = null; }
-    R.bodies = null; R.camera = null; R.clock = null; R.raycaster = null;
+    if (R.timer) { R.timer.dispose(); R.timer = null; }
+    R.bodies = null; R.camera = null; R.raycaster = null;
     R.focus = null; R.quiz = null; R.quizMission = null;
     R = null;
   }

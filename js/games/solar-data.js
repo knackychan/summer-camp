@@ -3,7 +3,7 @@
    source of truth for fact cards AND computed quiz questions. */
 
 export var SOLAR = {
-  name: "Sun", tz: "\u592a\u967d", color: 0xfdb813, diameterKm: 1392700,
+  id: "sun", name: "Sun", tz: "\u592a\u967d", color: 0xfdb813, diameterKm: 1392700,
   type: { en: "STAR", tz: "\u6046\u661f" },
   desc: { en: "The Sun is the giant star at the centre of our solar system. Its gravity holds all eight planets, and its light gives Earth warmth and energy.",
           tz: "\u592a\u967d\u662f\u4f4d\u65bc\u592a\u967d\u7cfb\u4e2d\u5fc3\u7684\u5de8\u5927\u6046\u661f\u3002\u5b83\u7684\u5f15\u529b\u6293\u4f4f\u516b\u9846\u884c\u661f,\u5b83\u7684\u5149\u5e36\u7d66\u5730\u7403\u6eab\u6696\u8207\u80fd\u91cf\u3002" },

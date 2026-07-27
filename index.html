@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#201A40">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Summer Quest">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
@@ -1230,7 +1231,6 @@ function startRegistered(game){
     kids:KIDS, best:bestOf(kid,game.bestKey||""),
     stars:progress[kid].stars||0,
     words:{easy:WORDS_EASY, all:ALL_WORDS, letters:LETTERS},
-    cityData:{CT:CT, CITY_W:CITY_W, CITY_H:CITY_H, MAP:CITY_MAP, BUILDINGS:CITY_B, TREES:CITY_TREES, PLOTS:CITY_PLOT},
     finish:function(res){ finishRegistered(game,res); }
   });
   if(result&&result.catch){

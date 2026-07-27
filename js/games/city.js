@@ -1,7 +1,47 @@
 /* City Drive 🏙️ 城市開車 — free-roam knowledge missions migrated from index.html:1758-2072 (slice 17). */
 var S = null, C = null;
 
-var CT, CITY_W, CITY_H, CITY_MAP, CITY_B, CITY_TREES, CITY_PLOT;
+var CT = 48, CITY_W = 26, CITY_H = 20;
+var CITY_MAP = [
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "RRRRRRRRRRRRRRRRRRRRRRRRRR",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "RRRRRRRRRRRRRRRRRRRRRRRRRR",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGWWWGGGGRGGGGGGGGRGGG",
+  "GGGRGGWWWGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "RRRRRRRRRRRRRRRRRRRRRRRRRR",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG",
+  "GGGRGGGGGGGGGRGGGGGGGGRGGG"
+];
+var CITY_TREES = [[8, 0], [20, 6], [24, 7], [1, 9], [17, 11], [4, 18], [11, 19]];
+var CITY_B = [
+  { id: "school", em: "\ud83c\udfeb", x: 5, y: 1, door: [5, 3] },
+  { id: "zoo", em: "\ud83e\udd81", x: 15, y: 1, door: [15, 3] },
+  { id: "market", em: "\ud83d\uded2", x: 23, y: 1, door: [23, 3] },
+  { id: "hospital", em: "\ud83c\udfe5", x: 5, y: 4, door: [5, 3] },
+  { id: "farm", em: "\ud83d\ude9c", x: 1, y: 4, door: [3, 4] },
+  { id: "park", em: "\ud83c\udf33", x: 11, y: 5, door: [13, 5] },
+  { id: "castle", em: "\ud83c\udff0", x: 15, y: 8, door: [15, 10] },
+  { id: "church", em: "\u26ea", x: 9, y: 11, door: [9, 10] },
+  { id: "hotel", em: "\ud83c\udfe8", x: 19, y: 11, door: [19, 10] },
+  { id: "museum", em: "\ud83d\uddbc\ufe0f", x: 5, y: 14, door: [5, 16] },
+  { id: "police", em: "\ud83d\udc6e", x: 23, y: 13, door: [22, 13] },
+  { id: "h1", em: "\ud83c\udfe0", x: 9, y: 17, door: [9, 16], house: true },
+  { id: "h2", em: "\ud83c\udfe0", x: 15, y: 17, door: [15, 16], house: true },
+  { id: "h3", em: "\ud83c\udfe0", x: 19, y: 17, door: [19, 16], house: true }
+];
+var CITY_PLOT = ["#e8b04b", "#d96f6f", "#7fb0e0", "#b48ede", "#8fcf7a", "#e0995f", "#c9c9d9"];
 
 function cityWord(id) {
   var all = C.words.all;
@@ -297,10 +337,6 @@ function init(ctx) {
   C = ctx;
   C.bestOriginal = C.best || 0;
   C.best = C.bestOriginal;
-
-  var cd = C.cityData;
-  CT = cd.CT; CITY_W = cd.CITY_W; CITY_H = cd.CITY_H;
-  CITY_MAP = cd.MAP; CITY_B = cd.BUILDINGS; CITY_TREES = cd.TREES; CITY_PLOT = cd.PLOTS;
 
   var age = C.kids[C.kid].age;
   S = {
