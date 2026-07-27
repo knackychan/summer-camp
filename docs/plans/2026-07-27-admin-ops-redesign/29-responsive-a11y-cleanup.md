@@ -7,7 +7,7 @@
 
 - `css/admin-shell.css`, `css/admin.css` — breakpoints and focus states
 - `admin.html`, `js/admin.js` — ARIA and keyboard
-- `admin-prototype.html` — **deleted**
+- `admin-prototype.html` — **kept** (amended 2026-07-27; see below)
 - `sw.js` — precache list reconciled
 
 ## Steps
@@ -30,7 +30,7 @@
 
 ### Cleanup
 
-11. Delete `admin-prototype.html`. Confirm nothing references it, including `sw.js`.
+11. ~~Delete `admin-prototype.html`.~~ **Amended 2026-07-27 (Papa): do not delete it.** It is the design proposition the whole shell was ported from and stays in the repo as the reference for future admin work. Confirm only that no shipped page links it and that it is absent from the `sw.js` precache (it is not part of the app shell). No plan, doc, prototype or asset is deleted from this project — see CLAUDE.md non-negotiables.
 12. Delete every selector in `css/admin*.css` unreferenced by `admin.html` or `js/admin.js` — this catches whatever slices 21–27 orphaned on top of the nine dead blocks from A11.
 13. Reconcile the `sw.js` precache list with the files that now exist: `css/admin-tokens.css`, `css/admin-shell.css`, `js/admin-nav.js` in; anything removed, out.
 14. Re-read `design.md` §9 and tick every line, or open a follow-up slice for what does not tick.
@@ -41,5 +41,5 @@
 - No horizontal page scroll at 1440, 1100, 800, 600 or 390.
 - Keyboard-only run through the whole admin: navigate, accept a block, reorder a block, answer an ask, grant a star, switch theme, sign out. No trap, no invisible focus.
 - No hover-only action anywhere below 820px.
-- `admin-prototype.html` gone; `sw.js` list accurate.
+- `admin-prototype.html` still present and unreferenced by shipped pages; `sw.js` list accurate.
 - `node scripts/check.mjs` green, including all four token rules and the orphan-control rule.
