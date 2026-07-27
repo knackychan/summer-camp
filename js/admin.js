@@ -562,11 +562,14 @@
           <button class="btn" data-grant="${id}" data-delta="1" title="Plus one star">+1</button>
           <button class="btn btn--secondary" data-grant="${id}" data-delta="2">+2</button>
           <button class="btn btn--secondary" data-grant="${id}" data-delta="3">+3</button>
+          <button class="btn btn--secondary" data-grantcustom="${id}" title="Grant the custom amount below">±</button>
         </div>
       </div>`;
     }).join("")+`
       <label class="field"><span>Reason</span>
         <input class="input" id="grantReason" placeholder="helped Lucien"></label>
+      <label class="field"><span>Custom amount (the ± button)</span>
+        <input class="input" id="grantAmount" type="number" min="-20" max="20" step="1" value="5"></label>
       <details class="grant-danger">
         <summary>More</summary>
         <div class="row">
@@ -577,6 +580,15 @@
       </details>`;
     document.querySelectorAll("[data-grant]").forEach(function(b){
       b.onclick=function(){grantStars(b.dataset.grant,+b.dataset.delta);};
+    });
+    /* Custom amount is shared like the reason: type once, tap the kid it fits. */
+    document.querySelectorAll("[data-grantcustom]").forEach(function(b){
+      b.onclick=function(){
+        const v=Math.round(+$("grantAmount").value||0);
+        if(!v){toast("Type a custom amount first",false);return;}
+        if(v<-20||v>20){toast("Custom amount must be between −20 and 20",false);return;}
+        grantStars(b.dataset.grantcustom,v);
+      };
     });
     document.querySelectorAll("[data-resetstars]").forEach(function(b){
       b.onclick=function(){resetStars(b.dataset.resetstars);};
