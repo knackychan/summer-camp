@@ -289,6 +289,47 @@ if (!adminHtml.includes("helpClaims") && !/helpClaims/.test(readFileSync(new URL
   }
 }
 
+// Admin dead controls: a button rendered with a data-* handle that nothing ever
+// queries is a control Papa can click forever with no effect. data-queuekid
+// (three kid chips on the Today queue) shipped exactly like that.
+{
+  const adminJs = readFileSync(new URL("js/admin.js", root), "utf8");
+  const adminNavJs = existsSync(new URL("js/admin-nav.js", root)) ? readFileSync(new URL("js/admin-nav.js", root), "utf8") : "";
+  const all = adminJs + "\n" + adminNavJs + "\n" + adminHtml;
+  // Presentational hooks read by CSS only, not by script.
+  const cssOnly = new Set(["l", "zero", "kid", "block", "paused", "locked", "delta", "admin"]);
+  const emitted = new Set([...all.matchAll(/\sdata-([a-z0-9]+)=/g)].map((m) => m[1]));
+  const queried = new Set([
+    ...[...all.matchAll(/\[data-([a-z0-9]+)[\]=]/g)].map((m) => m[1]),
+    ...[...all.matchAll(/dataset\.([a-zA-Z0-9]+)/g)].map((m) => m[1].toLowerCase())
+  ]);
+  for (const attr of emitted) {
+    if (cssOnly.has(attr) || queried.has(attr)) continue;
+    fail("admin dead control", `data-${attr} is rendered but never queried — the control does nothing`);
+  }
+}
+
+// Admin dead elements: an id in admin.html that no script and no stylesheet
+// mentions is markup nothing can fill. #reportMetrics was an empty labelled
+// chip group; #notifyToggleBtn was a bell with no handler.
+{
+  const adminJs = readFileSync(new URL("js/admin.js", root), "utf8");
+  const adminNavJs = existsSync(new URL("js/admin-nav.js", root)) ? readFileSync(new URL("js/admin-nav.js", root), "utf8") : "";
+  const js = adminJs + "\n" + adminNavJs;
+  const cssDir = new URL("css/", root);
+  const css = existsSync(cssDir)
+    ? readdirSync(cssDir).filter((f) => /^admin.*\.css$/.test(f)).map((f) => readFileSync(new URL(`css/${f}`, root), "utf8")).join("\n")
+    : "";
+  // Built from a template literal (`view-` + route) rather than named outright.
+  const composed = /^view-/;
+  for (const id of new Set([...adminHtml.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]))) {
+    if (composed.test(id)) continue;
+    if (js.includes(`"${id}"`) || js.includes(`'${id}'`) || css.includes(`#${id}`)) continue;
+    if (adminHtml.includes(`for="${id}"`) || adminHtml.includes(`aria-controls="${id}"`)) continue;
+    fail("admin dead element", `#${id} in admin.html is referenced by no script and no stylesheet`);
+  }
+}
+
 const syncTest = spawnSync(process.execPath, [fileURLToPath(new URL("sync.test.mjs", import.meta.url))], { encoding: "utf8" });
 if (syncTest.status !== 0) {
   fail("sync tests", (syncTest.stderr || syncTest.stdout || "sync.test.mjs failed").trim());

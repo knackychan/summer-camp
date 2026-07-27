@@ -74,6 +74,8 @@ code { color: var(--star); }
 .btn--icon { width: 32px; padding: 0; }
 .btn--sm.btn--icon { width: 26px; }
 
+.btn.is-on { color: var(--status-done); border-color: transparent; }
+
 .btn__count {
   min-width: 17px; height: 17px; padding: 0 5px;
   display: grid; place-items: center;
@@ -284,20 +286,43 @@ code { color: var(--star); }
   display: flex;
   flex-direction: column;
   gap: 6px;
+  transition: background-color .16s cubic-bezier(.2,.8,.3,1), box-shadow .16s cubic-bezier(.2,.8,.3,1);
 }
+/* A cell is a card you can grab and reorder, but at rest it reads as a table
+   cell. Hover and keyboard focus say so: the ground warms, a hairline ring
+   draws in, and the row actions slide up to full strength. */
+.cell:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--action-bg) 32%, transparent); }
+.cell:hover, .cell:focus-visible { background: var(--surface-sheet-2); }
+.cell[draggable="true"] { cursor: grab; }
+.cell[draggable="true"]:active { cursor: grabbing; }
 .cell__who { display: none; font-size: 11.5px; margin-bottom: 2px; }
 .cell__moved { color: var(--text-3); }
 .cell__t { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
 .cell__t span { display: block; font-weight: 400; color: var(--text-3); font-size: 11.5px; }
 .cell__b { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: auto; }
-.cell__acts { display: flex; gap: 4px; margin-left: auto; opacity: .42; transition: opacity .12s ease; }
-.cell:hover .cell__acts, .cell:focus-within .cell__acts { opacity: 1; }
-@media (hover: none) { .cell__acts { opacity: 1; } }
+.cell__acts {
+  display: flex; gap: 4px; margin-left: auto;
+  opacity: .42;
+  transform: translateX(5px);
+  transition: opacity .14s ease, transform .16s cubic-bezier(.2,.8,.3,1);
+}
+.cell:hover .cell__acts, .cell:focus-within .cell__acts { opacity: 1; transform: none; }
+/* Coarse pointers get no hover at all — the actions must never be a secret. */
+@media (hover: none) { .cell__acts { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .cell, .cell__acts { transition-duration: .01ms; }
+  .cell__acts { transform: none; }
+}
 
 .board__t.is-now, .cell.is-now { background: var(--status-now-bg); }
 .board__t.is-now { box-shadow: inset 3px 0 0 var(--status-now); color: var(--status-now); }
 .cell.is-done { background: color-mix(in srgb, var(--status-done) 5%, transparent); }
 .cell.is-off { opacity: .55; }
+/* These state grounds are declared after the hover ground and would otherwise
+   win the tie, leaving now/done cells inert under the pointer. Each deepens its
+   own hue instead of falling back to the neutral hover tint. */
+.cell.is-now:hover, .cell.is-now:focus-visible { background: color-mix(in srgb, var(--status-now) 10%, var(--status-now-bg)); }
+.cell.is-done:hover, .cell.is-done:focus-visible { background: color-mix(in srgb, var(--status-done) 11%, transparent); }
 
 .cell.is-dragging { opacity: .55; transform: scale(.98); }
 .cell.is-drop-target { box-shadow: inset 0 0 0 2px var(--action-bg), 0 0 0 3px color-mix(in srgb, var(--action-bg) 16%, transparent); }
@@ -315,6 +340,8 @@ code { color: var(--star); }
 /* ---- Conversation dock ---- */
 .msg { max-width: 90%; }
 .msg__m { font-size: 11px; color: var(--text-3); font-weight: 600; margin-bottom: 3px; display: flex; gap: 6px; align-items: center; }
+/* The meta initial is a smaller cousin of the table one, not a separate widget. */
+.msg__m .who__m { width: 15px; height: 15px; font-size: 9px; border-radius: 3px; }
 .msg__b {
   padding: 8px 11px;
   border: 1px solid var(--border-hairline);
@@ -323,14 +350,49 @@ code { color: var(--star); }
   font-size: 13px;
   line-height: 1.45;
 }
+.msg__t { margin: 0; overflow-wrap: anywhere; }
+.msg__t b { font-weight: 650; }
 .msg--kid .msg__b { border-top-left-radius: 1px; }
 .msg--papa { align-self: flex-end; }
 .msg--papa .msg__m { justify-content: flex-end; }
 .msg--papa .msg__b { background: var(--action-bg); border-color: var(--action-bg); color: var(--action-fg); border-top-right-radius: 1px; }
+/* Buttons sitting on the filled Papa bubble borrow its foreground instead of
+   punching a light-grey control through it. */
+.msg--papa .btn {
+  background: color-mix(in srgb, var(--action-fg) 14%, transparent);
+  border-color: color-mix(in srgb, var(--action-fg) 34%, transparent);
+  color: var(--action-fg);
+}
+.msg--papa .btn:hover:not(:disabled) { background: color-mix(in srgb, var(--action-fg) 24%, transparent); border-color: var(--action-fg); color: var(--action-fg); }
 .msg--task { max-width: 100%; align-self: stretch; }
 .msg--task .msg__b { background: var(--status-now-bg); border-color: color-mix(in srgb, var(--status-now) 26%, transparent); }
-.msg__acts { display: flex; gap: 6px; margin-top: 9px; }
+.msg__b--media { padding: 5px; }
+.msg__acts { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; align-items: center; }
+.msg.is-archived { opacity: .62; }
+
+/* Voice note — a chip, not the browser's 54px audio widget. */
+.voice { gap: 5px; font-variant-numeric: tabular-nums; }
+.voice__i { font-size: 9px; line-height: 1; }
+.voice.is-playing { background: var(--action-bg); border-color: var(--action-bg); color: var(--action-fg); }
+.msg--papa .voice.is-playing { background: var(--action-fg); border-color: var(--action-fg); color: var(--action-bg); }
+
+/* Reply composer — disclosed under the ask it answers. */
+.msg__reply { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border-hairline); }
+.msg__reply-l { display: block; margin-bottom: 5px; font-size: 11px; font-weight: 650; color: var(--text-3); }
+.msg__reply textarea.inp { min-height: 56px; font-size: 13px; }
+.msg__reply .msg__acts { margin-top: 7px; }
+.msg__rec { font-size: 11.5px; color: var(--text-3); font-weight: 600; }
+
 .sys { align-self: center; font-size: 11.5px; color: var(--text-3); text-align: center; }
+/* Date rule: the only stream element allowed to span the full width. */
+.sys--day {
+  align-self: stretch;
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 650;
+  color: var(--text-2);
+  margin: 2px 0;
+}
+.sys--day::before, .sys--day::after { content: ""; flex: 1; height: 1px; background: var(--border-hairline); }
 
 /* ---- Forms ---- */
 .field { display: block; margin-bottom: 12px; }
@@ -431,11 +493,20 @@ textarea.inp { height: auto; min-height: 68px; padding: 8px 10px; resize: vertic
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* ---- Chat ---- */
-.chat-empty { text-align: center; padding: 24px 8px; color: var(--text-3); }
-.chat-jump { align-self: center; }
-
-/* ---- Audio ---- */
-.audio { width: 100%; max-width: 260px; margin-top: 6px; }
+.chat-empty { text-align: center; padding: 24px 8px; color: var(--text-3); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+/* Floats over the last message rather than pushing the composer down, so a new
+   arrival never shifts the field under Papa's caret. */
+.chat-jump {
+  position: absolute;
+  left: 50%;
+  top: -16px;
+  transform: translateX(-50%);
+  z-index: 2;
+  border-radius: 14px;
+  background: var(--surface-sheet);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+}
 
 /* ---- Gallery ---- */
 .gallery {

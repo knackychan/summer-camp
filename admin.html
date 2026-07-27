@@ -96,7 +96,7 @@
 
       <h1 id="routeTitle">Today</h1>
 
-      <div class="clock" id="clock">
+      <div class="clock">
         <b class="clock__d" id="clockDate"></b>
         <span class="num" id="clockT">--:--</span>
         <span class="tz" style="font-size:12px">Asia/Taipei</span>
@@ -113,7 +113,7 @@
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M13.7 8a5.7 5.7 0 1 1-1.7-4"/><path d="M13.4 1.3v3h-3"/></svg>
           Refresh
         </button>
-        <button class="btn btn--primary" id="grantBtn" data-goto="stars">Grant stars</button>
+        <button class="btn btn--primary" data-goto="stars">Grant stars</button>
         <button class="btn only-narrow-dock" id="dockBtn" aria-expanded="false" aria-controls="dock">
           Inbox <em class="btn__count" id="dockCount">0</em>
         </button>
@@ -147,8 +147,9 @@
       <!-- ============ TODAY ============ -->
       <section class="view" id="view-today" hidden>
         <div id="band"></div>
-        <section id="queueSheet" class="sheet">
-          <div class="sheet__head"><h2>Waiting on you</h2></div>
+        <!-- renderQueue() emits its own sheet__head (count + kid filter);
+             a static one here rendered the title twice. -->
+        <section class="sheet">
           <div id="queue"></div>
         </section>
         <section class="sheet">
@@ -246,9 +247,7 @@
         <section class="sheet">
           <div class="sheet__head">
             <h2>Last 14 days</h2>
-            <div class="sheet__tools">
-              <div class="chips" role="group" aria-label="Metric" id="reportMetrics"></div>
-            </div>
+            <span class="lbl" id="reportRange"></span>
           </div>
           <div class="tbl-wrap" id="history"></div>
           <div class="sheet__foot">Counts, not scores. Nothing here is shown to a kid.</div>
@@ -303,9 +302,8 @@
 
     <div class="stream" id="chatStream" role="log" aria-live="polite"></div>
 
-    <button class="btn chat-jump hidden" id="chatJump">New messages ↓</button>
-
     <div class="dock__send">
+      <button class="btn btn--sm chat-jump hidden" id="chatJump">New messages ↓</button>
       <div class="row">
         <select id="chatTo" aria-label="Send to">
           <option value="all">All three</option>

@@ -16,7 +16,7 @@
   ];
 
   let client=null, session=null, today="", realtimeChannel=null, realtimeStatus="";
-  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[],acts:[]};
+  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[],acts:[],ledger14:[],photos14:[],asks14:[]};
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={}, adminPinFeedback={};
   let overridesRaw={}, dragState=null;
@@ -47,7 +47,19 @@
   function saveChatFilters(){
     localStorage.setItem(CHAT_KEY,JSON.stringify(chatFilters));
   }
-  let chatStuckToBottom=true, chatUnseen=0, chatSeenCount=0, showArchived=false;
+  let chatStuckToBottom=true, chatUnseen=0, chatSeenCount=0, showArchived=false, queueKid="all";
+
+  /* Which ask has its reply composer open. The prototype's rail shows one
+     compact "Reply" button per bubble, not a permanently expanded textarea in
+     every unanswered ask — the field appears only where Papa asked for it, and
+     the id survives re-renders so a realtime event does not collapse it. */
+  let openReplyId=null;
+  /* Voice notes render as a "▶ 0:06" chip instead of the browser's native audio
+     widget, which is ~54px of chrome and breaks the bubble rhythm. Durations are
+     read once per URL and cached; playback runs through one shared element so
+     two notes can never talk over each other. */
+  const audioDur=Object.create(null);
+  let chatAudio=null, chatAudioUrl="";
 
   /* Papa's note for today. Stored as one column joined by NOTE_SEP; split on
      read so a save/reload cycle cannot fold the 中文 half into the English one. */
@@ -169,6 +181,13 @@
     show("login",false); show("view-locked",false);
     $("app").classList.remove("is-locked");
     $("navLogout").classList.remove("hidden");
+    /* #navUser/#navStatus were hardcoded "Papa"/"Signed in" and never touched
+       by any code — the rail could not tell you which account you were on. */
+    var email=session&&session.user?session.user.email:"";
+    var nu=$("navUser");
+    if(nu)nu.textContent=email?email.split("@")[0]:"Papa";
+    var ns=$("navStatus");
+    if(ns){ns.textContent=email||"Signed in";ns.title=email;}
     /* Re-route now that the shell is reachable — go() refused to leave
        view-locked while is-locked was set. */
     if(window.sqGo)window.sqGo((location.hash||"#today").slice(1));
@@ -181,7 +200,7 @@
 
   async function loadAll(skipRouteRender){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts,ledger14,photos14,asks14]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -196,12 +215,20 @@
       client.from("family_settings").select("key,value"),
       client.from("day_overrides").select("kid_id,block_idx,t").eq("day",today),
       client.from("day_redos").select("*").eq("day",today),
-      client.from("act_done").select("*").eq("day",today)
+      client.from("act_done").select("*").eq("day",today),
+      /* Reports say "last 14 days" but were computed from rows.ledger (150
+         rows), rows.photos (80) and rows.asks (80) — recency windows, not date
+         windows. On a busy fortnight those caps land well inside 14 days and
+         every figure silently under-reports. These are date-bounded. */
+      client.from("stars_ledger").select("kid_id,delta,created_at").gte("created_at",start).limit(5000),
+      client.from("photos").select("kid_id,day").gte("day",start).lte("day",today).limit(5000),
+      client.from("asks").select("kid_id,created_at").gte("created_at",start).limit(5000)
     ]);
     rows={
       ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[],
       passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[],helpClaims:helpClaims.data||[],
-      familySettings:familySettings.data||[],redos:redos.data||[],acts:acts.data||[]
+      familySettings:familySettings.data||[],redos:redos.data||[],acts:acts.data||[],
+      ledger14:ledger14.data||[],photos14:photos14.data||[],asks14:asks14.data||[]
     };
     overridesRaw={};
     (overrides.data||[]).forEach(function(r){
@@ -302,9 +329,13 @@
   function renderQueue(){
     var el=$("queue");
     if(!el)return;
-    var q=queueRows();
-    if(!q.length){
-      el.innerHTML='<div class="sheet__pad"><p class="tbl__note">Nothing waiting</p></div>';
+    var all=queueRows();
+    /* The chip filters the table only. Nav counts and the band keep reporting
+       every open item, or filtering would look like the queue had drained. */
+    var q=queueKid==="all"?all:all.filter(function(r){return r.kidId===queueKid;});
+    if(!all.length){
+      el.innerHTML='<div class="sheet__head"><h2>Waiting on you</h2><span class="tag tag--done">clear</span></div>'+
+        '<div class="sheet__pad"><p class="tbl__note">Nothing waiting</p></div>';
       return;
     }
     function waitingTime(at){
@@ -314,7 +345,9 @@
       if(mins<60)return mins+"m";
       return Math.floor(mins/60)+"h "+(mins%60)+"m";
     }
-    el.innerHTML='<div class="sheet__head"><h2>Waiting on you</h2><span class="tag tag--now">'+q.length+' open</span><div class="sheet__tools"><div class="chips" role="group" aria-label="Filter queue" id="queueKidFilter"></div></div></div>'+
+    el.innerHTML='<div class="sheet__head"><h2>Waiting on you</h2><span class="tag tag--now">'+all.length+' open</span>'+
+      (queueKid==="all"?"":'<span class="tbl__note">showing '+q.length+' for '+esc(kidName(queueKid))+'</span>')+
+      '<div class="sheet__tools"><div class="chips" role="group" aria-label="Filter queue" id="queueKidFilter"></div></div></div>'+
       '<div class="tbl-wrap"><table class="tbl"><thead><tr><th style="width:130px">Kid</th><th style="width:96px">Type</th><th>What</th><th style="width:74px">Waiting</th><th style="width:190px"><span style="display:block;text-align:right">Action</span></th></tr></thead><tbody>'+
       q.map(function(r){return '<tr>'+
         '<td data-l="Kid"><span class="who k-'+r.kidId+'"><span class="who__m">'+esc(kidName(r.kidId)[0])+'</span><b>'+esc(kidName(r.kidId))+'</b></span></td>'+
@@ -326,10 +359,18 @@
       '</tbody></table></div><div class="sheet__foot">Cleared items move to Inbox history · nothing is deleted.</div>';
     bindQueueActions();
 
-    /* Kid filter chips */
+    /* Kid filter chips. These rendered with a hardcoded aria-pressed="false"
+       and no click handler at all — three chips that did nothing. */
     var kf=$("queueKidFilter");
     if(kf){
-      kf.innerHTML=Object.entries(KIDS).map(function(e){return '<button class="chip" aria-pressed="false" data-queuekid="'+e[0]+'"><span class="chip__dot" style="background:var(--kid-'+e[0]+')"></span>'+esc(e[1].name)+'</button>';}).join("");
+      kf.innerHTML='<button class="chip'+(queueKid==="all"?'" aria-pressed="true"':'')+'" data-queuekid="all">All</button>'+
+        Object.entries(KIDS).map(function(e){
+          var on=queueKid===e[0];
+          return '<button class="chip'+(on?'" aria-pressed="true"':'')+'" data-queuekid="'+e[0]+'"><span class="chip__dot" style="background:var(--kid-'+e[0]+')"></span>'+esc(e[1].name)+'</button>';
+        }).join("");
+      kf.querySelectorAll("[data-queuekid]").forEach(function(b){
+        b.onclick=function(){queueKid=b.dataset.queuekid;renderQueue();};
+      });
     }
   }
 
@@ -826,6 +867,62 @@
     return client.storage.from("proofs").getPublicUrl(path).data.publicUrl;
   }
 
+  /* ---- Voice chips ---- */
+  const fmtDur=sec=>isFinite(sec)&&sec>0?Math.floor(sec/60)+":"+String(Math.round(sec%60)).padStart(2,"0"):"";
+
+  function primeDuration(url){
+    if(!url||url in audioDur)return;
+    audioDur[url]="";                       /* in flight — chip shows its fallback */
+    const probe=new Audio();
+    probe.preload="metadata";
+    probe.onloadedmetadata=function(){audioDur[url]=fmtDur(probe.duration);paintVoiceChips();};
+    probe.onerror=function(){audioDur[url]="";};
+    probe.src=url;
+  }
+
+  function paintVoiceChips(){
+    document.querySelectorAll("[data-play]").forEach(function(b){
+      const d=audioDur[b.dataset.play], t=b.querySelector(".voice__t");
+      if(d&&t)t.textContent=d;
+    });
+  }
+
+  function paintVoiceState(){
+    document.querySelectorAll("[data-play]").forEach(function(b){
+      const on=chatAudioUrl===b.dataset.play&&!!chatAudio&&!chatAudio.paused;
+      b.classList.toggle("is-playing",on);
+      const i=b.querySelector(".voice__i");
+      if(i)i.textContent=on?"❚❚":"▶";
+      b.setAttribute("aria-label",(on?"Pause":"Play")+" voice note");
+    });
+  }
+
+  function toggleVoice(url){
+    if(chatAudio&&chatAudioUrl===url&&!chatAudio.paused){chatAudio.pause();paintVoiceState();return;}
+    if(chatAudio)chatAudio.pause();
+    chatAudio=new Audio(url);
+    chatAudioUrl=url;
+    chatAudio.onended=paintVoiceState;
+    chatAudio.onpause=paintVoiceState;
+    chatAudio.play().then(paintVoiceState).catch(function(){toast("Could not play that voice note",false);});
+  }
+
+  function voiceChipHtml(url,fallback){
+    if(!url)return "";
+    primeDuration(url);
+    const on=chatAudioUrl===url&&!!chatAudio&&!chatAudio.paused;
+    return '<button class="btn btn--sm voice'+(on?" is-playing":"")+'" data-play="'+esc(url)+'" aria-label="'+(on?"Pause":"Play")+' voice note">'+
+      '<span class="voice__i" aria-hidden="true">'+(on?"❚❚":"▶")+'</span>'+
+      '<span class="voice__t">'+esc(audioDur[url]||fallback||"Voice")+'</span></button>';
+  }
+
+  /* ---- Day dividers ---- */
+  const dayOf=ts=>window.SQ_DAY?SQ_DAY.iso(new Date(ts)):String(ts).slice(0,10);
+  function dayLabel(iso){
+    const pretty=new Date(iso+"T12:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+    return iso===today?"Today · "+pretty:pretty;
+  }
+
   function chatStream(){
     return SQChat.buildStream(
       {asks:rows.asks,helpClaims:rows.helpClaims,passes:rows.passes,
@@ -879,8 +976,12 @@
         :'<span class="lbl">Pinned</span><p style="color:var(--text-3)">No message for today yet <button class="btn btn--sm btn--quiet" data-goto="content" style="height:20px;padding:0 5px">Write</button></p>';
     }
 
+    /* A composer left open on a row the filters just hid would keep typing state
+       for something Papa can no longer see. */
+    if(openReplyId&&!visible.some(function(r){return r.srcId===openReplyId&&r.type==="ask";}))openReplyId=null;
+
     box.innerHTML=visible.length
-      ?visible.map(chatRowHtml).join("")
+      ?streamHtml(visible)
       :'<p class="chat-empty">Nothing here <button class="btn btn--sm" id="chatClearFilters">Clear filters</button></p>';
 
     var clear=$("chatClearFilters");
@@ -889,6 +990,10 @@
       saveChatFilters();renderDockConversation();
     };
 
+    document.querySelectorAll("[data-play]").forEach(function(b){b.onclick=function(){toggleVoice(b.dataset.play);};});
+    document.querySelectorAll("[data-replytoggle]").forEach(function(b){
+      b.onclick=function(){openReply(b.dataset.replytoggle||null);};
+    });
     document.querySelectorAll("[data-answer]").forEach(function(b){b.onclick=function(){answerAsk(b.dataset.answer);};});
     document.querySelectorAll("[data-rec]").forEach(function(b){b.onclick=function(){startAnswerRecord(b.dataset.rec);};});
     document.querySelectorAll("[data-stop]").forEach(function(b){b.onclick=function(){stopAnswerRecord(b.dataset.stop);};});
@@ -919,6 +1024,29 @@
     if(db){db.textContent=String(needs);db.classList.toggle("tag--now",needs>0);db.classList.toggle("tag--open",needs===0);}
   }
 
+  /* One meta line per bubble: kid initial, name, then whatever qualifiers the
+     row carries. Matches the prototype's "L Luis · captain claim · 09:32". */
+  function msgMetaHtml(k,parts){
+    return '<div class="msg__m"><span class="who__m">'+esc(k.name[0])+'</span>'+esc(k.name)+
+      parts.filter(Boolean).map(function(p){return ' · '+esc(p);}).join("")+'</div>';
+  }
+  const actsHtml=inner=>inner?'<div class="msg__acts">'+inner+'</div>':"";
+  const resolvedTag=(good,label)=>'<div class="msg__acts"><span class="tag tag--'+(good?"done":"off")+'">'+esc(label)+'</span></div>';
+
+  function replyBoxHtml(row,k){
+    if(openReplyId!==row.srcId)return "";
+    return '<div class="msg__reply">'+
+      '<label class="msg__reply-l" for="answer-'+row.srcId+'">Reply to '+esc(k.name)+'</label>'+
+      '<textarea class="inp" id="answer-'+row.srcId+'" rows="2" placeholder="I can help after lunch."></textarea>'+
+      '<div class="msg__acts">'+
+        '<button class="btn btn--sm btn--primary" data-answer="'+row.srcId+'">Send</button>'+
+        '<button class="btn btn--sm" data-rec="'+row.srcId+'">Record</button>'+
+        '<button class="btn btn--sm" data-stop="'+row.srcId+'" disabled>Stop</button>'+
+        '<button class="btn btn--sm btn--quiet" data-replytoggle="">Cancel</button>'+
+        '<span class="msg__rec" id="recstatus-'+row.srcId+'" role="status"></span>'+
+      '</div></div>';
+  }
+
   function chatRowHtml(row){
     var k=KIDS[row.kidId]||{name:row.kidId};
     var when=timeOnly(row.at);
@@ -930,43 +1058,79 @@
     }
     if(row.type==="reply"){
       return '<div class="msg msg--papa"><div class="msg__m">Papa · '+when+'</div><div class="msg__b">'+
-        (row.body?esc(row.body):"")+(row.audio?'<audio class="audio" controls src="'+publicUrl(row.audio)+'"></audio>':"")+
+        (row.body?'<p class="msg__t">'+esc(row.body)+'</p>':"")+
+        actsHtml(voiceChipHtml(publicUrl(row.audio),"Voice reply"))+
         '</div></div>';
     }
     if(row.type==="photo"){
-      return '<div class="msg msg--kid k-'+row.kidId+'"><div class="msg__m"><span class="who__m" style="width:15px;height:15px;font-size:9px">'+esc(k.name[0])+'</span> '+esc(k.name)+' · '+when+' · Photo</div>'+
-        '<div class="msg__b"><img class="thumb" src="'+proofUrl(row.meta.path)+'" alt="Photo proof"></div></div>';
+      return '<div class="msg msg--kid k-'+row.kidId+'">'+msgMetaHtml(k,["photo",when])+
+        '<div class="msg__b msg__b--media"><img class="thumb" src="'+proofUrl(row.meta.path)+'" alt="Photo proof from '+esc(k.name)+'"></div></div>';
     }
     if(row.type==="claim"){
       var done=row.meta.status!=="requested";
-      return '<div class="msg msg--task k-'+row.kidId+'"><div class="msg__m"><span class="who__m" style="width:15px;height:15px;font-size:9px">'+esc(k.name[0])+'</span> '+esc(k.name)+' · captain · '+when+'</div>'+
-        '<div class="msg__b">Helped '+esc(kidName(row.meta.helped))+' — '+esc(row.body)+
+      return '<div class="msg msg--task k-'+row.kidId+'">'+msgMetaHtml(k,["captain claim",when])+
+        '<div class="msg__b"><p class="msg__t">Helped <b>'+esc(kidName(row.meta.helped))+'</b> — '+esc(row.body||"no note")+'</p>'+
         (done
-          ?'<p class="'+(row.meta.status==="approved"?"ok":"muted")+'">'+(row.meta.status==="approved"?"Approved":"Denied")+'</p>'
-          :'<div class="msg__acts"><button class="btn btn--sm btn--primary" data-helpok="'+row.srcId+'">Approve +1</button><button class="btn btn--sm btn--danger" data-helpno="'+row.srcId+'">Decline</button></div>')+
+          ?resolvedTag(row.meta.status==="approved",row.meta.status==="approved"?"Approved":"Declined")
+          :actsHtml('<button class="btn btn--sm btn--primary" data-helpok="'+row.srcId+'">Approve +1</button>'+
+                    '<button class="btn btn--sm btn--danger" data-helpno="'+row.srcId+'">Decline</button>'))+
         '</div></div>';
     }
     if(row.type==="pass"){
       var doneP=row.meta.status!=="requested";
-      return '<div class="msg msg--task k-'+row.kidId+'"><div class="msg__m"><span class="who__m" style="width:15px;height:15px;font-size:9px">'+esc(k.name[0])+'</span> '+esc(k.name)+' · pass · '+when+'</div>'+
-        '<div class="msg__b">'+esc(blockTitle(row.meta.blockIdx))+' '+esc(blockTz(row.meta.blockIdx))+' — '+(row.body||"no reason")+
+      return '<div class="msg msg--task k-'+row.kidId+'">'+msgMetaHtml(k,["pass request",when])+
+        '<div class="msg__b"><p class="msg__t">Skip <b>'+esc(blockTitle(row.meta.blockIdx))+'</b> '+esc(blockTz(row.meta.blockIdx))+
+        (row.body?' — '+esc(row.body):"")+'</p>'+
         (doneP
-          ?'<p class="'+(row.meta.status==="granted"?"ok":"muted")+'">'+row.meta.status+'</p>'
-          :'<div class="msg__acts"><button class="btn btn--sm btn--primary" data-passok="'+row.srcId+'">Grant</button><button class="btn btn--sm btn--danger" data-passno="'+row.srcId+'">Deny</button></div>')+
+          ?resolvedTag(row.meta.status==="granted",row.meta.status==="granted"?"Granted":"Denied")
+          :actsHtml('<button class="btn btn--sm btn--primary" data-passok="'+row.srcId+'">Grant</button>'+
+                    '<button class="btn btn--sm btn--danger" data-passno="'+row.srcId+'">Deny</button>'))+
         '</div></div>';
     }
-    return '<div class="msg msg--kid'+(row.archived?" is-archived":"")+' k-'+row.kidId+'"><div class="msg__m"><span class="who__m" style="width:15px;height:15px;font-size:9px">'+esc(k.name[0])+'</span> '+esc(k.name)+' · '+esc(row.meta.kind)+' · '+when+'</div>'+
-      '<div class="msg__b">'+esc(row.body||"Voice memo")+
-      (row.audio?'<audio class="audio" controls src="'+publicUrl(row.audio)+'"></audio>':'')+
-      (row.needs?'<label class="field"><span>Answer</span><textarea class="inp" id="answer-'+row.srcId+'" placeholder="I can help after lunch."></textarea></label>'+
-        '<div class="row"><button class="btn btn--sm" data-answer="'+row.srcId+'">Send</button>'+
-        '<button class="btn btn--sm btn--secondary" data-rec="'+row.srcId+'">Record</button>'+
-        '<button class="btn btn--sm btn--secondary" data-stop="'+row.srcId+'" disabled>Stop</button>'+
-        '<span class="message message--ok" id="recstatus-'+row.srcId+'"></span></div>':'')+
-      '<div class="msg__acts">'+(row.archived
-        ?'<button class="btn btn--sm btn--secondary" data-unarchiveask="'+row.srcId+'">Restore</button>'
-        :'<button class="btn btn--sm btn--secondary" data-archiveask="'+row.srcId+'">Archive</button>')+
-      '</div></div></div>';
+    /* Ask. The prototype's bubble carries a compact action row, not a permanently
+       open answer form — the composer unfolds under the message on Reply. */
+    var kind=row.meta.kind&&row.meta.kind!=="question"?row.meta.kind:null;
+    var acts=voiceChipHtml(publicUrl(row.audio),"Voice note")+
+      (row.needs&&openReplyId!==row.srcId?'<button class="btn btn--sm btn--primary" data-replytoggle="'+row.srcId+'">Reply</button>':"")+
+      (row.archived
+        ?'<button class="btn btn--sm btn--quiet" data-unarchiveask="'+row.srcId+'">Restore</button>'
+        :'<button class="btn btn--sm btn--quiet" data-archiveask="'+row.srcId+'">Archive</button>');
+    return '<div class="msg msg--kid'+(row.archived?" is-archived":"")+' k-'+row.kidId+'">'+
+      msgMetaHtml(k,[kind,when,row.archived?"archived":null])+
+      '<div class="msg__b"><p class="msg__t">'+esc(row.body||"Voice memo")+'</p>'+
+      actsHtml(acts)+replyBoxHtml(row,k)+
+      '</div></div>';
+  }
+
+  /* Rows plus the date rules the prototype opens the stream with. */
+  function streamHtml(list){
+    var out=[], last="";
+    list.forEach(function(row){
+      var d=dayOf(row.at);
+      if(d!==last){out.push('<p class="sys sys--day">'+esc(dayLabel(d))+'</p>');last=d;}
+      out.push(chatRowHtml(row));
+    });
+    return out.join("");
+  }
+
+  /* Reply is reachable from the dock and from the Inbox table; both land on the
+     same composer, so the dock opens itself when it is a drawer. */
+  function openReply(id){
+    var was=openReplyId;
+    openReplyId=id;
+    if(id&&window.sqSetDock&&matchMedia("(max-width: 1280px)").matches)window.sqSetDock(true);
+    renderDockConversation();
+    /* Focus follows the disclosure: into the field on open, back to the button
+       that opened it on cancel. */
+    var field=id?$("answer-"+id):null;
+    if(field){
+      field.focus();
+      var bubble=field.closest(".msg");
+      if(bubble)bubble.scrollIntoView({block:"nearest"});
+    }else if(was){
+      var back=document.querySelector('[data-replytoggle="'+was+'"]');
+      if(back)back.focus();
+    }
   }
 
   function bindChatFilters(){
@@ -1015,7 +1179,9 @@
       var status=row.type==="reply"?"Sent":row.meta&&row.meta.status==="requested"?"Open":row.meta&&row.meta.status==="approved"?"Approved":row.meta&&row.meta.status==="granted"?"Granted":row.archived?"Archived":"Answered";
       var statusTag=status==="Open"?'<span class="tag tag--now">Open</span>':status==="Approved"||status==="Granted"?'<span class="tag tag--done">'+status+'</span>':'<span class="tag tag--off">'+status+'</span>';
       var actions="";
-      if(row.needs)actions='<button class="btn btn--sm btn--primary" data-answer="'+row.srcId+'">Reply</button>';
+      /* Routes to the dock composer — this table has no field of its own, so a
+         bare data-answer here posted an empty reply. */
+      if(row.needs)actions='<button class="btn btn--sm btn--primary" data-replytoggle="'+row.srcId+'">Reply</button>';
       else if(!row.archived&&row.type==="ask")actions='<button class="btn btn--sm" data-archiveask="'+row.srcId+'">Archive</button>';
       return '<tr><td data-l="Time" class="num">'+timeOnly(row.at)+'</td>'+
         '<td data-l="Kid"><span class="who k-'+row.kidId+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span></td>'+
@@ -1088,6 +1254,8 @@
     suppressRealtime("asks",{id:id});
     const {error}=await client.from("asks").update({answer:body||null,answer_audio_path,answered_at:new Date().toISOString()}).eq("id",id);
     if(error){writeFailed(error);return;}
+    openReplyId=null;
+    chatStuckToBottom=true;
     toast("Answer sent",true);
     await loadAll();
   }
@@ -1136,7 +1304,7 @@
     el.innerHTML=rows.photos.length?'<div class="thumb-grid">'+rows.photos.map(function(p){return ''
       +'<article class="ask-card">'
       +'<img class="thumb" src="'+proofUrl(p.path)+'" alt="Photo proof">'
-      +'<p>'+kidName(p.kid_id)+' · '+p.day+' · '+blockTitle(p.block_idx)+'<br><span class="muted">'+blockTz(p.block_idx)+'</span></p>'
+      +'<p>'+esc(kidName(p.kid_id))+' · '+esc(p.day)+' · '+esc(blockTitle(p.block_idx))+'<br><span class="muted">'+esc(blockTz(p.block_idx))+'</span></p>'
       +'</article>';}).join("")+'</div>':'<p>No proof photos yet.</p>';
   }
 
@@ -1169,6 +1337,11 @@
     var el=$("history");
     if(!el)return;
     var daysList=Array.from({length:14},function(_,i){return dayISO(i-13);});
+    /* #reportMetrics was an empty <div class="chips" role="group" aria-label
+       ="Metric"> that no code ever filled — an empty labelled group announced
+       to screen readers. Replaced with the window this table actually covers. */
+    var range=$("reportRange");
+    if(range)range.textContent=daysList[0]+" → "+daysList[daysList.length-1];
     var counts=new Map();
     rows.history.forEach(function(r){counts.set(r.kid_id+":"+r.day,(counts.get(r.kid_id+":"+r.day)||0)+1);});
     /* Per-kid stats over the 14-day window */
@@ -1178,7 +1351,7 @@
       daysList.forEach(function(d){
         totalBlocks+=counts.get(id+":"+d)||0;
       });
-      var kidLedger=rows.ledger.filter(function(r){return r.kid_id===id&&daysList.includes(String(r.created_at||"").slice(0,10));});
+      var kidLedger=rows.ledger14.filter(function(r){return r.kid_id===id&&daysList.includes(String(r.created_at||"").slice(0,10));});
       totalStars=kidLedger.reduce(function(s,r){return s+r.delta;},0);
       var bestDay="", bestCount=0;
       daysList.forEach(function(d){
@@ -1192,8 +1365,8 @@
       return '<tr><td data-l="Kid"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span></td>'+
         '<td data-l="Blocks" class="r num">'+totalBlocks+' / '+(14*DAY.length)+'</td>'+
         '<td data-l="Stars" class="r num">'+totalStars+'</td>'+
-        '<td data-l="Photos" class="r num">'+rows.photos.filter(function(p){return p.kid_id===id&&daysList.includes(p.day);}).length+'</td>'+
-        '<td data-l="Asks" class="r num">'+rows.asks.filter(function(a){return a.kid_id===id&&daysList.includes(String(a.created_at||"").slice(0,10));}).length+'</td>'+
+        '<td data-l="Photos" class="r num">'+rows.photos14.filter(function(p){return p.kid_id===id&&daysList.includes(p.day);}).length+'</td>'+
+        '<td data-l="Asks" class="r num">'+rows.asks14.filter(function(a){return a.kid_id===id&&daysList.includes(String(a.created_at||"").slice(0,10));}).length+'</td>'+
         '<td data-l="Best" class="r num">'+bestDay+'</td>'+
         '<td data-l="Streak" class="r num">'+streak+' d</td></tr>';
     }).join("");
@@ -1485,6 +1658,19 @@
     /* The dot reports the realtime channel, not merely "a session exists" —
        it read Live with the socket down. */
     var on=realtimeStatus==="SUBSCRIBED";
+    /* The dock's bell had no handler at all — it rendered and did nothing.
+       Reflect state on it and on the Settings checkbox from one place. */
+    var bell=$("notifyToggleBtn");
+    if(bell){
+      bell.setAttribute("aria-pressed",enabled?"true":"false");
+      bell.classList.toggle("is-on",enabled);
+      bell.title=!supported?"Notifications not supported"
+        :permission==="denied"?"Notifications blocked in the browser"
+        :enabled?"Desktop notifications on":"Desktop notifications off";
+    }
+    var check=$("notifyCheck");
+    if(check)check.checked=enabled;
+
     var live=$("liveDot");
     if(live){live.classList.toggle("live--on",on);live.classList.toggle("live--off",!on);}
     var ll=$("liveLabel");
@@ -1604,6 +1790,7 @@
     show("chatJump",false);
   };
   $("chatSend").onclick=sendChatMessage;
+  $("notifyToggleBtn").onclick=toggleBrowserNotifications;
   $("galleryBtn").onclick=openGallery;
   $("galleryPrev").onclick=function(){galleryStep(-1);};
   $("galleryNext").onclick=function(){galleryStep(1);};
