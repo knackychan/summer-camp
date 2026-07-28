@@ -171,11 +171,11 @@ function disposeScene(scene) {
   scene.traverse(function (child) {
     if (child.geometry) child.geometry.dispose();
     if (child.material) {
-      if (Array.isArray(child.material)) {
-        child.material.forEach(function (m) { m.dispose(); });
-      } else {
-        child.material.dispose();
-      }
+      var mats = Array.isArray(child.material) ? child.material : [child.material];
+      mats.forEach(function (m) {
+        if (m.map) m.map.dispose();
+        m.dispose();
+      });
     }
   });
 }
@@ -317,6 +317,28 @@ export default {
       var mat = new THREE.MeshLambertMaterial({ color: p.color, transparent: true, opacity: 1 });
       var mesh = new THREE.Mesh(new THREE.SphereGeometry(sz, 24, 18), mat);
       group.add(mesh);
+
+      /* Pixel-art albedo map (art-direction.md §10, tech-spec.md §17): a missing
+         or failed load is never an error state, it just keeps the flat colour.
+         Self-illuminated (Papa, 2026-07-28): the scene's dim ambient+point light
+         was crushing the pixel-art colours (and multiplying them against the
+         Lambert material's own tinted colour on top). Swapping to a Basic
+         material once the map loads shows the texture at full, constant
+         brightness, the same unlit treatment already used for the Sun. */
+      new THREE.TextureLoader().load(
+        "assets/solar/tex/" + p.id + ".png",
+        function (tex) {
+          tex.magFilter = THREE.NearestFilter;
+          tex.minFilter = THREE.NearestFilter;
+          tex.generateMipmaps = false;
+          tex.colorSpace = THREE.SRGBColorSpace;
+          var litMat = mesh.material;
+          mesh.material = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 1 });
+          litMat.dispose();
+        },
+        undefined,
+        function () {}
+      );
 
       var hitMesh = new THREE.Mesh(
         new THREE.SphereGeometry(hitRadius(sz), 12, 8),

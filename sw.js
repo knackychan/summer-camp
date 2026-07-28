@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v39";
+const CACHE_NAME = "summer-quest-v40";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -64,6 +64,15 @@ const APP_SHELL = [
   "./assets/solar/uranus.jpg",
   "./assets/solar/neptune.jpg",
   "./assets/solar/README.md",
+  "./assets/solar/tex/mercury.png",
+  "./assets/solar/tex/venus.png",
+  "./assets/solar/tex/earth.png",
+  "./assets/solar/tex/mars.png",
+  "./assets/solar/tex/jupiter.png",
+  "./assets/solar/tex/saturn.png",
+  "./assets/solar/tex/uranus.png",
+  "./assets/solar/tex/neptune.png",
+  "./assets/solar/tex/README.md",
   "./manifest.webmanifest",
   "./assets/icons/icon.svg",
   "./assets/icons/icon-192.png",
