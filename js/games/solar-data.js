@@ -114,11 +114,201 @@ export var PLANETS = [
     ] },
 ];
 
+var ISS = {
+  id: "iss", name: "ISS", tz: "\u570b\u969b\u592a\u7a7a\u7ad9", color: 0xCCCCCC,
+  diameterKm: 0.109, orbitDays: 0.06389, altitudeKm: 408, crew: 7,
+  type: { en: "SPACE STATION", tz: "\u592a\u7a7a\u7ad9" },
+  desc: { en: "The International Space Station is a giant science lab flying around Earth. Astronauts live and work there, looking down at our blue planet from space.",
+          tz: "\u570b\u969b\u592a\u7a7a\u7ad9\u662f\u4e00\u500b\u570d\u7e5e\u5730\u7403\u98db\u884c\u7684\u5de8\u5927\u79d1\u5b78\u5be6\u9a57\u5ba4\u3002\u592a\u7a7a\u4eba\u5728\u90a3\u88e1\u751f\u6d3b\u548c\u5de5\u4f5c\uff0c\u5f9e\u592a\u7a7a\u4e2d\u4fef\u77b0\u6211\u5011\u7684\u85cd\u8272\u661f\u7403\u3002" },
+  photo: "assets/solar/iss.jpg",
+  facts: [
+    { en: "The ISS orbits Earth every 92 minutes!", tz: "\u570b\u969b\u592a\u7a7a\u7ad9\u6bcf 92 \u5206\u9418\u7e5e\u5730\u7403\u4e00\u5708\uff01" },
+    { en: "Astronauts from many countries live and work on the ISS.", tz: "\u4f86\u81ea\u8a31\u591a\u570b\u5bb6\u7684\u592a\u7a7a\u4eba\u5728\u570b\u969b\u592a\u7a7a\u7ad9\u4e0a\u751f\u6d3b\u548c\u5de5\u4f5c\u3002" },
+    { en: "The ISS is the largest human-made object in space.", tz: "\u570b\u969b\u592a\u7a7a\u7ad9\u662f\u592a\u7a7a\u4e2d\u6700\u5927\u7684\u4eba\u9020\u7269\u9ad4\u3002" },
+  ],
+};
+
+var SATELLITES = {
+  earth: [
+    { id: "moon", name: "Moon", tz: "\u6708\u7403", color: 0xCCCCCC, diameterKm: 3475, orbitDays: 27.3,
+      type: { en: "NATURAL SATELLITE", tz: "\u5929\u7136\u885b\u661f" },
+      desc: { en: "The Moon is Earth's only natural satellite. It lights up our night sky and pulls the ocean tides as it circles our planet.",
+              tz: "\u6708\u7403\u662f\u5730\u7403\u552f\u4e00\u7684\u5929\u7136\u885b\u661f\u3002\u5b83\u7167\u4eae\u6211\u5011\u7684\u591c\u7a7a\uff0c\u7e5e\u8457\u5730\u7403\u8f49\u6642\u62c9\u52d5\u6d77\u6d0b\u6f6e\u6c50\u3002" },
+      photo: "assets/solar/moon.jpg",
+      facts: [
+        { en: "The Moon orbits Earth about once every 27 days.", tz: "\u6708\u7403\u5927\u7d04\u6bcf 27 \u5929\u7e5e\u5730\u7403\u4e00\u5708\u3002" },
+        { en: "Astronauts first walked on the Moon in 1969!", tz: "\u592a\u7a7a\u4eba\u5728 1969 \u5e74\u7b2c\u4e00\u6b21\u767b\u4e0a\u6708\u7403\uff01" },
+        { en: "The Moon is about one-quarter the size of Earth.", tz: "\u6708\u7403\u5927\u7d04\u662f\u5730\u7403\u7684\u56db\u5206\u4e4b\u4e00\u5927\u5c0f\u3002" },
+      ] },
+  ],
+  mars: [
+    { id: "deimos", name: "Deimos", tz: "\u706b\u885b\u4e8c", color: 0x8B7355, diameterKm: 12.4, orbitDays: 1.26,
+      type: { en: "NATURAL SATELLITE", tz: "\u5929\u7136\u885b\u661f" },
+      desc: { en: "Deimos is the smaller and more distant of the two moons of Mars. It is dark, lumpy, and slowly drifting away from its planet.",
+              tz: "\u706b\u885b\u4e8c\u662f\u706b\u661f\u5169\u9846\u885b\u661f\u4e2d\u8f03\u5c0f\u3001\u8f03\u9060\u7684\u4e00\u9846\u3002\u5b83\u53c8\u6697\u53c8\u51f9\u51f8\u4e0d\u5e73\uff0c\u6b63\u6162\u6162\u5730\u9060\u96e2\u706b\u661f\u3002" },
+      photo: "assets/solar/deimos.jpg",
+      facts: [
+        { en: "Deimos is one of the smallest moons in the solar system.", tz: "\u706b\u885b\u4e8c\u662f\u592a\u967d\u7cfb\u4e2d\u6700\u5c0f\u7684\u885b\u661f\u4e4b\u4e00\u3002" },
+        { en: "It is slowly drifting away from Mars.", tz: "\u5b83\u6b63\u5728\u6162\u6162\u5730\u9060\u96e2\u706b\u661f\u3002" },
+        { en: "Deimos means 'dread' in ancient Greek.", tz: "\u706b\u885b\u4e8c\u5728\u53e4\u5e0c\u81d8\u8a9e\u4e2d\u7684\u610f\u601d\u662f\u300c\u6050\u6016\u300d\u3002" },
+      ] },
+  ],
+  jupiter: [
+    { id: "io", name: "Io", tz: "\u6728\u885b\u4e00", color: 0xFFDD66, diameterKm: 3643, orbitDays: 1.77,
+      type: { en: "NATURAL SATELLITE", tz: "\u5929\u7136\u885b\u661f" },
+      desc: { en: "Io is the most volcanic world in the solar system. It has hundreds of volcanoes that erupt constantly, painting its surface in yellow and orange.",
+              tz: "\u6728\u885b\u4e00\u662f\u592a\u967d\u7cfb\u4e2d\u706b\u5c71\u6700\u591a\u7684\u4e16\u754c\u3002\u5b83\u6709\u6578\u767e\u5ea7\u4e0d\u65b7\u5674\u767c\u7684\u706b\u5c71\uff0c\u628a\u8868\u9762\u67d3\u6210\u9ec3\u8272\u548c\u6a59\u8272\u3002" },
+      photo: "assets/solar/io.jpg",
+      facts: [
+        { en: "Io has over 400 active volcanoes!", tz: "\u6728\u885b\u4e00\u6709\u8d85\u904e 400 \u5ea7\u6d3b\u706b\u5c71\uff01" },
+        { en: "It is the most volcanic body in the solar system.", tz: "\u5b83\u662f\u592a\u967d\u7cfb\u4e2d\u706b\u5c71\u6d3b\u52d5\u6700\u6d3b\u8e8d\u7684\u5929\u9ad4\u3002" },
+        { en: "Io orbits Jupiter in less than 2 days.", tz: "\u6728\u885b\u4e00\u4e0d\u5230 2 \u5929\u5c31\u7e5e\u6728\u661f\u4e00\u5708\u3002" },
+      ] },
+    { id: "europa", name: "Europa", tz: "\u6728\u885b\u4e8c", color: 0xE8E0D0, diameterKm: 3122, orbitDays: 3.55,
+      type: { en: "NATURAL SATELLITE", tz: "\u5929\u7136\u885b\u661f" },
+      desc: { en: "Europa is an icy moon with a vast ocean hidden beneath its frozen surface. Scientists think this ocean might be warm enough to support life.",
+              tz: "\u6728\u885b\u4e8c\u662f\u4e00\u9846\u51b0\u5c01\u7684\u885b\u661f\uff0c\u51b0\u5c64\u4e0b\u9762\u96b1\u85cf\u8457\u4e00\u7247\u5de8\u5927\u7684\u6d77\u6d0b\u3002\u79d1\u5b78\u5bb6\u8a8d\u70ba\u9019\u7247\u6d77\u6d0b\u53ef\u80fd\u8db3\u5920\u6eab\u6696\u4ee5\u652f\u6301\u751f\u547d\u3002" },
+      photo: "assets/solar/europa.jpg",
+      facts: [
+        { en: "Europa has a hidden ocean under its icy crust.", tz: "\u6728\u885b\u4e8c\u7684\u51b0\u6bbc\u4e0b\u9762\u96b1\u85cf\u8457\u4e00\u7247\u6d77\u6d0b\u3002" },
+        { en: "It may have twice as much water as Earth!", tz: "\u5b83\u7684\u6c34\u91cf\u53ef\u80fd\u662f\u5730\u7403\u7684\u5169\u500d\uff01" },
+        { en: "Europa is one of the best places to look for alien life.", tz: "\u6728\u885b\u4e8c\u662f\u5c0b\u627e\u5916\u661f\u751f\u547d\u6700\u597d\u7684\u5730\u65b9\u4e4b\u4e00\u3002" },
+      ] },
+    { id: "ganymede", name: "Ganymede", tz: "\u6728\u885b\u4e09", color: 0xA0A0A0, diameterKm: 5268, orbitDays: 7.15,
+      type: { en: "NATURAL SATELLITE", tz: "\u5929\u7136\u885b\u661f" },
+      desc: { en: "Ganymede is the largest moon in the solar system — it is even bigger than the planet Mercury! It is the only moon with its own magnetic field.",
+              tz: "\u6728\u885b\u4e09\u662f\u592a\u967d\u7cfb\u4e2d\u6700\u5927\u7684\u885b\u661f\u2014\u2014\u5b83\u751a\u81f3\u6bd4\u6c34\u661f\u9084\u8981\u5927\uff01\u5b83\u662f\u552f\u4e00\u64c1\u6709\u81ea\u5df1\u78c1\u5834\u7684\u885b\u661f\u3002" },
+      photo: "assets/solar/ganymede.jpg",
+      facts: [
+        { en: "Ganymede is the biggest moon in the solar system.", tz: "\u6728\u885b\u4e09\u662f\u592a\u967d\u7cfb\u4e2d\u6700\u5927\u7684\u885b\u661f\u3002" },
+        { en: "It is larger than the planet Mercury!", tz: "\u5b83\u6bd4\u6c34\u661f\u9019\u9846\u884c\u661f\u9084\u8981\u5927\uff01" },
+        { en: "It is the only moon with its own magnetic field.", tz: "\u5b83\u662f\u552f\u4e00\u64c1\u6709\u81ea\u5df1\u78c1\u5834\u7684\u885b\u661f\u3002" },
+      ] },
+    { id: "callisto", name: "Callisto", tz: "\u6728\u885b\u56db", color: 0x706060, diameterKm: 4821, orbitDays: 16.69,
+      type: { en: "NATURAL SATELLITE", tz: "\u5929\u7136\u885b\u661f" },
+      desc: { en: "Callisto is the most heavily cratered world in the solar system. Its ancient, battered surface tells a story of billions of years of impacts.",
+              tz: "\u6728\u885b\u56db\u662f\u592a\u967d\u7cfb\u4e2d\u96d5\u77f3\u5751\u6700\u591a\u7684\u4e16\u754c\u3002\u5b83\u53e4\u8001\u3001\u50b7\u75d5\u7d2f\u7d2f\u7684\u8868\u9762\u8b1b\u8ff0\u4e86\u6578\u5341\u5104\u5e74\u649e\u64ca\u7684\u6545\u4e8b\u3002" },
+      photo: "assets/solar/callisto.jpg",
+      facts: [
+        { en: "Callisto has the oldest surface in the solar system.", tz: "\u6728\u885b\u56db\u64c1\u6709\u592a\u967d\u7cfb\u4e2d\u6700\u53e4\u8001\u7684\u8868\u9762\u3002" },
+        { en: "It is almost the same size as Mercury.", tz: "\u5b83\u7684\u5927\u5c0f\u5e7e\u4e4e\u548c\u6c34\u661f\u4e00\u6a23\u3002" },
+        { en: "Callisto may also hide an ocean under its surface!", tz: "\u6728\u885b\u56db\u8868\u9762\u4e0b\u4e5f\u53ef\u80fd\u96b1\u85cf\u8457\u4e00\u7247\u6d77\u6d0b\uff01" },
+      ] },
+  ],
+  saturn: [
+    { id: "titan", name: "Titan", tz: "\u571f\u885b\u516d", color: 0xE8C070, diameterKm: 5150, orbitDays: 15.95,
+      type: { en: "NATURAL SATELLITE", tz: "\u5929\u7136\u885b\u661f" },
+      desc: { en: "Titan is Saturn's largest moon and the second-largest moon in the solar system. It has a thick orange atmosphere and lakes of liquid methane on its surface.",
+              tz: "\u571f\u885b\u516d\u662f\u571f\u661f\u6700\u5927\u7684\u885b\u661f\uff0c\u4e5f\u662f\u592a\u967d\u7cfb\u4e2d\u7b2c\u4e8c\u5927\u7684\u885b\u661f\u3002\u5b83\u6709\u6fc3\u539a\u7684\u6a59\u8272\u5927\u6c23\u5c64\u548c\u8868\u9762\u4e0a\u7684\u6db2\u614b\u7532\u70f7\u6e56\u6cca\u3002" },
+      photo: "assets/solar/titan.jpg",
+      facts: [
+        { en: "Titan is the only moon with a thick atmosphere.", tz: "\u571f\u885b\u516d\u662f\u552f\u4e00\u64c1\u6709\u6fc3\u539a\u5927\u6c23\u5c64\u7684\u885b\u661f\u3002" },
+        { en: "It has rivers and lakes — but made of methane!", tz: "\u5b83\u6709\u6cb3\u6d41\u548c\u6e56\u6cca\u2014\u2014\u4f46\u662f\u7531\u7532\u70f7\u69cb\u6210\u7684\uff01" },
+        { en: "A space probe landed on Titan in 2005.", tz: "2005 \u5e74\u6709\u4e00\u500b\u592a\u7a7a\u63a2\u6e2c\u5668\u964d\u843d\u5728\u571f\u885b\u516d\u4e0a\u3002" },
+      ] },
+  ],
+  neptune: [
+    { id: "triton", name: "Triton", tz: "\u6d77\u885b\u4e00", color: 0xCCAA88, diameterKm: 2707, orbitDays: 5.88,
+      type: { en: "NATURAL SATELLITE", tz: "\u5929\u7136\u885b\u661f" },
+      desc: { en: "Triton is Neptune's largest moon and one of the coldest places in the solar system. It orbits backwards and has icy volcanoes that erupt nitrogen.",
+              tz: "\u6d77\u885b\u4e00\u662f\u6d77\u738b\u661f\u6700\u5927\u7684\u885b\u661f\uff0c\u4e5f\u662f\u592a\u967d\u7cfb\u4e2d\u6700\u5bd2\u51b7\u7684\u5730\u65b9\u4e4b\u4e00\u3002\u5b83\u4ee5\u76f8\u53cd\u65b9\u5411\u7e5e\u884c\uff0c\u4e26\u64c1\u6709\u5674\u767c\u6c2e\u6c23\u7684\u51b0\u706b\u5c71\u3002" },
+      photo: "assets/solar/triton.jpg",
+      facts: [
+        { en: "Triton is one of the coldest places in the solar system.", tz: "\u6d77\u885b\u4e00\u662f\u592a\u967d\u7cfb\u4e2d\u6700\u5bd2\u51b7\u7684\u5730\u65b9\u4e4b\u4e00\u3002" },
+        { en: "It orbits Neptune backwards!", tz: "\u5b83\u4ee5\u76f8\u53cd\u7684\u65b9\u5411\u7e5e\u8457\u6d77\u738b\u661f\u8f49\uff01" },
+        { en: "Triton has icy volcanoes that erupt nitrogen gas.", tz: "\u6d77\u885b\u4e00\u6709\u5674\u767c\u6c2e\u6c23\u7684\u51b0\u706b\u5c71\u3002" },
+      ] },
+  ],
+};
+
+var PLUTO = {
+  id: "pluto", name: "Pluto", tz: "\u51a5\u738b\u661f", color: 0xD4C5A9, diameterKm: 2377, au: 39.5, yearDays: 90560,
+  type: { en: "DWARF PLANET", tz: "\u77ee\u884c\u661f" },
+  desc: { en: "Pluto is a dwarf planet at the edge of our solar system. It was once called the ninth planet, and it has mountains of ice and a big heart-shaped region on its surface.",
+          tz: "\u51a5\u738b\u661f\u662f\u592a\u967d\u7cfb\u908a\u7de3\u7684\u4e00\u9846\u77ee\u884c\u661f\u3002\u5b83\u66fe\u7d93\u88ab\u7a31\u70ba\u7b2c\u4e5d\u5927\u884c\u661f\uff0c\u8868\u9762\u6709\u51b0\u5c71\u548c\u4e00\u500b\u5927\u5927\u7684\u5fc3\u5f62\u5340\u57df\u3002" },
+  photo: "assets/solar/pluto.jpg",
+  facts: [
+    { en: "Pluto was once the ninth planet.", tz: "\u51a5\u738b\u661f\u66fe\u7d93\u662f\u7b2c\u4e5d\u5927\u884c\u661f\u3002" },
+    { en: "It takes 248 Earth years to orbit the Sun!", tz: "\u5b83\u7e5e\u592a\u967d\u4e00\u5708\u9700\u8981 248 \u500b\u5730\u7403\u5e74\uff01" },
+    { en: "Pluto has a giant heart-shaped region on its surface.", tz: "\u51a5\u738b\u661f\u8868\u9762\u6709\u4e00\u500b\u5de8\u5927\u7684\u5fc3\u5f62\u5340\u57df\u3002" },
+  ],
+};
+
+var MILKYWAY = {
+  id: "milkyway", name: "Milky Way", tz: "\u9280\u6cb3\u7cfb",
+  type: { en: "SPIRAL GALAXY", tz: "\u87ba\u65cb\u661f\u7cfb" },
+  diameterLy: 105700, starCount: "100\u2013400 billion", age: "13.6 billion years",
+  desc: { en: "The Milky Way is our home galaxy \u2014 a giant spiral of over 100 billion stars, including our Sun. Everything you see in the night sky is part of this vast city of stars.",
+          tz: "\u9280\u6cb3\u7cfb\u662f\u6211\u5011\u7684\u5bb6\u5712\u661f\u7cfb\u2014\u2014\u4e00\u500b\u62e5\u6709\u8d85\u904e 1000 \u5104\u9846\u6046\u661f\u7684\u5de8\u5927\u87ba\u65cb\uff0c\u5305\u542b\u6211\u5011\u7684\u592a\u967d\u3002\u591c\u7a7a\u4e2d\u770b\u5230\u7684\u4e00\u5207\u90fd\u662f\u9019\u5ea7\u5e9e\u5927\u661f\u57ce\u7684\u4e00\u90e8\u5206\u3002" },
+  photo: "assets/solar/milkyway.jpg",
+  facts: [
+    { en: "The Milky Way is over 100,000 light-years across!", tz: "\u9280\u6cb3\u7cfb\u7684\u76f4\u5f91\u8d85\u904e 10 \u842c\u5149\u5e74\uff01" },
+    { en: "There is a supermassive black hole at the centre.", tz: "\u9280\u6cb3\u7cfb\u4e2d\u5fc3\u6709\u4e00\u500b\u8d85\u5927\u8cea\u91cf\u9ed1\u6d1e\u3002" },
+    { en: "Our Sun takes 230 million years to orbit the galaxy!", tz: "\u6211\u5011\u7684\u592a\u967d\u7e5e\u9280\u6cb3\u7cfb\u4e00\u5708\u9700\u8981 2.3 \u5104\u5e74\uff01" },
+  ],
+};
+
+var NEARBY_STARS = [
+  { id: "alphacentauri", name: "Alpha Centauri", tz: "\u534a\u4eba\u99ac\u5ea7\u03b1", color: 0xFFF8D6, ly: 4.37,
+    type: { en: "STAR SYSTEM", tz: "\u6046\u661f\u7cfb" },
+    desc: { en: "Alpha Centauri is the closest star system to our Sun. It is actually three stars \u2014 two Sun-like stars and a tiny red dwarf called Proxima Centauri.",
+            tz: "\u534a\u4eba\u99ac\u5ea7\u03b1\u662f\u96e2\u6211\u5011\u592a\u967d\u6700\u8fd1\u7684\u6046\u661f\u7cfb\u3002\u5b83\u5176\u5be6\u7531\u4e09\u9846\u661f\u7d44\u6210\u2014\u2014\u5169\u9846\u985e\u4f3c\u592a\u967d\u7684\u6046\u661f\u548c\u4e00\u9846\u5c0f\u5c0f\u7684\u7d05\u77ee\u661f\u6bd4\u9130\u661f\u3002" },
+    photo: "assets/solar/alphacentauri.jpg",
+    facts: [
+      { en: "It is the nearest star system to Earth.", tz: "\u5b83\u662f\u96e2\u5730\u7403\u6700\u8fd1\u7684\u6046\u661f\u7cfb\u3002" },
+      { en: "Light from Alpha Centauri takes 4.37 years to reach us.", tz: "\u534a\u4eba\u99ac\u5ea7\u03b1\u7684\u5149\u9700\u8981 4.37 \u5e74\u624d\u80fd\u5230\u9054\u6211\u5011\u3002" },
+      { en: "Proxima Centauri has a planet in its habitable zone!", tz: "\u6bd4\u9130\u661f\u6709\u4e00\u9846\u4f4d\u65bc\u9069\u5c45\u5e36\u7684\u884c\u661f\uff01" },
+    ] },
+  { id: "sirius", name: "Sirius", tz: "\u5929\u72fc\u661f", color: 0xE0F0FF, ly: 8.6,
+    type: { en: "STAR SYSTEM", tz: "\u6046\u661f\u7cfb" },
+    desc: { en: "Sirius is the brightest star in our night sky. It is actually a binary system \u2014 a bright white star with a tiny white dwarf companion.",
+            tz: "\u5929\u72fc\u661f\u662f\u591c\u7a7a\u4e2d\u6700\u4eae\u7684\u661f\u3002\u5b83\u5176\u5be6\u662f\u4e00\u500b\u96d9\u661f\u7cfb\u2014\u2014\u4e00\u9846\u660e\u4eae\u7684\u767d\u661f\u548c\u4e00\u9846\u5c0f\u5c0f\u7684\u767d\u77ee\u661f\u4f34\u4fb6\u3002" },
+    photo: "assets/solar/sirius.jpg",
+    facts: [
+      { en: "Sirius is the brightest star visible from Earth.", tz: "\u5929\u72fc\u661f\u662f\u5f9e\u5730\u7403\u770b\u5230\u6700\u4eae\u7684\u6046\u661f\u3002" },
+      { en: "It is about twice as massive as our Sun.", tz: "\u5b83\u7684\u8cea\u91cf\u5927\u7d04\u662f\u592a\u967d\u7684\u5169\u500d\u3002" },
+      { en: "Ancient Egyptians used Sirius to predict the Nile flood.", tz: "\u53e4\u57c3\u53ca\u4eba\u7528\u5929\u72fc\u661f\u4f86\u9810\u6e2c\u5c3c\u7f85\u6cb3\u7684\u6d2a\u6c34\u3002" },
+    ] },
+  { id: "barnardstar", name: "Barnard's Star", tz: "\u5df4\u7d0d\u5fb7\u661f", color: 0xFFAA88, ly: 5.96,
+    type: { en: "RED DWARF", tz: "\u7d05\u77ee\u661f" },
+    desc: { en: "Barnard's Star is a tiny red dwarf and the fourth-closest star to our Sun. It moves across our sky faster than any other star!",
+            tz: "\u5df4\u7d0d\u5fb7\u661f\u662f\u4e00\u9846\u5c0f\u5c0f\u7684\u7d05\u77ee\u661f\uff0c\u662f\u96e2\u592a\u967d\u7b2c\u56db\u8fd1\u7684\u6046\u661f\u3002\u5b83\u5728\u5929\u7a7a\u4e2d\u79fb\u52d5\u7684\u901f\u5ea6\u6bd4\u4efb\u4f55\u5176\u4ed6\u6046\u661f\u90fd\u5feb\uff01" },
+    photo: "assets/solar/barnardstar.jpg",
+    facts: [
+      { en: "It is a red dwarf \u2014 the most common type of star.", tz: "\u5b83\u662f\u4e00\u9846\u7d05\u77ee\u661f\u2014\u2014\u6700\u5e38\u898b\u7684\u6046\u661f\u985e\u578b\u3002" },
+      { en: "It moves very fast across our night sky.", tz: "\u5b83\u5728\u591c\u7a7a\u4e2d\u79fb\u52d5\u5f97\u975e\u5e38\u5feb\u3002" },
+      { en: "Barnard's Star is much older than our Sun.", tz: "\u5df4\u7d0d\u5fb7\u661f\u6bd4\u6211\u5011\u7684\u592a\u967d\u53e4\u8001\u5f97\u591a\u3002" },
+    ] },
+];
+
 /* Visual scale is compressed (design.md D4): these are scene units, not km. */
 export var SCENE = {
   sunRadius: 2,
   sizes: { mercury: 0.3, venus: 0.45, earth: 0.5, mars: 0.4, jupiter: 1.2, saturn: 1.0, uranus: 0.8, neptune: 0.75 },
   orbits: { mercury: 4, venus: 5.5, earth: 7, mars: 8.5, jupiter: 11, saturn: 14, uranus: 17, neptune: 20 },
+  issSize: 0.15,
+  issOrbit: 1.1,
+  plutoSize: 0.35,
+  plutoOrbit: 25,
+  sats: {
+    moon:    { size: 0.15, orbit: 1.9 },
+    deimos:  { size: 0.06, orbit: 1.1 },
+    io:      { size: 0.20, orbit: 1.7 },
+    europa:  { size: 0.18, orbit: 2.1 },
+    ganymede:{ size: 0.25, orbit: 2.6 },
+    callisto:{ size: 0.22, orbit: 3.1 },
+    titan:   { size: 0.25, orbit: 2.2 },
+    triton:  { size: 0.18, orbit: 1.8 },
+  },
+  beltInner: 9.2,
+  beltOuter: 10.3,
+  bandRadius: 34,
+  bandSpread: 5,
+  bandYSpread: 2.5,
+  bandCount: 700,
+  nearStarRadii: { alphacentauri: 32, sirius: 38, barnardstar: 35 },
+  galCenterAngle: 2.8,
 };
 
-export default { SOLAR: SOLAR, PLANETS: PLANETS, SCENE: SCENE };
+export { ISS, SATELLITES, PLUTO, MILKYWAY, NEARBY_STARS };
+export default { SOLAR: SOLAR, PLANETS: PLANETS, SCENE: SCENE, ISS: ISS, SATELLITES: SATELLITES, PLUTO: PLUTO, MILKYWAY: MILKYWAY, NEARBY_STARS: NEARBY_STARS };

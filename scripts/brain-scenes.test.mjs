@@ -109,6 +109,21 @@ test("generic scene: choice pad renders buttons and submits on tap", () => {
   scene.destroy();
 });
 
+test("generic scene: clockface renders separate hour and minute hands", () => {
+  const ctx = fakeCtx({ gameId: "clock", tier: "mid" });
+  const scene = generic.create(ctx);
+  const item = {
+    prompt: { type: "clockface", h: 7, m: 35, en: "What time is it?", zh: "現在幾點？" },
+    answer: "7:35",
+    choices: ["7:35", "7:50", "6:35", "8:35"]
+  };
+  scene.present(item, { index: 0, count: 1, isFirst: true, clocked: true });
+  assert.equal(ctx.mount.querySelectorAll(".bclockface__hand").length, 2);
+  assert.ok(ctx.mount.querySelector(".bclockface__hand--hour"));
+  assert.ok(ctx.mount.querySelector(".bclockface__hand--minute"));
+  scene.destroy();
+});
+
 test("generic scene: keypad pad accumulates digits and submits on checkmark", () => {
   const round = SQBrainCore.buildRound("calc", "mid", SQBrainCore.mulberry32(9));
   const ctx = fakeCtx({ gameId: "calc", tier: "mid" });

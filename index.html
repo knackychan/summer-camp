@@ -151,13 +151,13 @@ body.game-mode .wrap{max-width:none;width:100%}
 /* ---------- ORC ATTACK ---------- */
 .hero-fig{position:absolute;left:14px;bottom:0;top:0;display:flex;flex-direction:column;
   justify-content:center;align-items:center;z-index:4;pointer-events:none}
-.hero-fig .fig{font-size:clamp(44px,8vw,60px);transform:scaleX(-1);filter:drop-shadow(0 4px 0 rgba(0,0,0,.3))}
+.hero-fig .fig{width:clamp(44px,8vw,60px);height:clamp(44px,8vw,60px);object-fit:contain;
+  filter:drop-shadow(0 4px 0 rgba(0,0,0,.3))}
 .hero-fig.hit .fig{animation:hshake .4s}
-@keyframes hshake{0%,100%{transform:scaleX(-1) rotate(0)}25%{transform:scaleX(-1) rotate(-12deg)}
-  75%{transform:scaleX(-1) rotate(12deg)}}
+@keyframes hshake{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
 .orc{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;will-change:transform;z-index:3}
-.orc .fig{font-size:clamp(34px,6.5vw,46px);filter:drop-shadow(0 3px 0 rgba(0,0,0,.3));
-  animation:owalk .5s infinite alternate ease-in-out}
+.orc .fig{width:clamp(34px,6.5vw,46px);height:clamp(34px,6.5vw,46px);object-fit:contain;
+  filter:drop-shadow(0 3px 0 rgba(0,0,0,.3));animation:owalk .5s infinite alternate ease-in-out}
 @keyframes owalk{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-4px) rotate(3deg)}}
 .orc .tag{font-family:'Fredoka';font-weight:700;font-size:clamp(15px,3vw,19px);letter-spacing:1px;
   background:rgba(16,10,36,.75);border:2px solid var(--line);border-radius:10px;padding:2px 8px;white-space:nowrap}
@@ -223,6 +223,9 @@ body.game-mode .wrap{max-width:none;width:100%}
 .word .hintl{color:var(--gold)}
 .vbubble{background:var(--panel2);border:2px solid var(--line);border-radius:18px;padding:10px 18px;
   font-family:'Fredoka';font-weight:600;font-size:26px;margin:8px 0 4px;display:inline-block}
+.game-scene--vocab .game-scene__center{gap:8px}
+.game-scene--vocab .word{max-width:100%;overflow-wrap:anywhere;text-align:center}
+.game-scene--vocab .vshelf{max-width:min(92%,680px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pbar{width:min(70%,320px);height:14px;background:rgba(0,0,0,.3);border-radius:99px;margin:10px auto 6px;
   overflow:hidden;border:2px solid var(--line)}
 .pfill{height:100%;background:var(--ok);border-radius:99px}
@@ -1119,6 +1122,11 @@ function buildKeyboard(){
   document.getElementById("legend").innerHTML=
     L.map(([v,n])=>`<span><i class="dot" style="background:var(${v})"></i>${n}</span>`).join("");
 }
+function ensureKeyboard(){
+  const el=document.getElementById("kb");
+  if(!el||el.children.length) return;
+  buildKeyboard();
+}
 function highlightTarget(ch){
   Object.values(kb).forEach(k=>k.classList.remove("target"));
   if(ch&&kb[ch.toLowerCase()]) kb[ch.toLowerCase()].classList.add("target");
@@ -1181,6 +1189,7 @@ function startGame(id,lvl){
      main.js hasn't published the manifest yet (deferred module load). */
   const noEntry=(window.SQManifest||[]).find(e=>e.id===lvl);
   const noKb=noEntry? !noEntry.keyboard : (lvl==="city"||lvl==="dig");
+  if(!noKb) ensureKeyboard();
   document.getElementById("kb").classList.toggle("hidden",noKb);
   document.getElementById("legend").classList.toggle("hidden",noKb);
   /* Arena game-switcher: manifest ids stay in sync with the home grid, so tapping
@@ -2490,7 +2499,7 @@ window.SQHost={
   hud:hud, say:say, sayPair:sayPair,
   sfx:{good:sGood,bad:sBad,pop:sPop,zap:sZap,hit:sHit,win:sWin},
   keys:{build:buildKeyboard,highlight:highlightTarget,highlightSet:highlightSet,press:pressFx},
-  fx:{flash:flash,burst:burst,bigFloat:bigFloat,wobbleMsg:wobbleMsg,hint:hint},
+  fx:{flash:flash,burst:burst,burstAt:burstAt,bigFloat:bigFloat,wobbleMsg:wobbleMsg,hint:hint},
   rand:rand, shuffle:shuffle,
   saveProgress:saveProgress, noteStars:noteStars,
   stage:function(){return document.getElementById("stage");},

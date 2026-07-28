@@ -14,7 +14,8 @@ function makeRacePool() {
     for (var n = 0; n < 3 && wi < words.length; n++) out.push(words[wi++]);
     if (si < sents.length) out.push(sents[si++]);
   }
-  return out.concat(C.shuffle(words), C.shuffle(sents));
+  out = out.concat(C.shuffle(words), C.shuffle(sents));
+  return out.length ? out : [["cat", ""]];
 }
 
 function drawWord() {
@@ -100,11 +101,11 @@ function init(ctx) {
   C = ctx;
   C.bestOriginal = C.best || 0;
   S = {
-    pool: makeRacePool(), i: 0, pos: 0, correct: 0, errors: 0,
+    pool: makeRacePool(), i: -1, pos: 0, correct: 0, errors: 0,
     words: 0, time: 60, started: false, running: true, timer: null,
     word: "", wrong: false, wordTimeout: null
   };
-  drawWord(); raceHud();
+  nextRace(); raceHud();
   C.fx.hint("Start typing to begin the 60-second race!");
 }
 

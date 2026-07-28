@@ -138,8 +138,10 @@ function drawVocab() {
     : lvl === "recall" ? "What is it in English?"
     : lvl === "sentences" ? "Say it in English! \ud83d\udcac"
     : "Type it in English!";
-  document.getElementById("stage").innerHTML =
-    '<div class="cue">' + cue + '</div>'
+  C.stage.innerHTML =
+    '<div class="game-scene game-scene--vocab">'
+    + '<div class="game-scene__center">'
+    + '<div class="cue">' + cue + '</div>'
     + (showPic ? '<div class="word-em" style="font-size:56px">' + S.em + '</div>' : '')
     + (showFr ? '<div class="vfr">' + S.fr + '</div><div class="vzh">' + S.zh + '</div>' : '')
     + '<div class="word" id="vword" ' + wstyle + '>' + vocabSpans() + '</div>'
@@ -148,7 +150,9 @@ function drawVocab() {
     + '<button class="btn small" id="sayBtn">\ud83d\udde3\ufe0f Say it</button>'
     + (lvl !== "copy" ? '<button class="btn small" id="hintBtn">\ud83d\udca1 Hint</button>' : '')
     + '</div>'
-    + '<div class="vshelf"><span class="lbl">YOUR COLLECTION</span>' + (shelf || "\u2026") + '</div>';
+    + '<div class="vshelf"><span class="lbl">YOUR COLLECTION</span>' + (shelf || "\u2026") + '</div>'
+    + '</div>'
+    + '</div>';
   document.getElementById("sayBtn").onclick = function () { C.say(S.word); };
   var hb = document.getElementById("hintBtn");
   if (hb) hb.onclick = function () {
@@ -227,13 +231,17 @@ function drawShop() {
   var wstyle = S.word.length > 14 ? 'style="font-size:clamp(22px,4.6vw,36px);letter-spacing:1px"' : "";
   var bub = [showPic ? S.em : "", showFr ? S.fr : "", lvl === "copy" ? S.word : ""]
     .filter(Boolean).join("  ");
-  document.getElementById("stage").innerHTML =
-    '<div class="cue">Serve the customer before they leave! \u2697\ufe0f</div>'
+  C.stage.innerHTML =
+    '<div class="game-scene game-scene--vocab game-scene--vocab-shop">'
+    + '<div class="game-scene__center">'
+    + '<div class="cue">Serve the customer before they leave! \u2697\ufe0f</div>'
     + '<div class="word-em" style="font-size:54px">' + S.cust + '</div>'
     + '<div class="vbubble">' + bub + (showFr ? '<div class="vzh">' + S.zh + '</div>' : '') + '</div>'
     + '<div class="pbar"><div class="pfill" id="pfill" style="width:100%"></div></div>'
     + '<div class="word" id="vword" ' + wstyle + '>' + vocabSpans() + '</div>'
-    + '<div class="msg" id="msg"></div>';
+    + '<div class="msg" id="msg"></div>'
+    + '</div>'
+    + '</div>';
   highlightVocab();
 }
 

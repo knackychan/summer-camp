@@ -13,8 +13,8 @@ var COLORS = {
 
 function clockSvg(h, m) {
   var ha = (h % 12) * 30 + m * 0.5 - 90, ma = m * 6 - 90, R = Math.PI / 180;
-  var hx = 50 + 26 * Math.cos(ha * R), hy = 50 + 26 * Math.sin(ha * R);
-  var mx = 50 + 38 * Math.cos(ma * R), my = 50 + 38 * Math.sin(ma * R);
+  var hx = 50 + 25 * Math.cos(ha * R), hy = 50 + 25 * Math.sin(ha * R);
+  var mx = 50 + 39 * Math.cos(ma * R), my = 50 + 39 * Math.sin(ma * R);
   var ticks = "";
   for (var i = 0; i < 12; i++) {
     var a = i * 30 - 90;
@@ -22,9 +22,9 @@ function clockSvg(h, m) {
   }
   return '<svg viewBox="0 0 100 100" class="bclockface" aria-hidden="true" width="140" height="140">' +
     '<circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="3"/>' + ticks +
-    '<line x1="50" y1="50" x2="' + hx + '" y2="' + hy + '" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>' +
-    '<line x1="50" y1="50" x2="' + mx + '" y2="' + my + '" stroke="var(--brain-scene-accent)" stroke-width="3" stroke-linecap="round"/>' +
-    '<circle cx="50" cy="50" r="3" fill="currentColor"/></svg>';
+    '<line class="bclockface__hand bclockface__hand--minute" x1="50" y1="50" x2="' + mx + '" y2="' + my + '" stroke="#ffc93c" stroke-width="3" stroke-linecap="round"/>' +
+    '<line class="bclockface__hand bclockface__hand--hour" x1="50" y1="50" x2="' + hx + '" y2="' + hy + '" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>' +
+    '<circle cx="50" cy="50" r="3.5" fill="#ffc93c" stroke="currentColor" stroke-width="1.5"/></svg>';
 }
 
 function promptHtml(p) {

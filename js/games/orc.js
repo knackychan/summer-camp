@@ -1,7 +1,7 @@
 /* Orc Attack ⚔️ 半獸人來襲 — migrated from index.html:1362-1500 (slice 18). */
 var S = null, C = null;
 
-var ORC_FIGS = ["👹","👺","🧌","👾","🐗","🦖"];
+var ORC_SPRITES = ["orc-grunt", "orc-brute", "goblin", "orc-archer", "troll", "orc-shaman"];
 
 var HARD_WORDS = ["because","animal","yellow","planet","dragon","castle","rocket","jungle","guitar",
 "thunder","rainbow","picture","morning","treasure","adventure","elephant","computer","birthday",
@@ -30,7 +30,7 @@ function spawnOrc() {
   if (!pool.length) pool = poolFor(C.settings.orc.diff);
   var word = C.rand(pool);
   var el = document.createElement("div"); el.className = "orc";
-  el.innerHTML = '<div class="tag"></div><div class="fig">' + C.rand(ORC_FIGS) + '</div>';
+  el.innerHTML = '<div class="tag"></div><img class="fig" alt="" src="assets/orc/sprites/' + C.rand(ORC_SPRITES) + '.png">';
   var H = st.clientHeight;
   var y = Math.max(50, 40 + Math.random() * (H - 140));
   el.style.top = y + "px";
@@ -199,7 +199,7 @@ function init(ctx) {
   var st = document.getElementById("stage");
   st.classList.add("arena");
   st.innerHTML = '<div class="arena-msg" id="amsg">Type the word above each orc to zap it! \u26a1</div>'
-    + '<div class="hero-fig" id="heroFig"><div class="fig">\ud83e\uddb8</div></div>';
+    + '<div class="hero-fig" id="heroFig"><img class="fig" alt="" src="assets/orc/sprites/hero.png"></div>';
   S = {
     orcs: [], hp: 3, score: 0, kills: 0, lock: null, running: true,
     last: performance.now(), spawnAt: performance.now() + 600, raf: null, wave: 1
