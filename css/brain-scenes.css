@@ -212,8 +212,8 @@
   --brain-change-label-size: clamp(11px, 1.3vw, 13px);
   --brain-change-tray-total-size: clamp(24px, 3vw, 32px);
   --brain-change-token-size: clamp(60px, 6.5vmin, 68px);
-  --brain-change-tray-min: clamp(96px, 12.5vmin, 156px);
-  --brain-change-till-zoom: .92;
+  --brain-change-tray-min: clamp(84px, 10vmin, 120px);
+  --brain-change-till-zoom: .84;
 }
 .brain-change__awning {
   position: absolute; inset: 0 0 auto; height: 18px; opacity: .5;
@@ -235,6 +235,16 @@
 }
 
 .brain-change__summary { display: grid; grid-template-columns: minmax(0,1.08fr) minmax(0,.96fr) minmax(0,.96fr); gap: var(--brain-change-summary-gap, var(--brain-space-4)); margin-top: var(--brain-space-2); flex: 0 0 auto; }
+.brain-round--contained .brain-change__summary {
+  grid-template-columns: minmax(0,1.15fr) minmax(0,.85fr);
+  grid-template-areas:
+    "register register"
+    "product payment";
+  align-items: stretch;
+}
+.brain-round--contained .brain-change__product { grid-area: product; }
+.brain-round--contained .brain-change__register { grid-area: register; }
+.brain-round--contained .brain-change__payment { grid-area: payment; }
 .brain-change__panel { border: 3px solid var(--brain-outline); border-radius: 18px; background: var(--brain-white); padding: var(--brain-change-panel-pad, var(--brain-space-4)); min-width: 0; }
 
 .brain-change__product { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--brain-space-3); }
@@ -251,12 +261,19 @@
 .brain-change__price { font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif; font-size: var(--brain-change-price-size, clamp(28px,4vw,42px)); font-weight: 900; font-variant-numeric: tabular-nums; }
 
 .brain-change__register { background: var(--brain-change); color: var(--brain-white); text-align: center; }
+.brain-round--contained .brain-change__register {
+  min-height: 0;
+  padding-block: var(--brain-space-3);
+}
 .brain-change__display {
   min-height: 72px; display: grid; place-items: center;
   border: 3px solid var(--brain-outline); border-radius: 12px;
   background: color-mix(in srgb, var(--brain-outline) 55%, black);
   font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
   font-size: var(--brain-change-display-size, clamp(20px,2.5vw,32px)); font-weight: 900; font-variant-numeric: tabular-nums;
+}
+.brain-round--contained .brain-change__display {
+  min-height: 56px;
 }
 .brain-change__register-label { margin-top: var(--brain-space-3); font-size: var(--brain-change-label-size, 13px); font-weight: 900; }
 
@@ -269,8 +286,12 @@
   font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
   font-size: var(--brain-change-paid-size, 28px); font-weight: 900;
 }
+.brain-round--contained .brain-change__paid {
+  min-height: 54px;
+}
 
 .brain-change__work { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: start; gap: var(--brain-change-work-gap, var(--brain-space-4)); margin-top: var(--brain-space-4); min-height: 0; }
+.brain-round--contained .brain-change__work { margin-top: var(--brain-space-2); }
 .brain-round--contained .brain-change__work { flex: 1 1 auto; }
 .brain-change__till-col { grid-column: 1; grid-row: 1 / span 3; justify-self: center; }
 .brain-change__tray-col, .brain-change__actions-col { grid-column: 2; }
@@ -331,21 +352,21 @@
   opacity: .16;
 }
 .brain-round--contained .brain-change__tray {
-  min-height: var(--brain-change-tray-min, 112px);
-  padding: var(--brain-space-3);
+  min-height: var(--brain-change-tray-min, 84px);
+  padding: var(--brain-space-2);
 }
 .brain-round--contained .brain-change__tray-groups {
-  min-height: 56px;
+  min-height: 40px;
   margin-top: var(--brain-space-1);
 }
 .brain-round--contained .brain-change__tray-group {
-  min-width: 52px;
-  min-height: 50px;
+  min-width: 48px;
+  min-height: 46px;
 }
 .brain-round--contained .brain-change__actions {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--brain-space-2);
-  margin-top: var(--brain-space-3);
+  margin-top: var(--brain-space-2);
 }
 .brain-round--contained .brain-change__actions .brain-button--give {
   grid-column: auto;
@@ -354,8 +375,8 @@
 @media (width < 900px) {
   .brain-round--contained .brain-change {
     --brain-change-gap: clamp(8px, 1.2vmin, 14px);
-    --brain-change-summary-gap: clamp(8px, 1.2vmin, 12px);
-    --brain-change-work-gap: clamp(8px, 1.2vmin, 12px);
+    --brain-change-summary-gap: clamp(8px, 1.2vmin, 10px);
+    --brain-change-work-gap: clamp(8px, 1.2vmin, 10px);
     --brain-change-panel-pad: clamp(9px, 1.1vmin, 14px);
     --brain-change-picture-w: 64px;
     --brain-change-picture-h: 78px;
@@ -364,8 +385,8 @@
     --brain-change-paid-size: 24px;
     --brain-change-tray-total-size: 28px;
     --brain-change-token-size: 60px;
-    --brain-change-tray-min: 112px;
-    --brain-change-till-zoom: .84;
+    --brain-change-tray-min: 84px;
+    --brain-change-till-zoom: .78;
   }
   .brain-change__summary { grid-template-columns: 1fr 1fr; }
   .brain-change__register { grid-column: 1 / -1; }
@@ -383,7 +404,7 @@
     --brain-change-paid-size: 22px;
     --brain-change-tray-total-size: 26px;
     --brain-change-token-size: 60px;
-    --brain-change-tray-min: 96px;
+    --brain-change-tray-min: 80px;
     --brain-change-till-zoom: .78;
     overflow: auto;
   }
@@ -392,7 +413,7 @@
   .brain-change__till-col { grid-row: auto; }
   .brain-change__customer { display: none; }
   .brain-round--contained .brain-change__panel { padding: var(--brain-change-panel-pad, var(--brain-space-3)); }
-  .brain-round--contained .brain-tray { min-height: 96px; }
+  .brain-round--contained .brain-tray { min-height: 80px; }
   .brain-change__actions { grid-template-columns: 1fr; }
   .brain-change__actions .brain-button--give { grid-column: auto; }
 }
@@ -403,8 +424,8 @@
     padding-bottom: var(--brain-space-2);
     overflow: auto;
   }
-  .brain-round--contained .brain-change__summary { gap: var(--brain-space-3); }
-  .brain-round--contained .brain-change__work { gap: var(--brain-space-3); margin-top: var(--brain-space-2); }
-  .brain-round--contained .brain-tray { min-height: 88px; }
+  .brain-round--contained .brain-change__summary { gap: var(--brain-space-2); }
+  .brain-round--contained .brain-change__work { gap: var(--brain-space-2); margin-top: var(--brain-space-2); }
+  .brain-round--contained .brain-tray { min-height: 72px; }
   .brain-round--contained .brain-button { min-height: 48px; }
 }
