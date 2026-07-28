@@ -470,7 +470,15 @@ button:disabled{cursor:default}
 .bgridpad{grid-template-columns:repeat(4,1fr)}
 .bused{opacity:.35}
 .btype{width:100%;font-size:1.2em;padding:.6em;border-radius:12px;margin:.4em 0}
+/* .bprompt/.bpad/.bkey/.bcell/.bword/.btype above are the pre-slice-34 Brain Gym
+   round renderer. js/brain/scenes/generic.js and *.css below replaced the round
+   itself; .braincard/.bhud stay live for showBrainResult()'s unmodified overlay.
+   Left in place per CLAUDE.md "never delete project files" (slice 37 authorizes
+   cleanup once every bespoke scene ships). */
 </style>
+<link rel="stylesheet" href="css/brain-shell.css">
+<link rel="stylesheet" href="css/brain-sprites.css">
+<link rel="stylesheet" href="css/brain-scenes.css">
 </head>
 <body>
 
@@ -616,6 +624,7 @@ button:disabled{cursor:default}
 <script src="js/drills.js"></script>
 <script src="js/brain-data.js"></script>
 <script src="js/brain-core.js"></script>
+<script src="js/brain-audio-cues.js"></script>
 <script src="js/brain-ui.js"></script>
 <script type="module" src="js/main.js"></script>
 <script>
@@ -908,7 +917,6 @@ MISSIONS.sport={}; MISSIONS.project={};
   MISSIONS.sport[k]=[...MISSIONS.gym[k],...MISSIONS.outdoor[k],...MISSIONS.boxing[k],...MISSIONS.activescreen[k]];
   MISSIONS.project[k]=[...MISSIONS.craft[k],...MISSIONS.boredom[k],...MISSIONS.computer[k],...MISSIONS.minecraft[k]];
 });
-const CUSTOMERS=["🧙","🧝","🧛","🧚","🤴","👸","🧟","🥷","🧑‍🚀","🦹"];
 const LETTERS = {A:"🍎 Apple",B:"⚽ Ball",C:"🐱 Cat",D:"🐶 Dog",E:"🐘 Elephant",F:"🐟 Fish",
 G:"🍇 Grapes",H:"🎩 Hat",I:"🍦 Ice cream",J:"🕹️ Joystick",K:"🔑 Key",L:"🦁 Lion",M:"🌙 Moon",
 N:"👃 Nose",O:"🐙 Octopus",P:"🐧 Penguin",Q:"👑 Queen",R:"🌈 Rainbow",S:"☀️ Sun",T:"🌳 Tree",
@@ -918,14 +926,6 @@ const WORDS_EASY = [["cat","🐱"],["dog","🐶"],["sun","☀️"],["hat","🎩"
 ["fish","🐟"],["star","⭐"],["book","📚"],["tree","🌳"],["milk","🥛"],["frog","🐸"],["bird","🐦"],
 ["cake","🍰"],["ball","⚽"],["moon","🌙"],["rain","🌧️"],["leaf","🍃"],["duck","🦆"],["bear","🐻"],
 ["shoe","👟"],["hand","✋"]];
-const WORDS_HARD = ["because","animal","yellow","planet","dragon","castle","rocket","jungle","guitar",
-"thunder","rainbow","picture","morning","treasure","adventure","elephant","computer","birthday",
-"mountain","dinosaur","butterfly","chocolate","wonderful","keyboard","practice"];
-const SENTENCES = ["The quick cat runs fast.","I like to read good books.","We play in the sun today.",
-"My dog can jump very high.","Taiwan is a lovely green island.","Learning to type is really fun.",
-"The rocket flew up to the moon.","She draws a big blue whale.","We eat rice and fish for lunch.",
-"A rainbow has seven bright colours."];
-const ORC_FIGS = ["👹","👺","🧌","👾","🐗","🦖"];
 /* finger map: key -> [fingerVar, fingerName] */
 const FINGER = {};
 const setF=(keys,v,name)=>keys.split("").forEach(k=>FINGER[k]=[v,name]);
@@ -939,7 +939,7 @@ const fingerVar=ch=>{const f=FINGER[(ch||"").toLowerCase()];return f?f[0]:"--f-t
 const ROWS=["1234567890","qwertyuiop","asdfghjkl","zxcvbnm"];
 
 /* ============ STATE ============ */
-let sound=true, kid=null, level=null, kb={}, state={}, currentGame=null;
+let sound=true, kid=null, level=null, kb={}, currentGame=null;
 /* best is filled lazily — bestOf() already treats a missing key as 0, and
    seeding names here was the fifth of the seven edit points a new game used
    to need (design.md Context). */
@@ -1118,59 +1118,17 @@ function hud(items){
 
 /* ============ SETTINGS BAR ============ */
 function renderSetbar(){
-  const bar=document.getElementById("setbar");
-  if(level!=="balloon" && level!=="orc" && level!=="vocab"){bar.classList.add("hidden");bar.innerHTML="";return;}
-  bar.classList.remove("hidden");
-  if(level==="vocab"){
-    const s=settings.vocab, lvl=s.levels[kid]||"copy";
-    const M=[["study","🧘 Study"],["shop","⚗️ Potion Shop"]];
-    const L=[["copy","✍️ Copy"],["recall","🧠 Recall"],["translate","🇫🇷→🇬🇧 Translate"],["sentences","💬 Sentences"]];
-    bar.innerHTML=`
-      <div class="grp dchips">${M.map(([k,l])=>
-        `<button class="chip ${s.mode===k?'on':''}" data-m="${k}"
-          style="${s.mode===k?`background:${KIDS[kid].raw}`:''}">${l}</button>`).join("")}</div>
-      <div class="grp dchips">${L.map(([k,l])=>
-        `<button class="chip ${lvl===k?'on':''}" data-lv="${k}"
-          style="${lvl===k?`background:${KIDS[kid].raw}`:''}">${l}</button>`).join("")}</div>
-      ${s.mode==="shop"?`<div class="grp">🐢 Speed <input type="range" id="setSpeed" min="1" max="5" value="${s.speed}"> 🐇
-        <span class="val" id="vSpeed">${s.speed}</span></div>`:""}
-      <div class="grp"><button class="chip ${s.tts?'on':''}" id="ttsBtn"
-        style="${s.tts?`background:${KIDS[kid].raw}`:''}">🗣️ Voice</button></div>`;
-    bar.querySelectorAll("[data-m]").forEach(c=>c.onclick=()=>{
-      settings.vocab.mode=c.dataset.m; saveProgress(); startGame(kid,"vocab");});
-    bar.querySelectorAll("[data-lv]").forEach(c=>c.onclick=()=>{
-      settings.vocab.levels[kid]=c.dataset.lv; saveProgress(); startGame(kid,"vocab");});
-    bar.querySelector("#ttsBtn").onclick=()=>{
-      settings.vocab.tts=!settings.vocab.tts; saveProgress(); renderSetbar();};
-    const sp=bar.querySelector("#setSpeed");
-    if(sp) sp.oninput=()=>{s.speed=+sp.value;bar.querySelector("#vSpeed").textContent=sp.value;saveProgress();};
+  var bar=document.getElementById("setbar");
+  if(currentGame && currentGame.settings){
+    bar.classList.remove("hidden");
+    currentGame.settings(bar, {
+      kid:kid, kids:KIDS, settings:settings,
+      saveProgress:saveProgress, restart:function(){ startGame(kid,level); }
+    });
     return;
   }
-  if(level==="balloon"){
-    const s=settings.balloon;
-    bar.innerHTML=`
-      <div class="grp">🐢 Speed <input type="range" id="setSpeed" min="1" max="5" value="${s.speed}"> 🐇
-        <span class="val" id="vSpeed">${s.speed}</span></div>
-      <div class="grp">🎈 Balloons <input type="range" id="setCount" min="1" max="6" value="${s.count}">
-        <span class="val" id="vCount">${s.count}</span></div>`;
-  } else {
-    const s=settings.orc;
-    const D=[["easy","🙂 Letters"],["medium","😀 Words"],["hard","😈 Big words"]];
-    bar.innerHTML=`
-      <div class="grp dchips">${D.map(([k,l])=>
-        `<button class="chip ${s.diff===k?'on':''}" data-d="${k}"
-          style="${s.diff===k?`background:${KIDS[kid].raw}`:''}">${l}</button>`).join("")}</div>
-      <div class="grp">🐢 Speed <input type="range" id="setSpeed" min="1" max="5" value="${s.speed}"> 🐇
-        <span class="val" id="vSpeed">${s.speed}</span></div>
-      <div class="grp">👹 Orcs <input type="range" id="setCount" min="1" max="5" value="${s.count}">
-        <span class="val" id="vCount">${s.count}</span></div>`;
-    bar.querySelectorAll("[data-d]").forEach(c=>c.onclick=()=>{
-      settings.orc.diff=c.dataset.d; saveProgress(); startGame(kid,"orc");});
-  }
-  const S=level==="balloon"?settings.balloon:settings.orc;
-  const sp=bar.querySelector("#setSpeed"), ct=bar.querySelector("#setCount");
-  sp.oninput=()=>{S.speed=+sp.value;bar.querySelector("#vSpeed").textContent=sp.value;saveProgress();};
-  ct.oninput=()=>{S.count=+ct.value;bar.querySelector("#vCount").textContent=ct.value;saveProgress();};
+  bar.classList.add("hidden");
+  bar.innerHTML="";
 }
 
 /* ============ GAME FLOW ============ */
@@ -1186,6 +1144,7 @@ function startGame(id,lvl){
     if(ls.locked){showLockOverlay(ls);return;}
   }
   stopArena();
+  document.getElementById("setbar").classList.add("hidden");
   kid=id; level=lvl;
   hubKid=id; hubTab="games"; saveAppPlace("hub");
   ["home","hub","act"].forEach(x=>document.getElementById(x).classList.add("hidden"));
@@ -1205,7 +1164,6 @@ function startGame(id,lvl){
      a solar chip mid-arcade launches the registry module via the same SQLoadGame
      path — same gap as the grid: Object.entries(LEVELS) alone misses solar. */
   renderGameSwitcher(id,lvl);
-  renderSetbar();
   if(gameMeta(lvl)&&gameMeta(lvl).brain){ startBrain(lvl); return; }
   if(window.SQLoadGame){
     var pending=window.SQLoadGame(lvl);
@@ -1220,6 +1178,7 @@ function startGame(id,lvl){
 /* Hand off to a migrated game module (design.md §3). */
 function startRegistered(game){
   currentGame=game;
+  renderSetbar();
   var H=window.SQHost;
   var st=H.stage();
   st.classList.add("arena");
@@ -1231,7 +1190,9 @@ function startRegistered(game){
     kids:KIDS, best:bestOf(kid,game.bestKey||""),
     stars:progress[kid].stars||0,
     words:{easy:WORDS_EASY, all:ALL_WORDS, letters:LETTERS},
-    finish:function(res){ finishRegistered(game,res); }
+    finish:function(res){ finishRegistered(game,res); },
+    saveProgress:saveProgress,
+    vocab:progress[kid]?(progress[kid].vocab||{}):{}
   });
   if(result&&result.catch){
     result.catch(function(err){
@@ -1252,19 +1213,28 @@ function finishRegistered(game,res){
 }
 
 function startLegacy(lvl){
-  if(lvl==="hunt") { /* migrated */ }
-  else if(lvl==="vocab") initVocab();
-  else if(lvl==="machines") initMachines();
-  else if(lvl==="orc") initOrc();
-  else wobbleMsg("Still loading... 還在載入中");
+  renderSetbar();
+  wobbleMsg("Still loading... 還在載入中");
 }
 /* Brain Gym round (design.md §8). Bests live in progress[kid].best.brain_<id>. */
 function startBrain(gameId){
   const k=kid, settings=(store&&store.familySettings)||{};
   const tier=SQBrainCore.tierFor(k,settings);
+  const p=progress[k];
+  brainToday(k); /* rolls p.brain (and any stale resume) over to today first */
+  const inProgress=p.brain.inProgress;
+  const resume=(inProgress&&inProgress.gameId===gameId&&inProgress.tier===tier)?inProgress:null;
+  /* Same canvas area as every arcade game (startRegistered's H.stage()), not a
+     separate full-screen overlay — the games list stays visible on the left. */
   SQBrain.openRound({
-    gameId:gameId, tier:tier, kid:k,
+    gameId:gameId, tier:tier, kid:k, kidColor:KIDS[k].color, resume:resume,
+    mount:document.getElementById("stage"),
+    onProgress:function(state){ p.brain.inProgress=state; saveProgress(); },
     say:function(pair){say(pair[0],"en-US");setTimeout(function(){say(pair[1],"zh-TW",true);},1200);},
+    sayPair:function(pair){sayPair(pair[0],pair[1]);},
+    isMuted:function(){return !sound;},
+    setMuted:function(m){if(!!m!==!sound)toggleMute();},
+    onQuit:goHome,
     onFinish:function(res){ finishBrain(k,res); }
   });
 }
@@ -1321,10 +1291,8 @@ function showBrainResult(res,better,earned){
 function stopArena(){
   if(currentGame&&currentGame.stop){ try{currentGame.stop();}catch(e){console.error(e);} }
   currentGame=null;
-  if(state.raf) cancelAnimationFrame(state.raf);
-  if(state.timer) clearInterval(state.timer);
-  state.raf=null; state.timer=null; state.running=false;
   try{speechSynthesis.cancel();}catch(e){}
+  if(window.SQBrain&&SQBrain.closeActive)SQBrain.closeActive();
   document.getElementById("stage").classList.remove("arena");
 }
 function goHome(){
@@ -1359,474 +1327,12 @@ addEventListener("DOMContentLoaded",function(){
 const rand=a=>a[Math.floor(Math.random()*a.length)];
 const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
 
-/* ---- MODE: ORC ATTACK (Luis) ---- */
-function orcWordPool(){
-  const d=settings.orc.diff;
-  if(d==="easy") return "abcdefghijklmnopqrstuvwxyz".split("");
-  if(d==="medium") return WORDS_EASY.map(w=>w[0]);
-  return WORDS_HARD.slice();
-}
-function initOrc(){
-  const st=document.getElementById("stage");
-  st.classList.add("arena");
-  st.innerHTML=`<div class="arena-msg" id="amsg">Type the word above each orc to zap it! ⚡</div>
-    <div class="hero-fig" id="heroFig"><div class="fig">🦸</div></div>`;
-  state={orcs:[],hp:3,score:0,kills:0,lock:null,running:true,
-    last:performance.now(),spawnAt:performance.now()+600,raf:null,wave:1};
-  orcHud();
-  state.raf=requestAnimationFrame(orcLoop);
-}
-function orcHud(){
-  hud([{k:"Lives",v:"❤️".repeat(Math.max(state.hp,0))||"💀",c:state.hp<=1?'var(--bad)':KIDS[kid].raw},
-    {k:"Score",v:state.score},
-    {k:"Kills",v:state.kills},
-    {k:"Best",v:bestOf(kid,"orc")}]);
-}
-function spawnOrc(){
-  const st=document.getElementById("stage");
-  const used=new Set(state.orcs.filter(o=>!o.dead).map(o=>o.word[0]));
-  let pool=orcWordPool().filter(w=>!used.has(w[0]));
-  if(!pool.length) pool=orcWordPool();
-  const word=rand(pool);
-  const el=document.createElement("div"); el.className="orc";
-  el.innerHTML=`<div class="tag"></div><div class="fig">${rand(ORC_FIGS)}</div>`;
-  const H=st.clientHeight;
-  const y=Math.max(50, 40+Math.random()*(H-140));
-  el.style.top=y+"px";
-  st.appendChild(el);
-  const o={el,word,pos:0,x:st.clientWidth+20,y,dead:false,
-    fig:el.querySelector(".fig"),tag:el.querySelector(".tag")};
-  drawOrcTag(o);
-  el.style.transform=`translateX(${o.x}px)`;
-  state.orcs.push(o);
-}
-function drawOrcTag(o){
-  o.tag.innerHTML=o.word.split("").map((c,i)=>
-    `<span class="${i<o.pos?'done':'todo'}">${c.toUpperCase()}</span>`).join("");
-}
-function orcLoop(now){
-  if(!state.running) return;
-  const st=document.getElementById("stage");
-  const dt=Math.min((now-state.last)/1000,.05); state.last=now;
-  const s=settings.orc;
-  const diffMul=s.diff==="easy"?1:s.diff==="medium"?1.12:1.25;
-  /* walk speed: 26..96 px/s, scaled by difficulty and how many kills (gentle ramp) */
-  const spd=(26+(s.speed-1)*17.5)*diffMul*(1+Math.min(state.kills*0.008,.5));
-  if(now>state.spawnAt && state.orcs.filter(o=>!o.dead).length < s.count){
-    spawnOrc();
-    state.spawnAt=now+(1600-s.speed*180)+Math.random()*800;
-  }
-  const heroX=64;
-  state.orcs.forEach(o=>{
-    if(o.dead) return;
-    o.x-=spd*dt;
-    o.el.style.transform=`translateX(${o.x}px)`;
-    if(o.x<=heroX){
-      o.dead=true; o.el.remove();
-      if(state.lock===o) state.lock=null;
-      state.hp--; sHit(); flash("bad");
-      const hf=document.getElementById("heroFig");
-      if(hf){hf.classList.add("hit");setTimeout(()=>hf.classList.remove("hit"),400);}
-      orcHud();
-      if(state.hp<=0) finishOrc();
-    }
-  });
-  state.orcs=state.orcs.filter(o=>!o.dead);
-  if(state.lock) highlightTarget(state.lock.word[state.lock.pos]);
-  else highlightSet(state.orcs.map(o=>o.word[0]));
-  state.raf=requestAnimationFrame(orcLoop);
-}
-function orcInput(ch){
-  if(!state.running) return;
-  if(state.lock){
-    const o=state.lock;
-    if(ch===o.word[o.pos]){
-      o.pos++; sGood(); drawOrcTag(o);
-      if(o.pos>=o.word.length) killOrc(o);
-    } else { sBad(); flash("bad"); }
-    return;
-  }
-  /* no lock: target closest orc whose word starts with ch */
-  const cand=state.orcs.filter(o=>!o.dead&&o.word[0]===ch)
-    .sort((a,b)=>a.x-b.x)[0];
-  if(cand){
-    cand.pos=1; sGood(); drawOrcTag(cand);
-    if(cand.pos>=cand.word.length){ killOrc(cand); }
-    else { state.lock=cand; cand.el.classList.add("locked"); }
-  } else { sBad(); flash("bad"); }
-}
-function killOrc(o){
-  o.dead=true;
-  if(state.lock===o) state.lock=null;
-  /* lightning from hero to orc */
-  zapTo(o);
-  sZap(); burstAt(o.el);
-  o.el.classList.add("diefx");
-  setTimeout(()=>o.el.remove(),300);
-  state.kills++;
-  state.score+=o.word.length*10;
-  if(state.score>bestOf(kid,"orc")){progress[kid].best.orc=state.score;}
-  saveProgress();
-  orcHud();
-}
-function zapTo(o){
-  const st=document.getElementById("stage");
-  const z=document.createElement("div"); z.className="zap";
-  const x1=70, y1=st.clientHeight/2, x2=o.x+20, y2=o.y+40;
-  const len=Math.hypot(x2-x1,y2-y1), ang=Math.atan2(y2-y1,x2-x1);
-  z.style.cssText+=`left:${x1}px;top:${y1}px;width:${len}px;transform:rotate(${ang}rad)`;
-  st.appendChild(z);
-  setTimeout(()=>z.remove(),200);
-}
-function finishOrc(){
-  state.running=false;
-  if(state.raf) cancelAnimationFrame(state.raf); state.raf=null;
-  const prevBest=bestOf(kid,"orc");
-  const isBest=state.score>=prevBest&&state.score>0;
-  if(state.score>prevBest) progress[kid].best.orc=state.score;
-  saveProgress();
-  burst(40);
-  const ov=document.createElement("div"); ov.className="overlay";
-  ov.innerHTML=`<div class="card">
-    <h3 style="color:${KIDS[kid].color}">${isBest?"🏆 New best!":"⚔️ Battle over!"}</h3>
-    <div class="big" style="color:${KIDS[kid].color}">${state.score}</div>
-    <p>points · ${state.kills} orcs defeated${isBest?"":` · best ${prevBest}`}</p>
-    <button class="btn" id="again" style="background:${KIDS[kid].raw};color:#1c1436">Fight again ⚔️</button>
-    <button class="btn small" id="ovhome" style="margin-left:8px">Heroes</button>
-  </div>`;
-  document.body.appendChild(ov);
-  ov.querySelector("#again").onclick=()=>{ov.remove();startGame(kid,"orc");};
-  ov.querySelector("#ovhome").onclick=()=>{ov.remove();goHome();};
-}
-
-/* ---- MODE: BIG MACHINES (Lucien: 🏎️ race · 🚜 dig · 🚁 fly) ---- */
-const NUM_EN=["","one","two","three","four","five","six","seven","eight","nine"];
-const NUM_FR=["","un","deux","trois","quatre","cinq","six","sept","huit","neuf"];
-const MCH_WORDS=()=>ALL_WORDS.filter(w=>w[0].length<=4&&!w[0].includes(" "));
-function initMachines(){
-  state={round:0,wins:0,running:true,kind:null};
-  nextMachine();
-}
-function nextMachine(){
-  const kinds=["race","dig","heli"];
-  state.kind=kinds[state.round%3]; state.round++;
-  if(state.kind==="race") mchRace();
-  else if(state.kind==="dig") mchDig();
-  else mchHeli();
-  hud([{k:"Wins",v:state.wins,c:KIDS[kid].raw},{k:"Stars",v:progress[kid].stars}]);
-}
-function mchRace(){
-  const [en,em,fr]=rand(MCH_WORDS());
-  state.word=en; state.pos=0; state.em=em; state.fr=fr;
-  document.getElementById("stage").innerHTML=
-    `<div class="cue">🏎️ Type the letters to race to the flag!</div>
-     <div class="word-em" style="font-size:44px">${em}</div>
-     <div class="word" id="mword"></div>
-     <div class="vfr" style="font-size:18px">${fr}</div>
-     <div class="mch-track"><span class="mch-car" id="car" style="left:0%">🏎️</span>
-       <span class="mch-flag">🏁</span></div>
-     <div class="msg" id="msg"></div>`;
-  drawMchWord(); say(en);
-}
-function drawMchWord(){
-  const el=document.getElementById("mword"); if(!el)return;
-  el.innerHTML=state.word.split("").map((c,i)=>
-    `<span class="${i<state.pos?'done':i===state.pos?'cur':'todo'}">${c}</span>`).join("");
-  const car=document.getElementById("car");
-  if(car) car.style.left=(state.pos/state.word.length*82)+"%";
-  highlightTarget(state.word[state.pos]);
-}
-function mchDig(){
-  const n=1+Math.floor(Math.random()*9);
-  state.num=n;
-  document.getElementById("stage").innerHTML=
-    `<div class="cue">🚜 How many stones did the excavator dig up?</div>
-     <div class="mch-row"><span class="mch-digger" id="digger">🚜</span></div>
-     <div class="mch-row" id="stones">${"🪨".repeat(n)}</div>
-     <div class="bigletter" style="font-size:64px;color:${KIDS[kid].color}" id="dignum">?</div>
-     <div class="msg" id="msg">Press the number!</div>`;
-  highlightTarget(String(n));
-}
-function mchHeli(){
-  const letter=rand(Object.keys(LETTERS));
-  state.letter=letter;
-  const [em,...w]=LETTERS[letter].split(" ");
-  document.getElementById("stage").innerHTML=
-    `<div class="cue">🚁 Press the key to lift the cargo!</div>
-     <div class="mch-row"><span class="mch-lift" id="heli" style="opacity:0">🚁</span></div>
-     <div class="mch-lift" id="cargo">
-       <div class="bigletter" style="font-size:76px;color:${KIDS[kid].color}">${letter}</div>
-       <div class="picword"><span class="em">${em}</span>${w.join(" ")}</div>
-     </div>
-     <div class="msg" id="msg">Find the glowing key!</div>`;
-  highlightTarget(letter);
-}
-function mchWin(extraSay){
-  state.wins++; sWin(); burst(14); flash("ok");
-  hud([{k:"Wins",v:state.wins,c:KIDS[kid].raw},{k:"Stars",v:progress[kid].stars}]);
-  setTimeout(nextMachine,1300);
-}
-function machinesInput(ch){
-  if(state.kind==="race"){
-    if(ch===state.word[state.pos]){
-      state.pos++; sGood(); drawMchWord();
-      if(state.pos>=state.word.length){
-        const car=document.getElementById("car"); if(car)car.style.left="88%";
-        sayPair(state.word,state.fr); mchWin();
-      }
-    } else { sBad(); flash("bad"); }
-  } else if(state.kind==="dig"){
-    if(ch===String(state.num)){
-      const d=document.getElementById("digger"); if(d)d.classList.add("dig");
-      const el=document.getElementById("dignum");
-      if(el) el.textContent=state.num+" · "+NUM_EN[state.num]+" · "+NUM_FR[state.num];
-      sayPair(NUM_EN[state.num],NUM_FR[state.num]); mchWin();
-    } else if(/[1-9]/.test(ch)){ sBad(); flash("bad"); hint("Count the stones again! 🪨"); }
-  } else { /* heli */
-    if(ch.toUpperCase()===state.letter){
-      const h=document.getElementById("heli"),c=document.getElementById("cargo");
-      if(h){h.style.opacity="1"; setTimeout(()=>{h.classList.add("up"); if(c)c.classList.add("up");},250);}
-      say(state.letter);
-      mchWin();
-    } else { sBad(); flash("bad"); }
-  }
-}
-
-/* ---- MODE: WORD WIZARD (vocab) ---- */
-const vLevel=()=>settings.vocab.levels[kid]||"copy";
-const vPool=()=>vLevel()==="sentences"?SENT:ALL_WORDS;
-const vKey=w=>(vLevel()==="sentences"?"s:":"w:")+w;
-const vBox=w=>(progress[kid].vocab[vKey(w)]||0);
-const vMastered=w=>vBox(w)>=2;
-function packStats(){
-  const P=vPool(); return {done:P.filter(w=>vMastered(w[0])).length, total:P.length};
-}
-function buildVocabQueue(){
-  const P=vPool();
-  const fresh=shuffle(P.filter(w=>!vMastered(w[0])));
-  const review=shuffle(P.filter(w=>vMastered(w[0])));
-  return fresh.concat(review);
-}
-function pickPrompt(lvl){
-  /* what to show: picture / french / both */
-  if(lvl==="copy"||lvl==="recall") return "pic";
-  const r=Math.random();
-  if(lvl==="sentences") return r<.6?"fr":"both";
-  return r<.4?"fr":r<.7?"pic":"both";
-}
-function initVocab(){
-  if(settings.vocab.mode==="shop"){ initShop(); return; }
-  state={queue:buildVocabQueue(),qi:0,streak:0,sessionMastered:0,running:true};
-  nextVocab();
-}
-function nextVocab(){
-  if(state.qi>=state.queue.length){state.queue=buildVocabQueue();state.qi=0;}
-  const [en,em,fr,zh]=state.queue[state.qi];
-  const lvl=settings.vocab.levels[kid]||"copy";
-  state.word=en; state.em=em; state.fr=fr; state.zh=zh||""; state.pos=0; state.wrong=false;
-  state.firstTry=true; state.hintUsed=false;
-  state.revealed=(lvl==="copy")?en.length:0;
-  state.prompt=pickPrompt(lvl);
-  drawVocab(); vocabHud();
-  if(lvl==="copy") say(en);
-}
-function drawVocab(){
-  const lvl=settings.vocab.levels[kid]||"copy";
-  const showPic=(state.prompt!=="fr");
-  const showFr=((lvl==="translate"||lvl==="sentences")&&state.prompt!=="pic");
-  const wstyle=state.word.length>14?'style="font-size:clamp(22px,4.6vw,36px);letter-spacing:1px"':"";
-  const got=vPool().filter(w=>vMastered(w[0])).map(w=>w[1]);
-  const shelf=got.slice(0,28).join("")+(got.length>28?` +${got.length-28}`:"");
-  const cue=lvl==="copy"?"Type the word you see!"
-    :lvl==="recall"?"What is it in English?"
-    :lvl==="sentences"?"Say it in English! 💬"
-    :"Type it in English!";
-  document.getElementById("stage").innerHTML=
-    `<div class="cue">${cue}</div>
-     ${showPic?`<div class="word-em" style="font-size:56px">${state.em}</div>`:""}
-     ${showFr?`<div class="vfr">${state.fr}</div><div class="vzh">${state.zh}</div>`:""}
-     <div class="word" id="vword" ${wstyle}>${vocabSpans()}</div>
-     <div class="msg" id="msg"></div>
-     <div class="vrow">
-       <button class="btn small" id="sayBtn">🗣️ Say it</button>
-       ${lvl!=="copy"?`<button class="btn small" id="hintBtn">💡 Hint</button>`:""}
-     </div>
-     <div class="vshelf"><span class="lbl">YOUR COLLECTION</span>${shelf||"…"}</div>`;
-  document.getElementById("sayBtn").onclick=()=>say(state.word);
-  const hb=document.getElementById("hintBtn");
-  if(hb) hb.onclick=()=>{
-    state.hintUsed=true;
-    let r=Math.max(state.revealed,state.pos);
-    do{r++;}while(r<state.word.length&&state.word[r-1]===" ");
-    state.revealed=Math.min(r,state.word.length);
-    say(state.word);
-    redrawVocabWord();
-  };
-  highlightVocab();
-}
-function vocabSpans(){
-  const w=state.word;
-  return w.split("").map((c,i)=>{
-    if(i<state.pos) return `<span class="done">${c===" "?"&nbsp;":c}</span>`;
-    const shown=i<state.revealed;
-    const cls=(i===state.pos)?(state.wrong?"bad cur":"cur"):(shown?"hintl":"todo");
-    if(c===" ") return `<span class="${cls}">&nbsp;&nbsp;</span>`;
-    return `<span class="${cls}">${shown?c:"_"}</span>`;
-  }).join("");
-}
-function redrawVocabWord(){
-  const el=document.getElementById("vword"); if(el) el.innerHTML=vocabSpans();
-  highlightVocab();
-}
-function highlightVocab(){
-  const lvl=settings.vocab.levels[kid]||"copy";
-  /* only guide the next key when the letter is visible (copy or hinted) */
-  if(state.pos<state.revealed) highlightTarget(state.word[state.pos]);
-  else highlightSet([]);
-}
-function vocabHud(){
-  const st=packStats();
-  hud([{k:vLevel()==="sentences"?"Sentences":"Words",v:st.done+"/"+st.total,c:KIDS[kid].raw},
-    {k:"Streak",v:state.streak},
-    {k:"Stars",v:progress[kid].stars}]);
-}
-function vocabComplete(){
-  const success=state.firstTry&&!state.hintUsed;
-  const k=vKey(state.word), was=vMastered(state.word);
-  progress[kid].vocab[k]=success?Math.min(vBox(state.word)+1,3):Math.max(vBox(state.word)-1,0);
-  const now=vMastered(state.word);
-  state.streak=success?state.streak+1:0;
-  say(state.word); sWin(); burst(12); flash("ok");
-  if(now&&!was){
-    state.sessionMastered++;
-    bigFloat(state.em);
-  }
-  saveProgress();
-  if(!success){ /* missed → bring it back a few cards later */
-    state.queue.splice(state.qi+3,0,[state.word,state.em,state.fr,state.zh]);
-  }
-  state.qi++;
-  setTimeout(nextVocab,650);
-}
-/* ---- Potion Shop (timed vocab) ---- */
-function initShop(){
-  state={hp:3,score:0,served:0,streak:0,running:true,raf:null};
-  nextCustomer();
-}
-function shopDur(){
-  const lvl=settings.vocab.levels[kid]||"copy";
-  const base=lvl==="copy"?12:lvl==="recall"?14:lvl==="sentences"?26:16;
-  return base*(1.4-settings.vocab.speed*0.15)*1000;  /* ms */
-}
-function nextCustomer(){
-  const [en,em,fr,zh]=rand(vPool());
-  const lvl=settings.vocab.levels[kid]||"copy";
-  state.word=en; state.em=em; state.fr=fr; state.zh=zh||""; state.pos=0; state.wrong=false; state.firstTry=true;
-  state.revealed=(lvl==="copy")?en.length:0; state.hintUsed=false;
-  state.prompt=pickPrompt(lvl);
-  state.cust=rand(CUSTOMERS);
-  state.custStart=performance.now(); state.dur=shopDur();
-  drawShop(); shopHud();
-  if(lvl==="copy") say(en);
-  if(!state.raf) state.raf=requestAnimationFrame(shopLoop);
-}
-function drawShop(){
-  const lvl=settings.vocab.levels[kid]||"copy";
-  const showPic=(state.prompt!=="fr");
-  const showFr=((lvl==="translate"||lvl==="sentences")&&state.prompt!=="pic");
-  const wstyle=state.word.length>14?'style="font-size:clamp(22px,4.6vw,36px);letter-spacing:1px"':"";
-  const bub=[showPic?state.em:"",showFr?state.fr:"",lvl==="copy"?state.word:""]
-    .filter(Boolean).join("  ");
-  document.getElementById("stage").innerHTML=
-    `<div class="cue">Serve the customer before they leave! ⚗️</div>
-     <div class="word-em" style="font-size:54px">${state.cust}</div>
-     <div class="vbubble">${bub}${showFr?`<div class="vzh">${state.zh}</div>`:""}</div>
-     <div class="pbar"><div class="pfill" id="pfill" style="width:100%"></div></div>
-     <div class="word" id="vword" ${wstyle}>${vocabSpans()}</div>
-     <div class="msg" id="msg"></div>`;
-  highlightVocab();
-}
-function shopHud(){
-  hud([{k:"Lives",v:"❤️".repeat(Math.max(state.hp,0))||"💀",c:state.hp<=1?'var(--bad)':KIDS[kid].raw},
-    {k:"Score",v:state.score},
-    {k:"Served",v:state.served},
-    {k:"Best",v:bestOf(kid,"shop")}]);
-}
-function shopLoop(now){
-  if(!state.running) return;
-  const left=1-((now-state.custStart)/state.dur);
-  const f=document.getElementById("pfill");
-  if(f){f.style.width=Math.max(left*100,0)+"%";
-    f.style.background=left<.3?"var(--bad)":left<.6?"var(--gold)":"var(--ok)";}
-  if(left<=0){
-    /* customer walks away */
-    state.hp--; sHit(); flash("bad");
-    const k=vKey(state.word);
-    progress[kid].vocab[k]=Math.max(vBox(state.word)-1,0); saveProgress();
-    shopHud();
-    if(state.hp<=0){ finishShop(); return; }
-    hint(`It was "${state.word}" — ${state.em} ${state.fr}・${state.zh}`); say(state.word);
-    setTimeout(()=>{if(state.running)nextCustomer();},1400);
-    state.custStart=now+999999; /* pause bar until next customer */
-  }
-  state.raf=requestAnimationFrame(shopLoop);
-}
-function shopComplete(){
-  const left=Math.max(1-((performance.now()-state.custStart)/state.dur),0);
-  const pts=state.word.length*10+Math.round(left*20);
-  state.score+=pts; state.served++;
-  const k=vKey(state.word);
-  progress[kid].vocab[k]=Math.min(vBox(state.word)+1,3);
-  if(state.score>bestOf(kid,"shop")) progress[kid].best.shop=state.score;
-  saveProgress();
-  say(state.word); sWin(); burst(12); flash("ok");
-  shopHud();
-  state.custStart=performance.now()+999999;
-  setTimeout(()=>{if(state.running)nextCustomer();},600);
-}
-function finishShop(){
-  state.running=false;
-  if(state.raf) cancelAnimationFrame(state.raf); state.raf=null;
-  const prevBest=bestOf(kid,"shop");
-  const isBest=state.score>=prevBest&&state.score>0;
-  if(state.score>prevBest) progress[kid].best.shop=state.score;
-  saveProgress(); burst(40);
-  const ov=document.createElement("div"); ov.className="overlay";
-  ov.innerHTML=`<div class="card">
-    <h3 style="color:${KIDS[kid].color}">${isBest?"🏆 New best!":"⚗️ Shop closed!"}</h3>
-    <div class="big" style="color:${KIDS[kid].color}">${state.score}</div>
-    <p>points · ${state.served} customers served${isBest?"":` · best ${prevBest}`}</p>
-    <button class="btn" id="again" style="background:${KIDS[kid].raw};color:#1c1436">Open again ⚗️</button>
-    <button class="btn small" id="ovhome" style="margin-left:8px">Heroes</button>
-  </div>`;
-  document.body.appendChild(ov);
-  ov.querySelector("#again").onclick=()=>{ov.remove();initShop();};
-  ov.querySelector("#ovhome").onclick=()=>{ov.remove();goHome();};
-}
-/* ---- vocab input (both modes) ---- */
-function vocabInput(ch){
-  if(!state.running&&settings.vocab.mode==="shop") return;
-  if(state.word==null||state.pos>=state.word.length) return;
-  if(ch===state.word[state.pos]){
-    state.pos++; state.wrong=false; sGood();
-    redrawVocabWord();
-    if(state.pos>=state.word.length){
-      if(settings.vocab.mode==="shop") shopComplete(); else vocabComplete();
-    }
-  } else {
-    state.wrong=true; state.firstTry=false; sBad(); flash("bad");
-    redrawVocabWord();
-    hint(settings.vocab.mode==="shop"?"Oops, try again!":"Not quite — 💡 Hint can help!");
-  }
-}
+/* Legacy orc, machines, and vocab game bodies removed in slice 20 — now in js/games/. */
 
 /* ============ INPUT ============ */
 function handleInput(ch){
   pressFx(ch);
   if(currentGame&&currentGame.key){ try{currentGame.key(ch);}catch(e){} return; }
-  if(level==="orc"){ orcInput(ch); return; }
-  if(level==="vocab"){ vocabInput(ch); return; }
-  if(level==="machines"){ machinesInput(ch); return; }
 }
 
 /* ============ FX ============ */
