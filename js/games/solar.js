@@ -9,6 +9,8 @@ import { buildMission, grade } from "./solar-quiz.js";
 var R = null;
 var STAR_TINTS = ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFE9C8", "#FFE9C8", "#C9D6FF"];
 var AVAILABLE_PHOTOS = {};
+AVAILABLE_PHOTOS[SOLAR.photo] = true;
+PLANETS.forEach(function (p) { AVAILABLE_PHOTOS[p.photo] = true; });
 
 /* ====== Pure helpers (exported for testing) ====== */
 

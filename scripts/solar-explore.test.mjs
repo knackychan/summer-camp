@@ -30,7 +30,7 @@ test("solar module exports the expected contract without touching vendor files",
   assert.equal(solar.bodyOpacity("earth", "earth"), 1);
   assert.equal(solar.bodyOpacity("earth", "sun"), 0.82);
   assert.equal(solar.bodyOpacity("earth", "mars"), 0.55);
-  assert.equal(solar.photoIsVendored("assets/solar/sun.jpg"), false);
+  assert.equal(solar.photoIsVendored("assets/solar/sun.jpg"), true);
   assert.deepEqual(solar.bodyNamePair(earth), ["Earth", "\u5730\u7403"]);
 
   /* Module default export matches the manifest */
