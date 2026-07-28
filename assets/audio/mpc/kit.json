@@ -1,0 +1,17 @@
+{
+  "name": "808-Style Kit",
+  "samples": {
+    "kick":      { "file": "kick.wav",       "gain": 1.0,  "label": { "en": "Kick",    "tz": "\u8E22\u9F13" } },
+    "snare":     { "file": "snare.wav",      "gain": 0.9,  "label": { "en": "Snare",   "tz": "\u5C0F\u9F13" } },
+    "clap":      { "file": "clap.wav",       "gain": 0.8,  "label": { "en": "Clap",    "tz": "\u62CD\u624B" } },
+    "rim":       { "file": "rimshot.wav",    "gain": 1.0,  "label": { "en": "Rim",     "tz": "\u908A\u6A94" } },
+    "hat-closed":{ "file": "hat-closed.wav", "gain": 0.7,  "label": { "en": "Hat \u25B6", "tz": "\u8E34\u9434\u95DC" } },
+    "hat-open":  { "file": "hat-open.wav",   "gain": 0.6,  "label": { "en": "Hat \u25BC", "tz": "\u8E34\u9434\u958B" } },
+    "tom-low":   { "file": "tom-low.wav",    "gain": 0.9,  "label": { "en": "Tom Lo",  "tz": "\u4F4E\u9F13" } },
+    "tom-high":  { "file": "tom-high.wav",   "gain": 0.9,  "label": { "en": "Tom Hi",  "tz": "\u9AD8\u9F13" } },
+    "crash":     { "file": "crash.wav",      "gain": 0.5,  "label": { "en": "Crash",   "tz": "\u91A3\u93C3" } },
+    "cowbell":   { "file": "cowbell.wav",    "gain": 0.8,  "label": { "en": "Bell",    "tz": "\u7D1B\u9418" } },
+    "shaker":    { "file": "shaker.wav",     "gain": 0.7,  "label": { "en": "Shaker",  "tz": "\u6C99\u939A" } },
+    "zap":       { "file": "zap.wav",        "gain": 0.7,  "label": { "en": "Zap!",    "tz": "\u562F\u562F" } }
+  }
+}

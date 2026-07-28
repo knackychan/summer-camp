@@ -267,6 +267,9 @@ body.game-mode .wrap{max-width:none;width:100%}
 @media(min-width:600px){
   body.game-mode{overflow:hidden}
   body.game-mode .wrap{height:100vh;height:100dvh;padding:10px 12px}
+  /* Music Room takes the same full-bleed wrap as game mode — .wrap's 20/40px
+     padding is what made a 100dvh instrument scroll (D13: nothing scrolls). */
+  body.music-mode .wrap{height:100vh;height:100dvh;padding:10px 12px;max-width:none;width:100%}
   #game:not(.hidden){display:grid;grid-template-columns:clamp(142px,16vw,210px) minmax(0,1fr);
     grid-template-rows:auto auto minmax(0,1fr) auto;gap:10px 12px;height:calc(100vh - 20px);
     height:calc(100dvh - 20px);max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px)}
@@ -346,6 +349,82 @@ body.game-mode .wrap{max-width:none;width:100%}
 .qout{font-family:'Fredoka';font-weight:600;font-size:clamp(18px,4vw,24px);color:var(--gold)}
 .timerbig{font-family:'Fredoka';font-weight:700;font-size:64px;margin:6px 0}
 button:disabled{cursor:default}
+
+/* ---------- MUSIC ROOM ---------- */
+/* D13: one landscape screen, nothing scrolls. The stage takes the height left
+   over after the topbar and clips — an instrument shrinks, it never scrolls. */
+#music{height:100%;overflow:hidden}
+body.music-mode{overflow:hidden}
+.music-shell{display:flex;flex-direction:column;height:100%;padding:0 8px 8px}
+.music-stage{flex:1;min-height:0;width:100%;position:relative;overflow:hidden;
+  background:#1B1A24;border:2px solid var(--line);border-radius:14px}
+
+/* ---------- BOOK READER ---------- */
+#book{min-height:calc(100vh - 60px)}
+.book-shell{display:flex;flex-direction:column;min-height:calc(100vh - 120px)}
+.book-title{font-family:'Fredoka';font-weight:700;color:var(--gold)}
+.book-count{font-family:'Fredoka';font-weight:700;font-size:13px;background:var(--panel);border:2px solid var(--line);
+  border-radius:999px;padding:6px 12px;color:var(--ink)}
+.book-stage{flex:1;width:100%;display:flex;align-items:center;justify-content:center;padding:4px 0;overflow:hidden}
+.book{width:100%;height:min(62vh,620px);display:flex;align-items:stretch;background:#2A2650;border-radius:12px;
+  box-shadow:0 6px 28px rgba(0,0,0,.4),0 2px 8px rgba(124,111,247,.15);overflow:hidden;position:relative;
+  transition:opacity .18s,transform .18s}
+.book.turning{opacity:.4;transform:scale(.97)}
+@media(prefers-reduced-motion:reduce){.book{transition:none}}
+.book-page-left{flex:1 1 50%;display:flex;flex-direction:column;padding:20px 12px 20px 20px;gap:10px;
+  overflow-y:auto;min-width:0;background:linear-gradient(135deg,#2A2650,#312B5E);border-right:1px solid var(--line)}
+.book-page-left h2{font-family:'Fredoka';font-weight:600;font-size:1.55rem;line-height:1.15;color:var(--ink)}
+.book-title-zh{font-size:.95rem;color:var(--muted);font-weight:700;margin-top:2px}
+.book-type{display:inline-block;background:var(--accent,var(--luis));color:#fff;padding:3px 12px;border-radius:20px;
+  font-size:.68rem;font-weight:800;font-family:'Fredoka';letter-spacing:.06em;width:fit-content}
+.book-facts{display:flex;flex-direction:column;gap:10px;flex:1}
+.book-fact{background:rgba(255,255,255,.04);border-radius:14px;padding:12px 14px;line-height:1.45}
+.book-fact .en{font-weight:800;font-size:.95rem;margin-bottom:3px}
+.book-fact .zh{color:var(--muted);font-size:.82rem;font-weight:700}
+.book-page-num{font-family:'Fredoka';font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin-top:auto;padding-top:8px}
+.book-spine{width:3px;flex-shrink:0;background:linear-gradient(to right,rgba(0,0,0,.3),var(--line),rgba(0,0,0,.3))}
+.book-photo{flex:1 1 50%;display:flex;flex-direction:column;position:relative;overflow:hidden;min-width:0;background:var(--bg);cursor:pointer}
+.book-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.book-emoji{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:8rem}
+.book-photo img.error+.book-emoji{display:flex}
+.book-photo-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.82),transparent);
+  padding:32px 16px 16px;pointer-events:none}
+.book-photo-name{font-size:1.3rem;font-weight:800;font-family:'Fredoka'}
+.book-photo-zh{font-size:.85rem;color:var(--muted);font-weight:700}
+.book-photo-tap{font-size:.7rem;color:var(--muted);font-weight:800;opacity:.75;margin-top:4px}
+.book-nav{display:flex;align-items:center;gap:8px;justify-content:center;padding:8px 0 12px;width:100%}
+.book-nav .arrow{font-size:1.3rem;padding:8px;border-radius:50%;width:48px;height:48px;justify-content:center}
+.book-pager{font-family:'Fredoka';font-size:.88rem;color:var(--muted);min-width:80px;text-align:center}
+.book-progress{display:flex;gap:3px;justify-content:center;align-items:center;flex-wrap:wrap;max-width:360px}
+.book-progress .bdot{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.book-progress .bdot.on{background:var(--accent,var(--luis));width:8px;height:8px}
+.book-gridview{width:100%;flex:1;overflow-y:auto;padding:8px 0;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start}
+.book-gridcard{width:calc(25% - 8px);min-width:90px;max-width:150px;aspect-ratio:1;border-radius:16px;background:var(--panel);
+  border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;
+  overflow:hidden;position:relative;touch-action:manipulation}
+.book-gridcard:active{transform:scale(.93);border-color:var(--accent,var(--luis))}
+.book-gridcard.current{border-color:var(--accent,var(--luis));box-shadow:0 0 12px rgba(124,111,247,.4)}
+.book-gridcard img{width:100%;height:50%;object-fit:cover}
+.book-gridcard .emoji{font-size:2rem;line-height:1}
+.book-gridcard .gname{font-size:.75rem;font-weight:800;font-family:'Fredoka';text-align:center;line-height:1.15;padding:0 4px}
+.book-gridcard .gname .zh{display:block;font-size:.65rem;color:var(--muted);font-weight:700}
+.book-zoom{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.book-zoom img{max-width:96vw;max-height:74vh;border-radius:14px;object-fit:contain}
+.book-zoom .z-close{position:absolute;top:16px;right:16px;width:48px;height:48px;border-radius:50%;background:var(--panel);color:var(--ink);
+  border:none;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;z-index:101}
+.book-zoom .z-cap{color:var(--muted);margin-top:14px;font-size:.85rem;font-weight:800}
+.book-zoom .z-hint{color:var(--muted);font-size:.7rem;font-weight:800;opacity:.75;margin-top:6px}
+@media(max-width:560px){
+  .book{height:calc(100vh - 190px);flex-direction:column}
+  .book-page-left{flex:0 0 auto;max-height:48%;border-right:none;border-bottom:1px solid var(--line);padding:14px 14px 10px}
+  .book-photo{flex:1 1 auto}
+  .book-spine{width:100%;height:3px}
+  .book-page-left h2{font-size:1.25rem}
+  .book-fact{padding:10px 12px}
+  .book-fact .en{font-size:.88rem}
+  .book-fact .zh{font-size:.76rem}
+  .book-gridcard{width:calc(33.333% - 8px)}
+}
 
 /* ---------- MY DAY ---------- */
 .dayprog{position:relative;height:30px;background:var(--panel);border:2px solid var(--line);
@@ -536,6 +615,8 @@ button:disabled{cursor:default}
       <button class="chip" data-t="games">🎮 Games 遊戲</button>
       <button class="chip" data-t="acts">🏕️ Activities 活動</button>
       <button class="chip" data-t="learn">🧭 Learn 學習</button>
+      <button class="chip" data-t="books">📚 Books 書籍</button>
+      <button class="chip" data-t="music">🎵 Music 音樂</button>
       <button class="chip" data-t="ask">💬 Ask 求助<span class="badge hidden" id="askBadge">0</span></button>
       <button class="chip hidden" id="captainTab" data-t="captain">👑 Captain 隊長</button>
     </div>
@@ -607,6 +688,23 @@ button:disabled{cursor:default}
       </div>
       <div class="asklist" id="claimList"></div>
     </div>
+    <div id="tab-books" class="hidden">
+      <div class="bigcard">
+        <h3>📚 Pick a Book <span class="zhs" style="font-size:14px">選一本書來讀</span></h3>
+        <div class="bankgrid" id="bookGrid"></div>
+      </div>
+    </div>
+    <div id="tab-music" class="hidden">
+      <div class="bigcard">
+        <h3>🎵 Music Room <span class="zhs" style="font-size:14px">音樂室——選一種樂器</span></h3>
+        <div class="bankgrid" id="musicGrid"></div>
+        <div class="tipline">Instruments fill the screen — turn the tablet sideways · 樂器會佔滿螢幕——把平板轉成橫的</div>
+      </div>
+      <div class="bigcard">
+        <h3>🎚️ Tap Test <span class="zhs" style="font-size:14px">敲擊測試——量這台平板的延遲</span></h3>
+        <div id="calibBody"></div>
+      </div>
+    </div>
   </section>
 
   <!-- ACTIVITY DETAIL -->
@@ -634,6 +732,40 @@ button:disabled{cursor:default}
       <div class="kb" id="kb"></div>
     </div>
   </section>
+
+  <!-- INSTRUMENT — full-bleed so D13 (fills the screen, nothing scrolls) can hold -->
+  <section id="music" class="hidden">
+    <div class="music-shell">
+      <div class="topbar">
+        <button class="btn" id="musicBack">← Music 音樂</button>
+        <span class="book-title" id="musicTitle"></span>
+        <div class="spacer"></div>
+        <button class="btn small mute" id="musicMute">🔊</button>
+      </div>
+      <div class="music-stage" id="musicStage"></div>
+    </div>
+  </section>
+
+  <!-- BOOK -->
+  <section id="book" class="hidden">
+    <div class="book-shell">
+      <div class="topbar">
+        <button class="btn" id="bookBack">← Books 書籍</button>
+        <span class="book-title" id="bookTitle"></span>
+        <span class="book-count" id="bookCount"></span>
+        <div class="spacer"></div>
+        <button class="btn small" id="bookViewToggle">All Pages 全部頁面</button>
+      </div>
+      <section class="book-stage" id="bookStage"><div class="book" id="bookSpread"></div></section>
+      <div class="book-nav" id="bookNav">
+        <button class="btn arrow" id="bookPrev" aria-label="Previous page 上一頁">◀</button>
+        <span class="book-pager" id="bookPager"></span>
+        <div class="book-progress" id="bookProgress"></div>
+        <button class="btn arrow" id="bookNext" aria-label="Next page 下一頁">▶</button>
+      </div>
+      <div class="book-gridview hidden" id="bookGridView"></div>
+    </div>
+  </section>
 </div>
 <canvas id="confetti"></canvas>
 
@@ -652,6 +784,13 @@ button:disabled{cursor:default}
 <script src="js/brain-core.js"></script>
 <script src="js/brain-audio-cues.js"></script>
 <script src="js/brain-ui.js"></script>
+<script src="js/books/space-data.js"></script>
+<script src="js/books/animals-data.js"></script>
+<script src="js/books/giraffe-data.js"></script>
+<script src="js/books/science-data.js"></script>
+<script src="js/books/race-cars-data.js"></script>
+<script src="js/books/construction-data.js"></script>
+<script src="js/books/public-vehicles-data.js"></script>
 <script type="module" src="js/main.js"></script>
 <script>
 /* ============ DATA ============ */
@@ -698,10 +837,14 @@ function gameMeta(id){
 }
 function allGameIds(){
   /* Manifest order is the documented grid order (js/games/CLAUDE.md); fall back
-     to Object.keys(LEVELS) only when main.js hasn't published yet. */
+     to Object.keys(LEVELS) only when main.js hasn't published yet.
+     Instruments carry music:true and belong to the Music Room, not the arcade. */
   if(window.SQManifest && window.SQManifest.length)
-    return window.SQManifest.map(e=>e.id);
+    return window.SQManifest.filter(e=>!e.music).map(e=>e.id);
   return Object.keys(LEVELS);
+}
+function musicIds(){
+  return (window.SQManifest||[]).filter(e=>e.music).map(e=>e.id);
 }
 function renderGameSwitcher(id,lvl){
   document.getElementById("levelChips").innerHTML=allGameIds().map(k=>{
@@ -1207,6 +1350,49 @@ function startGame(id,lvl){
   startLegacy(lvl);
 }
 
+/* The ctx every registry-native game receives (design.md §3). Built in one place
+   because there are now two hosts — the arcade stage and the Music Room — and a
+   game must see the same contract whichever mounted it. */
+function gameCtx(mountEl,game,kidId){
+  var H=window.SQHost, p=progress[kidId]||{};
+  return {
+    kid:kidId, mount:mountEl, stage:mountEl,
+    hud:hud, say:say, sayPair:sayPair, sfx:H.sfx, keys:H.keys, fx:H.fx,
+    settings:settings, rand:rand, shuffle:shuffle,
+    kids:KIDS, best:bestOf(kidId,game.bestKey||""),
+    stars:p.stars||0,
+    words:{easy:WORDS_EASY, hard:ALL_WORDS, all:ALL_WORDS, sentences:SENT, letters:LETTERS},
+    finish:function(res){ finishRegistered(game,res,kidId); },
+    saveProgress:saveProgress,
+    vocab:p.vocab||{}
+  };
+}
+
+/* Run a game module into a mount, managing the loading message. The host owns
+   that message, so the host also takes it down — a game that appends its own DOM
+   without clearing the mount used to leave "Loading…" on screen for good. */
+function runRegistered(game,mountEl,kidId){
+  var msg=document.createElement("div");
+  msg.className="msg";
+  msg.textContent="Loading... 載入中";
+  mountEl.innerHTML="";
+  mountEl.appendChild(msg);
+  var clear=function(){ if(msg.parentNode)msg.parentNode.removeChild(msg); };
+  var result;
+  try{ result=game.init(gameCtx(mountEl,game,kidId)); }
+  catch(err){
+    console.error("game init failed: "+game.id,err);
+    msg.textContent="Still loading... 還在載入中";
+    return;
+  }
+  if(result&&result.then){
+    result.then(clear,function(err){
+      console.error("game init failed: "+game.id,err);
+      msg.textContent="Still loading... 還在載入中";
+    });
+  }else clear();
+}
+
 /* Hand off to a migrated game module (design.md §3). */
 function startRegistered(game){
   currentGame=game;
@@ -1214,33 +1400,17 @@ function startRegistered(game){
   var H=window.SQHost;
   var st=H.stage();
   st.classList.add("arena");
-  st.innerHTML='<div class="msg">Loading... 載入中</div>';
-  var result=game.init({
-    kid:kid, mount:H.mount(), stage:H.stage(),
-    hud:hud, say:say, sayPair:sayPair, sfx:H.sfx, keys:H.keys, fx:H.fx,
-    settings:settings, rand:rand, shuffle:shuffle,
-    kids:KIDS, best:bestOf(kid,game.bestKey||""),
-    stars:progress[kid].stars||0,
-    words:{easy:WORDS_EASY, hard:ALL_WORDS, all:ALL_WORDS, sentences:SENT, letters:LETTERS},
-    finish:function(res){ finishRegistered(game,res); },
-    saveProgress:saveProgress,
-    vocab:progress[kid]?(progress[kid].vocab||{}):{}
-  });
-  if(result&&result.catch){
-    result.catch(function(err){
-      console.error("game init failed: "+game.id,err);
-      st.innerHTML='<div class="msg">Still loading... 還在載入中</div>';
-    });
-  }
+  runRegistered(game,H.mount(),kid);
 }
 
-function finishRegistered(game,res){
+function finishRegistered(game,res,kidId){
   if(!game.bestKey||!res||typeof res.score!=="number")return;
-  var p=progress[kid];
+  var k=kidId||kid, p=progress[k];
+  if(!p)return;
   if(res.score>(p.best[game.bestKey]||0)){
     p.best[game.bestKey]=res.score;
     saveProgress();
-    if(store)store.setStat(kid,game.bestKey,res.score);
+    if(store)store.setStat(k,game.bestKey,res.score);
   }
 }
 
@@ -1487,6 +1657,10 @@ function catLockReason(id,cat){
   return v||null;
 }
 function tabLocked(cat){
+  /* Books and Music are never category-locked: reading and practising an
+     instrument are not screen time. Papa can still pause the whole app (slice 08).
+     To gate music like games, delete it from this line. */
+  if(cat==="books"||cat==="music")return false;
   return !!(hubKid&&cat!=="day"&&catLockReason(hubKid,cat));
 }
 function lockedCategoryMessage(cat){
@@ -1573,8 +1747,10 @@ addEventListener("keyup",e=>{
 document.getElementById("back").onclick=goHome;
 function toggleMute(){sound=!sound;
   document.getElementById("mute").textContent=sound?"🔊":"🔇";
+  document.getElementById("musicMute").textContent=sound?"🔊":"🔇";
   document.getElementById("muteHome").textContent="🔊 Sound: "+(sound?"On":"Off");}
 document.getElementById("mute").onclick=toggleMute;
+document.getElementById("musicMute").onclick=toggleMute;
 document.getElementById("muteHome").onclick=toggleMute;
 document.getElementById("papaBtn").onclick=function(){SQPapa.open();};
 
@@ -1663,9 +1839,12 @@ function actsToday(id){
   return P.actsDay.done;
 }
 function showOnly(id){
-  ["home","game","hub","act"].forEach(x=>
+  ["home","game","hub","act","book","music"].forEach(x=>
     document.getElementById(x).classList.toggle("hidden",x!==id));
   setGameMode(id==="game");
+  /* music-mode is what gives .wrap a viewport height — without it the instrument
+     stage has no height to fill and collapses (D13). */
+  document.body.classList.toggle("music-mode",id==="music");
 }
 function setGameMode(on){
   document.body.classList.toggle("game-mode",!!on);
@@ -2010,11 +2189,15 @@ function renderHub(){
   document.getElementById("tab-learn").classList.toggle("hidden",hubTab!=="learn");
   document.getElementById("tab-ask").classList.toggle("hidden",hubTab!=="ask");
   document.getElementById("tab-captain").classList.toggle("hidden",hubTab!=="captain");
+  document.getElementById("tab-books").classList.toggle("hidden",hubTab!=="books");
+  document.getElementById("tab-music").classList.toggle("hidden",hubTab!=="music");
   refreshLockUI();
   if(hubTab==="learn") renderLearn();
   if(hubTab==="day") renderMyDay();
   if(hubTab==="ask") renderAsk();
   if(hubTab==="captain") renderCaptain();
+  if(hubTab==="books") renderBooks();
+  if(hubTab==="music") renderMusic();
   /* games — today's Brain Gym trio first (it is the door), then the kid's own game.
      Source-of-truth for the row is now the manifest (allGameIds), so a
      registry-native game like solar — which has no inline LEVELS entry — still
@@ -2290,6 +2473,260 @@ async function sendHelpClaim(){
   sGood(); await store.hydrate(); renderCaptain();
 }
 
+/* ============ BOOKS TAB ============ */
+var BOOK_SHELF = [
+  { id: "space", icon: "🪐", titleEN: "Space", titleZH: "太空", blurbEN: "Planets, moons, stars, and galaxies", blurbZH: "行星、衛星、恆星和銀河", file: "books/space.html", data: "SPACE_CARDS", ready: true },
+  { id: "animals", icon: "🐾", titleEN: "Animals", titleZH: "動物", blurbEN: "Wildlife from around the world", blurbZH: "世界各地的動物", file: "books/animals.html", data: "ANIMALS_CARDS", ready: false },
+  { id: "giraffe", icon: "🦒", titleEN: "Giraffe", titleZH: "長頸鹿", blurbEN: "Necks, spots, calves, and savanna life", blurbZH: "脖子、斑點、小長頸鹿和草原生活", file: "books/giraffe.html", data: "GIRAFFE_CARDS", ready: true },
+  { id: "science", icon: "🔬", titleEN: "Science", titleZH: "科學", blurbEN: "How things work", blurbZH: "事物如何運作", file: "books/science.html", data: "SCIENCE_CARDS", ready: false },
+  { id: "race-cars", icon: "🏎️", titleEN: "Race Cars", titleZH: "賽車", blurbEN: "Fast cars and racing machines", blurbZH: "快車和賽車機器", file: "books/race-cars.html", data: "RACE_CARS", ready: false },
+  { id: "construction", icon: "🏗️", titleEN: "Construction", titleZH: "工地", blurbEN: "Big machines and building sites", blurbZH: "大機器和工地", file: "books/construction.html", data: "CONSTRUCTION_CARDS", ready: false },
+  { id: "public-vehicles", icon: "🚑", titleEN: "Public Vehicles", titleZH: "公共車輛", blurbEN: "Helpful vehicles in the city", blurbZH: "城市裡幫忙的車輛", file: "books/public-vehicles.html", data: "PUBLIC_VEHICLES_CARDS", ready: false },
+];
+var bookState={id:null,idx:0,cards:[],grid:false};
+function bookById(id){return BOOK_SHELF.find(function(b){return b.id===id;})||null;}
+function canOpenBook(b){return !!(b&&Array.isArray(window[b.data])&&window[b.data].length);}
+function bookEscape(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
+function bookPhoto(src){return String(src||"").replace(/^\.\.\//,"");}
+function renderBooks(){
+  var g=document.getElementById("bookGrid"),html="";
+  BOOK_SHELF.forEach(function(b){
+    var open = canOpenBook(b);
+    html+='<article class="gamecard'+(open?'':' locked')+'" style="'+(open?'cursor:pointer':'')+'" data-book="'+b.id+'">'+
+      '<span class="gi">'+b.icon+'</span><b>'+b.titleEN+'</b><small class="zhs">'+b.titleZH+'</small>'+
+      '<small>'+b.blurbEN+'<span class="zhs">'+b.blurbZH+'</span></small>'+
+      (open ? '<small style="color:var(--ok)">Read now · 開始閱讀</small>' : '<small style="color:var(--muted)">Coming soon · 即將推出</small>')+
+    '</article>';
+  });
+  g.innerHTML=html;
+  g.querySelectorAll(".gamecard[data-book]").forEach(function(card){
+    card.onclick=function(){
+      var b=bookById(card.dataset.book);
+      if(canOpenBook(b)) openBook(b.id);
+    };
+  });
+}
+/* ---- MUSIC ROOM (design.md D15, superseding D1's "not a new section") ----
+   Instruments are still registry games loaded through SQLoadGame; only the shell
+   differs. The arcade stage cannot satisfy D13 — it spends 229px on the game
+   switcher and caps the stage height — so the Music Room hosts them full-bleed. */
+let currentInstrument=null;
+function renderMusic(){
+  var g=document.getElementById("musicGrid");
+  g.innerHTML=musicIds().map(function(id){
+    var m=gameMeta(id); if(!m)return "";
+    return '<button class="gamecard" data-inst="'+id+'">'+
+      '<span class="gi">'+m.icon+'</span><b>'+m.title+'</b>'+
+      '<small>'+m.blurb+'<span class="zhs">'+m.tz+'</span></small></button>';
+  }).join("")||'<div class="tipline">No instruments yet · 還沒有樂器</div>';
+  g.querySelectorAll(".gamecard[data-inst]").forEach(function(c){
+    c.onclick=function(){ openInstrument(c.dataset.inst); };
+  });
+  renderCalib();
+}
+function openInstrument(id){
+  var m=gameMeta(id); if(!m)return;
+  stopArena(); stopActTimer(); closeInstrument(true);
+  hubTab="music";
+  document.getElementById("musicTitle").textContent=m.icon+" "+m.title+" · "+m.tz;
+  document.documentElement.style.setProperty("--accent",hubKid&&KIDS[hubKid]?KIDS[hubKid].color:"var(--luis)");
+  showOnly("music"); saveAppPlace("music");
+  var stage=document.getElementById("musicStage");
+  if(!window.SQLoadGame){ stage.innerHTML='<div class="msg">Still loading... 還在載入中</div>'; return; }
+  var pending=window.SQLoadGame(id);
+  if(!pending){ stage.innerHTML='<div class="msg">Still loading... 還在載入中</div>'; return; }
+  pending.then(function(game){
+    if(!game){ stage.innerHTML='<div class="msg">Still loading... 還在載入中</div>'; return; }
+    currentInstrument=game;
+    runRegistered(game,stage,hubKid);
+  });
+}
+function closeInstrument(quiet){
+  if(currentInstrument&&currentInstrument.stop){
+    try{currentInstrument.stop();}catch(e){console.error(e);}
+  }
+  currentInstrument=null;
+  document.getElementById("musicStage").innerHTML="";
+  if(quiet)return;
+  hubTab="music";
+  showOnly("hub"); saveAppPlace("hub"); renderHub();
+}
+
+/* Slice 38's tap test — the gate the plan says must be measured before the
+   trainer is built. calibrate() was headless with no caller; this is the caller. */
+let calibRun=null;
+function renderCalib(){
+  var body=document.getElementById("calibBody");
+  var known=null;
+  try{
+    var raw=localStorage.getItem("sq.music.latency");
+    if(raw)known=JSON.parse(raw);
+  }catch(e){}
+  body.innerHTML=
+    '<div class="tipline">Tap the pad on every click — 8 clicks. 每一聲都敲一下——共 8 聲。</div>'+
+    '<button class="btn" id="calibStart" style="min-height:56px;width:100%">▶️ Start tap test 開始測試</button>'+
+    '<div id="calibPad" class="hidden" style="height:120px;border-radius:14px;border:3px solid var(--line);'+
+      'background:var(--panel);display:flex;align-items:center;justify-content:center;font-family:Fredoka;'+
+      'font-weight:700;font-size:18px;touch-action:none;user-select:none;margin-top:8px">TAP 敲這裡</div>'+
+    '<div class="tipline" id="calibOut">'+
+      (known&&typeof known.offsetMs==="number"
+        ? 'This tablet: <b>'+known.offsetMs+' ms</b> · 這台平板：'+known.offsetMs+' 毫秒'
+        : 'Not measured yet · 還沒測過')+
+    '</div>';
+  var out=document.getElementById("calibOut"), pad=document.getElementById("calibPad");
+  document.getElementById("calibStart").onpointerdown=function(){
+    import("./js/game-services/music.js").then(function(mod){
+      pad.classList.remove("hidden");
+      out.textContent="Listening… 聽聲音…";
+      if(calibRun)calibRun.cancel();
+      calibRun=mod.calibrate({onResult:function(res){
+        pad.classList.add("hidden");
+        calibRun=null;
+        if(res.offsetMs===null){ out.textContent="Could not measure — try again 量不到，再試一次"; return; }
+        var slow=res.offsetMs>250;
+        out.innerHTML='<b>'+res.offsetMs+' ms</b> '+
+          (!res.confident ? '· spread too wide, run it again 差距太大，再測一次'
+           : slow ? '· too slow for rhythm games on this tablet 這台平板太慢，不適合節奏遊戲'
+           : '· good 很好') +
+          ' · 延遲 '+res.offsetMs+' 毫秒';
+      }});
+      pad.onpointerdown=function(){ if(calibRun)calibRun.onTap(); };
+    }).catch(function(err){
+      console.error("calibration failed to load",err);
+      out.textContent="Could not load the tap test 無法載入測試";
+    });
+  };
+}
+
+function openBook(id){
+  var b=bookById(id), cards=b&&window[b.data];
+  if(!canOpenBook(b)){bigFloat("Soon 即將推出");return;}
+  stopArena(); stopActTimer();
+  hubTab="books";
+  bookState={id:id,idx:0,cards:cards.slice(),grid:false};
+  try{localStorage.setItem("sq:bookId",id);}catch(e){}
+  document.getElementById("bookTitle").textContent=b.icon+" "+b.titleEN+" · "+b.titleZH;
+  document.getElementById("bookCount").textContent=bookState.cards.length+" pages · "+bookState.cards.length+" 頁";
+  document.documentElement.style.setProperty("--accent",hubKid&&KIDS[hubKid]?KIDS[hubKid].color:"var(--luis)");
+  showOnly("book"); saveAppPlace("book");
+  renderBookSpread(); renderBookGrid(); updateBookView();
+}
+function closeBook(){
+  bookState.grid=false;
+  hubTab="books";
+  showOnly("hub"); saveAppPlace("hub"); renderHub();
+}
+function renderBookSpread(){
+  var c=bookState.cards[bookState.idx], b=document.getElementById("bookSpread");
+  if(!c){b.innerHTML='<div class="msg">Could not load card data. 無法載入卡片資料。</div>';return;}
+  var facts=(c.facts||[]).map(function(f){
+    return '<div class="book-fact"><div class="en">'+bookEscape(f.en)+'</div><div class="zh">'+bookEscape(f.tz)+'</div></div>';
+  }).join("");
+  var photo=bookPhoto(c.photo);
+  b.innerHTML=
+    '<div class="book-page-left">'+
+      '<div><h2>'+bookEscape(c.nameEN)+'</h2><div class="book-title-zh">'+bookEscape(c.nameZH)+'</div></div>'+
+      '<span class="book-type">'+bookEscape(c.typeEN)+' · '+bookEscape(c.typeZH)+'</span>'+
+      '<div class="book-facts">'+facts+'</div>'+
+      '<div class="book-page-num">'+(bookState.idx+1)+'</div>'+
+    '</div>'+
+    '<div class="book-spine"></div>'+
+    '<div class="book-photo" id="bookPhotoPane">'+
+      '<img src="'+bookEscape(photo)+'" alt="'+bookEscape(c.nameEN+' · '+c.nameZH)+'" loading="lazy" onerror="this.classList.add(\'error\')">'+
+      '<div class="book-emoji">'+bookEscape(c.emoji)+'</div>'+
+      '<div class="book-photo-overlay">'+
+        '<div class="book-photo-name">'+bookEscape(c.nameEN)+'</div>'+
+        '<div class="book-photo-zh">'+bookEscape(c.nameZH)+'</div>'+
+        '<div class="book-photo-tap">Tap photo to zoom · 點擊放大</div>'+
+      '</div>'+
+    '</div>';
+  document.getElementById("bookPhotoPane").onclick=function(){zoomBookImage(photo,c.nameEN+" · "+c.nameZH);};
+  updateBookPager();
+}
+function turnBook(dir){
+  var next=bookState.idx+dir;
+  if(next<0||next>=bookState.cards.length)return;
+  var spread=document.getElementById("bookSpread");
+  spread.classList.add("turning");
+  setTimeout(function(){
+    bookState.idx=next; renderBookSpread(); renderBookGrid();
+    spread.classList.remove("turning");
+  },180);
+}
+function updateBookPager(){
+  document.getElementById("bookPager").textContent=(bookState.idx+1)+" / "+bookState.cards.length;
+  document.getElementById("bookPrev").disabled=bookState.idx===0;
+  document.getElementById("bookNext").disabled=bookState.idx===bookState.cards.length-1;
+  var html="";
+  for(var i=0;i<bookState.cards.length;i++)html+='<span class="bdot'+(i===bookState.idx?' on':'')+'"></span>';
+  document.getElementById("bookProgress").innerHTML=html;
+}
+function toggleBookView(){
+  bookState.grid=!bookState.grid;
+  updateBookView();
+}
+function updateBookView(){
+  document.getElementById("bookViewToggle").textContent=bookState.grid?"Book 書本":"All Pages 全部頁面";
+  document.getElementById("bookStage").classList.toggle("hidden",bookState.grid);
+  document.getElementById("bookNav").classList.toggle("hidden",bookState.grid);
+  document.getElementById("bookGridView").classList.toggle("hidden",!bookState.grid);
+  if(bookState.grid)renderBookGrid();
+}
+function renderBookGrid(){
+  var html="";
+  bookState.cards.forEach(function(c,i){
+    html+='<div class="book-gridcard'+(i===bookState.idx?' current':'')+'" data-page="'+i+'">'+
+      '<img src="'+bookEscape(bookPhoto(c.photo))+'" alt="'+bookEscape(c.nameEN)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
+      '<div class="emoji" style="display:none">'+bookEscape(c.emoji)+'</div>'+
+      '<div class="gname">'+bookEscape(c.nameEN)+'<span class="zh">'+bookEscape(c.nameZH)+'</span></div></div>';
+  });
+  var grid=document.getElementById("bookGridView");
+  grid.innerHTML=html;
+  grid.querySelectorAll(".book-gridcard").forEach(function(card){
+    card.onclick=function(){
+      bookState.idx=Number(card.dataset.page)||0;
+      bookState.grid=false;
+      renderBookSpread(); updateBookView();
+    };
+  });
+}
+function zoomBookImage(src,caption){
+  var ov=document.createElement("div"); ov.className="book-zoom";
+  ov.innerHTML='<button class="z-close" aria-label="Close zoom 關閉放大">&times;</button>'+
+    '<img src="'+bookEscape(src)+'" alt="'+bookEscape(caption)+'">'+
+    '<div class="z-cap">'+bookEscape(caption)+'</div>'+
+    '<div class="z-hint">Tap to close · 點擊關閉</div>';
+  ov.onclick=function(){ov.remove();};
+  ov.querySelector("img").onclick=function(e){e.stopPropagation();};
+  document.body.appendChild(ov);
+  ov.querySelector(".z-close").focus();
+}
+function onBookKey(e){
+  if(document.getElementById("book").classList.contains("hidden"))return;
+  if(e.key==="Escape"){
+    var z=document.querySelector(".book-zoom");
+    if(z){z.remove();return;}
+    if(bookState.grid){bookState.grid=false;updateBookView();return;}
+  }
+  if(bookState.grid)return;
+  if(e.key==="ArrowLeft")turnBook(-1);
+  else if(e.key==="ArrowRight")turnBook(1);
+  else if(e.key==="Home"){bookState.idx=0;renderBookSpread();renderBookGrid();}
+  else if(e.key==="End"){bookState.idx=bookState.cards.length-1;renderBookSpread();renderBookGrid();}
+}
+document.getElementById("musicBack").onclick=function(){closeInstrument(false);};
+document.getElementById("bookBack").onclick=closeBook;
+document.getElementById("bookPrev").onclick=function(){turnBook(-1);};
+document.getElementById("bookNext").onclick=function(){turnBook(1);};
+document.getElementById("bookViewToggle").onclick=toggleBookView;
+document.addEventListener("keydown",onBookKey);
+var bookSwipeX=0, bookSwipeY=0;
+document.getElementById("bookStage").addEventListener("pointerdown",function(e){bookSwipeX=e.clientX;bookSwipeY=e.clientY;});
+document.getElementById("bookStage").addEventListener("pointerup",function(e){
+  var dx=e.clientX-bookSwipeX, dy=e.clientY-bookSwipeY;
+  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>50)turnBook(dx<0?1:-1);
+});
+
 /* ============ ASK TAB ============ */
 const ASK_CANNED=[
   ["I am stuck","我卡住了"],
@@ -2462,12 +2899,13 @@ function restoreAppPlace(){
   const savedKid=localStorage.getItem("sq:kid");
   const savedView=localStorage.getItem("sq:view")||"home";
   const savedTab=localStorage.getItem("sq:hubTab")||"day";
-  const tabs={day:1,games:1,acts:1,learn:1,ask:1,captain:1};
-  if(!savedKid||!KIDS[savedKid]||savedView==="home"){
+  const tabs={day:1,games:1,acts:1,learn:1,ask:1,books:1,music:1,captain:1};
+  const hashTab=location.hash?location.hash.slice(1):"";
+  if(!savedKid||!KIDS[savedKid]||(savedView==="home"&&!tabs[hashTab])){
     showOnly("home");
     return;
   }
-  hubTab=tabs[savedTab]?savedTab:"day";
+  hubTab=tabs[hashTab]?hashTab:(tabs[savedTab]?savedTab:"day");
   if(savedView==="act"){
     hubKid=savedKid; refreshOverrides();
     const raw=localStorage.getItem("sq:actIdx");
@@ -2480,6 +2918,19 @@ function restoreAppPlace(){
       openAct(idx);
       return;
     }
+  }
+  if(savedView==="book"){
+    hubKid=savedKid; refreshOverrides(); hubTab="books";
+    openBook(localStorage.getItem("sq:bookId")||"space");
+    return;
+  }
+  if(savedView==="music"){
+    /* Land on the Music tab, not back inside the instrument: SQLoadGame only
+       exists once the deferred module has run, so re-opening one here would race
+       the registry. The kid taps the instrument again — one tap. */
+    hubKid=savedKid; refreshOverrides(); hubTab="music";
+    openHub(savedKid);
+    return;
   }
   openHub(savedKid);
 }

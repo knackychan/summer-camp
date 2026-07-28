@@ -40,6 +40,7 @@ sanctioned use of Magnific as photo enhancement, never for the pixel-art game te
 | `alphacentauri.jpg` | NASA/ESA Hubble | NASA/ESA/STScI |
 | `sirius.jpg` | NASA/ESA Hubble, Magnific 2x upscale | NASA/ESA/H. Bond and E. Nelan (STScI) |
 | `barnardstar.jpg` | ESO wide-field (eso1837d) | ESO |
+| `iss.jpg` | NASA (ISS072e316172, October 2024) | NASA |
 
 Downloaded 2026-07-28.
 

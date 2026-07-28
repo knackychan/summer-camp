@@ -26,6 +26,17 @@ export var MANIFEST = [
   { id: "solar",    brain: false, keyboard: false, bestKey: null,      legacy: false,
     meta: { icon: "\ud83e\ude90", title: "Solar System", tz: "\u592a\u967d\u7cfb", blurb: "Explore the planets" } },
 
+  /* music: true keeps these out of the Games grid \u2014 they live in the Music Room
+     tab, which hosts them full-screen (design.md D15 supersedes D1). They stay in
+     this manifest because SQLoadGame, the sw.js precache guard and the ctx
+     contract all key off it. */
+  { id: "pads",   brain: false, keyboard: false, bestKey: "pads", legacy: false, music: true,
+    meta: { icon: "\ud83e\udd41", title: "Drum Pads",  tz: "\u6253\u64ca\u588a",   blurb: "Finger drumming" } },
+  { id: "piano",  brain: false, keyboard: false, bestKey: null,   legacy: false, music: true,
+    meta: { icon: "\ud83c\udfb9", title: "Piano",      tz: "\u92fc\u7434",     blurb: "Play and practise" } },
+  { id: "moog",   brain: false, keyboard: false, bestKey: null,   legacy: false, music: true,
+    meta: { icon: "\ud83c\udf9b\ufe0f", title: "Synth",      tz: "\u5408\u6210\u5668",   blurb: "Twist the knobs" } },
+
   { id: "calc",     brain: true,  keyboard: false, bestKey: null, meta: { icon: "\u2795", title: "Calculations",    tz: "\u8a08\u7b97",     blurb: "Quick sums" } },
   { id: "signs",    brain: true,  keyboard: false, bestKey: null, meta: { icon: "\u2753", title: "Sign Finder",     tz: "\u627e\u7b26\u865f",   blurb: "Find the missing sign" } },
   { id: "lowhigh",  brain: true,  keyboard: false, bestKey: null, meta: { icon: "\ud83d\udd22", title: "Low to High",     tz: "\u7531\u5c0f\u5230\u5927", blurb: "Remember and order" } },

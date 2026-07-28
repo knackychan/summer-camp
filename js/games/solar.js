@@ -578,8 +578,10 @@ export default {
         function () {}
       );
 
+      var hitR = hitRadius(sz);
+      if (p.id === "earth") hitR = hitR * 0.55;
       var hitMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(hitRadius(sz), 12, 8),
+        new THREE.SphereGeometry(hitR, 12, 8),
         new THREE.MeshBasicMaterial({ visible: false })
       );
       group.add(hitMesh);
@@ -651,7 +653,9 @@ export default {
           var satMesh = new THREE.Mesh(satGeo, satMat);
           satGroup.add(satMesh);
 
-          var satHitGeo = new THREE.SphereGeometry(hitRadius(satCfg.size), 8, 6);
+          var satHitR = hitRadius(satCfg.size);
+          if (sat.id === "moon") satHitR = satHitR * 0.55;
+          var satHitGeo = new THREE.SphereGeometry(satHitR, 8, 6);
           var satHitMesh = new THREE.Mesh(satHitGeo, new THREE.MeshBasicMaterial({ visible: false }));
           satGroup.add(satHitMesh);
 

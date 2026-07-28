@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Construction · 工地</title>
+<style>
+:root{
+  --bg:#201A40; --bg2:#2A2350; --panel:#332B66; --panel2:#3D3475;
+  --ink:#F3F0FF; --muted:#A79FD6; --line:#4A4090;
+  --gold:#FFC93C; --ok:#4ADE80; --bad:#FF6B6B;
+  --accent:#F97316;
+  --page:#2A2650; --page2:#312B5E;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{
+  font-family:Nunito,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:var(--bg);color:var(--ink);
+  display:flex;flex-direction:column;align-items:center;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+}
+h1,h2,h3{font-family:Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:600}
+
+.hidden{display:none!important}
+
+/* ── Top bar ── */
+.topbar{
+  width:100%;max-width:900px;display:flex;align-items:center;gap:12px;
+  padding:10px 16px;flex-shrink:0;z-index:10;
+}
+.btn{
+  font-family:Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:0.9rem;font-weight:600;
+  padding:10px 20px;border:none;border-radius:35px;
+  background:var(--panel);color:var(--ink);cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.btn:active{background:var(--panel2);transform:scale(0.96)}
+.btn.small{font-size:0.78rem;padding:6px 14px}
+.spacer{flex:1}
+.badge{
+  font-family:Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:0.72rem;
+  background:var(--accent);color:#fff;padding:3px 10px;border-radius:20px;
+}
+
+/* ── Category chips ── */
+.cat-chips{
+  width:100%;max-width:900px;display:flex;gap:6px;padding:0 16px 8px;
+  flex-shrink:0;overflow-x:auto;z-index:9;
+}
+.cat-chip{
+  font-family:Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:0.72rem;font-weight:600;
+  padding:5px 14px;border-radius:20px;border:2px solid var(--line);
+  background:var(--panel);color:var(--muted);
+  cursor:pointer;white-space:nowrap;
+  touch-action:manipulation;
+}
+.cat-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* ── Book stage ── */
+.stage{
+  flex:1;width:100%;max-width:900px;
+  display:flex;align-items:center;justify-content:center;
+  padding:4px 12px;overflow:hidden;
+}
+
+/* ── Open book: two pages + spine ── */
+.book{
+  width:100%;height:100%;max-height:620px;
+  display:flex;align-items:stretch;
+  background:var(--page);border-radius:12px;
+  box-shadow:0 6px 28px rgba(0,0,0,0.4),0 2px 8px rgba(249,115,22,0.15);
+  overflow:hidden;position:relative;
+  transition:opacity 0.18s,transform 0.18s;
+}
+.book.turning{opacity:0.4;transform:scale(0.97)}
+@media(prefers-reduced-motion:reduce){.book{transition:none}}
+
+/* ── Left page = facts ── */
+.page-left{
+  flex:1 1 50%;display:flex;flex-direction:column;
+  padding:20px 12px 20px 20px;gap:10px;
+  overflow-y:auto;min-width:0;
+  background:linear-gradient(135deg,var(--page),var(--page2));
+  border-right:1px solid var(--line);
+}
+.page-left .title-block{margin-bottom:4px}
+.page-left h2{font-size:1.55rem;line-height:1.15;color:var(--ink)}
+.page-left .title-zh{font-size:0.95rem;color:var(--muted);font-weight:500;margin-top:2px}
+.page-left .type-tag{
+  display:inline-block;background:var(--accent);color:#fff;
+  padding:3px 12px;border-radius:20px;font-size:0.68rem;
+  font-weight:700;font-family:Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif;
+  letter-spacing:0.06em;width:fit-content;
+}
+.page-left .facts-list{display:flex;flex-direction:column;gap:10px;flex:1}
+.page-left .fact-item{
+  background:rgba(255,255,255,0.04);border-radius:14px;
+  padding:12px 14px;line-height:1.45;
+}
+.page-left .fact-item .en{font-weight:700;font-size:0.95rem;margin-bottom:3px}
+.page-left .fact-item .zh{color:var(--muted);font-size:0.82rem}
+.page-left .page-num{
+  font-family:Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:0.7rem;
+  color:var(--muted);text-align:right;opacity:0.5;margin-top:auto;padding-top:8px;
+}
+
+/* ── Right page = photo + overlay ── */
+.page-right{
+  flex:1 1 50%;display:flex;flex-direction:column;
+  position:relative;overflow:hidden;min-width:0;
+  background:var(--bg);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.page-right img{
+  width:100%;height:100%;object-fit:cover;display:block;
+}
+.page-right .emoji-fallback{
+  position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  font-size:8rem;
+}
+.page-right img.error+.emoji-fallback{display:flex}
+.page-right .photo-overlay{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(to top,rgba(0,0,0,0.82),transparent);
+  padding:32px 16px 16px;
+  pointer-events:none;
+}
+.photo-overlay .overlay-name{font-size:1.3rem;font-weight:700;font-family:Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif}
+.photo-overlay .overlay-zh{font-size:0.85rem;color:var(--muted)}
+.photo-overlay .overlay-tap{font-size:0.7rem;color:var(--muted);opacity:0.7;margin-top:4px}
+
+/* ── Spine between pages ── */
+.spine{
+  width:3px;flex-shrink:0;
+  background:linear-gradient(to right,rgba(0,0,0,0.3),var(--line),rgba(0,0,0,0.3));
+  position:relative;z-index:2;
+}
+
+/* ── Navigation bar ── */
+.nav{
+  display:flex;align-items:center;gap:8px;justify-content:center;
+  padding:8px 16px 12px;flex-shrink:0;width:100%;max-width:900px;
+}
+.nav .btn.arrow{font-size:1.3rem;padding:8px;border-radius:50%;width:48px;height:48px;justify-content:center}
+.nav .btn.arrow:disabled{opacity:0.3}
+.nav .pager{font-family:Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:0.88rem;color:var(--muted);min-width:80px;text-align:center}
+
+/* ── Progress strip ── */
+.progress-strip{
+  display:flex;gap:3px;justify-content:center;align-items:center;margin:0 6px;
+}
+.progress-strip .dot{
+  width:6px;height:6px;border-radius:50%;background:var(--line);
+}
+.progress-strip .dot.on{background:var(--accent);width:8px;height:8px}
+
+/* ── Grid view ── */
+.gridview{
+  width:100%;max-width:900px;flex:1;overflow-y:auto;
+  padding:8px 12px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;
+  align-content:flex-start;
+}
+.gridcard{
+  width:calc(25% - 8px);min-width:90px;max-width:150px;
+  aspect-ratio:1;border-radius:16px;
+  background:var(--panel);border:2px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;gap:3px;overflow:hidden;position:relative;
+  touch-action:manipulation;
+  transition:transform 0.12s,border-color 0.12s;
+}
+.gridcard:active{transform:scale(0.93);border-color:var(--accent)}
+.gridcard.current{border-color:var(--accent);box-shadow:0 0 12px rgba(249,115,22,0.4)}
+.gridcard img{width:100%;height:50%;object-fit:cover}
+.gridcard .emoji{font-size:2rem;line-height:1}
+.gridcard .gname{font-size:0.75rem;font-weight:700;font-family:Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;line-height:1.15;padding:0 4px}
+.gridcard .gname .zh{display:block;font-size:0.65rem;color:var(--muted);font-weight:500}
+
+/* ── Zoom overlay ── */
+.zoomoverlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.zoomoverlay img{max-width:96vw;max-height:74vh;border-radius:14px;object-fit:contain}
+.zoomoverlay .z-close{
+  position:absolute;top:16px;right:16px;width:48px;height:48px;
+  border-radius:50%;background:var(--panel);color:var(--ink);
+  border:none;font-size:1.5rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:manipulation;z-index:101;
+}
+.zoomoverlay .z-close:active{background:var(--panel2);transform:scale(0.93)}
+.zoomoverlay .z-cap{color:var(--muted);margin-top:14px;font-size:0.85rem}
+.zoomoverlay .z-hint{color:var(--muted);font-size:0.7rem;opacity:0.7;margin-top:6px}
+
+/* ── Swipe zone ── */
+.swipe-zone{position:absolute;inset:0;z-index:5}
+
+@media(max-width:560px){
+  .book{flex-direction:column;max-height:none}
+  .page-left{flex:0 0 auto;max-height:48%;border-right:none;border-bottom:1px solid var(--line);padding:14px 14px 10px}
+  .page-right{flex:1 1 auto}
+  .spine{width:100%;height:3px}
+  .page-left h2{font-size:1.25rem}
+  .page-left .fact-item{padding:10px 12px}
+  .page-left .fact-item .en{font-size:0.88rem}
+  .page-left .fact-item .zh{font-size:0.76rem}
+  .gridcard{width:calc(33.333% - 8px)}
+}
+@media(max-height:520px){
+  .book{max-height:420px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="btn" onclick="location.href='../index.html#books'">← Shelf 書架</button>
+  <span class="spacer"></span>
+  <span class="badge" id="cardCount"></span>
+  <button class="btn small" id="viewToggle" onclick="toggleView()">All Pages 全部頁面</button>
+</div>
+
+<div class="cat-chips" id="catChips">
+  <button class="cat-chip active" data-cat="">All 全部</button>
+  <button class="cat-chip" data-cat="earthmoving">Earthmoving 挖土</button>
+  <button class="cat-chip" data-cat="lifting">Lifting 吊掛</button>
+  <button class="cat-chip" data-cat="building">Building 建築</button>
+  <button class="cat-chip" data-cat="tools">Tools 工具</button>
+</div>
+
+<section class="stage" id="stage"><div class="book" id="book"></div></section>
+
+<div class="nav" id="navBar">
+  <button class="btn arrow" id="btnPrev" onclick="turn(-1)" aria-label="Previous page 上一頁">◀</button>
+  <span class="pager" id="pager"></span>
+  <div class="progress-strip" id="progressStrip"></div>
+  <button class="btn arrow" id="btnNext" onclick="turn(1)" aria-label="Next page 下一頁">▶</button>
+</div>
+
+<div class="gridview hidden" id="gridView"></div>
+
+<script src="../js/books/construction-data.js"></script>
+<script>
+var idx=0, isGrid=false;
+var allCards=[], cards=[], currentCat='';
+
+function init(){
+  if(typeof CONSTRUCTION_CARDS==="undefined"){
+    document.getElementById("book").innerHTML='<p style="color:var(--bad);padding:40px;text-align:center">Could not load card data. 無法載入卡片資料。</p>';
+    return;
+  }
+  allCards=CONSTRUCTION_CARDS.slice();
+  cards=allCards;
+  document.getElementById("cardCount").textContent=cards.length+' pages · '+cards.length+' 頁';
+  setupChipHandlers();
+  renderBook();
+  updatePager();
+  document.addEventListener("keydown",onKey);
+  renderGrid();
+  addSwipe();
+}
+
+function setupChipHandlers(){
+  var chips=document.querySelectorAll(".cat-chip");
+  chips.forEach(function(ch){
+    ch.addEventListener("click",function(){
+      chips.forEach(function(c){c.classList.remove("active")});
+      ch.classList.add("active");
+      currentCat=ch.dataset.cat||'';
+      if(currentCat){
+        cards=allCards.filter(function(c){return c.group===currentCat});
+      }else{
+        cards=allCards;
+      }
+      idx=0;
+      document.getElementById("cardCount").textContent=cards.length+' pages · '+cards.length+' 頁';
+      renderBook();
+      updatePager();
+      renderGrid();
+    });
+  });
+}
+
+/* ── Render open book ── */
+function renderBook(){
+  if(!cards.length){document.getElementById("book").innerHTML='';return}
+  var c=cards[idx], b=document.getElementById("book");
+  var factsHtml="";
+  c.facts.forEach(function(f){
+    factsHtml+='<div class="fact-item"><div class="en">'+escapeHTML(f.en)+'</div><div class="zh">'+escapeHTML(f.tz)+'</div></div>';
+  });
+  b.innerHTML=
+    '<div class="page-left">'+
+      '<div class="title-block">'+
+        '<h2>'+escapeHTML(c.nameEN)+'</h2>'+
+        '<div class="title-zh">'+escapeHTML(c.nameZH)+'</div>'+
+      '</div>'+
+      '<span class="type-tag">'+escapeHTML(c.typeEN)+' · '+escapeHTML(c.typeZH)+'</span>'+
+      '<div class="facts-list">'+factsHtml+'</div>'+
+      '<div class="page-num">'+(idx+1)+'</div>'+
+    '</div>'+
+    '<div class="spine"></div>'+
+    '<div class="page-right" id="photoPane">'+
+      '<img src="'+c.photo+'" alt="'+escapeHTML(c.nameEN+' · '+c.nameZH)+'" loading="lazy"'+
+        ' onerror="this.classList.add(\'error\')">'+
+      '<div class="emoji-fallback">'+c.emoji+'</div>'+
+      '<div class="photo-overlay">'+
+        '<div class="overlay-name">'+escapeHTML(c.nameEN)+'</div>'+
+        '<div class="overlay-zh">'+escapeHTML(c.nameZH)+'</div>'+
+        '<div class="overlay-tap">Tap photo to zoom · 點擊放大</div>'+
+      '</div>'+
+    '</div>';
+  document.getElementById("photoPane").onclick=function(e){
+    zoomImage(c.photo,c.nameEN+" · "+c.nameZH);
+  };
+}
+
+function escapeHTML(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+
+function turn(dir){
+  var next=idx+dir;
+  if(next<0||next>=cards.length)return;
+  var b=document.getElementById("book");
+  b.classList.add("turning");
+  setTimeout(function(){
+    idx=next;renderBook();updatePager();
+    b.classList.remove("turning");
+  },180);
+}
+
+function zoomImage(src,caption){
+  var ov=document.createElement("div");ov.className="zoomoverlay";
+  ov.setAttribute("aria-label","Zoomed image 放大圖片");
+  ov.innerHTML=
+    '<button class="z-close" aria-label="Close zoom 關閉放大">&times;</button>'+
+    '<img src="'+src+'" alt="'+escapeHTML(caption)+'">'+
+    '<div class="z-cap">'+escapeHTML(caption)+'</div>'+
+    '<div class="z-hint">Tap to close · 點擊關閉</div>';
+  ov.addEventListener("click",function(){ov.remove()});
+  var imgClick=ov.querySelector("img");
+  imgClick.addEventListener("click",function(e){e.stopPropagation()});
+  document.body.appendChild(ov);
+  ov.querySelector(".z-close").focus();
+}
+
+function updatePager(){
+  document.getElementById("pager").textContent=(idx+1)+' / '+cards.length;
+  document.getElementById("btnPrev").disabled=idx===0;
+  document.getElementById("btnNext").disabled=idx===cards.length-1;
+  var s=document.getElementById("progressStrip"),html="";
+  for(var i=0;i<cards.length;i++){
+    html+='<span class="dot'+(i===idx?' on':'')+'"></span>';
+  }
+  s.innerHTML=html;
+}
+
+/* ── Swipe detection ── */
+function addSwipe(){
+  var startX=0,startY=0,stage=document.getElementById("stage");
+  stage.addEventListener("pointerdown",function(e){startX=e.clientX;startY=e.clientY});
+  stage.addEventListener("pointerup",function(e){
+    var dx=e.clientX-startX, dy=e.clientY-startY;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>50){
+      if(dx<0) turn(1); else turn(-1);
+    }
+  });
+}
+
+/* ── Keyboard ── */
+function onKey(e){
+  if(isGrid){
+    if(e.key==="Escape")toggleView();
+    return;
+  }
+  if(e.key==="Escape"){
+    var z=document.querySelector(".zoomoverlay");
+    if(z){z.remove();return}
+  }
+  if(e.key==="ArrowLeft")turn(-1);
+  else if(e.key==="ArrowRight")turn(1);
+  else if(e.key==="Home"){idx=0;renderBook();updatePager()}
+  else if(e.key==="End"){idx=cards.length-1;renderBook();updatePager()}
+}
+
+/* ── Grid view ── */
+function toggleView(){
+  isGrid=!isGrid;
+  document.getElementById("viewToggle").textContent=isGrid?'Book 書本':'All Pages 全部頁面';
+  document.getElementById("stage").classList.toggle("hidden",isGrid);
+  document.getElementById("navBar").classList.toggle("hidden",isGrid);
+  document.getElementById("gridView").classList.toggle("hidden",!isGrid);
+  if(isGrid)renderGrid();
+}
+function renderGrid(){
+  var g=document.getElementById("gridView"),html="";
+  cards.forEach(function(c,i){
+    html+='<div class="gridcard'+(i===idx?' current':'')+'" onclick="selectFromGrid('+i+')">'+
+      '<img src="'+c.photo+'" alt="'+escapeHTML(c.nameEN)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
+      '<div class="emoji" style="display:none">'+c.emoji+'</div>'+
+      '<div class="gname">'+escapeHTML(c.nameEN)+'<span class="zh">'+escapeHTML(c.nameZH)+'</span></div></div>';
+  });
+  g.innerHTML=html;
+}
+function selectFromGrid(i){
+  idx=i;isGrid=false;
+  document.getElementById("viewToggle").textContent='All Pages 全部頁面';
+  document.getElementById("stage").classList.remove("hidden");
+  document.getElementById("navBar").classList.remove("hidden");
+  document.getElementById("gridView").classList.add("hidden");
+  renderBook();updatePager();
+}
+
+init();
+</script>
+</body>
+</html>

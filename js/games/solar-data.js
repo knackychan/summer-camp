@@ -116,7 +116,7 @@ export var PLANETS = [
 
 var ISS = {
   id: "iss", name: "ISS", tz: "\u570b\u969b\u592a\u7a7a\u7ad9", color: 0xCCCCCC,
-  diameterKm: 0.109, orbitDays: 0.06389, altitudeKm: 408, crew: 7,
+  diameterKm: 0.109, orbitDays: 0.6389, altitudeKm: 408, crew: 7,
   type: { en: "SPACE STATION", tz: "\u592a\u7a7a\u7ad9" },
   desc: { en: "The International Space Station is a giant science lab flying around Earth. Astronauts live and work there, looking down at our blue planet from space.",
           tz: "\u570b\u969b\u592a\u7a7a\u7ad9\u662f\u4e00\u500b\u570d\u7e5e\u5730\u7403\u98db\u884c\u7684\u5de8\u5927\u79d1\u5b78\u5be6\u9a57\u5ba4\u3002\u592a\u7a7a\u4eba\u5728\u90a3\u88e1\u751f\u6d3b\u548c\u5de5\u4f5c\uff0c\u5f9e\u592a\u7a7a\u4e2d\u4fef\u77b0\u6211\u5011\u7684\u85cd\u8272\u661f\u7403\u3002" },

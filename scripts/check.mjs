@@ -27,6 +27,12 @@ const runtimeFiles = ["index.html", "admin.html", "sw.js"].concat(
     .filter((file) => !file.startsWith("js/vendor/")) // third-party; not subject to legacy-syntax scan
     .sort()
 );
+const bookHtmlFiles = globSync("books/*.html", { cwd: fileURLToPath(root) })
+  .map((file) => file.replaceAll("\\", "/"))
+  .sort();
+const bookDataFiles = globSync("js/books/*-data.js", { cwd: fileURLToPath(root) })
+  .map((file) => file.replaceAll("\\", "/"))
+  .sort();
 
 const scriptMatches = [...indexHtml.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (!scriptMatches.length) {
@@ -78,6 +84,106 @@ for (const file of runtimeFiles.filter((f) => f.endsWith(".js"))) {
   for (const file of runtimeFiles.filter((f) => f.startsWith("js/"))) {
     if (!loaders.includes(file)) continue;
     if (!swText.includes(`./${file}`)) fail("offline", `${file} is loaded but missing from sw.js APP_SHELL`);
+  }
+}
+
+// Standalone books are not loaded by index.html, so the generic app-shell checks
+// above cannot see them. Keep the guard mechanical: shell/data pairing for every
+// book, and full image/offline enforcement only once the shelf marks it ready.
+{
+  const swText = readFileSync(new URL("sw.js", root), "utf8");
+  const shelfMatch = indexHtml.match(/var BOOK_SHELF = \[([\s\S]*?)\];/);
+  let shelf = [];
+  try {
+    if (!shelfMatch) throw new Error("missing BOOK_SHELF");
+    shelf = new Function(`${shelfMatch[0]}\nreturn BOOK_SHELF;`)();
+  } catch (error) {
+    fail("books", `BOOK_SHELF did not parse: ${error.message}`);
+  }
+  if (/window\.open\(\s*b\.file/.test(indexHtml)) fail("books", "Books shelf must open the in-app reader, not a new page");
+  const shelfById = new Map(shelf.map((book) => [book.id, book]));
+  const dataByTopic = new Map();
+
+  for (const file of bookDataFiles) {
+    const topic = file.slice("js/books/".length, -"data.js".length - 1);
+    const text = readFileSync(new URL(file, root), "utf8");
+    const globalMatch = text.match(/\bvar\s+([A-Z0-9_]+)\s*=\s*\[/);
+    if (!globalMatch) {
+      fail("books", `${file} must declare var TOPIC_CARDS = [...]`);
+      continue;
+    }
+    let cards = [];
+    try {
+      cards = new Function(`${text}\nreturn ${globalMatch[1]};`)();
+    } catch (error) {
+      fail("books", `${file} did not load: ${error.message}`);
+      continue;
+    }
+    if (!Array.isArray(cards) || !cards.length) fail("books", `${file} must export a non-empty card array`);
+    dataByTopic.set(topic, { file, globalName: globalMatch[1], cards });
+    const seen = new Set();
+    cards.forEach((card, i) => {
+      const where = `${file}[${card && card.id ? card.id : i}]`;
+      ["id", "emoji", "nameEN", "nameZH", "photo", "typeEN", "typeZH"].forEach((field) => {
+        if (!card || !card[field]) fail("books", `${where} missing ${field}`);
+      });
+      if (card && seen.has(card.id)) fail("books", `${file} duplicate id ${card.id}`);
+      if (card) seen.add(card.id);
+      if (!card || !Array.isArray(card.facts) || card.facts.length !== 3) {
+        fail("books", `${where} must have exactly 3 facts`);
+        return;
+      }
+      card.facts.forEach((fact, factIndex) => {
+        if (!fact.en || !fact.tz) fail("books", `${where}.facts[${factIndex}] must have en + tz`);
+      });
+    });
+  }
+
+  for (const file of bookHtmlFiles) {
+    const topic = file.slice("books/".length, -".html".length);
+    const data = dataByTopic.get(topic);
+    const html = readFileSync(new URL(file, root), "utf8");
+    if (!swText.includes(`./${file}`)) fail("books", `${file} missing from sw.js APP_SHELL`);
+    for (const match of html.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)) {
+      try {
+        new Function(match[1]);
+      } catch (error) {
+        fail("books", `${file} inline script did not parse: ${error.message}`);
+      }
+    }
+    if (!data) {
+      fail("books", `${file} has no matching js/books/${topic}-data.js`);
+      continue;
+    }
+    if (!html.includes(`../${data.file}`)) fail("books", `${file} must load ../${data.file}`);
+    if (!html.includes(data.globalName)) fail("books", `${file} does not reference ${data.globalName}`);
+    if (!swText.includes(`./${data.file}`)) fail("books", `${data.file} missing from sw.js APP_SHELL`);
+  }
+
+  for (const book of shelf) {
+    if (!book.id || !book.titleEN || !book.titleZH || !book.file || !book.data) fail("books", `BOOK_SHELF entry ${book.id || "?"} is incomplete`);
+    const topic = book.id;
+    const data = dataByTopic.get(topic);
+    if (!data) {
+      fail("books", `${topic} has no data file`);
+      continue;
+    }
+    if (!existsSync(new URL(book.file, root))) fail("books", `${topic} points to missing ${book.file}`);
+    if (!swText.includes(`./${book.file}`)) fail("books", `${topic} shell ${book.file} is not precached`);
+    if (book.data !== data.globalName) fail("books", `${topic} shelf data ${book.data} must match ${data.globalName}`);
+    if (!indexHtml.includes(`js/books/${topic}-data.js`)) fail("books", `${topic} data script is not loaded by index.html`);
+    if (!book.ready) continue;
+    for (const card of data.cards) {
+      if (!card.photo) continue;
+      const photo = card.photo.replace(/^\.\.\//, "");
+      if (!existsSync(new URL(photo, root))) fail("books", `${topic}/${card.id} missing photo ${card.photo}`);
+      if (!swText.includes(`./${photo}`)) fail("books", `${topic}/${card.id} photo missing from sw.js APP_SHELL`);
+    }
+  }
+
+  for (const file of bookHtmlFiles) {
+    const topic = file.slice("books/".length, -".html".length);
+    if (!shelfById.has(topic)) fail("books", `${file} has no BOOK_SHELF entry`);
   }
 }
 

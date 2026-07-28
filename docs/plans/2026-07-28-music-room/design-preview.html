@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Music Room — layout preview</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap');
+
+/* Illustrative layout preview only — design.md binds.
+   Do not ship the external font import or this five-tab preview nav in the app. */
+/* Studio-hardware palette. Illustrative only — this file does not bind (design.md). */
+:root{
+  --bg:#14131A; --bg2:#1C1B24; --panel:#252430; --panel2:#2F2E3D;
+  --ink:#F4F2FA; --muted:#9A96B4; --line:#3A3850;
+  --amber:#FFB13C; --pad:#FF7A45; --key:#5AD1C4; --moog:#B98CFF; --ok:#4ADE80;
+  --l1:#FF7A45; --l2:#5AD1C4; --l3:#FFB13C; --l4:#B98CFF;
+  --hdr:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}          /* no scrolling, anywhere */
+body{
+  font-family:'Nunito',system-ui,sans-serif;
+  background:radial-gradient(1200px 700px at 50% 0%, #1F1D2B 0%, var(--bg) 70%);
+  color:var(--ink);-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;
+}
+.tz{color:var(--muted);font-weight:600}
+
+/* ---------- header ---------- */
+header{height:var(--hdr);flex:none;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:12px;padding:0 12px;background:rgba(20,19,26,.94);z-index:30}
+.brand{font-family:'Fredoka';font-weight:700;font-size:16px;white-space:nowrap}
+.tabs{display:flex;gap:6px;margin-left:auto;overflow:hidden}
+.tab{font-family:'Fredoka';font-weight:600;font-size:13px;border:2px solid var(--line);
+  background:transparent;color:var(--muted);border-radius:999px;padding:6px 13px;cursor:pointer;white-space:nowrap}
+.tab.on{background:var(--amber);color:#221A08;border-color:transparent}
+.info{width:34px;height:34px;flex:none;border-radius:10px;border:2px solid var(--line);
+  background:transparent;color:var(--muted);font-size:15px;cursor:pointer}
+
+/* ---------- stage: fills everything left over ---------- */
+main{flex:1;min-height:0;position:relative}
+section{position:absolute;inset:0;display:none;flex-direction:column;padding:10px 12px 12px;gap:10px}
+section.on{display:flex}
+.row{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap}
+.title{font-family:'Fredoka';font-weight:700;font-size:15px}
+.slice{font-size:9.5px;font-weight:800;letter-spacing:1.4px;color:var(--amber);
+  border:1px solid rgba(255,177,60,.4);border-radius:999px;padding:2px 8px;margin-left:auto}
+.btn{font-family:'Fredoka';font-weight:600;border:2px solid var(--line);background:var(--panel2);
+  color:var(--ink);border-radius:11px;padding:7px 14px;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn.on{background:var(--amber);color:#221A08;border-color:transparent}
+
+/* ---------- pad grid (shared by Pads + Trainer) ---------- */
+.padgrid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);
+  grid-template-rows:repeat(4,1fr);gap:8px;touch-action:none;width:100%}
+.padgrid.short{flex:none;height:38%}
+.pad{border-radius:13px;background:var(--panel2);border:2px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  cursor:pointer;user-select:none;min-height:0;overflow:hidden;
+  transition:transform .04s,box-shadow .12s,background .12s}
+.pad .en{font-family:'Fredoka';font-weight:600;font-size:clamp(11px,1.7vh,15px)}
+.pad .zh{font-size:clamp(9px,1.3vh,12px);color:var(--muted)}
+.pad.lit{background:var(--pad);border-color:#FFAD8A;transform:scale(.96);
+  box-shadow:0 3px 0 rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.18);color:#2A1105}
+.pad.lit .zh{color:#5A2A12}
+.pad.dim{opacity:.32}
+.pad[data-lane]{border-color:var(--lc);box-shadow:inset 0 0 0 1px var(--lc)}
+.pad[data-lane]::after{content:"";position:absolute;inset:auto 0 0 0;height:3px;background:var(--lc)}
+.pad{position:relative}
+
+/* ---------- trainer: notes travel RIGHT → LEFT ---------- */
+.track{flex:1;min-height:0;position:relative;background:var(--bg2);
+  border:1px solid var(--line);border-radius:13px;overflow:hidden;
+  display:grid;grid-template-rows:repeat(4,1fr)}
+.lane{position:relative;border-bottom:1px solid rgba(255,255,255,.05)}
+.lane:last-child{border-bottom:none}
+.lane .tag{position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:4;
+  font-family:'Fredoka';font-weight:700;font-size:clamp(9px,1.4vh,12px);color:var(--lc);
+  opacity:.75;pointer-events:none}
+.hit{position:absolute;top:0;bottom:0;left:18%;width:3px;background:var(--amber);
+  box-shadow:2px 0 0 rgba(0,0,0,.32);z-index:5}
+.hit::before,.hit::after{content:"";position:absolute;left:50%;width:0;height:0;
+  border-left:6px solid transparent;border-right:6px solid transparent;margin-left:-6px}
+.hit::before{top:-1px;border-top:7px solid var(--amber)}
+.hit::after{bottom:-1px;border-bottom:7px solid var(--amber)}
+.note{position:absolute;left:18%;top:50%;height:58%;width:clamp(26px,4.2vw,44px);
+  margin-top:-1px;transform:translate(-50%,-50%);border-radius:8px;background:var(--lc);
+  box-shadow:0 2px 0 rgba(0,0,0,.35);animation:runL 2.4s linear infinite}
+@keyframes runL{from{transform:translate(calc(-50% + 88vw),-50%)}to{transform:translate(-50%,-50%)}}
+.countin{display:flex;gap:6px;align-items:center}
+.beat{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.beat.on{background:var(--amber)}
+.judge{font-family:'Fredoka';font-weight:700;font-size:clamp(13px,2.2vh,18px);color:var(--ok);margin-left:6px}
+
+/* ---------- keybed ---------- */
+.keybed{flex:1;min-height:0;position:relative;touch-action:none;user-select:none;width:100%}
+.whites{display:flex;height:100%;gap:2px}
+.wk{flex:1;background:linear-gradient(#FBFAFF,#DEDAEC);border-radius:0 0 9px 9px;position:relative;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:7px;
+  font-weight:800;font-size:clamp(9px,1.3vh,12px);color:#6C6788;cursor:pointer}
+.wk.lit{background:linear-gradient(var(--key),#3EA79C);color:#062E2A}
+.wk.target{background:linear-gradient(#FFE7B8,var(--amber));color:#3A2600}
+.wk.next{background:linear-gradient(#FFF8EC,#F2E6D0)}
+.bk{position:absolute;top:0;height:62%;background:linear-gradient(#3A3850,#1A1926);
+  border-radius:0 0 7px 7px;z-index:2;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.5)}
+.bk.lit{background:linear-gradient(var(--key),#2F8B82)}
+.bk.target{background:linear-gradient(var(--amber),#C97F14)}
+.finger{position:absolute;top:6px;left:50%;transform:translateX(-50%);width:20px;height:20px;
+  border-radius:50%;background:var(--amber);color:#221A08;font-weight:800;font-size:11px;
+  display:flex;align-items:center;justify-content:center}
+
+/* ---------- scope + waves + knobs ---------- */
+.scopewrap{flex:1;min-height:0;position:relative;background:#0C0B12;border:1px solid var(--line);
+  border-radius:13px;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+#scope{display:block;width:100%;height:100%}
+.scopetag{position:absolute;top:7px;left:11px;font-size:9px;font-weight:800;
+  letter-spacing:2px;color:rgba(185,140,255,.6)}
+.waves{display:flex;gap:6px;justify-content:center;flex:none;flex-wrap:wrap}
+.wave{font-family:'Fredoka';font-weight:600;font-size:12px;border:2px solid var(--line);
+  background:var(--panel2);color:var(--muted);border-radius:11px;padding:5px 11px;cursor:pointer;
+  display:flex;align-items:center;gap:6px;line-height:1}
+.wave svg{width:24px;height:13px;overflow:visible}
+.wave svg path{fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
+.wave.on{background:var(--moog);color:#1B0E33;border-color:transparent}
+.knobs{display:flex;gap:10px;justify-content:center;flex:none;flex-wrap:nowrap}
+.knob{display:flex;flex-direction:column;align-items:center;gap:3px;touch-action:none;user-select:none}
+.dial{width:clamp(38px,6.4vh,58px);aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#4A4860,#22212E);
+  border:2px solid var(--line);position:relative;cursor:ns-resize;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.dial i{position:absolute;left:50%;top:11%;width:3px;height:30%;background:var(--moog);
+  border-radius:2px;transform-origin:50% 130%;margin-left:-1.5px}
+.klabel{font-family:'Fredoka';font-weight:600;font-size:clamp(9px,1.3vh,11.5px);text-align:center;line-height:1.15}
+.kval{font-size:clamp(9px,1.2vh,11px);color:var(--amber);font-weight:800}
+
+/* ---------- info overlay (keeps rationale without forcing scroll) ---------- */
+#veil{position:absolute;inset:0;background:rgba(12,11,18,.93);z-index:40;display:none;
+  padding:18px;overflow-y:auto;backdrop-filter:blur(4px)}
+#veil.on{display:block}
+#veil .inner{max-width:640px;margin:0 auto;font-size:13px;line-height:1.6;color:var(--muted);font-weight:700}
+#veil h3{font-family:'Fredoka';font-size:17px;color:var(--ink);margin-bottom:10px}
+#veil p{margin-bottom:12px}
+#veil b{color:var(--amber)}
+#veil code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px;color:var(--ink)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">🎵 Music Room <span class="tz">音樂室</span></div>
+  <div class="tabs">
+    <button class="tab on" data-go="trainer">🎯 Trainer</button>
+    <button class="tab" data-go="pads">🥁 Pads</button>
+    <button class="tab" data-go="piano">🎹 Piano</button>
+    <button class="tab" data-go="practice">📖 Practice</button>
+    <button class="tab" data-go="moog">🎛️ Synth</button>
+  </div>
+  <button class="info" id="infobtn">ⓘ</button>
+</header>
+
+<main>
+
+<!-- ================= TRAINER ================= -->
+<section id="trainer" class="on">
+  <div class="row">
+    <span class="title">Finger Drumming <span class="tz">手指打鼓</span></span>
+    <span class="countin"><i class="beat on"></i><i class="beat on"></i><i class="beat"></i><i class="beat"></i></span>
+    <span class="judge">Perfect! 完美！</span>
+    <span class="slice">SLICES 39 + 40</span>
+  </div>
+  <div class="track" id="track"></div>
+  <div class="padgrid short" id="tpads"></div>
+</section>
+
+<!-- ================= PADS ================= -->
+<section id="pads">
+  <div class="row">
+    <span class="title">Drum Pads <span class="tz">打擊墊</span></span>
+    <button class="btn">Practice 練習</button>
+    <span class="slice">SLICE 37</span>
+  </div>
+  <div class="padgrid" id="padgrid"></div>
+</section>
+
+<!-- ================= PIANO ================= -->
+<section id="piano">
+  <div class="row">
+    <span class="title">Piano <span class="tz">鋼琴</span></span>
+    <button class="btn">◀ Oct</button><button class="btn">Oct ▶</button>
+    <button class="btn on">Names 音名</button>
+    <span class="slice">SLICE 41</span>
+  </div>
+  <div class="keybed" id="kb-piano"></div>
+</section>
+
+<!-- ================= PRACTICE ================= -->
+<section id="practice">
+  <div class="row">
+    <span class="title">Practice <span class="tz">練習</span></span>
+    <button class="btn on">右手 Right</button>
+    <button class="btn">− 60 bpm +</button>
+    <button class="btn on">🔁 Loop 循環</button>
+    <span class="slice">SLICE 42</span>
+  </div>
+  <div class="keybed" id="kb-practice"></div>
+</section>
+
+<!-- ================= MOOG ================= -->
+<section id="moog">
+  <div class="row">
+    <span class="title">Synth <span class="tz">合成器</span></span>
+    <button class="btn on">Bass 貝斯</button><button class="btn">Lead 主奏</button>
+    <button class="btn">Pad 鋪底</button><button class="btn">Wobble 抖動</button>
+    <span class="slice">SLICE 43</span>
+  </div>
+  <div class="scopewrap"><canvas id="scope"></canvas><div class="scopetag">OSCILLOSCOPE <span class="tz">波形</span></div></div>
+  <div class="waves" id="waves"></div>
+  <div class="knobs" id="knobs"></div>
+  <div class="keybed" id="kb-moog" style="flex:0 0 26%"></div>
+</section>
+
+<div id="veil"><div class="inner" id="veiltext"></div></div>
+</main>
+
+<script>
+/* Preview only — no audio, no timing, no persistence. Layout and reach are the questions. */
+const NOTES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const WHITE=[0,2,4,5,7,9,11], BLACK_AT=[0,1,3,4,5];
+const LANE_C=["var(--l1)","var(--l2)","var(--l3)","var(--l4)"];
+
+/* ---------------- keybed (shared: piano, practice, synth — slice 41) ---------------- */
+function buildKeybed(el,octaves,lowOct,names){
+  el.innerHTML="";
+  const whites=document.createElement("div"); whites.className="whites";
+  const total=octaves*7;
+  for(let i=0;i<total;i++){
+    const o=Math.floor(i/7), d=i%7, k=document.createElement("div");
+    k.className="wk";
+    if(names) k.textContent=NOTES[WHITE[d]]+(lowOct+o);
+    whites.appendChild(k);
+  }
+  el.appendChild(whites);
+  const w=100/total;
+  for(let o=0;o<octaves;o++) for(const d of BLACK_AT){
+    const i=o*7+d, b=document.createElement("div");
+    b.className="bk";
+    b.style.left=`calc(${(i+1)*w}% - ${w*0.29}%)`;
+    b.style.width=`${w*0.58}%`;
+    el.appendChild(b);
+  }
+  multitouch(el,".wk,.bk");
+}
+
+/* one pointerId map — the discipline every instrument uses */
+function multitouch(el,sel){
+  const held=new Map();
+  const at=(x,y)=>{const t=document.elementFromPoint(x,y);return t&&t.matches(sel)?t:null;};
+  el.addEventListener("pointerdown",e=>{
+    const k=at(e.clientX,e.clientY); if(!k||k.classList.contains("dim"))return;
+    el.setPointerCapture(e.pointerId); k.classList.add("lit"); held.set(e.pointerId,k);
+  });
+  el.addEventListener("pointermove",e=>{
+    if(!held.has(e.pointerId))return;
+    const k=at(e.clientX,e.clientY), p=held.get(e.pointerId);
+    if(k&&k!==p){p.classList.remove("lit");k.classList.add("lit");held.set(e.pointerId,k);}
+  });
+  const up=e=>{const k=held.get(e.pointerId);if(k){k.classList.remove("lit");held.delete(e.pointerId);}};
+  el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+}
+
+/* ---------------- pads ---------------- */
+const KIT=[["Kick","大鼓"],["Snare","小鼓"],["Clap","拍手"],["Rim","邊擊"],
+           ["Hat","腳踏"],["Open","開踏"],["Tom L","低鼓"],["Tom H","高鼓"],
+           ["Crash","碎音"],["Cowbell","牛鈴"],["Shaker","沙鈴"],["Zap","電音"],
+           ["—","—"],["—","—"],["—","—"],["—","—"]];
+/* which pads the 4 trainer lanes map to (design.md D8: 4 lanes, never 16) */
+const LANE_PAD={0:0,1:1,4:2,2:3};
+function buildPads(host,lanes){
+  host.innerHTML="";
+  KIT.forEach(([en,zh],i)=>{
+    const p=document.createElement("div");
+    p.className="pad"+(i>11?" dim":"");
+    if(lanes&&i in LANE_PAD){p.dataset.lane=LANE_PAD[i];p.style.setProperty("--lc",LANE_C[LANE_PAD[i]]);}
+    p.innerHTML=`<span class="en">${en}</span><span class="zh">${zh}</span>`;
+    host.appendChild(p);
+  });
+  multitouch(host,".pad");
+}
+buildPads(document.getElementById("padgrid"),false);
+buildPads(document.getElementById("tpads"),true);
+
+/* ---------------- trainer: notes travel right → left ---------------- */
+const PATTERN=[[0,0],[0,1.5],[1,1],[1,3],[2,0],[2,.5],[2,1],[2,1.5],[2,2],[2,2.5],[3,2.25],[3,3.5]];
+const track=document.getElementById("track");
+for(let i=0;i<4;i++){
+  const l=document.createElement("div"); l.className="lane";
+  l.style.setProperty("--lc",LANE_C[i]);
+  l.innerHTML=`<span class="tag">${["KICK","SNARE","HAT","CLAP"][i]}</span>`;
+  track.appendChild(l);
+}
+const hit=document.createElement("div"); hit.className="hit"; track.appendChild(hit);
+PATTERN.forEach(([lane,beat])=>{
+  const n=document.createElement("div"); n.className="note";
+  n.style.animationDelay=`${-beat*0.6}s`;
+  track.children[lane].appendChild(n);
+});
+
+/* ---------------- practice: targets + finger numbers ---------------- */
+buildKeybed(document.getElementById("kb-piano"),2,4,true);
+buildKeybed(document.getElementById("kb-practice"),2,4,true);
+buildKeybed(document.getElementById("kb-moog"),2,3,false);
+(function(){
+  const w=document.getElementById("kb-practice").querySelectorAll(".wk");
+  w[0].classList.add("target"); w[1].classList.add("next");
+  [[0,"1"],[1,"2"],[2,"3"]].forEach(([i,f])=>{
+    const t=document.createElement("div"); t.className="finger"; t.textContent=f; w[i].appendChild(t);
+  });
+})();
+
+/* ---------------- synth: waveform selector + scope ---------------- */
+const S={wave:"sawtooth",cutoff:62};
+const GLYPH={
+  sine:"M0 7 C 4 -3, 9 17, 13 7 S 22 -3, 26 7",
+  triangle:"M0 12 L 6.5 2 L 19.5 12 L 26 2",
+  sawtooth:"M0 12 L 12 2 L 12 12 L 24 2 L 24 12",
+  square:"M0 12 L0 2 L9 2 L9 12 L18 12 L18 2 L26 2"
+};
+const WAVES=[["sine","Sine","正弦"],["triangle","Triangle","三角"],["sawtooth","Saw","鋸齒"],["square","Square","方波"]];
+const wavesEl=document.getElementById("waves");
+WAVES.forEach(([id,en,zh])=>{
+  const b=document.createElement("button");
+  b.className="wave"+(id===S.wave?" on":"");
+  b.innerHTML=`<svg viewBox="0 0 26 14"><path d="${GLYPH[id]}"/></svg>${en} <span class="tz">${zh}</span>`;
+  b.onclick=()=>{S.wave=id;wavesEl.querySelectorAll(".wave").forEach(x=>x.classList.remove("on"));b.classList.add("on");};
+  wavesEl.appendChild(b);
+});
+
+/* Additive synthesis: the SAME loop draws all four shapes, and the cutoff knob simply
+   limits how many harmonics survive — which is literally what a lowpass filter does.
+   In the real thing (slice 43) this comes from an AnalyserNode instead. */
+function sample(type,ph,nh){
+  if(type==="sine") return Math.sin(ph);
+  let v=0;
+  for(let n=1;n<=nh;n++){
+    if(type==="sawtooth") v+=Math.sin(n*ph)/n;
+    else if(type==="square"){ if(n%2) v+=Math.sin(n*ph)/n; }
+    else if(type==="triangle"){ if(n%2) v+=Math.cos(n*ph)/(n*n)*((((n-1)/2)%2)?-1:1); }
+  }
+  const norm={sawtooth:0.55,square:0.78,triangle:1.22}[type]||1;
+  return v*norm;
+}
+const cv=document.getElementById("scope"), c2=cv.getContext("2d");
+function drawScope(){
+  const r=cv.getBoundingClientRect(), dpr=devicePixelRatio||1;
+  if(!r.width){requestAnimationFrame(drawScope);return;}
+  cv.width=r.width*dpr; cv.height=r.height*dpr;
+  c2.setTransform(dpr,0,0,dpr,0,0);
+  c2.clearRect(0,0,r.width,r.height);
+  const mid=r.height/2;
+  c2.strokeStyle="rgba(255,255,255,.07)"; c2.lineWidth=1;
+  c2.beginPath(); c2.moveTo(0,mid); c2.lineTo(r.width,mid); c2.stroke();
+  const nh=Math.max(1,Math.round(1+Math.pow(S.cutoff/100,2)*40));   /* cutoff → harmonics */
+  c2.strokeStyle="#B98CFF"; c2.lineWidth=2.5; c2.lineJoin="round";
+  c2.shadowColor="rgba(185,140,255,.85)"; c2.shadowBlur=10;
+  c2.beginPath();
+  const cycles=2.4;
+  for(let x=0;x<=r.width;x++){
+    const ph=(x/r.width)*cycles*Math.PI*2;
+    const y=mid-sample(S.wave,ph,nh)*mid*0.74;
+    x?c2.lineTo(x,y):c2.moveTo(x,y);
+  }
+  c2.stroke(); c2.shadowBlur=0;
+  requestAnimationFrame(drawScope);
+}
+requestAnimationFrame(drawScope);
+
+/* ---------------- knobs: vertical drag, up = more ---------------- */
+const KNOBS=[["Cutoff","截止",62,"cutoff"],["Reso","共振",30],["Detune","失諧",18],
+             ["Attack","起音",8],["Release","釋音",40]];
+const kw=document.getElementById("knobs");
+KNOBS.forEach(([en,zh,init,bind])=>{
+  const el=document.createElement("div"); el.className="knob";
+  el.innerHTML=`<div class="dial"><i></i></div><div class="klabel">${en}<br><span class="tz">${zh}</span></div><div class="kval">${init}</div>`;
+  kw.appendChild(el);
+  const dial=el.querySelector(".dial"), ind=el.querySelector("i"), val=el.querySelector(".kval");
+  let v=init, start=null;
+  const draw=()=>{ind.style.transform=`rotate(${-135+v*2.7}deg)`;val.textContent=Math.round(v);if(bind)S[bind]=v;};
+  draw();
+  dial.addEventListener("pointerdown",e=>{start={y:e.clientY,v};dial.setPointerCapture(e.pointerId);});
+  dial.addEventListener("pointermove",e=>{
+    if(!start)return;
+    v=Math.max(0,Math.min(100,start.v+(start.y-e.clientY)*0.7));   /* ~150px = full range */
+    draw();
+  });
+  const up=()=>start=null;
+  dial.addEventListener("pointerup",up); dial.addEventListener("pointercancel",up);
+});
+
+/* ---------------- tabs + info overlay ---------------- */
+const NOTESTXT={
+ trainer:`<h3>Finger Drumming — slices 39 + 40</h3>
+  <p><b>Notes travel right → left</b> to a fixed hit line, with the pad grid directly underneath.
+  Reading direction matches how a groove is written, and the hand never leaves the pads to look up.</p>
+  <p><b>Four lanes, never sixteen</b> (D8). Each lane is colour-matched to its pad below — that stripe
+  is the whole mapping, and it is why sixteen columns were never on the table.</p>
+  <p><b>Timing is the game.</b> Positions come from the audio clock, never a frame counter, and every
+  judgement is shifted by the per-device latency measured in slice 38. Android touch-to-sound runs
+  40–300ms — wider than the "perfect" window — so uncalibrated, a kid plays in time and the app calls
+  them late.</p>
+  <p><b>Layers come free</b> (D9): each exercise's backing loop is the previous exercise's pattern.</p>`,
+ pads:`<h3>Drum Pads — slice 37</h3>
+  <p>Full-width 4×4 grid, <code>touch-action:none</code>, one <code>pointerId</code> map so four fingers
+  are genuinely independent. Try four at once.</p>
+  <p><b>Dimmed pads</b> are the honest failed-sample state — a kit that lost a file stays playable
+  instead of lying.</p>
+  <p><b>Fixed velocity</b> — Android exposes no usable pressure. Marked as a <code>ponytail:</code>
+  ceiling; y-position-within-pad is the upgrade path.</p>`,
+ piano:`<h3>Piano — slice 41</h3>
+  <p>Full-width two-octave keybed, multi-touch, slide across keys to glissando. The keybed is a shared
+  component with the Synth — two real consumers, which is what makes the abstraction earned.</p>
+  <p><b>Synthesized, not sampled</b> (D6): three detuned oscillators, fast attack, exponential decay,
+  a lowpass tracking pitch. A real multi-velocity set is 20–100MB and every byte would sit in the
+  offline app shell. Expect a good electric piano, not a Steinway.</p>`,
+ practice:`<h3>Practice — slice 42</h3>
+  <p><b>Nothing listens.</b> No mic, no MIDI. The app cannot know what the kid played and does not
+  pretend to — it is a metronome with a visual score, while the kid mirrors it on the real piano.</p>
+  <p>Amber = play now, faint = next beat, finger numbers on the key. Tempo down to 40bpm, loop one bar.
+  Nothing scored, nothing unlocked.</p>
+  <p><code>js/drills.js</code> stays untouched — that is the away-from-tablet routine, this is the
+  on-screen reference.</p>`,
+ moog:`<h3>Synth — slice 43</h3>
+  <p><b>Four waveforms, not two.</b> <code>OscillatorNode.type</code> natively takes all four, so the
+  selector costs one string assignment.</p>
+  <p><b>The scope is the lesson.</b> Pick a shape, see the shape, then turn Cutoff down and watch the
+  corners round off — that is subtractive synthesis in one gesture. In this preview the trace is drawn
+  additively (cutoff limits harmonic count, which is what a lowpass does); the real one reads an
+  <code>AnalyserNode</code> on the instrument bus, not the master, so the metronome never leaks in.</p>
+  <p>A <b>zero-crossing trigger</b> is what keeps the trace from sliding — five lines, and the whole
+  difference between an oscilloscope and visual noise.</p>
+  <p>Resonance is clamped: kids max every knob within ten seconds, and a self-oscillating filter at
+  full Q is hearing safety, not taste.</p>`
+};
+let cur="trainer";
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+  document.querySelectorAll("section").forEach(s=>s.classList.remove("on"));
+  t.classList.add("on"); cur=t.dataset.go;
+  document.getElementById(cur).classList.add("on");
+  document.getElementById("veil").classList.remove("on");
+}));
+const veil=document.getElementById("veil");
+document.getElementById("infobtn").onclick=()=>{
+  document.getElementById("veiltext").innerHTML=NOTESTXT[cur];
+  veil.classList.toggle("on");
+};
+veil.onclick=()=>veil.classList.remove("on");
+</script>
+</body>
+</html>
