@@ -200,7 +200,7 @@
   height: 100%;
   padding: clamp(var(--brain-space-3), 1.8vw, var(--brain-space-5));
   background: transparent;
-  overflow: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
 }
 

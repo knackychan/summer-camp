@@ -28,6 +28,7 @@ var WAVEFORMS = ["sine", "triangle", "sawtooth", "square"];
 function createMoogVoice(ctx, bus, analyserNode, params, midi) {
   var freq = midiToFreq(midi);
   var detuneCents = params.detune || 0;
+  var currentParams = params;
 
   /* Oscillators */
   var osc1 = ctx.createOscillator();
@@ -73,11 +74,37 @@ function createMoogVoice(ctx, bus, analyserNode, params, midi) {
 
   var stopped = false;
 
+  function glideParam(audioParam, value, timeConstant) {
+    var now = ctx.currentTime;
+    try {
+      audioParam.cancelScheduledValues(now);
+      audioParam.setTargetAtTime(value, now, timeConstant || 0.025);
+    } catch (e) {
+      audioParam.value = value;
+    }
+  }
+
+  function update(nextParams) {
+    if (stopped) return;
+    currentParams = nextParams || currentParams;
+    var nextDetune = currentParams.detune || 0;
+    var nextWave = currentParams.wave || "sawtooth";
+    var nextCutoff = Math.max(currentParams.cutoff || 800, 20);
+    var nextResonance = Math.min(currentParams.resonance || 0, MAX_RESONANCE);
+
+    osc1.type = nextWave;
+    osc2.type = nextWave;
+    glideParam(osc1.frequency, freq * Math.pow(2, -nextDetune / 2400), 0.02);
+    glideParam(osc2.frequency, freq * Math.pow(2, nextDetune / 2400), 0.02);
+    glideParam(lp.frequency, nextCutoff, 0.035);
+    glideParam(lp.Q, nextResonance, 0.035);
+  }
+
   function release() {
     if (stopped) return;
     stopped = true;
     var now = ctx.currentTime;
-    var rel = params.release || 0.3;
+    var rel = currentParams.release || 0.3;
     ampGain.gain.cancelScheduledValues(now);
     ampGain.gain.setValueAtTime(ampGain.gain.value, now);
     ampGain.gain.linearRampToValueAtTime(0.0001, now + rel);
@@ -91,7 +118,7 @@ function createMoogVoice(ctx, bus, analyserNode, params, midi) {
     }, rel * 1000 + 100);
   }
 
-  return { release: release, ampGain: ampGain };
+  return { release: release, update: update, ampGain: ampGain };
 }
 
 /* Knob: pointer-drag delta. Returns a DOM div that tracks vertical drag and
@@ -115,11 +142,11 @@ function createKnob(opts) {
   knob.setAttribute("aria-valuemax", String(max));
   knob.setAttribute("aria-valuenow", String(value));
   knob.setAttribute("aria-label", label + " / " + labelTz);
-  knob.style.cssText = "width:108px;height:108px;border-radius:50%;border:5px solid #5AD1C4;background:#14131A;position:relative;cursor:pointer;";
+  knob.style.cssText = "width:clamp(84px,13vmin,108px);height:clamp(84px,13vmin,108px);border-radius:50%;border:clamp(4px,0.6vmin,5px) solid #5AD1C4;background:#14131A;position:relative;cursor:pointer;";
 
   /* Indicator dot */
   var dot = document.createElement("div");
-  dot.style.cssText = "position:absolute;top:14px;left:50%;width:8px;height:36px;background:#5AD1C4;border-radius:4px;transform-origin:bottom center;margin-left:-4px;";
+  dot.style.cssText = "position:absolute;top:clamp(11px,1.7vmin,14px);left:50%;width:clamp(6px,1vmin,8px);height:clamp(28px,4.4vmin,36px);background:#5AD1C4;border-radius:4px;transform-origin:bottom center;margin-left:clamp(-4px,-0.5vmin,-3px);";
   knob.appendChild(dot);
 
   /* Label — both languages on screen, not just in aria-label. A kid-facing string
@@ -205,6 +232,12 @@ function init(ctx) {
   /* Current parameters */
   var params = { cutoff: 800, resonance: 6, detune: 4, attack: 0.01, release: 0.3, wave: "sawtooth" };
 
+  function updateActiveVoices() {
+    voices.forEach(function (voice) {
+      if (voice.update) voice.update(params);
+    });
+  }
+
   /* Instrument bus: separate from master so scope shows only synth */
   var instrumentBus = graph.ctx.createGain();
   instrumentBus.gain.value = 1;
@@ -253,6 +286,7 @@ function init(ctx) {
     btn.setAttribute("aria-checked", String(w === params.wave));
     btn.addEventListener("pointerdown", function () {
       params.wave = w;
+      updateActiveVoices();
       waveSelect.querySelectorAll("button").forEach(function (b) {
         var bw = b.textContent.toLowerCase();
         b.style.background = bw === params.wave ? "#5AD1C4" : "#2F2E3D";
@@ -267,12 +301,15 @@ function init(ctx) {
 
   /* Knobs row */
   var knobRow = document.createElement("div");
-  knobRow.style.cssText = "display:flex;gap:18px;justify-content:center;flex-wrap:wrap;";
+  knobRow.style.cssText = "display:flex;gap:clamp(12px,2.2vmin,18px);justify-content:center;flex-wrap:wrap;";
 
   function makeParamKnob(name, tz, min, max, step, key) {
     var k = createKnob({
       label: name, labelTz: tz, min: min, max: max, step: step, value: params[key],
-      onChange: function (v) { params[key] = v; }
+      onChange: function (v) {
+        params[key] = v;
+        updateActiveVoices();
+      }
     });
     knobRow.appendChild(k.element);
     return k;
@@ -311,6 +348,7 @@ function init(ctx) {
       knobs.detune.setValue(params.detune);
       knobs.attack.setValue(params.attack);
       knobs.release.setValue(params.release);
+      updateActiveVoices();
       /* Update waveform selector buttons */
       waveSelect.querySelectorAll("button").forEach(function (b) {
         var bw = b.textContent.toLowerCase();

@@ -190,13 +190,30 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: clamp(var(--brain-space-3), 1.5vw, var(--brain-space-5));
+  gap: var(--brain-change-gap, var(--brain-space-4));
+  padding: clamp(var(--brain-space-2), 1.2vw, var(--brain-space-4));
   border: none;
   border-radius: 0;
   box-shadow: none;
   background: transparent;
-  overflow: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
+}
+.brain-round--contained .brain-change {
+  --brain-change-gap: clamp(8px, 1.1vmin, 16px);
+  --brain-change-summary-gap: clamp(8px, 1.1vmin, 14px);
+  --brain-change-work-gap: clamp(8px, 1.1vmin, 14px);
+  --brain-change-panel-pad: clamp(10px, 1.35vmin, 16px);
+  --brain-change-picture-w: clamp(60px, 7.4vmin, 78px);
+  --brain-change-picture-h: clamp(72px, 8.5vmin, 92px);
+  --brain-change-price-size: clamp(24px, 3vw, 38px);
+  --brain-change-display-size: clamp(18px, 2.6vw, 30px);
+  --brain-change-paid-size: clamp(22px, 2.8vw, 28px);
+  --brain-change-label-size: clamp(11px, 1.3vw, 13px);
+  --brain-change-tray-total-size: clamp(24px, 3vw, 32px);
+  --brain-change-token-size: clamp(60px, 6.5vmin, 68px);
+  --brain-change-tray-min: clamp(96px, 12.5vmin, 156px);
+  --brain-change-till-zoom: .92;
 }
 .brain-change__awning {
   position: absolute; inset: 0 0 auto; height: 18px; opacity: .5;
@@ -205,14 +222,25 @@
 .brain-round--contained .brain-change__awning { display: none; }
 
 .brain-change__tot { display: grid; justify-items: center; gap: var(--brain-space-4); text-align: center; }
-.brain-change__coins { display: flex; gap: var(--brain-space-5); }
+.brain-round--contained .brain-change__tot {
+  max-width: none;
+  padding: clamp(var(--brain-space-3), 1.4vmin, var(--brain-space-4));
+  gap: var(--brain-change-gap, var(--brain-space-4));
+}
+.brain-change__coins {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(var(--brain-space-3), 1.3vmin, var(--brain-space-5));
+}
 
-.brain-change__summary { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: var(--brain-space-4); margin-top: var(--brain-space-2); flex: 0 0 auto; }
-.brain-change__panel { border: 3px solid var(--brain-outline); border-radius: 18px; background: var(--brain-white); padding: var(--brain-space-4); min-width: 0; }
+.brain-change__summary { display: grid; grid-template-columns: minmax(0,1.08fr) minmax(0,.96fr) minmax(0,.96fr); gap: var(--brain-change-summary-gap, var(--brain-space-4)); margin-top: var(--brain-space-2); flex: 0 0 auto; }
+.brain-change__panel { border: 3px solid var(--brain-outline); border-radius: 18px; background: var(--brain-white); padding: var(--brain-change-panel-pad, var(--brain-space-4)); min-width: 0; }
 
 .brain-change__product { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--brain-space-3); }
 .brain-change__picture {
-  width: 78px; height: 92px;
+  width: var(--brain-change-picture-w, 78px);
+  height: var(--brain-change-picture-h, 92px);
   display: grid; place-items: center;
   border: 3px solid var(--brain-outline);
   border-radius: 15px;
@@ -220,7 +248,7 @@
 }
 .brain-change__picture .brain-sprite { --sprite-zoom: 1; }
 .brain-change__name { font-weight: 900; color: var(--brain-ink-2); font-size: 14px; }
-.brain-change__price { font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif; font-size: clamp(28px,4vw,42px); font-weight: 900; font-variant-numeric: tabular-nums; }
+.brain-change__price { font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif; font-size: var(--brain-change-price-size, clamp(28px,4vw,42px)); font-weight: 900; font-variant-numeric: tabular-nums; }
 
 .brain-change__register { background: var(--brain-change); color: var(--brain-white); text-align: center; }
 .brain-change__display {
@@ -228,9 +256,9 @@
   border: 3px solid var(--brain-outline); border-radius: 12px;
   background: color-mix(in srgb, var(--brain-outline) 55%, black);
   font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
-  font-size: clamp(20px,2.5vw,32px); font-weight: 900; font-variant-numeric: tabular-nums;
+  font-size: var(--brain-change-display-size, clamp(20px,2.5vw,32px)); font-weight: 900; font-variant-numeric: tabular-nums;
 }
-.brain-change__register-label { margin-top: var(--brain-space-3); font-size: 13px; font-weight: 900; }
+.brain-change__register-label { margin-top: var(--brain-space-3); font-size: var(--brain-change-label-size, 13px); font-weight: 900; }
 
 .brain-change__payment { text-align: center; }
 .brain-change__paid {
@@ -239,16 +267,16 @@
   border: 3px solid var(--brain-outline); border-radius: 12px; padding: var(--brain-space-2) var(--brain-space-3);
   background: var(--brain-paper-2);
   font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
-  font-size: 28px; font-weight: 900;
+  font-size: var(--brain-change-paid-size, 28px); font-weight: 900;
 }
 
-.brain-change__work { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: start; gap: var(--brain-space-4); margin-top: var(--brain-space-4); min-height: 0; }
+.brain-change__work { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: start; gap: var(--brain-change-work-gap, var(--brain-space-4)); margin-top: var(--brain-space-4); min-height: 0; }
 .brain-round--contained .brain-change__work { flex: 1 1 auto; }
 .brain-change__till-col { grid-column: 1; grid-row: 1 / span 3; justify-self: center; }
 .brain-change__tray-col, .brain-change__actions-col { grid-column: 2; }
-.brain-change__label { display: flex; justify-content: space-between; gap: var(--brain-space-3); margin-bottom: var(--brain-space-2); color: var(--brain-ink-2); font-size: 13px; font-weight: 900; }
+.brain-change__label { display: flex; justify-content: space-between; gap: var(--brain-space-3); margin-bottom: var(--brain-space-2); color: var(--brain-ink-2); font-size: var(--brain-change-label-size, 13px); font-weight: 900; }
 
-.brain-change__till { --sprite-zoom: 2; position: relative; width: calc(193px * var(--sprite-zoom)); height: calc(252px * var(--sprite-zoom)); overflow: hidden; flex: none; }
+.brain-change__till { --sprite-zoom: var(--brain-change-till-zoom, 2); position: relative; width: calc(193px * var(--sprite-zoom)); height: calc(252px * var(--sprite-zoom)); overflow: hidden; flex: none; }
 .brain-change__till > .brain-sprite { position: absolute; left: calc(-2px * var(--sprite-zoom)); top: calc(-2px * var(--sprite-zoom)); }
 .brain-change__till-display {
   position: absolute; left: calc(52px * var(--sprite-zoom)); top: calc(33px * var(--sprite-zoom));
@@ -269,7 +297,7 @@
 .brain-change__token {
   position: relative;
   display: grid; place-items: center;
-  min-width: 64px; min-height: 64px;
+  min-width: var(--brain-change-token-size, 64px); min-height: var(--brain-change-token-size, 64px);
   padding: 0; border: 0; background: none;
   color: var(--brain-ink);
   font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
@@ -285,8 +313,8 @@
 .brain-change__token:disabled { opacity: .5; cursor: not-allowed; }
 .brain-change__token:focus-visible { outline: 4px solid var(--brain-focus); outline-offset: 3px; }
 
-.brain-change__tray-total { font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif; font-size: 32px; font-variant-numeric: tabular-nums; font-weight: 900; }
-.brain-change__tray-groups { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--brain-space-3); min-height: 76px; margin-top: var(--brain-space-2); }
+.brain-change__tray-total { font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif; font-size: var(--brain-change-tray-total-size, 32px); font-variant-numeric: tabular-nums; font-weight: 900; }
+.brain-change__tray-groups { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--brain-space-3); min-height: var(--brain-change-tray-min, 76px); margin-top: var(--brain-space-2); }
 .brain-change__tray-empty { align-self: center; color: var(--brain-ink-2); font-weight: 900; }
 .brain-change__tray-group { position: relative; display: grid; place-items: center; min-width: 60px; min-height: 58px; border: 2px solid var(--brain-outline); border-radius: 14px; background: var(--brain-white); font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif; font-weight: 900; }
 .brain-change__tray-group small { display: block; color: var(--brain-ink-2); font-family: Nunito, system-ui, sans-serif; }
@@ -302,36 +330,81 @@
   background: var(--brain-ink-2);
   opacity: .16;
 }
+.brain-round--contained .brain-change__tray {
+  min-height: var(--brain-change-tray-min, 112px);
+  padding: var(--brain-space-3);
+}
+.brain-round--contained .brain-change__tray-groups {
+  min-height: 56px;
+  margin-top: var(--brain-space-1);
+}
+.brain-round--contained .brain-change__tray-group {
+  min-width: 52px;
+  min-height: 50px;
+}
+.brain-round--contained .brain-change__actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--brain-space-2);
+  margin-top: var(--brain-space-3);
+}
+.brain-round--contained .brain-change__actions .brain-button--give {
+  grid-column: auto;
+}
 
 @media (width < 900px) {
+  .brain-round--contained .brain-change {
+    --brain-change-gap: clamp(8px, 1.2vmin, 14px);
+    --brain-change-summary-gap: clamp(8px, 1.2vmin, 12px);
+    --brain-change-work-gap: clamp(8px, 1.2vmin, 12px);
+    --brain-change-panel-pad: clamp(9px, 1.1vmin, 14px);
+    --brain-change-picture-w: 64px;
+    --brain-change-picture-h: 78px;
+    --brain-change-price-size: 28px;
+    --brain-change-display-size: 22px;
+    --brain-change-paid-size: 24px;
+    --brain-change-tray-total-size: 28px;
+    --brain-change-token-size: 60px;
+    --brain-change-tray-min: 112px;
+    --brain-change-till-zoom: .84;
+  }
   .brain-change__summary { grid-template-columns: 1fr 1fr; }
   .brain-change__register { grid-column: 1 / -1; }
-  .brain-round--contained .brain-change__work { grid-template-columns: 1fr; }
-  .brain-round--contained .brain-change__till-col,
-  .brain-round--contained .brain-change__tray-col,
-  .brain-round--contained .brain-change__actions-col { grid-column: 1; grid-row: auto; }
-  .brain-round--contained .brain-change__till { --sprite-zoom: 1; }
 }
 @media (width < 600px) {
+  .brain-round--contained .brain-change {
+    --brain-change-gap: 8px;
+    --brain-change-summary-gap: 8px;
+    --brain-change-work-gap: 8px;
+    --brain-change-panel-pad: 10px;
+    --brain-change-picture-w: 60px;
+    --brain-change-picture-h: 72px;
+    --brain-change-price-size: 26px;
+    --brain-change-display-size: 20px;
+    --brain-change-paid-size: 22px;
+    --brain-change-tray-total-size: 26px;
+    --brain-change-token-size: 60px;
+    --brain-change-tray-min: 96px;
+    --brain-change-till-zoom: .78;
+    overflow: auto;
+  }
   .brain-change__summary { grid-template-columns: 1fr; }
   .brain-change__work { grid-template-columns: 1fr; }
   .brain-change__till-col { grid-row: auto; }
   .brain-change__customer { display: none; }
-  .brain-change__panel { padding: var(--brain-space-3); }
-  .brain-change__picture { width: 64px; height: 72px; }
-  .brain-change__price { font-size: 28px; }
-  .brain-change__display { min-height: 58px; }
-  .brain-change__paid { min-height: 56px; font-size: 24px; }
-  .brain-tray { min-height: 116px; }
+  .brain-round--contained .brain-change__panel { padding: var(--brain-change-panel-pad, var(--brain-space-3)); }
+  .brain-round--contained .brain-tray { min-height: 96px; }
   .brain-change__actions { grid-template-columns: 1fr; }
   .brain-change__actions .brain-button--give { grid-column: auto; }
 }
 @media (height < 650px) {
   .brain-change__awning, .brain-change__customer { display: none; }
-  .brain-round--contained .brain-change { padding-top: var(--brain-space-3); padding-bottom: var(--brain-space-3); }
+  .brain-round--contained .brain-change {
+    padding-top: var(--brain-space-2);
+    padding-bottom: var(--brain-space-2);
+    overflow: auto;
+  }
   .brain-round--contained .brain-change__summary { gap: var(--brain-space-3); }
-  .brain-round--contained .brain-change__work { gap: var(--brain-space-3); margin-top: var(--brain-space-3); }
-  .brain-round--contained .brain-change__till { --sprite-zoom: 1; }
-  .brain-round--contained .brain-tray { min-height: 104px; }
+  .brain-round--contained .brain-change__work { gap: var(--brain-space-3); margin-top: var(--brain-space-2); }
+  .brain-round--contained .brain-tray { min-height: 88px; }
   .brain-round--contained .brain-button { min-height: 48px; }
 }
