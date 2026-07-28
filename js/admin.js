@@ -883,12 +883,12 @@
   var ledgerFilter={kid:"all",kind:"all",todayOnly:false};
   const STAR_KINDS=[
     {key:"unlabelled",label:"Unlabelled",test:function(r){return /^Unlabelled|^App progress/.test(r);}},
-    {key:"revoked",   label:"Revoked",   test:function(r){return /^Revoked|^Star reset|^Day reset/.test(r);}},
-    {key:"mission",   label:"Mission",   test:function(r){return /^Mission |^My Day mission/.test(r);}},
+    {key:"revoked",   label:"Revoked",   test:function(r){return /^Revoked|^Star reset|^Day reset|^Day-complete bonus undone/.test(r);}},
+    {key:"mission",   label:"Mission",   test:function(r){return /^Mission |^My Day mission|^Admin accepted:/.test(r);}},
     {key:"practice",  label:"Practice",  test:function(r){return /^Practice /.test(r);}},
     {key:"activity",  label:"Activity",  test:function(r){return /^Activity /.test(r);}},
     {key:"learn",     label:"Learn",     test:function(r){return /^Learn /.test(r);}},
-    {key:"bonus",     label:"Bonus",     test:function(r){return /^Bonus |^Day complete/.test(r);}},
+    {key:"bonus",     label:"Bonus",     test:function(r){return /^Bonus |^Day complete|^Day-complete bonus/.test(r);}},
     {key:"outing",    label:"Outing",    test:function(r){return /^Outing |^Removed block/.test(r);}},
     {key:"captain",   label:"Captain",   test:function(r){return /^captain help/i.test(r);}}
   ];

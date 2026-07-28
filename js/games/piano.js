@@ -256,7 +256,7 @@ function init(ctx) {
   playBar.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:6px 10px;overflow:hidden;";
   var octLabel = document.createElement("span");
   octLabel.style.cssText = "font-family:Fredoka,Nunito,system-ui;font-size:13px;font-weight:600;color:#F4F2FA;min-width:50px;text-align:center;";
-  var currentOctave = 2;
+  var currentOctave = 3;
   /* MIDI octave numbering: lowMidi = currentOctave*12, and midi 36 is C2 — so the
      readout is one below the internal number, not equal to it. */
   function octaveName() { return "C" + (currentOctave - 1); }
