@@ -42,3 +42,14 @@ sanctioned use of Magnific as photo enhancement, never for the pixel-art game te
 | `barnardstar.jpg` | ESO wide-field (eso1837d) | ESO |
 
 Downloaded 2026-07-28.
+
+## Galaxy-mode backdrop texture
+
+| File | Source | Credit |
+|---|---|---|
+| `milkyway-sky.jpg` | ESO wide-field panorama, Magnific `ultra-photo` 2x enhanced from the full-res source, then downsampled to 1600×800 | ESO |
+
+`milkyway-sky.jpg` is a separate file from `milkyway.jpg` — it's the full-sphere backdrop texture for
+Galaxy mode (`js/games/solar.js`'s `mwBackdrop`, a 2:1 equirectangular wrap), not the info-card photo.
+Same ESO source as `milkyway.jpg`, but upscaled from the full-resolution master before downsampling so
+it reads clean at full-screen size instead of showing the card photo's JPEG blockiness.
