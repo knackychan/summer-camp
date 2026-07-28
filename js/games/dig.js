@@ -204,8 +204,10 @@ function init(ctx) {
     need: 0, sum: 0, running: true, timer: null, taskTimeout: null
   };
 
-  document.getElementById("stage").innerHTML =
-    '<div class="cue" id="dgCue"></div>'
+  C.stage.innerHTML =
+    '<div class="game-scene game-scene--dig">'
+    + '<div class="dig-layout">'
+    + '<div class="cue" id="dgCue"></div>'
     + '<div class="dg-grid" id="dgGrid"></div>'
     + '<div class="dg-ctl">'
     + '<div class="dg-pad">'
@@ -215,7 +217,9 @@ function init(ctx) {
     + '</div>'
     + '<button class="dg-dig" id="dgDig">⛏️ DIG 挖!</button>'
     + '</div>'
-    + '<div class="msg" id="msg">Drive to a rock, then DIG! 開到石頭旁邊，然後挖!</div>';
+    + '<div class="msg" id="msg">Drive to a rock, then DIG! 開到石頭旁邊，然後挖!</div>'
+    + '</div>'
+    + '</div>';
 
   document.querySelectorAll(".dbtn").forEach(function (b) {
     b.onpointerdown = function (e) {

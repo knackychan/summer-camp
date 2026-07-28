@@ -1,6 +1,6 @@
 # Slice 35 — Change Maker corner-shop pilot
 
-**Status:** proposed — requires approval of `design.md`  
+**Status:** implemented 2026-07-28 — Change Maker ships as a real scene module (js/brain/scenes/change.js) using the pixel-art atlas already generated for the pilot (assets/brain/sprites/change.png; only "apple" has generated product art today, every other SHOP_PRODUCTS entry uses the documented CSS fallback card). Automated tests and `node scripts/check.mjs` are green. Still outstanding before this is the human-approved DONE WHEN: real-tablet screenshot review (tot/mid/hard active, correct, corrective, compact, short landscape), child/tablet observation, and Papa's sign-off gating slice 36.  
 **Depends on:** slice 34  
 **Ships independently:** yes; one redesigned Brain Gym game, eight generic games
 **Normative reference:** `implementation-guidelines.md`; every visual and runtime rule applies

@@ -21,6 +21,13 @@
     ["ask","Ask"],
     ["captain","Captain"]
   ];
+  const BRAIN_TIERS=[["tot","Tot"],["mid","Mid"],["hard","Hard"]];
+  const BRAIN_TIER_DEFAULT={lucien:"tot",lili:"mid",luis:"hard"}; /* keep in sync with js/brain-data.js TIER_DEFAULT */
+  const brainIsEnabled=function(fs,id){return fs["brain_enabled_"+id]!=="0";};
+  const brainTierValue=function(fs,id){
+    var v=fs["brain_tier_"+id];
+    return BRAIN_TIERS.some(function(t){return t[0]===v;})?v:(BRAIN_TIER_DEFAULT[id]||"mid");
+  };
 
   let client=null, session=null, today="", realtimeChannel=null, realtimeStatus="";
   let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[],acts:[],ledger14:[],photos14:[],asks14:[]};
@@ -1591,6 +1598,14 @@
         return '<button class="chip" aria-pressed="'+(locked?"true":"false")+'" data-catlock="'+kid+':'+c[0]+'" data-locked="'+(locked?1:0)+'">'+esc(c[1])+label+'</button>';
       }).join("")+'</div>'+
       '<p class="field__hint" style="margin-top:9px">My Day, guides, Learn and the ask channel stay open in every state except a full pause.</p>'+
+      '<span class="lbl" style="display:block;margin:18px 0 8px">Brain Gym</span>'+
+      '<div class="chips">'+
+      '<button class="chip" aria-pressed="'+(brainIsEnabled(fs,kid)?"true":"false")+'" data-brainenabled="'+kid+'" data-enabled="'+(brainIsEnabled(fs,kid)?1:0)+'">'+(brainIsEnabled(fs,kid)?"Required daily":"Off")+'</button>'+
+      BRAIN_TIERS.map(function(t){
+        var on=brainTierValue(fs,kid)===t[0];
+        return '<button class="chip" aria-pressed="'+(on?"true":"false")+'" data-braintier="'+kid+':'+t[0]+'">'+t[1]+'</button>';
+      }).join("")+'</div>'+
+      '<p class="field__hint" style="margin-top:9px">Off skips the daily-3 gate — games are free to play. Difficulty applies only while Brain Gym is required.</p>'+
       '<div class="grid-2" style="margin-top:18px">'+
       '<label class="field"><span class="lbl">Kid PIN</span><input class="inp num" id="pin-'+kid+'" inputmode="numeric" maxlength="4" value="'+esc(pin||"")+'" placeholder="optional" autocomplete="off"><span class="field__hint">4 digits · used to open profile on tablet.</span></label>'+
       '<label class="field"><span class="lbl">Last seen</span><input class="inp" value="'+lastSeen+'" readonly><span class="field__hint">Derived from day_ticks.</span></label></div>'+
@@ -1618,6 +1633,23 @@
       const {error}=await client.from("family_settings").upsert({key:'catlock_'+id+'_'+cat,value,updated_at:new Date().toISOString()});
       if(error){writeFailed(error);return;}
       toast(kidName(id)+" "+cat+" "+(locked?(cat==="games"?"pass granted":"unlocked"):"locked"),true);
+      await loadAll();
+    };});
+    document.querySelectorAll("[data-brainenabled]").forEach(function(b){b.onclick=async function(){
+      var id=b.dataset.brainenabled, enabled=b.dataset.enabled==="1";
+      var value=enabled?"0":"1";
+      suppressRealtime("family_settings",{key:"brain_enabled_"+id});
+      const {error}=await client.from("family_settings").upsert({key:"brain_enabled_"+id,value,updated_at:new Date().toISOString()});
+      if(error){writeFailed(error);return;}
+      toast(kidName(id)+" Brain Gym "+(enabled?"turned off":"required daily"),true);
+      await loadAll();
+    };});
+    document.querySelectorAll("[data-braintier]").forEach(function(b){b.onclick=async function(){
+      var parts=b.dataset.braintier.split(":"), id=parts[0], tier=parts[1];
+      suppressRealtime("family_settings",{key:"brain_tier_"+id});
+      const {error}=await client.from("family_settings").upsert({key:"brain_tier_"+id,value:tier,updated_at:new Date().toISOString()});
+      if(error){writeFailed(error);return;}
+      toast(kidName(id)+" Brain Gym difficulty: "+tier,true);
       await loadAll();
     };});
     document.querySelectorAll("[data-savepin]").forEach(function(b){b.onclick=function(){savePin(b.dataset.savepin,false);};});

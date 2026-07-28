@@ -3,17 +3,14 @@ var S = null, C = null;
 
 function drawWord() {
   var w = S.word, pos = S.pos;
-  var spans = w.split("").map(function (c, idx) {
+  var wordEl = S._wordEl;
+  if (!wordEl) return;
+  wordEl.innerHTML = w.split("").map(function (c, idx) {
     var cls = "todo";
     if (idx < pos) cls = "done";
     else if (idx === pos) cls = S.wrong ? "bad cur" : "cur";
     return '<span class="' + cls + '">' + c + '</span>';
   }).join("");
-  document.getElementById("stage").innerHTML =
-    '<div class="cue">Type the word</div>'
-    + (S.em ? '<div class="word-em">' + S.em + '</div>' : '')
-    + '<div class="word">' + spans + '</div>'
-    + '<div class="msg" id="msg"></div>';
   C.keys.highlight(w[pos]);
 }
 
@@ -32,6 +29,7 @@ function nextHome() {
   if (S.i >= S.queue.length) { S.queue = C.shuffle(C.words.easy.slice()); S.i = 0; }
   S.word = S.queue[S.i][0]; S.em = S.queue[S.i][1];
   S.pos = 0; S.wrong = false;
+  if (S._emEl) S._emEl.textContent = S.em || "";
   drawWord(); homeHud();
 }
 
@@ -42,6 +40,19 @@ function init(ctx) {
     correct: 0, errors: 0, words: 0, em: "", word: "", wrong: false,
     running: true, wordTimeout: null
   };
+
+  C.stage.innerHTML =
+    '<div class="game-scene game-scene--home">'
+    + '<div class="game-scene__center">'
+    + '<div class="cue">Type the word</div>'
+    + '<div class="word-em" id="homeEm"></div>'
+    + '<div class="word" id="homeWord"></div>'
+    + '<div class="msg" id="msg"></div>'
+    + '</div>'
+    + '</div>';
+
+  S._wordEl = document.getElementById("homeWord");
+  S._emEl = document.getElementById("homeEm");
   nextHome();
 }
 

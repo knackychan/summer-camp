@@ -49,7 +49,12 @@
   /* Three distinct games, same on every tablet, offline (design.md §6).
      Pass one: take a game only if its skill tag is new, so a day is never
      three arithmetic games. Pass two: fill any shortfall, tags may repeat. */
+  function brainEnabled(kid,settings){
+    return (settings&&settings["brain_enabled_"+kid])!=="0";
+  }
+
   function dailyThree(kid,dateStr,settings,override){
+    if(!brainEnabled(kid,settings))return [];
     const data=cat(override);
     const pool=eligibleGames(kid,settings,override);
     if(pool.length<=3)return pool;
@@ -97,30 +102,37 @@
   }
 
   /* An item is worth 1 point unless it says otherwise, and grades itself as
-     all-or-nothing unless it supplies grade(given) -> 0..worth. */
+     all-or-nothing unless it supplies grade(given) -> 0..worth (brain slice 34
+     task 5; implementation-guidelines.md §12.6). Pure and side-effect free so the
+     host can call it directly instead of duplicating the string comparison. */
+  function gradeItem(item,given){
+    const worth=item.worth==null?1:item.worth;
+    const g=given==null?"":String(given).trim();
+    let got;
+    if(typeof item.grade==="function"){
+      got=item.grade(g);
+      if(!(got>0))got=0;
+      if(got>worth)got=worth;
+    }else{
+      got=g===String(item.answer).trim()?worth:0;
+    }
+    return {got:got,worth:worth,correct:worth>0&&got===worth};
+  }
+
   function scoreRound(ctx){
     const items=ctx.items||[], answers=ctx.answers||[];
     let score=0, total=0;
     const correct=items.map(function(item,i){
-      const worth=item.worth==null?1:item.worth;
-      const given=answers[i]==null?"":String(answers[i]).trim();
-      let got;
-      if(typeof item.grade==="function"){
-        got=item.grade(given);
-        if(!(got>0))got=0;
-        if(got>worth)got=worth;
-      }else{
-        got=given===String(item.answer).trim()?worth:0;
-      }
-      score+=got; total+=worth;
-      return worth>0&&got===worth;
+      const graded=gradeItem(item,answers[i]);
+      score+=graded.got; total+=graded.worth;
+      return graded.correct;
     });
     return {score:score,total:total,ms:ctx.clock?(ctx.ms||0):0,correct:correct};
   }
 
-  const api={dseed:dseed,mulberry32:mulberry32,tierFor:tierFor,
+  const api={dseed:dseed,mulberry32:mulberry32,tierFor:tierFor,brainEnabled:brainEnabled,
     eligibleGames:eligibleGames,dailyThree:dailyThree,seededShuffle:seededShuffle,
-    buildRound:buildRound,scoreRound:scoreRound,gateState:gateState};
+    buildRound:buildRound,gradeItem:gradeItem,scoreRound:scoreRound,gateState:gateState};
   if(typeof window!=="undefined")window.SQBrainCore=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

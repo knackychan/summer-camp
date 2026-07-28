@@ -1,0 +1,268 @@
+/* Brain Gym common round shell (slice 34; implementation-guidelines.md §§4-7).
+   Loaded after the inline <style> so namespaced brain-* rules win without !important. */
+
+:root {
+  --brain-backdrop: #17132f;
+  --brain-shell: #27214f;
+  --brain-shell-2: #332b66;
+  --brain-paper: #fff5dc;
+  --brain-paper-2: #f1e3bf;
+  --brain-ink: #2f2845;
+  --brain-ink-2: #655d76;
+  --brain-outline: #3b3159;
+  --brain-shadow: #171229;
+  --brain-white: #fffdf7;
+  --brain-success: #2f9e68;
+  --brain-success-soft: #dff4e8;
+  --brain-hint: #d99416;
+  --brain-hint-soft: #fff0c7;
+  --brain-focus: #68c8ff;
+  --brain-disabled: #aaa3b6;
+
+  --brain-calc: #ee7b54;
+  --brain-signs: #dda62b;
+  --brain-lowhigh: #3f9fc8;
+  --brain-stroop: #8b63b8;
+  --brain-crunch: #319f91;
+  --brain-clock: #5e6fc4;
+  --brain-change: #2f9e68;
+  --brain-wordmem: #8255a4;
+  --brain-recall: #d9783d;
+
+  --brain-red: #cf3f4a;
+  --brain-blue: #2775bd;
+  --brain-green: #24845a;
+  --brain-yellow: #c28a08;
+
+  --brain-header-border: #5c5292;
+  --brain-header-sub: #c8c2ea;
+  --brain-status-border: #453b7a;
+  --brain-progress-border: #7167a3;
+  --brain-clock-ink: #ded9f2;
+
+  --brain-type-title: clamp(22px, 3vw, 32px);
+  --brain-type-instruction: clamp(16px, 2.2vw, 20px);
+  --brain-type-task: clamp(38px, 8vw, 72px);
+  --brain-type-answer: clamp(24px, 4.6vw, 42px);
+  --brain-type-label: clamp(14px, 1.8vw, 17px);
+  --brain-type-small: 13px;
+
+  --brain-space-1: 4px;
+  --brain-space-2: 8px;
+  --brain-space-3: 12px;
+  --brain-space-4: 16px;
+  --brain-space-5: 24px;
+  --brain-space-6: 32px;
+  --brain-space-7: 48px;
+
+  --brain-motion-press: 120ms;
+  --brain-motion-snap: 180ms;
+  --brain-motion-move: 320ms;
+  --brain-motion-reveal: 480ms;
+  --brain-motion-celebrate: 640ms;
+  --brain-ease-out: cubic-bezier(.2,.8,.2,1);
+  --brain-ease-settle: cubic-bezier(.34,1.35,.64,1);
+  --brain-ease-standard: cubic-bezier(.4,0,.2,1);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Self-contained by default: fills whatever mount hosts it (index.html hands in
+   the same #stage every arcade game renders into, via .arena's existing sizing
+   rules) so a Brain Gym round sits in the same canvas area as Solar System,
+   Change Maker, or any other game, with the games list left in place beside it. */
+.brain-round {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--brain-backdrop);
+  color: var(--brain-white);
+  font-family: Nunito, ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  border-top: 4px solid var(--brain-round-kid, var(--brain-focus));
+  border-radius: inherit;
+}
+
+.brain-round--contained {
+  border-top: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Fallback only: no mount was supplied (e.g. a standalone/test caller), so the
+   round behaves like the pre-slice-34 full-screen modal instead of assuming a
+   host container exists. */
+.brain-round:not(.brain-round--contained) {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  height: 100vh;
+  height: 100dvh;
+  border-radius: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.brain-round__header {
+  display: grid;
+  grid-template-columns: minmax(96px,1fr) auto minmax(96px,1fr);
+  align-items: center;
+  gap: var(--brain-space-3);
+  min-height: 64px;
+  padding: var(--brain-space-2) var(--brain-space-5);
+  padding-left: max(env(safe-area-inset-left), var(--brain-space-5));
+  padding-right: max(env(safe-area-inset-right), var(--brain-space-5));
+  background: linear-gradient(180deg, var(--brain-shell-2), var(--brain-shell));
+}
+
+.brain-round__quit,
+.brain-round__mute {
+  justify-self: start;
+  min-height: 44px;
+  min-width: 44px;
+  border: 2px solid var(--brain-header-border);
+  border-radius: 14px;
+  padding: var(--brain-space-2) var(--brain-space-3);
+  background: transparent;
+  color: var(--brain-white);
+  font-family: inherit;
+  font-weight: 900;
+  font-size: var(--brain-type-label);
+  cursor: pointer;
+}
+.brain-round__mute { justify-self: end; }
+.brain-round__quit:focus-visible,
+.brain-round__mute:focus-visible { outline: 4px solid var(--brain-focus); outline-offset: 3px; }
+
+.brain-round__identity {
+  text-align: center;
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-size: var(--brain-type-title);
+  line-height: 1.15;
+}
+.brain-round__identity .zht { display: block; margin-top: 2px; font-size: 14px; color: var(--brain-header-sub); font-weight: 800; }
+
+.brain-round__status {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--brain-space-5);
+  padding: var(--brain-space-3) var(--brain-space-5);
+  background: var(--brain-shell);
+  border-top: 1px solid var(--brain-status-border);
+}
+
+.brain-progress { display: flex; gap: 7px; flex-wrap: wrap; }
+.brain-progress__pip {
+  width: 16px; height: 10px;
+  border: 2px solid var(--brain-progress-border);
+  border-radius: 999px;
+  background: transparent;
+}
+.brain-progress__pip.is-current { width: 26px; border-color: var(--brain-scene-accent, var(--brain-focus)); background: var(--brain-scene-accent, var(--brain-focus)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brain-white) 12%, transparent); }
+.brain-progress__pip.is-correct { border-color: var(--brain-white); background: var(--brain-white); }
+.brain-progress__pip.is-corrective { border-color: var(--brain-hint); background: var(--brain-hint); }
+.brain-progress__pip.is-future { opacity: .7; }
+
+.brain-clock {
+  color: var(--brain-clock-ink);
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.brain-clock[hidden] { display: none; }
+
+.brain-scene {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--brain-space-5);
+  color: var(--brain-ink);
+  background: var(--brain-paper);
+}
+
+.brain-round--contained .brain-round__header,
+.brain-round--contained .brain-round__status {
+  display: none;
+}
+
+.brain-round--contained .brain-scene {
+  height: 100%;
+  padding: clamp(var(--brain-space-3), 1.8vw, var(--brain-space-5));
+  background: transparent;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.brain-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--brain-space-2);
+  min-height: 240px;
+}
+.brain-loading span {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--brain-outline);
+  opacity: .35;
+  animation: brain-loading-pulse 900ms ease-in-out infinite;
+}
+.brain-loading span:nth-child(2) { animation-delay: 150ms; }
+.brain-loading span:nth-child(3) { animation-delay: 300ms; }
+@keyframes brain-loading-pulse { 0%,100%{opacity:.25;transform:scale(1);} 50%{opacity:.9;transform:scale(1.25);} }
+@media (prefers-reduced-motion: reduce) {
+  .brain-loading span { animation: none; opacity: .6; }
+}
+.brain-loading--error {
+  flex-direction: column;
+  text-align: center;
+  color: var(--brain-ink);
+  font-weight: 800;
+}
+.brain-loading--error .btn { margin-top: var(--brain-space-4); }
+
+.brain-task-card {
+  max-width: 720px;
+  margin: 0 auto var(--brain-space-5);
+  padding: var(--brain-space-5);
+  border: 2px solid var(--brain-outline);
+  border-radius: 18px;
+  background: var(--brain-white);
+  text-align: center;
+}
+
+.brain-answer { max-width: 720px; margin: 0 auto; }
+
+.brain-corrective {
+  max-width: 720px;
+  margin: var(--brain-space-4) auto 0;
+  padding: var(--brain-space-3) var(--brain-space-4);
+  border: 2px solid var(--brain-hint);
+  border-radius: 14px;
+  background: var(--brain-hint-soft);
+  color: var(--brain-ink);
+  font-weight: 800;
+  text-align: center;
+}
+.brain-corrective[hidden] { display: none; }
+
+@media (width < 600px) {
+  .brain-round__header { min-height: 52px; padding: var(--brain-space-2) var(--brain-space-3); }
+  .brain-round__identity .zht { display: none; }
+  .brain-round__status { padding: var(--brain-space-2) var(--brain-space-3); }
+  .brain-scene { padding: var(--brain-space-3); }
+}
+
+@media (height < 650px) {
+  .brain-round__status { padding-top: var(--brain-space-1); padding-bottom: var(--brain-space-1); }
+}

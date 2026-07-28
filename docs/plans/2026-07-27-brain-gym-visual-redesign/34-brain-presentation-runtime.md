@@ -1,6 +1,6 @@
 # Slice 34 — Brain presentation runtime
 
-**Status:** proposed — requires approval of `design.md`  
+**Status:** implemented 2026-07-28 — all files in the exact file plan below shipped; automated tests and `node scripts/check.mjs` are green. Real-tablet visual/offline/reduced-motion verification (§15.2) and Papa's screenshot review are still outstanding — this is code-complete, not yet the human-approved DONE WHEN.  
 **Depends on:** game-platform slice 15 host/ESM decisions; does not depend on Three.js or Solar System  
 **Ships independently:** yes; existing generic Brain UI remains the fallback
 **Normative reference:** `implementation-guidelines.md`, especially §§4–12 and §§14–16

@@ -180,9 +180,24 @@
     };
   }
 
-  /* ---- 7. Change Maker 找零錢 (NT$) ---- */
+  /* ---- 7. Change Maker 找零錢 (NT$) ----
+     Bespoke Corner Shop scene (slice 35) reads the structured prompt fields
+     below directly; moneyArt()/art stays so the generic fallback (js/brain/scenes/
+     generic.js) keeps working unmodified until every client is migrated. */
   const COINS=[1,5,10,50];
   const NOTES=[100,500];
+  const SHOP_PRODUCTS=[
+    {id:"apple",   name:["Apple","蘋果"]},
+    {id:"banana",  name:["Banana","香蕉"]},
+    {id:"juice",   name:["Juice","果汁"]},
+    {id:"milk",    name:["Milk","牛奶"]},
+    {id:"bread",   name:["Bread","麵包"]},
+    {id:"pencil",  name:["Pencil","鉛筆"]},
+    {id:"notebook",name:["Notebook","筆記本"]},
+    {id:"soap",    name:["Soap","肥皂"]},
+    {id:"ball",    name:["Ball","球"]},
+    {id:"flower",  name:["Flower","花"]}
+  ];
   function moneyArt(n){
     /* a readable pile: notes then coins, biggest first */
     let left=n, out=[];
@@ -191,25 +206,43 @@
     });
     return out.join(" ");
   }
+  /* Greedy piece count for a denomination set; Infinity when the set cannot
+     represent the amount exactly (change.js's generator retries below 14). */
+  function greedyPieceCount(amount,denominations){
+    let left=amount, count=0;
+    denominations.slice().sort(function(a,b){return b-a;}).forEach(function(d){
+      const n=Math.floor(left/d); count+=n; left-=n*d;
+    });
+    return left===0?count:Infinity;
+  }
   function changeTot(rnd){
     let a=pick(rnd,COINS), b=pick(rnd,COINS);
     while(b===a)b=pick(rnd,COINS);
     const big=Math.max(a,b);
     return {
-      prompt:{type:"money",art:"🪙"+a+"   🪙"+b,
+      prompt:{type:"money",mode:"compare",coins:[a,b],art:"🪙"+a+"   🪙"+b,
         en:"Which is worth more?",zh:"哪個比較多錢？"},
       say:["Which is worth more?","哪個比較多錢？"],
       answer:String(big), choices:shuffleWith(rnd,[String(a),String(b)])
     };
   }
-  function changeItem(rnd,maxPrice,payOptions){
-    const price=intBetween(rnd,3,maxPrice);
-    const paid=pick(rnd,payOptions.filter(function(p){return p>price;}));
+  function changeItem(rnd,maxPrice,payOptions,denominations){
+    let price,paid,change,guard=0;
+    do{
+      price=intBetween(rnd,3,maxPrice);
+      paid=pick(rnd,payOptions.filter(function(p){return p>price;}));
+      change=paid-price;
+      guard++;
+    }while(greedyPieceCount(change,denominations)>14&&guard<200);
+    const product=pick(rnd,SHOP_PRODUCTS);
     return {
-      prompt:{type:"money",price:price,paid:paid,art:moneyArt(paid),
-        en:"It costs NT$"+price+". You pay NT$"+paid+". Change?",
-        zh:"東西 NT$"+price+"，你付 NT$"+paid+"，找多少？"},
-      answer:String(paid-price)
+      prompt:{type:"money",mode:"make-change",
+        productId:product.id,productName:product.name.slice(),
+        price:price,paid:paid,change:change,denominations:denominations.slice(),
+        art:moneyArt(paid),
+        en:product.name[0]+" costs NT$"+price+". You pay NT$"+paid+".",
+        zh:product.name[1]+" NT$"+price+"，你付 NT$"+paid+"。"},
+      answer:String(change)
     };
   }
 
@@ -345,8 +378,8 @@
       title:["Change Maker","找零錢"], blurb:["Count the change","算找零"],
       tiers:{
         tot :{items:8, clock:false,pad:"choice",gen:changeTot},
-        mid :{items:10,clock:true, pad:"keypad",gen:function(r){return changeItem(r,45,[50,100]);}},
-        hard:{items:10,clock:true, pad:"keypad",gen:function(r){return changeItem(r,480,[500,1000]);}}
+        mid :{items:10,clock:true, pad:"keypad",gen:function(r){return changeItem(r,45,[50,100],[50,10,5,1]);}},
+        hard:{items:10,clock:true, pad:"keypad",gen:function(r){return changeItem(r,480,[500,1000],[500,100,50,10,5,1]);}}
       }
     },
     wordmem:{
@@ -369,9 +402,9 @@
     }
   };
 
-  const api={TIERS:TIERS,TIER_DEFAULT:TIER_DEFAULT,GAMES:GAMES,
+  const api={TIERS:TIERS,TIER_DEFAULT:TIER_DEFAULT,GAMES:GAMES,SHOP_PRODUCTS:SHOP_PRODUCTS,
     pick:pick,intBetween:intBetween,numChoices:numChoices,shuffleWith:shuffleWith,zhNum:zhNum,
-    setWordPool:setWordPool};
+    greedyPieceCount:greedyPieceCount,setWordPool:setWordPool};
   if(typeof window!=="undefined")window.SQBrainData=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

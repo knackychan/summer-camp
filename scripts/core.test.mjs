@@ -173,6 +173,18 @@ test("dailyThree is stable per kid+day and three distinct games", () => {
   assert.notDeepEqual(a, SQBrainCore.dailyThree("lucien", "2026-07-28", {}));
 });
 
+test("dailyThree returns nothing when brain_enabled_<kid> is off", () => {
+  assert.deepEqual(SQBrainCore.dailyThree("lucien", "2026-07-27", { brain_enabled_lucien: "0" }), []);
+  // unaffected kid keeps its normal trio
+  assert.equal(SQBrainCore.dailyThree("lili", "2026-07-27", { brain_enabled_lucien: "0" }).length, 3);
+});
+
+test("brainEnabled defaults to true and only '0' turns it off", () => {
+  assert.equal(SQBrainCore.brainEnabled("lucien", {}), true);
+  assert.equal(SQBrainCore.brainEnabled("lucien", { brain_enabled_lucien: "0" }), false);
+  assert.equal(SQBrainCore.brainEnabled("lucien", { brain_enabled_lucien: "1" }), true);
+});
+
 test("computeLock reports a reason for every lock", () => {
   assert.deepEqual(gateLock({ now: 9 * 60, done: {}, redos: { 3: 1 }, brainOpen: true }),
     { locked: true, blockIdx: 3, reason: "redo" });
@@ -619,4 +631,87 @@ test("Math Recall's freebie accepts anything", () => {
   });
   assert.equal(out.total, 0);
   assert.equal(out.score, 0);
+});
+
+/* ---- gradeItem (brain slice 34 task 5; implementation-guidelines.md §12.6) ---- */
+
+test("gradeItem: default worth 1, exact trimmed-string match", () => {
+  assert.deepEqual(SQBrainCore.gradeItem({ answer: "3" }, "3"), { got: 1, worth: 1, correct: true });
+  assert.deepEqual(SQBrainCore.gradeItem({ answer: "3" }, "4"), { got: 0, worth: 1, correct: false });
+  assert.deepEqual(SQBrainCore.gradeItem({ answer: "3" }, " 3 "), { got: 1, worth: 1, correct: true });
+});
+
+test("gradeItem: numeric answers work as a number or a string", () => {
+  assert.deepEqual(SQBrainCore.gradeItem({ answer: 13 }, "13"), { got: 1, worth: 1, correct: true });
+  assert.deepEqual(SQBrainCore.gradeItem({ answer: 13 }, 13), { got: 1, worth: 1, correct: true });
+});
+
+test("gradeItem: worth 0 is never correct even on an exact match (Math Recall's freebie)", () => {
+  assert.deepEqual(SQBrainCore.gradeItem({ answer: "", worth: 0 }, ""), { got: 0, worth: 0, correct: false });
+  assert.deepEqual(SQBrainCore.gradeItem({ answer: "", worth: 0 }, "anything"), { got: 0, worth: 0, correct: false });
+});
+
+test("gradeItem: custom grade() clamps into 0..worth (Word Memory partial credit)", () => {
+  const item = { worth: 4, answer: "cat dog fish bird",
+    grade: (given) => String(given).split(/\s+/).filter((w) => ["cat","dog","fish","bird"].includes(w)).length };
+  assert.deepEqual(SQBrainCore.gradeItem(item, "cat bird zebra"), { got: 2, worth: 4, correct: false });
+  assert.deepEqual(SQBrainCore.gradeItem(item, "cat dog fish bird"), { got: 4, worth: 4, correct: true });
+  assert.deepEqual(SQBrainCore.gradeItem({ worth: 2, answer: "x", grade: () => 99 }, "x"), { got: 2, worth: 2, correct: true });
+  assert.deepEqual(SQBrainCore.gradeItem({ worth: 2, answer: "x", grade: () => -5 }, "x"), { got: 0, worth: 2, correct: false });
+});
+
+test("gradeItem: a missing answer grades as empty, not a crash", () => {
+  assert.deepEqual(SQBrainCore.gradeItem({ answer: "1" }, undefined), { got: 0, worth: 1, correct: false });
+  assert.deepEqual(SQBrainCore.gradeItem({ answer: "1" }, null), { got: 0, worth: 1, correct: false });
+});
+
+test("scoreRound delegates to gradeItem (no duplicated comparison logic)", () => {
+  const items = [{ answer: "3" }, { answer: "5", worth: 0 }];
+  const out = SQBrainCore.scoreRound({ items, answers: ["3", "5"], ms: 0, clock: false });
+  assert.deepEqual(out.correct, [true, false]);
+  assert.equal(out.score, 1);
+  assert.equal(out.total, 1);
+});
+
+/* ---- Change Maker structured data (slice 35) ---- */
+
+test("SHOP_PRODUCTS is exactly ten unique, bilingual products", () => {
+  assert.equal(SQBrainData.SHOP_PRODUCTS.length, 10);
+  const ids = SQBrainData.SHOP_PRODUCTS.map((p) => p.id);
+  assert.equal(new Set(ids).size, 10);
+  for (const p of SQBrainData.SHOP_PRODUCTS) {
+    assert.ok(p.name && p.name[0] && p.name[1], `${p.id}: name must be [en, zh]`);
+  }
+});
+
+test("Change Maker mid/hard carry the structured make-change contract", () => {
+  const rnd = SQBrainCore.mulberry32(23);
+  const denomsByTier = { mid: [50, 10, 5, 1], hard: [500, 100, 50, 10, 5, 1] };
+  for (const tier of ["mid", "hard"]) {
+    const round = SQBrainCore.buildRound("change", tier, rnd);
+    for (const item of round.items) {
+      const p = item.prompt;
+      assert.equal(p.type, "money");
+      assert.equal(p.mode, "make-change");
+      assert.ok(SQBrainData.SHOP_PRODUCTS.some((prod) => prod.id === p.productId), "productId must be a real SHOP_PRODUCTS id");
+      assert.deepEqual(p.denominations, denomsByTier[tier]);
+      assert.equal(p.change, p.paid - p.price);
+      assert.equal(Number(item.answer), p.change);
+      assert.ok(SQBrainData.greedyPieceCount(p.change, p.denominations) <= 14, "change must be payable in at most 14 pieces");
+    }
+  }
+});
+
+test("Change Maker tot prompt carries its coin pair alongside the legacy art field", () => {
+  const round = SQBrainCore.buildRound("change", "tot", SQBrainCore.mulberry32(4));
+  for (const item of round.items) {
+    assert.equal(item.prompt.mode, "compare");
+    assert.equal(item.prompt.coins.length, 2);
+    assert.ok(item.prompt.art, "generic.js fallback still reads prompt.art");
+  }
+});
+
+test("greedyPieceCount: exact change is payable, an impossible set is Infinity", () => {
+  assert.equal(SQBrainData.greedyPieceCount(13, [50, 10, 5, 1]), 4); // 10+1+1+1
+  assert.equal(SQBrainData.greedyPieceCount(3, [50, 10]), Infinity);
 });

@@ -101,6 +101,24 @@ body.game-mode .wrap{max-width:none;width:100%}
 .stage.arena{display:block;padding:0;height:min(52vh,420px);min-height:320px;text-align:left}
 .arena-msg{position:absolute;left:50%;top:12px;transform:translateX(-50%);color:var(--muted);
   font-weight:800;font-size:14px;z-index:5;pointer-events:none;white-space:nowrap;text-align:center}
+
+/* ---------- SHARED GAME SCENE PRIMITIVES ---------- */
+.game-scene{position:relative;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden}
+.game-scene__center{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px}
+.game-scene__canvas{position:absolute;inset:0;width:100%;height:100%}
+.game-scene__prompt{color:var(--ink);font-family:'Fredoka';font-weight:600;text-align:center}
+.game-scene__controls{display:flex;justify-content:center;align-items:center;gap:12px}
+.game-scene__message{text-align:center;font-weight:800;color:var(--muted);min-height:22px}
+.game-action{min-height:44px;min-width:44px;border-radius:14px;border:2px solid var(--line);
+  background:var(--panel);color:var(--ink);font-family:'Fredoka';font-weight:700;
+  font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  touch-action:manipulation;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+.game-action:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.game-action:disabled{opacity:.48;cursor:not-allowed}
+.game-action--gold{border-color:var(--gold);background:var(--gold);color:#1c1436}
+
+/* stage.arena wraps .game-scene to fill */
+.stage.arena > .game-scene{width:100%;height:100%}
 .cue{color:var(--muted);font-weight:800;font-size:15px;margin-bottom:10px;min-height:20px}
 .bigletter{font-family:'Fredoka';font-weight:700;font-size:clamp(90px,22vw,150px);line-height:1}
 .picword{font-family:'Fredoka';font-weight:600;font-size:26px;margin-top:4px}
@@ -153,8 +171,8 @@ body.game-mode .wrap{max-width:none;width:100%}
 @media(prefers-reduced-motion:reduce){.orc .fig{animation:none}}
 
 /* ---------- CITY DRIVE ---------- */
-.cd-wrap{position:relative;width:100%;height:min(52vh,430px);border-radius:16px;overflow:hidden;
-  border:2px solid var(--line);margin-top:6px;touch-action:none}
+.game-scene--city .cd-wrap{position:absolute;inset:0;width:100%;height:100%;border-radius:16px;
+  overflow:hidden;border:2px solid var(--line);touch-action:none}
 .cd-wrap canvas{position:absolute;inset:0;width:100%;height:100%}
 .cd-prompt{position:absolute;top:6px;left:50%;transform:translateX(-50%);max-width:92%;
   background:rgba(20,14,40,.82);border:2px solid var(--gold);border-radius:12px;padding:6px 12px;
@@ -169,7 +187,8 @@ body.game-mode .wrap{max-width:none;width:100%}
   border-color:var(--ok,#3DDC97)}
 
 /* ---------- DIG SITE ---------- */
-.dg-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;max-width:520px;margin:10px auto 0}
+.dig-layout{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;padding:8px}
+.dg-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;max-width:520px;margin:0 auto}
 .dg-cell{position:relative;min-height:clamp(44px,16vw,94px);aspect-ratio:1;background:#3a3160;border:2px solid var(--line);
   border-radius:10px;display:flex;align-items:center;justify-content:center}
 .dg-cell.ex{border-color:var(--gold);box-shadow:0 0 10px rgba(255,201,60,.4)}
@@ -1223,12 +1242,15 @@ function startBrain(gameId){
   const p=progress[k];
   brainToday(k); /* rolls p.brain (and any stale resume) over to today first */
   const inProgress=p.brain.inProgress;
+  const bestKey="brain_"+gameId;
   const resume=(inProgress&&inProgress.gameId===gameId&&inProgress.tier===tier)?inProgress:null;
   /* Same canvas area as every arcade game (startRegistered's H.stage()), not a
      separate full-screen overlay — the games list stays visible on the left. */
   SQBrain.openRound({
     gameId:gameId, tier:tier, kid:k, kidColor:KIDS[k].color, resume:resume,
     mount:document.getElementById("stage"),
+    best:(p.best&&p.best[bestKey])||0,
+    onHud:hud,
     onProgress:function(state){ p.brain.inProgress=state; saveProgress(); },
     say:function(pair){say(pair[0],"en-US");setTimeout(function(){say(pair[1],"zh-TW",true);},1200);},
     sayPair:function(pair){sayPair(pair[0],pair[1]);},

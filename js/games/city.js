@@ -346,21 +346,37 @@ function init(ctx) {
     car: { x: 13 * CT + CT / 2, y: 10 * CT + CT / 2, h: 0, v: 0 }
   };
 
-  document.getElementById("stage").innerHTML =
-    '<div class="cd-wrap" id="cdWrap">'
+  var stage = C.stage;
+  stage.innerHTML =
+    '<div class="game-scene game-scene--city">'
+    + '<div class="cd-wrap" id="cdWrap">'
     + '<canvas id="cityCv"></canvas>'
     + '<div class="cd-prompt" id="cdPrompt"></div>'
     + '<div class="cd-btn cd-l" id="cdL">\u25c0</div>'
     + '<div class="cd-btn cd-r" id="cdR">\u25b6</div>'
     + '<div class="cd-btn cd-gas" id="cdGas">\u26a1</div>'
     + '</div>'
+    + '</div>'
     + '<div class="msg" id="msg"></div>';
 
   var wrap = document.getElementById("cdWrap"), cv = document.getElementById("cityCv");
   var dpr = window.devicePixelRatio || 1;
   S.vw = wrap.clientWidth; S.vh = wrap.clientHeight;
+  S._dpr = dpr;
+  S._cv = cv;
   cv.width = S.vw * dpr; cv.height = S.vh * dpr;
   S.canvasCtx = cv.getContext("2d"); S.canvasCtx.scale(dpr, dpr);
+
+  S._resizeObserver = new ResizeObserver(function () {
+    if (!S || !S.running) return;
+    var w = wrap.clientWidth, h = wrap.clientHeight;
+    if (w === 0 || h === 0) return;
+    S.vw = w; S.vh = h;
+    cv.width = w * dpr; cv.height = h * dpr;
+    S.canvasCtx.scale(dpr, dpr);
+    cityDraw();
+  });
+  S._resizeObserver.observe(wrap);
 
   var hold = function (elId, key) {
     var el = document.getElementById(elId);
@@ -401,6 +417,7 @@ function stop() {
   if (S.raf) { cancelAnimationFrame(S.raf); S.raf = null; }
   if (S.timer) { clearInterval(S.timer); S.timer = null; }
   if (S.missionTimeout) { clearTimeout(S.missionTimeout); S.missionTimeout = null; }
+  if (S._resizeObserver) { S._resizeObserver.disconnect(); S._resizeObserver = null; }
   S = null;
 }
 

@@ -905,6 +905,120 @@ try {
   fail("solar data load", error.message);
 }
 
+// Brain Gym presentation runtime (slice 34 task 9; implementation-guidelines.md §12.3,
+// §12.4, §14). SCENE_LOADERS is the one place allowed to name a scene module, so its
+// keys/targets are checked against brain-data.GAMES and sw.js APP_SHELL here instead of
+// discovered on a tablet as a blank round.
+try {
+  var { createRequire: createRequireBrain } = await import("node:module");
+  var requireBrain = createRequireBrain(import.meta.url);
+  var brainDataForScenes = requireBrain("../js/brain-data.js");
+  var sceneIndexText = readFileSync(new URL("js/brain/scenes/index.js", root), "utf8");
+  var swTextBrain = readFileSync(new URL("sw.js", root), "utf8");
+  var loaderRe = /(\w+):\s*function\s*\(\)\s*\{\s*return\s*import\(["']\.\/([\w.-]+)["']\)/g;
+  var loaderMatch, loaderKeys = [];
+  while ((loaderMatch = loaderRe.exec(sceneIndexText)) !== null) {
+    var sceneKey = loaderMatch[1], sceneFile = loaderMatch[2];
+    loaderKeys.push(sceneKey);
+    if (!brainDataForScenes.GAMES[sceneKey]) {
+      fail("brain scenes", "SCENE_LOADERS." + sceneKey + " has no matching brain-data.GAMES entry");
+    }
+    var sceneRel = "js/brain/scenes/" + sceneFile;
+    if (!swTextBrain.includes("./" + sceneRel)) {
+      fail("brain scenes", sceneRel + " is a scene loader target but missing from sw.js APP_SHELL");
+    }
+  }
+  var sceneMod = await import(new URL("js/brain/scenes/index.js", root));
+  for (var si = 0; si < loaderKeys.length; si++) {
+    var loadedScene = await sceneMod.SCENE_LOADERS[loaderKeys[si]]();
+    var sceneDefault = loadedScene.default;
+    if (!sceneDefault || sceneDefault.id !== loaderKeys[si]) {
+      fail("brain scenes", "scene module for \"" + loaderKeys[si] + "\" reports id \"" + (sceneDefault && sceneDefault.id) + "\"");
+    }
+    if (!sceneDefault || typeof sceneDefault.create !== "function") {
+      fail("brain scenes", "scene \"" + loaderKeys[si] + "\" has no create()");
+    }
+  }
+
+  // §12.4: a scene module must never call these directly — only the shared
+  // game-services own scheduling/audio, so a scene can guarantee zero live
+  // resources after destroy() without reimplementing that bookkeeping itself.
+  var forbiddenApis = [/\bsetTimeout\s*\(/, /\bsetInterval\s*\(/, /\brequestAnimationFrame\s*\(/,
+    /\bspeechSynthesis\b/, /\bnew\s+Audio\s*\(/, /\bfetch\s*\(/, /\blocalStorage\b/];
+  var sceneFiles = globSync("js/brain/scenes/*.js", { cwd: fileURLToPath(root) })
+    .map(function (f) { return f.replaceAll("\\", "/"); })
+    .filter(function (f) { return f !== "js/brain/scenes/index.js"; });
+  sceneFiles.forEach(function (f) {
+    var text = readFileSync(new URL(f, root), "utf8");
+    forbiddenApis.forEach(function (re) {
+      if (re.test(text)) fail("brain scenes", f + " calls a forbidden direct API matching " + re);
+    });
+  });
+
+  // SHOP_PRODUCTS (slice 35): the fixed bilingual catalog Change Maker draws from.
+  var shopProducts = brainDataForScenes.SHOP_PRODUCTS || [];
+  if (shopProducts.length !== 10) fail("BRAIN change", "SHOP_PRODUCTS must have exactly 10 products, has " + shopProducts.length);
+  var seenProductIds = new Set();
+  shopProducts.forEach(function (p) {
+    if (seenProductIds.has(p.id)) fail("BRAIN change", "duplicate SHOP_PRODUCTS id " + p.id);
+    seenProductIds.add(p.id);
+    assertPair(p.name, "SHOP_PRODUCTS." + p.id + ".name");
+  });
+} catch (error) {
+  fail("brain scenes", error.message);
+}
+
+// Brain scene CSS colour tokens (implementation-guidelines.md §4.1, §17): a scene
+// must consume --brain-* tokens, never scatter a literal colour through scene CSS.
+// The :root block in brain-shell.css is where those literals are declared, so it is
+// excluded; everything else in either file must resolve through var(--brain-*).
+{
+  ["css/brain-shell.css", "css/brain-scenes.css"].forEach(function (file) {
+    var text = readFileSync(new URL(file, root), "utf8");
+    var rootBlock = text.match(/:root\s*\{[\s\S]*?\n\}\n/);
+    var scannable = rootBlock ? text.slice(0, rootBlock.index) + text.slice(rootBlock.index + rootBlock[0].length) : text;
+    scannable.split("\n").forEach(function (line, i) {
+      if (/color-mix\(in srgb,\s*var\(--/.test(line)) return;
+      if (/#[0-9A-Fa-f]{3,8}\b/.test(line) || /\brgba?\(/.test(line) || /\bhsla?\(/.test(line)) {
+        fail("brain tokens: colour literal in CSS", file + " ~line " + (i + 1) + ' "' + line.trim() + '"');
+      }
+    });
+  });
+}
+
+// Game shell contract (unified-game-shell-remediation-plan.md).
+// Every migrated game must use ctx.stage, not document.getElementById("stage").
+// balloon.js and solar.js are the explicit reference games — exempt.
+// Pending migration: hunt, machines, orc, race, vocab (Step 9 audit).
+var GAME_CONTRACT_EXEMPT = new Set(["balloon", "solar", "hunt", "machines", "orc", "race", "vocab"]);
+var gameFiles = globSync("js/games/*.js", { cwd: fileURLToPath(root) })
+  .map(function (f) { return f.replaceAll("\\", "/"); })
+  .filter(function (f) {
+    if (f === "js/games/index.js" || f === "js/games/registry.js") return false;
+    return true;
+  });
+
+gameFiles.forEach(function (file) {
+  var gameId = file.replace(/^js\/games\//, "").replace(/\.js$/, "");
+  var text = readFileSync(new URL(file, root), "utf8");
+  if (GAME_CONTRACT_EXEMPT.has(gameId)) return;
+
+  if (/document\.getElementById\("stage"\)/.test(text)) {
+    fail("game contract", file + ' uses document.getElementById("stage") — use ctx.stage instead');
+  }
+  // Only flag body.appendChild for non-modal uses. Finish overlays
+  // (city, dig) follow the same overlay pattern as showBrainResult in index.html.
+  if (!/finish(City|Dig)\b/.test(text) && /document\.body\.appendChild/.test(text)) {
+    fail("game contract", file + ' calls document.body.appendChild — route through host overlay or render inside stage');
+  }
+  if (/position:\s*fixed/.test(text)) {
+    fail("game contract", file + ' has inline position:fixed — game content must stay inside the stage');
+  }
+  if (/\d+vh\b/.test(text)) {
+    fail("game contract", file + ' uses vh CSS unit — size from the stage wrapper, not the viewport');
+  }
+});
+
 if (failures.length) {
   console.error(`Summer Quest check failed (${failures.length})`);
   failures.forEach((failure) => console.error(`- ${failure}`));
