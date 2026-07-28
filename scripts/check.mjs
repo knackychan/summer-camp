@@ -120,10 +120,26 @@ for (const file of runtimeFiles.filter((f) => f.endsWith(".js"))) {
       continue;
     }
     if (!Array.isArray(cards) || !cards.length) fail("books", `${file} must export a non-empty card array`);
-    dataByTopic.set(topic, { file, globalName: globalMatch[1], cards });
+    const isSpread = !!cards[0] && Array.isArray(cards[0].blocks);
+    dataByTopic.set(topic, { file, globalName: globalMatch[1], cards, isSpread });
     const seen = new Set();
     cards.forEach((card, i) => {
       const where = `${file}[${card && card.id ? card.id : i}]`;
+      if (isSpread) {
+        if (!card || !card.id) fail("books", `${where} missing id`);
+        if (!card || !card.titleEN) fail("books", `${where} missing titleEN`);
+        if (!card || !card.titleZH) fail("books", `${where} missing titleZH`);
+        if (!card || !Array.isArray(card.blocks) || card.blocks.length !== 4) {
+          fail("books", `${where} must have exactly 4 blocks`);
+        } else {
+          card.blocks.forEach(function(blk, bi){
+            if (!blk.en || !blk.zh) fail("books", `${where}.blocks[${bi}] must have en + zh`);
+          });
+        }
+        if (card && seen.has(card.id)) fail("books", `${file} duplicate id ${card.id}`);
+        if (card) seen.add(card.id);
+        return;
+      }
       ["id", "emoji", "nameEN", "nameZH", "photo", "typeEN", "typeZH"].forEach((field) => {
         if (!card || !card[field]) fail("books", `${where} missing ${field}`);
       });
@@ -161,18 +177,26 @@ for (const file of runtimeFiles.filter((f) => f.endsWith(".js"))) {
   }
 
   for (const book of shelf) {
-    if (!book.id || !book.titleEN || !book.titleZH || !book.file || !book.data) fail("books", `BOOK_SHELF entry ${book.id || "?"} is incomplete`);
+    if (!book.id || !book.titleEN || !book.titleZH || !book.data) fail("books", `BOOK_SHELF entry ${book.id || "?"} is incomplete`);
+    if (!book.file && book.layout !== "spread") fail("books", `BOOK_SHELF entry ${book.id} has no file and is not a spread book`);
     const topic = book.id;
     const data = dataByTopic.get(topic);
     if (!data) {
       fail("books", `${topic} has no data file`);
       continue;
     }
-    if (!existsSync(new URL(book.file, root))) fail("books", `${topic} points to missing ${book.file}`);
-    if (!swText.includes(`./${book.file}`)) fail("books", `${topic} shell ${book.file} is not precached`);
+    var isSpread = book.layout === "spread" || (data && data.isSpread);
+    if (!isSpread) {
+      if (!existsSync(new URL(book.file, root))) fail("books", `${topic} points to missing ${book.file}`);
+      if (!swText.includes(`./${book.file}`)) fail("books", `${topic} shell ${book.file} is not precached`);
+    }
     if (book.data !== data.globalName) fail("books", `${topic} shelf data ${book.data} must match ${data.globalName}`);
     if (!indexHtml.includes(`js/books/${topic}-data.js`)) fail("books", `${topic} data script is not loaded by index.html`);
     if (!book.ready) continue;
+    if (isSpread) {
+      if (!swText.includes(`./js/books/${topic}-data.js`)) fail("books", `${topic} data file js/books/${topic}-data.js missing from sw.js APP_SHELL`);
+      continue;
+    }
     for (const card of data.cards) {
       if (!card.photo) continue;
       const photo = card.photo.replace(/^\.\.\//, "");

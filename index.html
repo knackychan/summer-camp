@@ -426,6 +426,68 @@ body.music-mode{overflow:hidden}
   .book-gridcard{width:calc(33.333% - 8px)}
 }
 
+/* ── Minecraft magazine spread (4 mini-pages) ── */
+.mcraft-spread{
+  --mcraft-accent:#79C64A;
+  width:100%;height:min(66vh,660px);display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+  padding:8px;border-radius:12px;overflow:hidden;position:relative;isolation:isolate;
+  background:linear-gradient(90deg,rgba(255,255,255,.06),transparent 18%,transparent 82%,rgba(255,255,255,.05)),#10160F;
+  box-shadow:0 14px 42px rgba(0,0,0,.44),0 2px 8px rgba(98,179,75,.18);
+  transition:opacity .18s,transform .18s;
+}
+.mcraft-spread::before{content:"";position:absolute;inset:8px;border:1px solid rgba(255,255,255,.08);pointer-events:none;z-index:5}
+.book.turning,.mcraft-spread.turning{opacity:.4;transform:scale(.97)}
+@media(prefers-reduced-motion:reduce){.mcraft-spread{transition:none}}
+.mcraft-page{
+  min-width:0;min-height:0;position:relative;display:flex;flex-direction:column;
+  padding:18px;border:1px solid rgba(244,242,223,.16);border-radius:6px;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),transparent 44%),#20271E;
+  overflow:hidden;
+}
+.mcraft-page::after{
+  content:attr(data-page);position:absolute;right:12px;bottom:10px;z-index:7;
+  color:rgba(244,242,223,.62);font:.76rem/1 Fredoka,system-ui;font-weight:800;
+}
+.mcraft-page.photo{padding:0;cursor:pointer;background:#0D100C}
+.mcraft-page.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.02)}
+.mcraft-page.photo::before{
+  content:"";position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.24) 36%,rgba(0,0,0,.84)),linear-gradient(90deg,rgba(0,0,0,.4),transparent 58%);
+}
+.mcraft-copy{position:relative;z-index:2;display:flex;flex-direction:column;gap:10px}
+.mcraft-page.photo .mcraft-copy{position:absolute;left:16px;right:16px;bottom:16px}
+.mcraft-page.text{justify-content:flex-end;gap:12px}
+.mcraft-page.quote{justify-content:center;background:linear-gradient(145deg,rgba(121,198,74,.18),rgba(216,137,77,.13)),#252D22}
+.mcraft-kicker{
+  display:inline-flex;width:fit-content;padding:6px 8px;background:var(--mcraft-accent);
+  color:#10140E;font:.72rem/1 Fredoka,system-ui;font-weight:900;letter-spacing:.05em;
+  text-transform:uppercase;
+}
+.mcraft-kicker.gold{background:#F2C94C}.mcraft-kicker.sky{background:#65A9DC}.mcraft-kicker.grass{background:#79C64A}
+.mcraft-kicker.copper{background:#D8894D}.mcraft-kicker.nether{background:#DD5C4D}.mcraft-kicker.cherry{background:#F3A8BD}
+.mcraft-title{margin:0;max-width:13ch;color:#F7F3D8;font:900 clamp(1.35rem,3vw,3.15rem)/.92 Fredoka,system-ui;letter-spacing:-.025em;overflow-wrap:anywhere}
+.mcraft-title-zh{color:#E8EFD6;font-size:clamp(1rem,1.7vw,1.45rem);line-height:1.28;font-weight:900;word-break:break-word}
+.mcraft-body{margin:0;color:#C8D1BB;font-size:.92rem;line-height:1.48;font-weight:800;overflow-wrap:anywhere}
+.mcraft-body.zh{color:#E8EFD6;font-size:1.08rem;line-height:1.55;font-weight:800;word-break:break-word}
+.mcraft-pull{margin:0;color:#F7F3D8;font:900 clamp(1.25rem,2.35vw,2.5rem)/1 Fredoka,system-ui;letter-spacing:-.025em;overflow-wrap:anywhere}
+.mcraft-photo-hint{color:#DDE8C9;font-size:.86rem;line-height:1.25;font-weight:900;opacity:.82}
+.mcraft-meta{
+  position:absolute;left:16px;top:14px;z-index:4;display:inline-flex;padding:7px 9px;
+  background:#F2C94C;color:#10140E;font:.72rem/1 Fredoka,system-ui;font-weight:900;
+}
+@media(max-width:860px){
+  .mcraft-spread{height:calc(100vh - 190px);grid-template-columns:repeat(2,minmax(0,1fr));overflow-y:auto;align-content:start}
+  .mcraft-page{min-height:250px}
+}
+@media(max-width:520px){
+  .mcraft-spread{grid-template-columns:1fr;height:calc(100vh - 190px);max-width:100%;overflow-x:hidden}
+  .mcraft-page{min-height:260px;padding-right:42px}
+  .mcraft-page.photo{min-height:430px}
+  .mcraft-page.photo .mcraft-copy{right:42px}
+  .mcraft-title{font-size:1.65rem}
+}
+
 /* ---------- MY DAY ---------- */
 .dayprog{position:relative;height:30px;background:var(--panel);border:2px solid var(--line);
   border-radius:99px;overflow:hidden;margin-bottom:14px}
@@ -791,6 +853,7 @@ body.music-mode{overflow:hidden}
 <script src="js/books/race-cars-data.js"></script>
 <script src="js/books/construction-data.js"></script>
 <script src="js/books/public-vehicles-data.js"></script>
+<script src="js/books/minecraft-data.js"></script>
 <script type="module" src="js/main.js"></script>
 <script>
 /* ============ DATA ============ */
@@ -2474,12 +2537,13 @@ var BOOK_SHELF = [
   { id: "space", icon: "🪐", titleEN: "Space", titleZH: "太空", blurbEN: "Planets, moons, stars, and galaxies", blurbZH: "行星、衛星、恆星和銀河", file: "books/space.html", data: "SPACE_CARDS", ready: true },
   { id: "animals", icon: "🐾", titleEN: "Animals", titleZH: "動物", blurbEN: "Wildlife from around the world", blurbZH: "世界各地的動物", file: "books/animals.html", data: "ANIMALS_CARDS", ready: false },
   { id: "giraffe", icon: "🦒", titleEN: "Giraffe", titleZH: "長頸鹿", blurbEN: "Necks, spots, calves, and savanna life", blurbZH: "脖子、斑點、小長頸鹿和草原生活", file: "books/giraffe.html", data: "GIRAFFE_CARDS", ready: true },
+  { id: "minecraft", icon: "⬛", titleEN: "Minecraft", titleZH: "Minecraft", blurbEN: "The story of Minecraft's evolution", blurbZH: "Minecraft 的演化故事", file: null, data: "MINECRAFT_SPREADS", layout: "spread", ready: true },
   { id: "science", icon: "🔬", titleEN: "Science", titleZH: "科學", blurbEN: "How things work", blurbZH: "事物如何運作", file: "books/science.html", data: "SCIENCE_CARDS", ready: false },
   { id: "race-cars", icon: "🏎️", titleEN: "Race Cars", titleZH: "賽車", blurbEN: "Fast cars and racing machines", blurbZH: "快車和賽車機器", file: "books/race-cars.html", data: "RACE_CARS", ready: false },
   { id: "construction", icon: "🏗️", titleEN: "Construction", titleZH: "工地", blurbEN: "Big machines and building sites", blurbZH: "大機器和工地", file: "books/construction.html", data: "CONSTRUCTION_CARDS", ready: false },
   { id: "public-vehicles", icon: "🚑", titleEN: "Public Vehicles", titleZH: "公共車輛", blurbEN: "Helpful vehicles in the city", blurbZH: "城市裡幫忙的車輛", file: "books/public-vehicles.html", data: "PUBLIC_VEHICLES_CARDS", ready: false },
 ];
-var bookState={id:null,idx:0,cards:[],grid:false};
+var bookState={id:null,idx:0,cards:[],spreads:[],layout:null,grid:false};
 function bookById(id){return BOOK_SHELF.find(function(b){return b.id===id;})||null;}
 function canOpenBook(b){return !!(b&&Array.isArray(window[b.data])&&window[b.data].length);}
 function bookEscape(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
@@ -2599,10 +2663,13 @@ function openBook(id){
   if(!canOpenBook(b)){bigFloat("Soon 即將推出");return;}
   stopArena(); stopActTimer();
   hubTab="books";
-  bookState={id:id,idx:0,cards:cards.slice(),grid:false};
+  var lyt=b.layout||null;
+  bookState={id:id,idx:0,cards:lyt==="spread"?null:cards.slice(),spreads:lyt==="spread"?cards.slice():null,layout:lyt,grid:false};
   try{localStorage.setItem("sq:bookId",id);}catch(e){}
   document.getElementById("bookTitle").textContent=b.icon+" "+b.titleEN+" · "+b.titleZH;
-  document.getElementById("bookCount").textContent=bookState.cards.length+" pages · "+bookState.cards.length+" 頁";
+  var total=lyt==="spread"?bookState.spreads.length:bookState.cards.length;
+  document.getElementById("bookCount").textContent=total+" "+(lyt==="spread"?"spreads · ":"pages · ")+total+" "+(lyt==="spread"?"跨頁":"頁");
+  document.getElementById("bookViewToggle").textContent=lyt==="spread"?"All Spreads 全部跨頁":"All Pages 全部頁面";
   document.documentElement.style.setProperty("--accent",hubKid&&KIDS[hubKid]?KIDS[hubKid].color:"var(--luis)");
   showOnly("book"); saveAppPlace("book");
   renderBookSpread(); renderBookGrid(); updateBookView();
@@ -2613,6 +2680,7 @@ function closeBook(){
   showOnly("hub"); saveAppPlace("hub"); renderHub();
 }
 function renderBookSpread(){
+  if(bookState.layout==="spread"){renderMinecraftSpread();return;}
   var c=bookState.cards[bookState.idx], b=document.getElementById("bookSpread");
   if(!c){b.innerHTML='<div class="msg">Could not load card data. 無法載入卡片資料。</div>';return;}
   var facts=(c.facts||[]).map(function(f){
@@ -2639,9 +2707,85 @@ function renderBookSpread(){
   document.getElementById("bookPhotoPane").onclick=function(){zoomBookImage(photo,c.nameEN+" · "+c.nameZH);};
   updateBookPager();
 }
+function renderMinecraftSpread(){
+  var s=bookState.spreads[bookState.idx], b=document.getElementById("bookSpread");
+  if(!s){b.className="book";b.innerHTML='<div class="msg">Could not load spread. 無法載入跨頁。</div>';return;}
+  var img=bookPhoto(mcraftSpreadImage(s,bookState.idx));
+  var year=mcraftSpreadYear(s);
+  var tone=mcraftTone(bookState.idx);
+  var blocks=(s.blocks||[]).slice(0,4);
+  while(blocks.length<4)blocks.push({en:"",zh:""});
+  var html=
+    '<article class="mcraft-page photo" data-page="1" data-photo="'+bookEscape(img)+'" data-caption="'+bookEscape(s.titleEN+" · "+s.titleZH)+'">'+
+      '<img src="'+bookEscape(img)+'" alt="'+bookEscape(s.titleEN)+'" loading="lazy" onerror="this.style.display=\'none\'">'+
+      '<span class="mcraft-meta">SPREAD '+String(bookState.idx+1).padStart(2,"0")+' · '+bookEscape(year)+'</span>'+
+      '<div class="mcraft-copy">'+
+        '<span class="mcraft-kicker '+tone+'">'+bookEscape(mcraftKicker(year,1))+'</span>'+
+        '<h2 class="mcraft-title">'+bookEscape(s.titleEN)+'</h2>'+
+        '<div class="mcraft-title-zh">'+bookEscape(s.titleZH)+'</div>'+
+        '<p class="mcraft-body">'+bookEscape(blocks[0].en)+'</p>'+
+        '<p class="mcraft-body zh">'+bookEscape(blocks[0].zh)+'</p>'+
+        '<div class="mcraft-photo-hint">Tap image to zoom · 點擊放大</div>'+
+      '</div>'+
+    '</article>'+
+    mcraftTextPage(blocks[1],2,"text",tone,mcraftKicker(year,2))+
+    mcraftTextPage(blocks[2],3,"text",tone,mcraftKicker(year,3))+
+    mcraftTextPage(blocks[3],4,"quote",tone,mcraftKicker(year,4));
+  b.className="mcraft-spread";
+  b.innerHTML=html;
+  b.querySelectorAll(".mcraft-page.photo").forEach(function(page){
+    page.onclick=function(){zoomBookImage(page.dataset.photo,page.dataset.caption);};
+  });
+  updateBookPager();
+}
+var MCRAFT_FALLBACK_IMAGES=[
+  "../assets/books/minecraft/minecraft-java-bedrock.jpg",
+  "../assets/books/minecraft/2009-origin.jpg",
+  "../assets/books/minecraft/2010-nether.jpg",
+  "../assets/books/minecraft/2018-aquatic.jpg",
+  "../assets/books/minecraft/2019-village-pillage.jpg",
+  "../assets/books/minecraft/2021-caves-cliffs.jpg",
+  "../assets/books/minecraft/2024-tricky-trials.jpg",
+  "../assets/books/minecraft/2026-chaos-cubed.jpg"
+];
+function mcraftSpreadImage(spread,index){
+  return spread.image||MCRAFT_FALLBACK_IMAGES[index%MCRAFT_FALLBACK_IMAGES.length];
+}
+function mcraftSpreadYear(spread){
+  var text=[spread.titleEN,spread.titleZH].concat((spread.blocks||[]).map(function(b){return b.en+" "+b.zh;})).join(" ");
+  var m=text.match(/\b(20\d{2}|19\d{2})\b/);
+  return m?m[1]:"Evolution";
+}
+function mcraftTone(index){
+  return ["gold","sky","grass","copper","nether","cherry"][index%6];
+}
+function mcraftKicker(year,page){
+  return (year==="Evolution"?"Minecraft":year)+" / page "+page;
+}
+function mcraftTextPage(block,page,kind,tone,kicker){
+  var en=block&&block.en?block.en:"";
+  var zh=block&&block.zh?block.zh:"";
+  if(kind==="quote"){
+    return '<article class="mcraft-page quote" data-page="'+page+'">'+
+      '<div class="mcraft-copy">'+
+        '<span class="mcraft-kicker '+tone+'">'+bookEscape(kicker)+'</span>'+
+        '<p class="mcraft-pull">'+bookEscape(en)+'</p>'+
+        '<p class="mcraft-body zh">'+bookEscape(zh)+'</p>'+
+      '</div>'+
+    '</article>';
+  }
+  return '<article class="mcraft-page text" data-page="'+page+'">'+
+    '<div class="mcraft-copy">'+
+      '<span class="mcraft-kicker '+tone+'">'+bookEscape(kicker)+'</span>'+
+      '<p class="mcraft-body">'+bookEscape(en)+'</p>'+
+      '<p class="mcraft-body zh">'+bookEscape(zh)+'</p>'+
+    '</div>'+
+  '</article>';
+}
+function bookTotal(){return bookState.layout==="spread"?bookState.spreads.length:bookState.cards.length;}
 function turnBook(dir){
   var next=bookState.idx+dir;
-  if(next<0||next>=bookState.cards.length)return;
+  if(next<0||next>=bookTotal())return;
   var spread=document.getElementById("bookSpread");
   spread.classList.add("turning");
   setTimeout(function(){
@@ -2650,11 +2794,12 @@ function turnBook(dir){
   },180);
 }
 function updateBookPager(){
-  document.getElementById("bookPager").textContent=(bookState.idx+1)+" / "+bookState.cards.length;
+  var total=bookTotal();
+  document.getElementById("bookPager").textContent=(bookState.idx+1)+" / "+total;
   document.getElementById("bookPrev").disabled=bookState.idx===0;
-  document.getElementById("bookNext").disabled=bookState.idx===bookState.cards.length-1;
+  document.getElementById("bookNext").disabled=bookState.idx===total-1;
   var html="";
-  for(var i=0;i<bookState.cards.length;i++)html+='<span class="bdot'+(i===bookState.idx?' on':'')+'"></span>';
+  for(var i=0;i<total;i++)html+='<span class="bdot'+(i===bookState.idx?' on':'')+'"></span>';
   document.getElementById("bookProgress").innerHTML=html;
 }
 function toggleBookView(){
@@ -2662,20 +2807,31 @@ function toggleBookView(){
   updateBookView();
 }
 function updateBookView(){
-  document.getElementById("bookViewToggle").textContent=bookState.grid?"Book 書本":"All Pages 全部頁面";
+  var sp=bookState.layout==="spread";
+  document.getElementById("bookViewToggle").textContent=bookState.grid?"Book 書本":(sp?"All Spreads 全部跨頁":"All Pages 全部頁面");
   document.getElementById("bookStage").classList.toggle("hidden",bookState.grid);
   document.getElementById("bookNav").classList.toggle("hidden",bookState.grid);
   document.getElementById("bookGridView").classList.toggle("hidden",!bookState.grid);
   if(bookState.grid)renderBookGrid();
 }
 function renderBookGrid(){
-  var html="";
-  bookState.cards.forEach(function(c,i){
-    html+='<div class="book-gridcard'+(i===bookState.idx?' current':'')+'" data-page="'+i+'">'+
-      '<img src="'+bookEscape(bookPhoto(c.photo))+'" alt="'+bookEscape(c.nameEN)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
-      '<div class="emoji" style="display:none">'+bookEscape(c.emoji)+'</div>'+
-      '<div class="gname">'+bookEscape(c.nameEN)+'<span class="zh">'+bookEscape(c.nameZH)+'</span></div></div>';
-  });
+  var html="", sp=bookState.layout==="spread";
+  if(sp){
+    bookState.spreads.forEach(function(s,i){
+      var thumb=bookPhoto(mcraftSpreadImage(s,i));
+      html+='<div class="book-gridcard'+(i===bookState.idx?' current':'')+'" data-page="'+i+'">'+
+        '<img src="'+bookEscape(thumb)+'" alt="'+bookEscape(s.titleEN)+'" class="gthumb" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
+        '<div class="emoji" style="display:none">⬛</div>'+
+        '<div class="gname">'+bookEscape(s.titleEN)+'<span class="zh">'+bookEscape(s.titleZH)+'</span></div></div>';
+    });
+  }else{
+    bookState.cards.forEach(function(c,i){
+      html+='<div class="book-gridcard'+(i===bookState.idx?' current':'')+'" data-page="'+i+'">'+
+        '<img src="'+bookEscape(bookPhoto(c.photo))+'" alt="'+bookEscape(c.nameEN)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
+        '<div class="emoji" style="display:none">'+bookEscape(c.emoji)+'</div>'+
+        '<div class="gname">'+bookEscape(c.nameEN)+'<span class="zh">'+bookEscape(c.nameZH)+'</span></div></div>';
+    });
+  }
   var grid=document.getElementById("bookGridView");
   grid.innerHTML=html;
   grid.querySelectorAll(".book-gridcard").forEach(function(card){
@@ -2708,7 +2864,7 @@ function onBookKey(e){
   if(e.key==="ArrowLeft")turnBook(-1);
   else if(e.key==="ArrowRight")turnBook(1);
   else if(e.key==="Home"){bookState.idx=0;renderBookSpread();renderBookGrid();}
-  else if(e.key==="End"){bookState.idx=bookState.cards.length-1;renderBookSpread();renderBookGrid();}
+  else if(e.key==="End"){bookState.idx=bookTotal()-1;renderBookSpread();renderBookGrid();}
 }
 document.getElementById("musicBack").onclick=function(){closeInstrument(false);};
 document.getElementById("bookBack").onclick=closeBook;
