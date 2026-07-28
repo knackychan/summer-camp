@@ -2,10 +2,13 @@
 var S = null, C = null;
 
 function clean(s) { return s.replace(/[^a-zA-Z ]/g, "").replace(/\s+/g, " ").trim().toLowerCase(); }
+function entryText(entry) { return clean(String(Array.isArray(entry) ? entry[0] : entry || "")); }
 
 function makeRacePool() {
-  var words = C.shuffle(C.words.hard.slice()).map(function (w) { return [w.toLowerCase(), ""]; });
-  var sents = C.shuffle(C.words.sentences.slice()).map(function (s) { return [clean(s), ""]; });
+  var hard = C.words.hard || C.words.all || C.words.easy || [];
+  var sentences = C.words.sentences || [];
+  var words = C.shuffle(hard.slice()).map(function (w) { return [entryText(w), ""]; }).filter(function (w) { return w[0]; });
+  var sents = C.shuffle(sentences.slice()).map(function (s) { return [entryText(s), ""]; }).filter(function (s) { return s[0]; });
   var out = []; var wi = 0, si = 0;
   while (wi < words.length || si < sents.length) {
     for (var n = 0; n < 3 && wi < words.length; n++) out.push(words[wi++]);
@@ -22,10 +25,14 @@ function drawWord() {
     else if (idx === pos) cls = S.wrong ? "bad cur" : "cur";
     return '<span class="' + cls + '">' + c + '</span>';
   }).join("");
-  document.getElementById("stage").innerHTML =
-    '<div class="cue">Type it!</div>'
+  C.stage.innerHTML =
+    '<div class="game-scene game-scene--race">'
+    + '<div class="game-scene__center">'
+    + '<div class="cue">Type it!</div>'
     + '<div class="word">' + spans + '</div>'
-    + '<div class="msg" id="msg"></div>';
+    + '<div class="msg" id="msg"></div>'
+    + '</div>'
+    + '</div>';
   C.keys.highlight(w[pos]);
 }
 

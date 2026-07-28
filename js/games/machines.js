@@ -5,11 +5,21 @@ var NUM_EN = ["","one","two","three","four","five","six","seven","eight","nine"]
 var NUM_FR = ["","un","deux","trois","quatre","cinq","six","sept","huit","neuf"];
 
 function mchWords() {
-  return C.words.all.filter(function (w) { return w[0].length <= 4 && !w[0].includes(" "); });
+  var pool = (C.words.all || []).filter(function (w) { return w[0].length <= 4 && !w[0].includes(" "); });
+  return pool.length ? pool : (C.words.easy || [["cat", "\ud83d\udc31", "", ""]]);
 }
 
 function machinesHud() {
   C.hud([{ k: "Wins", v: S.wins, c: C.kids[C.kid].raw }, { k: "Stars", v: C.stars }]);
+}
+
+function mountMachine(kind, html) {
+  C.stage.innerHTML =
+    '<div class="game-scene game-scene--machines game-scene--machines-' + kind + '">'
+    + '<div class="game-scene__center">'
+    + html
+    + '</div>'
+    + '</div>';
 }
 
 function drawMchWord() {
@@ -25,26 +35,26 @@ function drawMchWord() {
 function mchRace() {
   var pick = C.rand(mchWords());
   S.word = pick[0]; S.pos = 0; S.em = pick[1]; S.fr = pick[2];
-  document.getElementById("stage").innerHTML =
+  mountMachine("race",
     '<div class="cue">\ud83c\udfce\ufe0f Type the letters to race to the flag!</div>'
     + '<div class="word-em" style="font-size:44px">' + S.em + '</div>'
     + '<div class="word" id="mword"></div>'
     + '<div class="vfr" style="font-size:18px">' + S.fr + '</div>'
     + '<div class="mch-track"><span class="mch-car" id="car" style="left:0%">\ud83c\udfce\ufe0f</span>'
     + '<span class="mch-flag">\ud83c\udfc1</span></div>'
-    + '<div class="msg" id="msg"></div>';
+    + '<div class="msg" id="msg"></div>');
   drawMchWord(); C.say(S.word);
 }
 
 function mchDig() {
   var n = 1 + Math.floor(Math.random() * 9);
   S.num = n;
-  document.getElementById("stage").innerHTML =
+  mountMachine("dig",
     '<div class="cue">\ud83d\ude9c How many stones did the excavator dig up?</div>'
     + '<div class="mch-row"><span class="mch-digger" id="digger">\ud83d\ude9c</span></div>'
     + '<div class="mch-row" id="stones">' + "\ud83e\udea8".repeat(n) + '</div>'
     + '<div class="bigletter" style="font-size:64px;color:' + C.kids[C.kid].color + '" id="dignum">?</div>'
-    + '<div class="msg" id="msg">Press the number!</div>';
+    + '<div class="msg" id="msg">Press the number!</div>');
   C.keys.highlight(String(n));
 }
 
@@ -54,14 +64,14 @@ function mchHeli() {
   var parts = C.words.letters[letter].split(" ");
   var em = parts[0];
   var rest = parts.slice(1).join(" ");
-  document.getElementById("stage").innerHTML =
+  mountMachine("heli",
     '<div class="cue">\ud83d\ude81 Press the key to lift the cargo!</div>'
     + '<div class="mch-row"><span class="mch-lift" id="heli" style="opacity:0">\ud83d\ude81</span></div>'
     + '<div class="mch-lift" id="cargo">'
     + '<div class="bigletter" style="font-size:76px;color:' + C.kids[C.kid].color + '">' + letter + '</div>'
     + '<div class="picword"><span class="em">' + em + '</span>' + rest + '</div>'
     + '</div>'
-    + '<div class="msg" id="msg">Find the glowing key!</div>';
+    + '<div class="msg" id="msg">Find the glowing key!</div>');
   C.keys.highlight(letter);
 }
 

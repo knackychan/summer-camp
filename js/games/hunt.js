@@ -9,11 +9,15 @@ function nextHunt() {
   var parts = L[letter].split(" ");
   var em = parts[0];
   var rest = parts.slice(1).join(" ");
-  document.getElementById("stage").innerHTML =
-    '<div class="cue">Press this key \ud83d\udc47</div>'
+  C.stage.innerHTML =
+    '<div class="game-scene game-scene--hunt">'
+    + '<div class="game-scene__center">'
+    + '<div class="cue">Press this key \ud83d\udc47</div>'
     + '<div class="bigletter" style="color:' + C.kids[C.kid].color + '">' + letter + '</div>'
     + '<div class="picword"><span class="em">' + em + '</span>' + rest + '</div>'
-    + '<div class="msg">Find the glowing key!</div>';
+    + '<div class="msg" id="msg">Find the glowing key!</div>'
+    + '</div>'
+    + '</div>';
   C.keys.highlight(letter);
   C.hud([{ k: "Found", v: S.found, c: C.kids[C.kid].raw }, { k: "Stars", v: C.stars }]);
 }

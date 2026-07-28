@@ -2,6 +2,7 @@
 var S = null, C = null;
 
 var CT = 48, CITY_W = 26, CITY_H = 20;
+var CITY_WORLD_W = CITY_W * CT, CITY_WORLD_H = CITY_H * CT;
 var CITY_MAP = [
   "GGGRGGGGGGGGGRGGGGGGGGRGGG",
   "GGGRGGGGGGGGGRGGGGGGGGRGGG",
@@ -72,11 +73,19 @@ function rr(ctx, x, y, w, h, r) {
 
 function cityDraw() {
   var ctx2 = S.canvasCtx, vw = S.vw, vh = S.vh, car = S.car;
-  var camX = Math.max(0, Math.min(car.x - vw / 2, CITY_W * CT - vw));
-  var camY = Math.max(0, Math.min(car.y - vh / 2, CITY_H * CT - vh));
-  ctx2.save(); ctx2.clearRect(0, 0, vw, vh); ctx2.translate(-camX, -camY);
-  var x0 = Math.floor(camX / CT), x1 = Math.min(CITY_W - 1, Math.ceil((camX + vw) / CT));
-  var y0 = Math.floor(camY / CT), y1 = Math.min(CITY_H - 1, Math.ceil((camY + vh) / CT));
+  var scale = S.viewScale || 1;
+  var viewW = vw / scale, viewH = vh / scale;
+  var camX = Math.max(0, Math.min(car.x - viewW / 2, Math.max(0, CITY_WORLD_W - viewW)));
+  var camY = Math.max(0, Math.min(car.y - viewH / 2, Math.max(0, CITY_WORLD_H - viewH)));
+  var offX = Math.max(0, (vw - CITY_WORLD_W * scale) / 2);
+  var offY = Math.max(0, (vh - CITY_WORLD_H * scale) / 2);
+  ctx2.save();
+  ctx2.clearRect(0, 0, vw, vh);
+  ctx2.translate(offX, offY);
+  ctx2.scale(scale, scale);
+  ctx2.translate(-camX, -camY);
+  var x0 = Math.floor(camX / CT), x1 = Math.min(CITY_W - 1, Math.ceil((camX + viewW) / CT));
+  var y0 = Math.floor(camY / CT), y1 = Math.min(CITY_H - 1, Math.ceil((camY + viewH) / CT));
   for (var y = y0; y <= y1; y++) {
     for (var x = x0; x <= x1; x++) {
       var c = CITY_MAP[y].charAt(x);
@@ -309,9 +318,12 @@ function cityLoop(now) {
   var car = S.car, k = S.keys;
   var onGrass = cityTile(car.x, car.y) === "G";
   var cap = onGrass ? S.vmax * 0.45 : S.vmax;
-  if (k.g) car.v = Math.min(car.v + 300 * dt, cap);
+  var reverseCap = cap * 0.55;
+  if (k.g && !k.b) car.v = Math.min(car.v + 300 * dt, cap);
+  else if (k.b && !k.g) car.v = Math.max(car.v - 240 * dt, -reverseCap);
   else car.v *= Math.pow(0.15, dt);
   if (car.v > cap) car.v = cap;
+  if (car.v < -reverseCap) car.v = -reverseCap;
   if (Math.abs(car.v) > 5) {
     var dir = (k.l ? -1 : 0) + (k.r ? 1 : 0);
     car.h += dir * 2.6 * dt * (0.45 + 0.55 * Math.min(Math.abs(car.v) / S.vmax, 1));
@@ -333,6 +345,20 @@ function cityTick() {
   if (S.time <= 0) finishCity();
 }
 
+function cityResize() {
+  if (!S || !S._wrap || !S._cv) return;
+  var wrap = S._wrap, cv = S._cv;
+  var w = Math.max(1, wrap.clientWidth), h = Math.max(1, wrap.clientHeight);
+  var dpr = window.devicePixelRatio || 1;
+  S.vw = w; S.vh = h; S._dpr = dpr;
+  S.viewScale = Math.max(1, w / CITY_WORLD_W, h / CITY_WORLD_H);
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  S.canvasCtx = cv.getContext("2d");
+  S.canvasCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (S.car) cityDraw();
+}
+
 function init(ctx) {
   C = ctx;
   C.bestOriginal = C.best || 0;
@@ -342,7 +368,7 @@ function init(ctx) {
   S = {
     score: 0, mn: 0, m: null, signs: null, running: true,
     raf: null, timer: null, missionTimeout: null,
-    keys: { l: false, r: false, g: false },
+    keys: { l: false, r: false, g: false, b: false },
     car: { x: 13 * CT + CT / 2, y: 10 * CT + CT / 2, h: 0, v: 0 }
   };
 
@@ -352,31 +378,28 @@ function init(ctx) {
     + '<div class="cd-wrap" id="cdWrap">'
     + '<canvas id="cityCv"></canvas>'
     + '<div class="cd-prompt" id="cdPrompt"></div>'
+    + '<div class="msg" id="msg"></div>'
     + '<div class="cd-btn cd-l" id="cdL">\u25c0</div>'
     + '<div class="cd-btn cd-r" id="cdR">\u25b6</div>'
+    + '<div class="cd-btn cd-back" id="cdBack">\u25bc</div>'
     + '<div class="cd-btn cd-gas" id="cdGas">\u26a1</div>'
     + '</div>'
-    + '</div>'
-    + '<div class="msg" id="msg"></div>';
+    + '</div>';
 
   var wrap = document.getElementById("cdWrap"), cv = document.getElementById("cityCv");
-  var dpr = window.devicePixelRatio || 1;
-  S.vw = wrap.clientWidth; S.vh = wrap.clientHeight;
-  S._dpr = dpr;
+  S._wrap = wrap;
   S._cv = cv;
-  cv.width = S.vw * dpr; cv.height = S.vh * dpr;
-  S.canvasCtx = cv.getContext("2d"); S.canvasCtx.scale(dpr, dpr);
+  cityResize();
 
-  S._resizeObserver = new ResizeObserver(function () {
+  S._resizeObserver = window.ResizeObserver && new ResizeObserver(function () {
     if (!S || !S.running) return;
-    var w = wrap.clientWidth, h = wrap.clientHeight;
-    if (w === 0 || h === 0) return;
-    S.vw = w; S.vh = h;
-    cv.width = w * dpr; cv.height = h * dpr;
-    S.canvasCtx.scale(dpr, dpr);
-    cityDraw();
+    cityResize();
   });
-  S._resizeObserver.observe(wrap);
+  if (S._resizeObserver) S._resizeObserver.observe(wrap);
+  else {
+    S._resizeHandler = cityResize;
+    addEventListener("resize", S._resizeHandler);
+  }
 
   var hold = function (elId, key) {
     var el = document.getElementById(elId);
@@ -384,17 +407,19 @@ function init(ctx) {
     el.onpointerdown = function (e) { e.preventDefault(); S.keys[key] = true; };
     el.onpointerup = el.onpointercancel = el.onpointerout = function () { S.keys[key] = false; };
   };
-  hold("cdL", "l"); hold("cdR", "r"); hold("cdGas", "g");
+  hold("cdL", "l"); hold("cdR", "r"); hold("cdGas", "g"); hold("cdBack", "b");
 
   S.keydown = function (e) {
     if (e.key === "ArrowLeft") { e.preventDefault(); S.keys.l = true; }
     if (e.key === "ArrowRight") { e.preventDefault(); S.keys.r = true; }
     if (e.key === "ArrowUp") { e.preventDefault(); S.keys.g = true; }
+    if (e.key === "ArrowDown") { e.preventDefault(); S.keys.b = true; }
   };
   S.keyup = function (e) {
     if (e.key === "ArrowLeft") S.keys.l = false;
     if (e.key === "ArrowRight") S.keys.r = false;
     if (e.key === "ArrowUp") S.keys.g = false;
+    if (e.key === "ArrowDown") S.keys.b = false;
   };
   addEventListener("keydown", S.keydown);
   addEventListener("keyup", S.keyup);
@@ -418,6 +443,7 @@ function stop() {
   if (S.timer) { clearInterval(S.timer); S.timer = null; }
   if (S.missionTimeout) { clearTimeout(S.missionTimeout); S.missionTimeout = null; }
   if (S._resizeObserver) { S._resizeObserver.disconnect(); S._resizeObserver = null; }
+  if (S._resizeHandler) { removeEventListener("resize", S._resizeHandler); S._resizeHandler = null; }
   S = null;
 }
 
