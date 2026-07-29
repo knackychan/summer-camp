@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v56";
+const CACHE_NAME = "summer-quest-v62";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -21,7 +21,7 @@ const APP_SHELL = [
   "./js/papa-tools.js",
   "./js/drills.js",
   "./js/admin-nav.js",
-  "./js/admin.js",
+  "./js/admin.js?v=62",
   "./js/sync.js",
   "./js/brain-data.js",
   "./js/brain-core.js",

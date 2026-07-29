@@ -121,7 +121,8 @@
     }catch(e){return {};}
   }
   function cleanReplacementMap(map){
-    var clean={};
+    if(map._v!==2)return {_v:2};
+    var clean={_v:2};
     Object.keys(KIDS).forEach(function(kid){
       var bucket=map[kid];
       if(!bucket||typeof bucket!=="object")return;
@@ -130,12 +131,21 @@
         var i=+slot, src=+bucket[slot];
         if(Number.isInteger(i)&&Number.isInteger(src)&&DAY[i]&&DAY[src]&&i!==src)out[i]=src;
       });
-      var vals=Object.keys(out).map(function(k){return out[k];});
-      var same=vals.length&&vals.every(function(v){return v===vals[0];});
-      if(vals.length>=DAY.length-1&&same)return;
-      if(vals.length)clean[kid]=out;
+      if(Object.keys(out).length)clean[kid]=out;
     });
     return clean;
+  }
+  async function repairReplacementMap(){
+    var key=replaceKey();
+    var row=rows.familySettings.find(function(x){return x.key===key;});
+    if(!row)return;
+    var value=JSON.stringify(replacementMap());
+    if(row.value===value)return;
+    row.value=value;
+    suppressRealtime("family_settings",{key:key});
+    const {error}=await client.from("family_settings")
+      .upsert({key:key,value:value,updated_at:new Date().toISOString()});
+    if(error)writeFailed(error);
   }
   function replacementSource(kid,i){
     var map=replacementMap();
@@ -298,6 +308,7 @@
     /* Stamp the everyday template onto DAY before anything renders, so DAY[i].t
        is the real base a today-override is measured against. */
     SQTime.applyTemplate(DAY,templateMap());
+    await repairReplacementMap();
     /* The note lives in module state, not in the DOM. Seeding #noteBody here
        silently did nothing: renderNote() creates that textarea, so on load it
        does not exist yet and the saved message never reached the editor. */
@@ -957,7 +968,6 @@
 
   async function resetAcceptedDay(){
     const ticks=rows.ticks.filter(function(t){return t.day===today;});
-    if(!ticks.length){toast("No accepted blocks to reset",true);return;}
     var refunds=[];
     Object.keys(KIDS).forEach(function(kid){
       const kidTicks=ticks.filter(function(t){return t.kid_id===kid;}).map(function(t){return t.block_idx;});
@@ -966,14 +976,26 @@
       if(dayComplete(kid)&&passOnly.size<DAY.length)
         refunds.push({kid_id:kid,delta:-2,reason:"Day reset bonus undo",source:"admin",granted_by:session.user.id});
     });
-    const r1=await client.from("day_ticks").delete().eq("day",today);
-    if(r1.error){writeFailed(r1.error);return;}
-    await client.from("day_redos").delete().eq("day",today);
+    if(ticks.length){
+      const r1=await client.from("day_ticks").delete().eq("day",today);
+      if(r1.error){writeFailed(r1.error);return;}
+    }
+    const resetResults=await Promise.all([
+      client.from("day_redos").delete().eq("day",today),
+      client.from("day_overrides").delete().eq("day",today),
+      client.from("family_settings").upsert({
+        key:replaceKey(),
+        value:JSON.stringify({_v:2}),
+        updated_at:new Date().toISOString()
+      })
+    ]);
+    const resetError=resetResults.find(function(r){return r.error;});
+    if(resetError){writeFailed(resetError.error);return;}
     if(refunds.length){
       const r2=await client.from("stars_ledger").insert(refunds);
       if(r2.error){writeFailed(r2.error);return;}
     }
-    toast("Accepted blocks reset",true);
+    toast("Day reset — original activities and times restored",true);
     await loadAll();
   }
 
