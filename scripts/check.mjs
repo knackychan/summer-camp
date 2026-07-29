@@ -85,6 +85,20 @@ for (const file of runtimeFiles.filter((f) => f.endsWith(".js"))) {
     if (!loaders.includes(file)) continue;
     if (!swText.includes(`./${file}`)) fail("offline", `${file} is loaded but missing from sw.js APP_SHELL`);
   }
+  // The other direction, and the nastier one: cache.addAll() rejects as a unit, so a
+  // single APP_SHELL entry that 404s aborts the install and every device keeps serving
+  // the previous cache forever. This shipped once (three solar textures that were never
+  // added), so the list is checked against the disk here rather than in a bug report.
+  const shellBody = swText.match(/const APP_SHELL = \[([\s\S]*?)\];/);
+  if (!shellBody) {
+    fail("offline", "sw.js has no APP_SHELL array");
+  } else {
+    for (const [, entry] of shellBody[1].matchAll(/"\.\/([^"]+)"/g)) {
+      if (!existsSync(new URL(entry, root))) {
+        fail("offline", `sw.js precaches ./${entry} but the file does not exist — cache.addAll will reject and the service worker will never update`);
+      }
+    }
+  }
 }
 
 // Standalone books are not loaded by index.html, so the generic app-shell checks

@@ -2829,7 +2829,10 @@ function mcraftTone(index){
 function mcraftKicker(year,page){
   return (year==="Evolution"?"Minecraft":year)+" / page "+page;
 }
-function mcraftTextPage(block,page,kind,tone,kicker){
+/* `extra` is this mini-page's magazine furniture (tip card, fact card, or the
+   key-feature chips) and `head` is the running head plus the page's image band.
+   Both are empty strings when the topic did not author them. */
+function mcraftTextPage(block,page,kind,tone,kicker,extra,head){
   var en=block&&block.en?block.en:"";
   var zh=block&&block.zh?block.zh:"";
   if(kind==="quote"){
@@ -2838,6 +2841,7 @@ function mcraftTextPage(block,page,kind,tone,kicker){
         '<span class="mcraft-kicker '+tone+'">'+bookEscape(kicker)+'</span>'+
         '<p class="mcraft-pull">'+bookEscape(en)+'</p>'+
         '<p class="mcraft-body zh">'+bookEscape(zh)+'</p>'+
+        (extra||"")+
       '</div>'+
     '</article>';
   }
@@ -2846,7 +2850,7 @@ function mcraftTextPage(block,page,kind,tone,kicker){
       '<span class="mcraft-kicker '+tone+'">'+bookEscape(kicker)+'</span>'+
       '<p class="mcraft-body">'+bookEscape(en)+'</p>'+
       '<p class="mcraft-body zh">'+bookEscape(zh)+'</p>'+
-    '</div>'+
+    '</div>'+(extra||"")+
   '</article>';
 }
 function bookTotal(){return bookState.layout==="spread"?bookState.spreads.length*2:bookState.cards.length;}
