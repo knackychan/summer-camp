@@ -117,12 +117,29 @@
     var row=rows.familySettings.find(function(x){return x.key===replaceKey();});
     try{
       var map=JSON.parse(row&&row.value||"{}");
-      return map&&typeof map==="object"?map:{};
+      return cleanReplacementMap(map&&typeof map==="object"?map:{});
     }catch(e){return {};}
+  }
+  function cleanReplacementMap(map){
+    var clean={};
+    Object.keys(KIDS).forEach(function(kid){
+      var bucket=map[kid];
+      if(!bucket||typeof bucket!=="object")return;
+      var out={};
+      Object.keys(bucket).forEach(function(slot){
+        var i=+slot, src=+bucket[slot];
+        if(Number.isInteger(i)&&Number.isInteger(src)&&DAY[i]&&DAY[src]&&i!==src)out[i]=src;
+      });
+      var vals=Object.keys(out).map(function(k){return out[k];});
+      var same=vals.length&&vals.every(function(v){return v===vals[0];});
+      if(vals.length>=DAY.length-1&&same)return;
+      if(vals.length)clean[kid]=out;
+    });
+    return clean;
   }
   function replacementSource(kid,i){
     var map=replacementMap();
-    var v=map[kid]&&map[kid][i]!=null?map[kid][i]:map.all&&map.all[i]!=null?map.all[i]:null;
+    var v=map[kid]&&map[kid][i]!=null?map[kid][i]:null;
     v=+v;
     return Number.isInteger(v)&&DAY[v]?v:null;
   }

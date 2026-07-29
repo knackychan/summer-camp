@@ -1861,12 +1861,29 @@ function parseBlockReplacements(){
   try{
     const fs=(store&&store.familySettings)||{};
     const map=JSON.parse(fs[replaceKey()]||"{}");
-    return map&&typeof map==="object"?map:{};
+    return cleanBlockReplacements(map&&typeof map==="object"?map:{});
   }catch(e){return {};}
+}
+function cleanBlockReplacements(map){
+  const clean={};
+  Object.keys(KIDS).forEach(id=>{
+    const bucket=map[id];
+    if(!bucket||typeof bucket!=="object")return;
+    const out={};
+    Object.keys(bucket).forEach(slot=>{
+      const i=+slot, src=+bucket[slot];
+      if(Number.isInteger(i)&&Number.isInteger(src)&&DAY[i]&&DAY[src]&&i!==src)out[i]=src;
+    });
+    const vals=Object.keys(out).map(k=>out[k]);
+    const same=vals.length&&vals.every(v=>v===vals[0]);
+    if(vals.length>=DAY.length-1&&same)return;
+    if(vals.length)clean[id]=out;
+  });
+  return clean;
 }
 function replacementSource(id,i){
   const map=dayBlockReplacements||{};
-  let v=map[id]&&map[id][i]!=null?map[id][i]:map.all&&map.all[i]!=null?map.all[i]:null;
+  let v=map[id]&&map[id][i]!=null?map[id][i]:null;
   v=+v;
   return Number.isInteger(v)&&DAY[v]?v:null;
 }
