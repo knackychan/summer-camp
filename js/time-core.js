@@ -55,9 +55,71 @@
   function clampDelta(rip,delta){
     return Math.max(rip.min,Math.min(rip.max,delta));
   }
-  function resolveOverrides(raw,kid){
+  function resolveOverrides(raw,kid,day){
     if(!raw)return {};
-    return Object.assign({},raw.all||{},(kid&&raw[kid])||{});
+    return Object.assign({},cleanTimeMap(day,raw.all||{}),cleanTimeMap(day,(kid&&raw[kid])||{}));
+  }
+  function cleanTimeMap(day,map){
+    if(!map||typeof map!=="object")return {};
+    const out={}, rawCounts={};
+    Object.keys(map).forEach(function(k){
+      const mins=parseMins(map[k]);
+      if(mins!=null)rawCounts[mins]=(rawCounts[mins]||0)+1;
+    });
+    Object.keys(map).forEach(function(k){
+      const i=+k, mins=parseMins(map[k]);
+      if(!Number.isInteger(i)||mins==null||mins<0||mins>23*60+55)return;
+      if(day&&!day[i])return;
+      const base=day&&day[i]&&parseMins(day[i].t0===undefined?day[i].t:day[i].t0);
+      if(day&&base==null)return;
+      if(base!=null&&mins===base)return;
+      out[i]=String(map[k]);
+    });
+    const keys=Object.keys(out);
+    const hasDenseRaw=Object.keys(rawCounts).some(function(mins){return rawCounts[mins]>=3;});
+    if(keys.length<3&&!hasDenseRaw)return out;
+    const counts={};
+    keys.forEach(function(k){
+      const mins=parseMins(out[k]);
+      counts[mins]=(counts[mins]||0)+1;
+    });
+    Object.keys(counts).forEach(function(mins){
+      if(counts[mins]>=3||rawCounts[mins]>=3){
+        keys.forEach(function(k){if(parseMins(out[k])===+mins)delete out[k];});
+      }
+    });
+    return out;
+  }
+  function cleanReplacementMap(day,kids,map){
+    const clean={};
+    Object.keys(kids||{}).forEach(function(kid){
+      const bucket=map&&map[kid];
+      if(!bucket||typeof bucket!=="object")return;
+      const out={};
+      Object.keys(bucket).forEach(function(slot){
+        const i=+slot, src=+bucket[slot];
+        if(Number.isInteger(i)&&Number.isInteger(src)&&day[i]&&day[src]&&i!==src)out[i]=src;
+      });
+      if(Object.keys(out).length)clean[kid]=out;
+    });
+    return clean;
+  }
+  /* A slot with no replacement must stay unreplaced. +null is 0 and 0 is a real
+     block ("Wake up"), so coercing the missing case silently rewrote the whole
+     schedule to the first block of the day. Read the entry, then coerce. */
+  function replacementSource(day,map,kid,i){
+    const bucket=(map||{})[kid];
+    if(!bucket||bucket[i]==null)return null;
+    const v=+bucket[i];
+    return Number.isInteger(v)&&day[v]?v:null;
+  }
+  function repairReplacementMap(day,kids,map){
+    const clean=cleanReplacementMap(day,kids,map);
+    if(map&&map._v===2){
+      clean._v=2;
+      return clean;
+    }
+    return {_v:2};
   }
   /* Two ways a start time moves. day_overrides = "today only" (above).
      The template = "every day from now on", stored as one JSON map in
@@ -70,13 +132,14 @@
     catch(e){return {};}
   }
   function applyTemplate(day,map){
+    map=cleanTimeMap(day,map);
     day.forEach(function(b,i){
       if(b.t0===undefined)b.t0=b.t;
       b.t=(map&&map[i])||b.t0;
     });
     return day;
   }
-  const api={parseMins:parseMins,effMins:effMins,timedOrder:timedOrder,timelineInfo:timelineInfo,neededBefore:neededBefore,displayOrder:displayOrder,resolveOverrides:resolveOverrides,parseTemplate:parseTemplate,applyTemplate:applyTemplate,ripple:ripple,clampDelta:clampDelta};
+  const api={parseMins:parseMins,effMins:effMins,timedOrder:timedOrder,timelineInfo:timelineInfo,neededBefore:neededBefore,displayOrder:displayOrder,resolveOverrides:resolveOverrides,cleanTimeMap:cleanTimeMap,cleanReplacementMap:cleanReplacementMap,repairReplacementMap:repairReplacementMap,replacementSource:replacementSource,parseTemplate:parseTemplate,applyTemplate:applyTemplate,ripple:ripple,clampDelta:clampDelta};
   if(typeof window!=="undefined")window.SQTime=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

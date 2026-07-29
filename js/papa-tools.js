@@ -33,7 +33,7 @@
   }
   function resched(el,scope){
     const raw=window.sqOverridesRaw();
-    const eff=scope==="all"?(raw.all||{}):window.SQTime.resolveOverrides(raw,scope);
+    const eff=scope==="all"?window.SQTime.cleanTimeMap(window.SQ_DAY_DATA,raw.all||{}):window.SQTime.resolveOverrides(raw,scope,window.SQ_DAY_DATA);
     const own=raw[scope]||{};
     const kidRow=Object.keys(KID_LABELS).map(function(k){
       return `<button class="btn small ptkid ${k===scope?"on":""}" data-ptk="${k}">${KID_LABELS[k]}</button>`;
@@ -67,7 +67,7 @@
     };
   }
   function outing(el){
-    const blocks=window.SQTime.timedOrder(window.SQ_DAY_DATA,window.SQTime.resolveOverrides(window.sqOverridesRaw(),null));
+    const blocks=window.SQTime.timedOrder(window.SQ_DAY_DATA,window.SQTime.resolveOverrides(window.sqOverridesRaw(),null,window.SQ_DAY_DATA));
     el.innerHTML=`<p>Which blocks are we out for? 我們出門的時段？</p>
       <div class="vrow" style="flex-wrap:wrap">${blocks.map(function(x){
         const b=window.SQ_DAY_DATA[x.i];

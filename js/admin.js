@@ -113,45 +113,51 @@
   const tickFor=(kid,i)=>rows.ticks.find(t=>t.kid_id===kid&&t.day===today&&t.block_idx===i);
   const passFor=(kid,i,kind)=>rows.passes.find(p=>p.kid_id===kid&&p.day===today&&p.block_idx===i&&p.status==="granted"&&(!kind||p.kind===kind));
   function replaceKey(){return REPLACE_KEY_PREFIX+today;}
-  function replacementMap(){
+  function replacementMapRaw(){
     var row=rows.familySettings.find(function(x){return x.key===replaceKey();});
     try{
       var map=JSON.parse(row&&row.value||"{}");
-      return cleanReplacementMap(map&&typeof map==="object"?map:{});
+      return map&&typeof map==="object"?map:{};
     }catch(e){return {};}
   }
+  function replacementMap(){
+    return cleanReplacementMap(replacementMapRaw());
+  }
   function cleanReplacementMap(map){
-    if(map._v!==2)return {_v:2};
-    var clean={_v:2};
-    Object.keys(KIDS).forEach(function(kid){
-      var bucket=map[kid];
-      if(!bucket||typeof bucket!=="object")return;
-      var out={};
-      Object.keys(bucket).forEach(function(slot){
-        var i=+slot, src=+bucket[slot];
-        if(Number.isInteger(i)&&Number.isInteger(src)&&DAY[i]&&DAY[src]&&i!==src)out[i]=src;
-      });
-      if(Object.keys(out).length)clean[kid]=out;
-    });
-    return clean;
+    return SQTime.repairReplacementMap(DAY,KIDS,map);
   }
   async function repairReplacementMap(){
     var key=replaceKey();
     var row=rows.familySettings.find(function(x){return x.key===key;});
     if(!row)return;
-    var value=JSON.stringify(replacementMap());
+    var clean=cleanReplacementMap(replacementMapRaw());
+    var value=JSON.stringify(clean);
     if(row.value===value)return;
     row.value=value;
     suppressRealtime("family_settings",{key:key});
-    const {error}=await client.from("family_settings")
-      .upsert({key:key,value:value,updated_at:new Date().toISOString()});
+    const {error}=await client.from("family_settings").upsert({key:key,value:value,updated_at:new Date().toISOString()});
+    if(error)writeFailed(error);
+  }
+  function templateMapRaw(){
+    var row=rows.familySettings.find(function(x){return x.key===TEMPLATE_KEY;});
+    return SQTime.parseTemplate(row&&row.value);
+  }
+  function templateMap(){
+    return SQTime.cleanTimeMap(DAY,templateMapRaw());
+  }
+  async function repairTemplateMap(){
+    var row=rows.familySettings.find(function(x){return x.key===TEMPLATE_KEY;});
+    if(!row)return;
+    var clean=templateMap();
+    var value=JSON.stringify(clean);
+    if(row.value===value)return;
+    row.value=value;
+    suppressRealtime("family_settings",{key:TEMPLATE_KEY});
+    const {error}=await client.from("family_settings").upsert({key:TEMPLATE_KEY,value:value,updated_at:new Date().toISOString()});
     if(error)writeFailed(error);
   }
   function replacementSource(kid,i){
-    var map=replacementMap();
-    var v=map[kid]&&map[kid][i]!=null?map[kid][i]:null;
-    v=+v;
-    return Number.isInteger(v)&&DAY[v]?v:null;
+    return SQTime.replacementSource(DAY,replacementMap(),kid,i);
   }
   function effectiveBlock(kid,i){
     var base=DAY[i]||{}, src=replacementSource(kid,i);
@@ -308,6 +314,7 @@
     /* Stamp the everyday template onto DAY before anything renders, so DAY[i].t
        is the real base a today-override is measured against. */
     SQTime.applyTemplate(DAY,templateMap());
+    await repairTemplateMap();
     await repairReplacementMap();
     /* The note lives in module state, not in the DOM. Seeding #noteBody here
        silently did nothing: renderNote() creates that textarea, so on load it
@@ -469,15 +476,11 @@
   }
 
   /* ---- Overview / Day board ---- */
-  function templateMap(){
-    var row=rows.familySettings.find(function(x){return x.key===TEMPLATE_KEY;});
-    return SQTime.parseTemplate(row&&row.value);
-  }
   /* Times as the current scope sees them. In template scope there are no
      day-overrides to layer — DAY already carries the template. */
   function scopeEff(){
     if(boardScope==="template")return {};
-    return SQTime.resolveOverrides(overridesRaw,boardScope==="all"?null:boardScope);
+    return SQTime.resolveOverrides(overridesRaw,boardScope==="all"?null:boardScope,DAY);
   }
   function scopeLabel(){
     if(boardScope==="template")return "every day";
@@ -544,11 +547,11 @@
   }
 
   function scheduleOrder(kid){
-    return SQTime.displayOrder(DAY,SQTime.resolveOverrides(overridesRaw,kid));
+    return SQTime.displayOrder(DAY,SQTime.resolveOverrides(overridesRaw,kid,DAY));
   }
 
   function boardCell(kid,i){
-    var eff=SQTime.resolveOverrides(overridesRaw,kid);
+    var eff=SQTime.resolveOverrides(overridesRaw,kid,DAY);
     var timed=SQTime.effMins(DAY,eff,i)!=null;
     var removed=passFor(kid,i,"outing");
     return '<div class="cell '+cellStateClass(kid,i)+'" data-kid="'+kid+'" data-slot="'+i+'" data-block="'+i+'" data-movable="'+(timed&&!removed?"true":"false")+'" draggable="false">'+
@@ -557,7 +560,7 @@
   }
 
   function cellStateClass(kid,i){
-    var eff=SQTime.resolveOverrides(overridesRaw,kid);
+    var eff=SQTime.resolveOverrides(overridesRaw,kid,DAY);
     var mins=SQTime.effMins(DAY,eff,i), timed=mins!=null;
     var info=SQTime.timelineInfo(DAY,eff,SQ_DAY.nowMins());
     var removed=passFor(kid,i,"outing");
@@ -566,7 +569,7 @@
   }
 
   function boardCellInner(kid,i,displayIdx){
-    var b=effectiveBlock(kid,displayIdx), eff=SQTime.resolveOverrides(overridesRaw,kid);
+    var b=effectiveBlock(kid,displayIdx), eff=SQTime.resolveOverrides(overridesRaw,kid,DAY);
     var mins=SQTime.effMins(DAY,eff,i), timed=mins!=null;
     var info=SQTime.timelineInfo(DAY,eff,SQ_DAY.nowMins());
     var moved=(overridesRaw[kid]||{})[i]!=null;
@@ -672,7 +675,7 @@
         if(e.key==="ArrowUp"||e.key==="ArrowDown"){
           e.preventDefault();
           var kid=cell.dataset.kid, from=+cell.dataset.block;
-          var order=scheduleOrder(kid).filter(function(i){return SQTime.effMins(DAY,SQTime.resolveOverrides(overridesRaw,kid),i)!=null&&!passFor(kid,i,"outing");});
+          var order=scheduleOrder(kid).filter(function(i){return SQTime.effMins(DAY,SQTime.resolveOverrides(overridesRaw,kid,DAY),i)!=null&&!passFor(kid,i,"outing");});
           var idx=order.indexOf(from);
           if(e.key==="ArrowUp"&&idx>0)saveDraggedOrder(kid,from,order[idx-1]);
           if(e.key==="ArrowDown"&&idx<order.length-1)saveDraggedOrder(kid,from,order[idx+1]);
@@ -695,7 +698,7 @@
 
   function movableOrder(kid){
     return scheduleOrder(kid).filter(function(i){
-      return SQTime.effMins(DAY,SQTime.resolveOverrides(overridesRaw,kid),i)!=null&&!passFor(kid,i,"outing");
+      return SQTime.effMins(DAY,SQTime.resolveOverrides(overridesRaw,kid,DAY),i)!=null&&!passFor(kid,i,"outing");
     });
   }
 
@@ -865,7 +868,7 @@
     const from=order.indexOf(fromBlock), to=order.indexOf(toBlock);
     if(from<0||to<0)return;
     order.splice(to,0,order.splice(from,1)[0]);
-    const eff=SQTime.resolveOverrides(overridesRaw,kid);
+    const eff=SQTime.resolveOverrides(overridesRaw,kid,DAY);
     const slots=order.map(function(i){return SQTime.effMins(DAY,eff,i);}).sort(function(a,b){return a-b;});
     const jobs=order.map(function(i,n){return saveBlockTime(kid,i,clock(slots[n]),true);});
     const results=await Promise.all(jobs);
