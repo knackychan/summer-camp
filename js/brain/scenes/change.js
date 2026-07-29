@@ -8,6 +8,10 @@
 
 var COIN_FRAMES = { 1: 0, 5: 1, 10: 2, 50: 3 };
 var NOTE_FRAMES = { 100: 0, 500: 1 };
+var PRODUCT_ICONS = {
+  banana: "🍌", juice: "🧃", milk: "🥛", bread: "🍞", pencil: "✏️",
+  notebook: "📓", soap: "🧼", ball: "⚽", flower: "🌼"
+};
 
 /* Pure view-model: DOM is always rendered FROM this, never the source of truth
    (35-change-maker-pilot.md "Scene-local model"). Exported for node tests. */
@@ -46,7 +50,8 @@ function productPictureHtml(item) {
   if (id === "apple") {
     return '<div class="brain-change__picture"><span class="brain-sprite sprite-apple" role="img" aria-label="' + name[0] + ' ' + name[1] + '"></span></div>';
   }
-  return '<div class="brain-change__picture"><span class="brain-change__name">' + name[0] + '<br>' + name[1] + '</span></div>';
+  return '<div class="brain-change__picture" role="img" aria-label="' + name[0] + ' ' + name[1] + '">' +
+    '<span class="brain-change__product-icon" aria-hidden="true">' + (PRODUCT_ICONS[id] || "🛍️") + '</span></div>';
 }
 
 function tokenHtml(value) {
@@ -60,10 +65,13 @@ function tokenHtml(value) {
 
 function trayHtml(tray) {
   var groups = tray.groups();
-  if (!groups.length) return '<span class="brain-change__tray-empty">Empty tray 空托盤</span>';
+  if (!groups.length) {
+    return '<span class="brain-change__tray-empty"><span aria-hidden="true">✨</span>' +
+      '<span>Tap money above<small>點上面的錢幣</small></span></span>';
+  }
   return groups.map(function (g) {
-    return '<div class="brain-change__tray-group">' +
-      'NT$' + g.value + (g.count > 1 ? '<small>&times;' + g.count + '</small>' : '') +
+    return '<div class="brain-change__tray-group" aria-label="NT$' + g.value + ' times ' + g.count + '，NT$' + g.value + ' 共 ' + g.count + ' 枚">' +
+      '<span>NT$' + g.value + '</span>' + (g.count > 1 ? '<small>&times;' + g.count + '</small>' : '') +
       '</div>';
   }).join("");
 }
@@ -138,11 +146,14 @@ function create(ctx) {
       '</div>' +
       '<div class="brain-change__work">' +
         '<div class="brain-change__till-col">' +
-          '<div class="brain-change__label"><span>Cash drawer<span class="zhs"> 收銀抽屜</span></span></div>' +
+          '<div class="brain-change__label"><span>Pick the change<span class="zhs"> 選擇找零</span></span>' +
+            '<span class="brain-change__hint">Tap to add <span class="zhs">點一下加入</span></span></div>' +
           '<div class="brain-change__till" data-drawer="closed">' +
-            '<span class="brain-sprite sprite-till" style="--sprite-frame:0"></span>' +
-            '<div class="brain-change__till-display">NT$' + p.paid + '</div>' +
-            '<div class="brain-change__till-drawer">' + tiles + '</div>' +
+            '<div class="brain-change__till-machine" aria-hidden="true">' +
+              '<span class="brain-sprite sprite-till" style="--sprite-frame:0"></span>' +
+              '<div class="brain-change__till-display">NT$' + p.paid + '</div>' +
+            '</div>' +
+            '<div class="brain-change__till-drawer" role="group" aria-label="Cash drawer 收銀抽屜">' + tiles + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="brain-change__tray-col">' +
@@ -155,6 +166,7 @@ function create(ctx) {
           '<button class="brain-button" type="button" data-act="clear">Clear tray <span class="zht">清空托盤</span></button>' +
           '<button class="brain-button brain-button--give" type="button" data-act="give">Give change <span class="zht">找錢</span></button>' +
         '</div>' +
+        '<div class="brain-change__receipt" aria-hidden="true"><span>⭐</span><strong>Great change!</strong><small>找得好！</small></div>' +
       '</div>';
   }
 
@@ -164,10 +176,18 @@ function create(ctx) {
     if (!groupsEl || !totalEl) return;
     groupsEl.innerHTML = trayHtml(tray);
     totalEl.textContent = "NT$" + tray.total();
+    totalEl.classList.remove("is-bumping");
+    void totalEl.offsetWidth;
+    totalEl.classList.add("is-bumping");
     var last = groupsEl.lastElementChild;
     if (last) ctx.motion.move(last, [{ transform: "scale(.85)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], "move");
     var giveBtn = root().querySelector('[data-act="give"]');
-    if (giveBtn) giveBtn.disabled = !inputEnabled || tray.total() === 0;
+    var empty = tray.total() === 0;
+    var undoBtn = root().querySelector('[data-act="undo"]');
+    var clearBtn = root().querySelector('[data-act="clear"]');
+    if (undoBtn) undoBtn.disabled = !inputEnabled || empty;
+    if (clearBtn) clearBtn.disabled = !inputEnabled || empty;
+    if (giveBtn) giveBtn.disabled = !inputEnabled || empty;
   }
 
   function wireShop(item) {
@@ -239,12 +259,14 @@ function create(ctx) {
     root().querySelectorAll(".brain-change__token,[data-act]").forEach(function (b) { b.disabled = true; });
     if (feedback.correct) {
       if (trayEl) trayEl.classList.add("is-success");
+      var receipt = root().querySelector(".brain-change__receipt");
+      if (receipt) receipt.classList.add("is-visible");
       ctx.audio.play("stamp", { when: 0.3 });
       return new Promise(function (resolve) { ctx.scheduler.after(ctx.motion.tokens.celebrate, resolve); });
     }
     if (trayEl) trayEl.classList.add("is-hint");
     var display = root().querySelector(".brain-change__display");
-    if (display) display.textContent = "Count NT$" + feedback.answer;
+    if (display) display.innerHTML = "Count NT$" + feedback.answer + '<span class="zhs">數一數 NT$' + feedback.answer + "</span>";
     ctx.announce(["Count NT$" + feedback.answer, "數一數 NT$" + feedback.answer]);
     ctx.audio.play("paper-slide", {});
     return new Promise(function (resolve) { ctx.scheduler.after(900, resolve); });
