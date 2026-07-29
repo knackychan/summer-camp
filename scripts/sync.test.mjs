@@ -352,4 +352,79 @@ const seedProgress = () => ({});
   console.log("ok - init survives a failed hydrate");
 }
 
+// --- Test: configured but offline still queues (slice 51) ---
+{
+  const ls = makeLocalStorage();
+  const windowObj = {};
+  windowObj.SQ_CONFIG = { SUPABASE_URL: "https://test.supabase.co", SUPABASE_ANON_KEY: "test" };
+  windowObj.supabase = { createClient: () => fakeSupabase({}, []) };
+  const run2 = new Function("window", "localStorage", "navigator", "addEventListener", "document", src);
+  run2(windowObj, ls, { onLine: false }, () => {}, {});
+  const SyncStore51 = windowObj.SyncStore;
+
+  const store = new SyncStore51({ progress: seedProgress(), settings: {} }, fakeSupabase({}, []));
+
+  const before = JSON.parse(JSON.stringify(store.progress));
+  const after = JSON.parse(JSON.stringify(store.progress));
+  after.lili.day = { d: TODAY, done: { 3: true }, rr: {} };
+  after.lili.stars = 2;
+
+  store.enqueueDiff(before, after, [{ kid: "lili", delta: 2, reason: "Brain Gym · test" }]);
+  assert.ok(store.queue.length > 0, "configured + offline still queues ops");
+  assert.ok(store.queue.some(o => o.type === "stars"), "star ops are queued offline");
+
+  // round-trip through saveJson into localStorage
+  const loaded = JSON.parse(ls._map.get("sq:queue"));
+  assert.ok(loaded.some(o => o.type === "tick"), "tick op persists to localStorage queue");
+  assert.ok(loaded.some(o => o.type === "stars" && o.reason === "Brain Gym · test"), "star op with reason persists to localStorage queue");
+  console.log("ok - configured but offline still queues");
+}
+
+// --- Test: a totals read cannot overtake a flush (slice 51 D5) ---
+{
+  const ls = makeLocalStorage({ "sq:queue": JSON.stringify([{ id: "op-star", type: "stars", kid: "lili", delta: 1, reason: "test" }]) });
+  const SyncStore = loadSyncStore(ls);
+
+  const writes = [];
+  let totalsCalls = 0;
+
+  const client = {
+    from(table) {
+      const builder = {};
+      for (const m of ["select", "eq", "or", "order", "gte", "lte", "limit", "delete"]) {
+        builder[m] = () => builder;
+      }
+      builder.maybeSingle = () => builder;
+      for (const m of ["upsert", "insert", "update"]) {
+        builder[m] = payload => {
+          writes.push({ table, op: m, payload });
+          return Promise.resolve({ error: null });
+        };
+      }
+      if (table === "star_totals") {
+        builder.then = function(ok, bad) {
+          totalsCalls++;
+          return Promise.resolve({ data: [{ kid_id: "lili", stars: 6 }], error: null }).then(ok, bad);
+        };
+      } else {
+        builder.then = (ok, bad) => Promise.resolve({ data: [], error: null }).then(ok, bad);
+      }
+      return builder;
+    }
+  };
+
+  const store = new SyncStore({ progress: seedProgress(), settings: {} }, client);
+  store.configured = true;
+
+  assert.equal(store.queue.length, 1, "pre-seeded star op is loaded from queue");
+
+  const flushPromise = store.flush();
+  const refreshPromise = store.refreshStarTotals("lili");
+  await Promise.all([flushPromise, refreshPromise]);
+
+  assert.ok(writes.some(w => w.table === "stars_ledger" && w.op === "insert"), "star was flushed to ledger");
+  assert.ok(totalsCalls >= 1, "star_totals was read at least once");
+  console.log("ok - totals read cannot overtake a flush");
+}
+
 console.log("sync tests passed");

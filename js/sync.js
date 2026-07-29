@@ -132,6 +132,12 @@
       this.helpClaims=[];
       this.last=clone(this.progress);
       this.flushTimer=null;
+      this.busy=null;
+      /* "Do we have a server at all?" — a different question from "can we reach it
+         right now?". Branching on the client object conflated the two, and an
+         offline boot silently discarded every star the kid earned. */
+      const cfg=(typeof window!=="undefined"&&window.SQ_CONFIG)||null;
+      this.configured=!!(cfg&&cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY);
     }
 
     static async init(seed){
@@ -187,6 +193,9 @@
     }
 
     async refreshStarTotals(kid){
+      return this.run(()=>this._refreshStarTotals(kid));
+    }
+    async _refreshStarTotals(kid){
       if(!this.supabase) return;
       const {data,error}=await this.supabase.from("star_totals").select("kid_id,stars");
       if(error) throw error;
@@ -194,8 +203,11 @@
     }
 
     startFlush(){
-      if(!this.supabase) return;
-      addEventListener("online",()=>this.flush());
+      if(!this.configured) return;
+      /* flush first: the queue is the only copy of anything earned offline, and
+         hydrate() re-baselines `last` against the server. Hydrating first would
+         re-baseline over ops that had not been sent yet. */
+      addEventListener("online",()=>this.flush().then(()=>this.hydrate()).catch(()=>{}));
       this.flushTimer=setInterval(()=>this.flush(),30000);
       this.flush();
     }
@@ -301,7 +313,7 @@
       this.progress=normalize(progress);
       this.settings=settings;
       this.persistLocal();
-      if(this.supabase) this.enqueueDiff(this.last,this.progress,starReasons);
+      if(this.configured) this.enqueueDiff(this.last,this.progress,starReasons);
       this.last=clone(this.progress);
       await this.flush();
     }
@@ -376,18 +388,37 @@
       });
     }
 
+    /* Server reads and server writes take turns, so a totals read can never
+       return from before a flush that has already emptied the queue.
+       ponytail: one chain for the whole store — fine for 3 kids and a 30s timer.
+       Split per-kid only if this ever becomes chatty. */
+    run(task){
+      const next=(this.busy||Promise.resolve()).then(task,task);
+      this.busy=next.then(null,function(){});   // a failure must not poison the chain
+      return next;
+    }
+
     async flush(){
+      return this.run(()=>this._flush());
+    }
+    async _flush(){
       if(!this.supabase||!navigator.onLine||!this.queue.length) return;
       const pending=[...this.queue];
+      let sentStars=false;
       for(const op of pending){
         try{
           await this.applyOp(op);
+          if(op.type==="stars") sentStars=true;
           this.queue=this.queue.filter(q=>q.id!==op.id);
           saveJson(QUEUE_KEY,this.queue);
         }catch(e){
           return;
         }
       }
+      /* The op has left the queue; the server total must catch up in the same turn,
+         or the displayed count (server + queued) dips by exactly the stars we just
+         successfully saved. activates in slice 52 once applyStarTotals writes to serverStars. */
+      // if(sentStars&&this.supabase) await this._refreshStarTotals();
     }
 
     async applyOp(op){
