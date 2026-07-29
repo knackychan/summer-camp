@@ -383,13 +383,13 @@ body.music-mode{overflow:hidden}
 .book-page-left{flex:1 1 50%;display:flex;flex-direction:column;padding:20px 12px 20px 20px;gap:10px;
   overflow-y:auto;min-width:0;background:linear-gradient(135deg,#2A2650,#312B5E);border-right:1px solid var(--line)}
 .book-page-left h2{font-family:'Fredoka';font-weight:600;font-size:1.55rem;line-height:1.15;color:var(--ink)}
-.book-title-zh{font-size:1.44rem;color:var(--muted);font-weight:700;margin-top:2px}
+.book-title-zh{font-size:1.15rem;color:var(--muted);font-weight:700;margin-top:2px}
 .book-type{display:inline-block;background:var(--accent,var(--luis));color:#fff;padding:3px 12px;border-radius:20px;
-  font-size:.98rem;font-weight:800;font-family:'Fredoka';letter-spacing:.06em;width:fit-content}
+  font-size:.78rem;font-weight:800;font-family:'Fredoka';letter-spacing:.06em;width:fit-content}
 .book-facts{display:flex;flex-direction:column;gap:10px;flex:1}
 .book-fact{background:rgba(255,255,255,.04);border-radius:14px;padding:12px 14px;line-height:1.45}
 .book-fact .en{font-weight:800;font-size:.95rem;margin-bottom:3px}
-.book-fact .zh{color:var(--muted);font-size:1.25rem;font-weight:700}
+.book-fact .zh{color:var(--muted);font-size:1rem;font-weight:700}
 .book-page-num{font-family:'Fredoka';font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin-top:auto;padding-top:8px}
 .book-spine{width:3px;flex-shrink:0;background:linear-gradient(to right,rgba(0,0,0,.3),var(--line),rgba(0,0,0,.3))}
 .book-photo{flex:1 1 50%;display:flex;flex-direction:column;position:relative;overflow:hidden;min-width:0;background:var(--bg);cursor:pointer}
@@ -399,8 +399,8 @@ body.music-mode{overflow:hidden}
 .book-photo-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.82),transparent);
   padding:32px 16px 16px;pointer-events:none}
 .book-photo-name{font-size:1.3rem;font-weight:800;font-family:'Fredoka'}
-.book-photo-zh{font-size:1.31rem;color:var(--muted);font-weight:700}
-.book-photo-tap{font-size:1rem;color:var(--muted);font-weight:800;opacity:.75;margin-top:4px}
+.book-photo-zh{font-size:1.05rem;color:var(--muted);font-weight:700}
+.book-photo-tap{font-size:.8rem;color:var(--muted);font-weight:800;opacity:.75;margin-top:4px}
 .book-nav{display:flex;align-items:center;gap:8px;justify-content:center;padding:8px 0 12px;width:100%}
 .book-nav .arrow{font-size:1.3rem;padding:8px;border-radius:50%;width:48px;height:48px;justify-content:center}
 .book-pager{font-family:'Fredoka';font-size:.88rem;color:var(--muted);min-width:80px;text-align:center}
@@ -416,13 +416,13 @@ body.music-mode{overflow:hidden}
 .book-gridcard img{width:100%;height:50%;object-fit:cover}
 .book-gridcard .emoji{font-size:2rem;line-height:1}
 .book-gridcard .gname{font-size:.75rem;font-weight:800;font-family:'Fredoka';text-align:center;line-height:1.15;padding:0 4px}
-.book-gridcard .gname .zh{display:block;font-size:1rem;color:var(--muted);font-weight:700}
+.book-gridcard .gname .zh{display:block;font-size:.8rem;color:var(--muted);font-weight:700}
 .book-zoom{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .book-zoom img{max-width:96vw;max-height:74vh;border-radius:14px;object-fit:contain}
 .book-zoom .z-close{position:absolute;top:16px;right:16px;width:48px;height:48px;border-radius:50%;background:var(--panel);color:var(--ink);
   border:none;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;z-index:101}
-.book-zoom .z-cap{color:var(--muted);margin-top:14px;font-size:1.25rem;font-weight:800}
-.book-zoom .z-hint{color:var(--muted);font-size:1rem;font-weight:800;opacity:.75;margin-top:6px}
+.book-zoom .z-cap{color:var(--muted);margin-top:14px;font-size:1rem;font-weight:800}
+.book-zoom .z-hint{color:var(--muted);font-size:.8rem;font-weight:800;opacity:.75;margin-top:6px}
 @media(max-width:560px){
   .book{height:calc(100vh - 190px);flex-direction:column}
   .book-page-left{flex:0 0 auto;max-height:48%;border-right:none;border-bottom:1px solid var(--line);padding:14px 14px 10px}
@@ -431,7 +431,7 @@ body.music-mode{overflow:hidden}
   .book-page-left h2{font-size:1.25rem}
   .book-fact{padding:10px 12px}
   .book-fact .en{font-size:.88rem}
-  .book-fact .zh{font-size:1.15rem}
+  .book-fact .zh{font-size:.92rem}
   .book-gridcard{width:calc(33.333% - 8px)}
 }
 
@@ -864,6 +864,7 @@ body.music-mode{overflow:hidden}
 
 <script src="js/config.js"></script>
 <script src="js/day.js"></script>
+<script src="js/vendor/supabase.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/day-data.js"></script>
 <script src="js/act-data.js"></script>

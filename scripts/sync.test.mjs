@@ -305,4 +305,51 @@ const seedProgress = () => ({});
   console.log("ok - best-stat predicate is injectable");
 }
 
+
+
+// --- Test: a failed hydrate does not destroy the store (slice 50) ---
+{
+  // Build a fake client whose from() returns a builder that rejects every query,
+  // so hydrate()'s Promise.all throws. init must still resolve with a working store.
+  function fakeFailingSupabase() {
+    const builder = {};
+    for (const m of ["select", "eq", "or", "order", "gte", "lte", "limit", "delete"]) {
+      builder[m] = () => builder;
+    }
+    builder.maybeSingle = () => builder;
+    builder.then = function(_, bad) { setImmediate(() => bad(new Error("simulated offline"))); };
+    for (const m of ["upsert", "insert", "update"]) {
+      builder[m] = () => Promise.reject(new Error("simulated offline"));
+    }
+    return { from() { return builder; } };
+  }
+
+  const ls = makeLocalStorage({
+    "keyquest:v2": JSON.stringify({
+      progress: { lili: { stars: 12, best:{}, vocab:{}, missions:0, day:{d:"",done:{},rr:{}} } },
+      settings: {}
+    }),
+    "sq:queue": JSON.stringify([{ id:"op-x", type:"stars", kid:"lili", delta:1, reason:"offline win" }])
+  });
+
+  const windowObj = {};
+  windowObj.SQ_CONFIG = { SUPABASE_URL: "https://test", SUPABASE_ANON_KEY: "test-key" };
+  windowObj.supabase = { createClient: () => fakeFailingSupabase() };
+  const run2 = new Function("window", "localStorage", "navigator", "addEventListener", "document", src);
+  run2(windowObj, ls, { onLine: false }, () => {}, {});
+  const SyncStoreF = windowObj.SyncStore;
+
+  let store;
+  try {
+    store = await SyncStoreF.init({ progress: {}, settings: {} });
+  } catch (e) {
+    assert.fail("init must not reject when hydrate fails");
+  }
+  assert.ok(store, "init returns a store even when hydrate fails");
+  assert.equal(store.progress.lili.stars, 12, "locally persisted stars survived failed hydrate");
+  assert.equal(store.queue.length, 1, "pending queue op not dropped");
+  assert.equal(store.mode, "supabase", "mode stays supabase even when server unreachable");
+  console.log("ok - init survives a failed hydrate");
+}
+
 console.log("sync tests passed");

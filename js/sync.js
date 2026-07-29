@@ -140,7 +140,13 @@
       const settings=local&&local.settings?Object.assign(clone(seed.settings),local.settings):clone(seed.settings);
       const client=await createSupabaseClient();
       const store=new SyncStore({progress,settings},client);
-      if(client) await store.hydrate();
+      if(client){
+        /* A tablet with no network still gets a working store: hydrate is how the
+           server's state arrives, not how the app starts. Letting this reject took
+           `store` to null in index.html's catch, and the kid saw zero stars and an
+           empty day for the whole session. */
+        try{ await store.hydrate(); }catch(e){}
+      }
       store.persistLocal();
       store.last=clone(store.progress);
       store.startFlush();
