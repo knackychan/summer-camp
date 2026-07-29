@@ -1,6 +1,8 @@
 # The Evolution of Minecraft - Four-Block Layout
 # Minecraft 的演化史 - 四格版面
 
+> **Amended 2026-07-29 (Papa):** two revisions happened the same day — see `47-minecraft-two-per-turn-layout.md` for the final state. First tried: the standard two-page open-book layout shared by every other book (`46-minecraft-two-page-layout.md`), but its stacked-text left page needed scrolling and Papa rejected that. Final: this page's magazine mini-page design (photo/text/quote pages, per-topic tone) is kept as-is, just shown 2 mini-pages per turn instead of 4 — no scrolling, no layout redesign. The "four blocks per spread, 4 columns" pagination described below is what changed; the page *design* itself did not.
+
 **Purpose:** layout-ready bilingual Markdown for a Minecraft book that uses four side-by-side page blocks per spread instead of the existing double-page reader idea.  
 **Companion manuscript:** `42-minecraft-evolution-book.md`  
 **Suggested reader shape:** one spread = four equal blocks in a 2x2 grid on tablet portrait, 4 columns on wide screens, 1 column on narrow phones.

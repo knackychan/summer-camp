@@ -39,3 +39,71 @@ Additional preview downloads:
 | `2026-sulfur-cube-honeycomb.png` | 23 (2026) | https://www.minecraft.net/en-us/article/minecraft-java-edition-26-2 | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/SGD-26_Carousel-D_Honeycomb_1280x720.png | Official Chaos Cubed cube variant. | 2026-07-28 | Sulfur cube with honeycomb-like face — shows cube-as-mob concept. |
 | `2026-sulfur-cube-ice.png` | 23 (2026) | https://www.minecraft.net/en-us/article/minecraft-java-edition-26-2 | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/SGD-26_Carousel-D_Ice_1280x720.png | Official Chaos Cubed cube variant. | 2026-07-28 | Sulfur cube with icy blue face — shows cube absorbing different materials. |
 | `2026-sulfur-cube-tnt.png` | 23 (2026) | https://www.minecraft.net/en-us/article/minecraft-java-edition-26-2 | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/SGD-26_Carousel-D_TNT_1280x720.png | Official Chaos Cubed cube variant. | 2026-07-28 | Sulfur cube with TNT face — physics/chaos concept illustrated. |
+
+## Magazine overlay decorations
+
+Self-contained floating decorations for the magazine-style layout. Real PNG renders sourced from Minecraft Wiki (minecraft.wiki), supplemented with in-app SVG decorations for offline resilience.
+
+| File | Source Page | Notes |
+|---|---|---|
+| `overlays/creeper.png` | https://minecraft.wiki/w/Creeper | Transparent mob render — floating decoration. |
+| `overlays/warden.png` | https://minecraft.wiki/w/Warden | Transparent mob render — floating decoration. |
+| `overlays/sniffer.png` | https://minecraft.wiki/w/Sniffer | Transparent mob render — floating decoration. |
+
+Additional decorations are generated in-app as SVG pixel-art blocks and sparkle dots (no external files needed).
+
+## 2026-07-29 additions (magazine rebuild)
+
+Downloaded when the book was rebuilt as an 18-topic magazine where **every** mini-page
+carries an image (`images: [hero, page2, page3, page4]` in `js/books/minecraft-data.js`).
+All are official Minecraft images; verify usage rights before public redistribution.
+
+| File | Source Page | Original Image URL | Notes |
+|---|---|---|---|
+| `2023-bats-pots.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2023_Bats-and-Pots_01_1000x563.jpg | Bats & Pots key art — drop-era spread. |
+| `2023-bats-pots-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2023_Bats-and-Pots_04_1000x563.jpg | Bats & Pots interior screenshot. |
+| `2023-trails-tales-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2023_Trails-and-Tails_03_1000x563.jpg | Trails & Tales — archaeology/cave. |
+| `2023-trails-tales-c.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2023_Trails-and-Tails_05_1000x563.jpg | Trails & Tales — dark interior. |
+| `2024-armored-paws.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2024_Armored-Paws_01_1000x563.jpg | Armored Paws key art — wolf armour. |
+| `2024-armored-paws-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2024_Armored-Paws_04_1000x563.jpg | Armored Paws screenshot — armadillo. |
+| `2024-bundles-bravery.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2024_Bundles-of-Bravery_01_1000x563.jpg | Bundles of Bravery key art. |
+| `2024-bundles-bravery-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2024_Bundles-of-Bravery_04_1000x563.jpg | Bundles of Bravery screenshot. |
+| `2024-garden-awakens-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2024_The-Garden-Awakens_04_1000x563.jpg | Pale garden screenshot. |
+| `2024-tricky-trials-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2024_Tricky-Trials_03_1000x563.jpg | Trial chamber screenshot. |
+| `2024-tricky-trials-c.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2024_Tricky-Trials_05_1000x563.jpg | Overworld landscape with trial ruins. |
+| `2025-chase-skies-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2025_Chase-the-Skies_03_1000x563.jpg | Sunset horizon — used for the Infdev horizon page. |
+| `2025-chase-skies-c.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2025_Chase-the-Skies_05_1000x563.jpg | Chase the Skies screenshot. |
+| `2025-copper-age-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2025_The-Copper-Age_03_1000x563.jpg | Copper golem screenshot. |
+| `2025-copper-age-c.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2025_The-Copper-Age_05_1000x563.jpg | Copper build screenshot. |
+| `2025-mounts-mayhem-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2025_Mounts-of-Mayhem_03_1000x563.jpg | Mounted combat screenshot. |
+| `2025-spring-to-life-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/MC-Updates_Carousel-N-0_2025_Spring-to-Life_03_1000x563.jpg | Cold mob variants screenshot. |
+| `2026-chaos-cubed-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/MC-Updates_Carousel-N-0_2026_SGD-26_04_1000x563.jpg | Chaos Cubed screenshot. |
+| `2026-tiny-takeover-b.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/MC-Updates_Carousel-N-0_2026_SPGD-26_01_1000x563.jpg | Tiny Takeover screenshot. |
+| `2026-tiny-takeover-c.jpg` | https://www.minecraft.net/en-us/updates/minecraft-updates-timeline-and-evolution | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/screenshots/MC-Updates_Carousel-N-0_2026_SPGD-26_04_1000x563.jpg | Colourful village scene — used for the 2017 colour page. |
+| `tips-beginners.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_Tips-For-Beginners_570x321.jpg | Steve with a chest — early-survival pages. |
+| `build-worlds.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_Build-Worlds-Shape-Play_570x321.jpg.jpg | Mojang Studios logo splash. NOT used in the book — logos are excluded by the image guide. |
+| `vanilla-wallpaper.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_MC-Vanilla-Wallpapers_570x321.jpg | Broad gameplay landscape — Classic/Beta pages. |
+| `whats-happening.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_Whats-Happening_570x321.jpg | Bee/flower gameplay art. |
+| `realms-multiplayer.png` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/realms/Global-Header_Image-Tile_Realms-Bedrock_570x321_01.png | Realms art — multiplayer and cross-play pages. |
+| `realms-tile.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_Realms_321x321.jpg | Text banner. Downloaded, not used. |
+| `mojang-stockholm.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_Stockholm-Sweden_321x321.jpg.jpg | Mojang's Stockholm studio tile — Mojang/Microsoft pages. |
+| `microsoft-redmond.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_Redmond-Washington_321x321.jpg.jpg | Microsoft's Redmond tile — acquisition page. |
+| `education-hero.png` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Header-Education-MC-Hero.png | Education Edition hero — 2016 page. |
+| `education-planet.png` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Minecraft_Education_Planet_Earth_3_MCEDUWEB_321.png | Education Planet Earth III lesson art. |
+| `game-drops.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_Game-Drops_321x321.jpg | Game Drops tile. Downloaded, currently unused. |
+| `minecraft-live.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Minecraft_Live__565.jpg | Minecraft Live art — franchise pages. |
+| `mc-legends.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/badger/key-art/Global-Header_Image-Tile_MC-Legends_570x321.jpg | Minecraft Legends key art — spin-offs page. |
+| `mc-dungeons.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/dungeons/key-art/Global-Header_Image-Tile_MC-Dungeons_570x321.jpg | Minecraft Dungeons key art — spin-offs page. |
+| `mc-creator.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_Creator_321x321.jpg | In-progress build screenshot. |
+| `mc-experience.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/Global-Header_Image-Tile_Minecraft-Experience_321x321_1.jpg | Text banner. Downloaded, not used. |
+| `servers-tile.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/marketplace/Global-Header_Image-Tile_Servers_321x321.jpg | End city art — player-servers page. |
+| `marketplace.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/logos/Global-Header_Image-Tile_Visit-Marketplace_570x321.jpg | Text tile. Downloaded, not used. |
+| `texture-packs.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/marketplace/Global-Header_Image-Tile_Texture-Packs_321x321.jpg | Text tile. Downloaded, not used. |
+| `add-ons.jpg` | https://www.minecraft.net | https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/marketplace/Global-Header_Image-Tile_Add-Ons_321x321.jpg | Text tile. Downloaded, not used. |
+
+### Not used in the book
+
+`build-worlds.jpg`, `realms-tile.jpg`, `mc-experience.jpg`, `marketplace.jpg`,
+`texture-packs.jpg`, `add-ons.jpg` and `game-drops.jpg` are logo or text tiles.
+They are kept for reference but excluded from the spreads — rule 5 of the image guide
+(`docs/plans/2026-07-28-books/44-minecraft-image-scraping-guide.md`) skips page chrome.

@@ -128,7 +128,26 @@ const seedProgress = () => ({});
   console.log("ok - server-side stars rebaseline instead of duplicating");
 }
 
-// --- Test 1d: an act key act_done cannot store never reaches (and stalls) the queue ---
+// --- Test 1d: refreshing totals uses the server view plus pending local ledger ops ---
+{
+  const ls = makeLocalStorage();
+  const SyncStore = loadSyncStore(ls);
+  const store = new SyncStore({ progress: seedProgress(), settings: {} }, fakeSupabase({}, []));
+
+  store.progress.lili.stars = 99;
+  store.last = JSON.parse(JSON.stringify(store.progress));
+  store.enqueue({ type: "stars", kid: "lili", delta: 2, reason: "offline win" });
+  store.applyStarTotals([{ kid_id: "lili", stars: 5 }, { kid_id: "luis", stars: 8 }], "lili");
+
+  assert.equal(store.progress.lili.stars, 7, "tablet shows server total plus its unflushed local stars");
+  assert.equal(store.progress.luis.stars, 0, "kid-scoped refresh leaves other totals alone");
+  store.enqueueDiff(store.last, store.progress);
+  assert.equal(store.queue.filter(o => o.type === "stars").length, 1,
+    "refreshed server stars are re-baselined and not enqueued again");
+  console.log("ok - star-total refresh follows server view without losing pending stars");
+}
+
+// --- Test 1e: an act key act_done cannot store never reaches (and stalls) the queue ---
 {
   const ls = makeLocalStorage({
     "sq:queue": JSON.stringify([{ id: "poison", type: "actDone", kid: "luis", day: TODAY, actIdx: null }])

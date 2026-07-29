@@ -30,6 +30,7 @@ The kids need a way to browse educational content (science, animals, vehicles, s
 | D9 | **Tab integration is lightweight.** A `📚 Books 書籍` chip in `#hubTabs`. The tab content is a shelf of book thumbnails (gamecard style). Books are never locked. Tapping a ready book opens it in a new tab; "Coming soon" books show a muted card. |
 | D10 | **Tablet-first.** Coarse pointer targets, no hover-dependent interactions. Swipe left/right turns pages. Arrow keys and Home/End for keyboard navigation. Tap photo to zoom full-screen. |
 | D11 | **Books are hosted inside the app shell** (Papa, 2026-07-28). Ready books open in the `index.html` book section, using the same explicit entry/exit pattern as games. No `window.open`, iframe, or separate browser page in the kid path. Standalone files may remain as superseded templates/review artifacts until Papa removes them. Supersedes the launch wording in D1 and D9. |
+| D12 | **Minecraft is an intentional exception to D2** (Papa, 2026-07-29, revised same day). The Minecraft book keeps its own magazine mini-page design (`docs/plans/2026-07-28-books/43-minecraft-four-block-layout.md`) rather than the standard left-page-facts / right-page-photo shell — the D2 shell needed left-page scrolling for Minecraft's 4-blocks-per-topic content, which Papa rejected (`46-minecraft-two-page-layout.md`, superseded same day). Final shape: the same magazine mini-pages, 2 per turn instead of 4 — see `47-minecraft-two-per-turn-layout.md`. |
 
 ## 2. Architecture
 

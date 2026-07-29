@@ -426,11 +426,11 @@ body.music-mode{overflow:hidden}
   .book-gridcard{width:calc(33.333% - 8px)}
 }
 
-/* ── Minecraft magazine spread (4 mini-pages) ── */
+/* ── Minecraft magazine spread (2 mini-pages per turn) ── */
 .mcraft-spread{
   --mcraft-accent:#79C64A;
   width:100%;height:min(66vh,660px);display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
   padding:8px;border-radius:12px;overflow:hidden;position:relative;isolation:isolate;
   background:linear-gradient(90deg,rgba(255,255,255,.06),transparent 18%,transparent 82%,rgba(255,255,255,.05)),#10160F;
   box-shadow:0 14px 42px rgba(0,0,0,.44),0 2px 8px rgba(98,179,75,.18);
@@ -466,6 +466,9 @@ body.music-mode{overflow:hidden}
 }
 .mcraft-kicker.gold{background:#F2C94C}.mcraft-kicker.sky{background:#65A9DC}.mcraft-kicker.grass{background:#79C64A}
 .mcraft-kicker.copper{background:#D8894D}.mcraft-kicker.nether{background:#DD5C4D}.mcraft-kicker.cherry{background:#F3A8BD}
+/* The per-topic tone also drives the magazine furniture accent below. */
+.mcraft-spread.gold{--mcraft-accent:#F2C94C}.mcraft-spread.sky{--mcraft-accent:#65A9DC}.mcraft-spread.grass{--mcraft-accent:#79C64A}
+.mcraft-spread.copper{--mcraft-accent:#D8894D}.mcraft-spread.nether{--mcraft-accent:#DD5C4D}.mcraft-spread.cherry{--mcraft-accent:#F3A8BD}
 .mcraft-title{margin:0;max-width:13ch;color:#F7F3D8;font:900 clamp(1.35rem,3vw,3.15rem)/.92 Fredoka,system-ui;letter-spacing:-.025em;overflow-wrap:anywhere}
 .mcraft-title-zh{color:#E8EFD6;font-size:clamp(1rem,1.7vw,1.45rem);line-height:1.28;font-weight:900;word-break:break-word}
 .mcraft-body{margin:0;color:#C8D1BB;font-size:.92rem;line-height:1.48;font-weight:800;overflow-wrap:anywhere}
@@ -476,8 +479,52 @@ body.music-mode{overflow:hidden}
   position:absolute;left:16px;top:14px;z-index:4;display:inline-flex;padding:7px 9px;
   background:#F2C94C;color:#10140E;font:.72rem/1 Fredoka,system-ui;font-weight:900;
 }
+#book[data-lang="zh"] .mcraft-title,#book[data-lang="zh"] .mcraft-pull,#book[data-lang="zh"] .mcraft-body:not(.zh){display:none}
+#book[data-lang="en"] .mcraft-title-zh,#book[data-lang="en"] .mcraft-body.zh{display:none}
+/* ── Magazine floating overlays + furniture. Markup comes from
+      js/books/minecraft-magazine.js and is shared with books/minecraft.html,
+      which carries its own copy of these rules. ── */
+.ovl{position:absolute;z-index:6;pointer-events:none;opacity:0;animation:ovlIn .6s ease-out forwards, ovlFloat 18s ease-in-out .6s infinite}
+.ovl img{display:block;width:var(--ovl-s,48px);height:auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))}
+.ovl svg{display:block;filter:drop-shadow(0 4px 10px rgba(0,0,0,.55))}
+@keyframes ovlIn{from{opacity:0;transform:translateY(12px) rotate(var(--ovl-rot,0deg)) scale(.85)}to{opacity:var(--ovl-op,.3);transform:translateY(0) rotate(var(--ovl-rot,0deg)) scale(1)}}
+@keyframes ovlFloat{0%,100%{transform:translateY(0) rotate(var(--ovl-rot,0deg))}50%{transform:translateY(-7px) rotate(calc(var(--ovl-rot,0deg) + 2deg))}}
+.ovl-deco{position:absolute;z-index:5;pointer-events:none;opacity:.1;animation:ovlFloat 26s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.ovl,.ovl-deco{animation:none;opacity:.28}}
+.mcx-era{position:absolute;left:16px;top:44px;z-index:4;display:inline-flex;padding:5px 8px;
+  background:rgba(16,20,14,.74);border-left:3px solid var(--mcraft-accent);
+  color:#E8EFD6;font:.68rem/1.15 Fredoka,system-ui;font-weight:900;letter-spacing:.03em}
+.mcx-stat{position:absolute;right:14px;top:14px;z-index:4;max-width:46%;text-align:right;
+  padding:8px 10px;border-radius:4px;background:rgba(16,20,14,.78);border-right:3px solid var(--mcraft-accent)}
+.mcx-stat b{display:block;color:var(--mcraft-accent);font:900 clamp(1.25rem,2.6vw,2rem)/1 Fredoka,system-ui;letter-spacing:-.02em}
+.mcx-stat-label{display:block;margin-top:3px;color:#DDE8C9;font-size:.66rem;line-height:1.2;font-weight:900}
+.mcx-band{position:absolute;left:0;right:0;top:0;height:54%;z-index:0;padding:0;border:0;
+  overflow:hidden;background:#0D100C;cursor:pointer;display:block;touch-action:manipulation}
+.mcx-band img{width:100%;height:100%;object-fit:cover;display:block}
+.mcx-band::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(13,16,12,.62),rgba(13,16,12,.12) 38%,rgba(32,39,30,.86) 78%,#20271E)}
+.mcraft-page.quote .mcx-band{height:50%}
+.mcraft-page.quote .copy,.mcraft-page.quote .mcraft-copy{margin-top:auto}
+.mcraft-page.quote .mcx-band::after{background:linear-gradient(180deg,rgba(13,16,12,.62),rgba(13,16,12,.12) 34%,rgba(42,49,38,.86) 76%,#2A3126)}
+.mcx-thumb:active img{transform:scale(1.03)}
+.mcx-card{position:relative;z-index:3;padding:10px 12px;border-radius:6px;
+  background:rgba(16,20,14,.7);border-left:4px solid var(--mcraft-accent);box-shadow:0 6px 18px rgba(0,0,0,.34)}
+.mcx-card-label{display:block;margin-bottom:4px;color:var(--mcraft-accent);
+  font:.66rem/1 Fredoka,system-ui;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+.mcx-card-text{display:block;color:#DDE8C9;font-size:.82rem;line-height:1.42;font-weight:800}
+.mcx-card-text.mcx-zh{font-size:.95rem;line-height:1.5}
+.mcx-keys{list-style:none;display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.mcx-keys li{padding:5px 8px;border:1px solid var(--mcraft-accent);border-radius:20px;
+  color:#E8EFD6;font:.68rem/1 Fredoka,system-ui;font-weight:900}
+.mcx-rhead{position:absolute;left:18px;right:18px;top:14px;z-index:3;text-shadow:0 1px 4px rgba(0,0,0,.75);display:flex;align-items:baseline;gap:8px;
+  padding-bottom:8px;border-bottom:1px solid rgba(244,242,223,.16);color:rgba(244,242,223,.58);
+  font:.7rem/1.2 Fredoka,system-ui;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+.mcx-rhead b{flex:0 0 auto;color:var(--mcraft-accent);font-size:.95rem}
+.mcx-rhead span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#book[data-lang="zh"] .mcx-en{display:none}
+#book[data-lang="en"] .mcx-zh{display:none}
 @media(max-width:860px){
-  .mcraft-spread{height:calc(100vh - 190px);grid-template-columns:repeat(2,minmax(0,1fr));overflow-y:auto;align-content:start}
+  .mcraft-spread{height:calc(100vh - 190px);overflow-y:auto;align-content:start}
   .mcraft-page{min-height:250px}
 }
 @media(max-width:520px){
@@ -486,6 +533,9 @@ body.music-mode{overflow:hidden}
   .mcraft-page.photo{min-height:430px}
   .mcraft-page.photo .mcraft-copy{right:42px}
   .mcraft-title{font-size:1.65rem}
+  /* Phones stack to one column — drop the side furniture so the copy still fits. */
+  .ovl,.ovl-deco{display:none}
+  .mcx-stat{padding:6px 8px}.mcx-stat b{font-size:1.1rem}
 }
 
 /* ---------- MY DAY ---------- */
@@ -612,36 +662,7 @@ body.music-mode{overflow:hidden}
 .drillstep{font-size:1.25em;margin:14px 0;line-height:1.4}
 .metrow{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
 .metbpm.on{background:var(--ok);color:#1c1436}
-.braincard{max-width:420px;text-align:center}
-.bhud{display:flex;justify-content:space-between;opacity:.7;font-size:.9em;margin:.4em 0}
-.bprompt{font-size:2.1em;font-weight:700;margin:.5em 0;line-height:1.3}
-.bemoji{font-size:1.6em;letter-spacing:.06em}
-.bans{color:var(--accent)}
-.bentry{font-size:1.8em;min-height:1.4em;border-bottom:3px solid var(--accent);margin:.3em auto;width:4em}
-.bpad{display:grid;gap:.5em;margin:.6em 0}
-.bchoice{grid-template-columns:repeat(2,1fr)}
-.bkeypad{grid-template-columns:repeat(3,1fr)}
-.bkey{font-size:1.4em;padding:.6em 0;min-height:56px}
-.bshake{animation:bshake .3s}
-@keyframes bshake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-.bswatch{width:120px;height:120px;border-radius:18px;margin:.6em auto}
-.bswatchkey{min-height:64px;border:none}
-.bcolorword{font-size:2.6em;letter-spacing:.04em}
-.bfield{font-size:1.5em;line-height:1.5;word-break:break-all;max-height:9em;overflow:hidden}
-.bsub{font-size:.95em;opacity:.85;margin-top:.4em}
 .bclockface{width:150px;height:150px;margin:.4em auto;display:block}
-.bmoney{font-size:1.6em;line-height:1.5}
-.bgrid,.bwords{display:flex;flex-wrap:wrap;gap:.4em;justify-content:center;margin:.6em 0;min-height:3em}
-.bcell,.bword{background:rgba(255,255,255,.09);border-radius:12px;padding:.35em .7em;font-size:1.3em}
-.bhidden{opacity:.35}
-.bgridpad{grid-template-columns:repeat(4,1fr)}
-.bused{opacity:.35}
-.btype{width:100%;font-size:1.2em;padding:.6em;border-radius:12px;margin:.4em 0}
-/* .bprompt/.bpad/.bkey/.bcell/.bword/.btype above are the pre-slice-34 Brain Gym
-   round renderer. js/brain/scenes/generic.js and *.css below replaced the round
-   itself; .braincard/.bhud stay live for showBrainResult()'s unmodified overlay.
-   Left in place per CLAUDE.md "never delete project files" (slice 37 authorizes
-   cleanup once every bespoke scene ships). */
 </style>
 <link rel="stylesheet" href="css/brain-shell.css">
 <link rel="stylesheet" href="css/brain-sprites.css">
@@ -816,6 +837,7 @@ body.music-mode{overflow:hidden}
         <span class="book-title" id="bookTitle"></span>
         <span class="book-count" id="bookCount"></span>
         <div class="spacer"></div>
+        <button class="btn small hidden" id="bookLangToggle">中文</button>
         <button class="btn small" id="bookViewToggle">All Pages 全部頁面</button>
       </div>
       <section class="book-stage" id="bookStage"><div class="book" id="bookSpread"></div></section>
@@ -854,6 +876,7 @@ body.music-mode{overflow:hidden}
 <script src="js/books/construction-data.js"></script>
 <script src="js/books/public-vehicles-data.js"></script>
 <script src="js/books/minecraft-data.js"></script>
+<script src="js/books/minecraft-magazine.js"></script>
 <script type="module" src="js/main.js"></script>
 <script>
 /* ============ DATA ============ */
@@ -1542,7 +1565,7 @@ function finishBrain(k,res){
 function showBrainResult(res,better,earned){
   const o=document.createElement("div");
   o.className="overlay"; o.id="brainResult";
-  o.innerHTML=`<div class="card braincard">
+  o.innerHTML=`<div class="card">
     <div style="font-size:2.4em">${better?"🌟":"👏"}</div>
     <h3>${res.score} / ${res.total}${res.ms?" · "+SQBrain.fmtMs(res.ms):""}</h3>
     <p>${better?"New best! 新紀錄！":"Nice work! 做得好！"}</p>
@@ -1595,8 +1618,6 @@ addEventListener("DOMContentLoaded",function(){
 const rand=a=>a[Math.floor(Math.random()*a.length)];
 const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
 
-/* Legacy orc, machines, and vocab game bodies removed in slice 20 — now in js/games/. */
-
 /* ============ INPUT ============ */
 function handleInput(ch){
   pressFx(ch);
@@ -1643,7 +1664,7 @@ function showLockOverlay(st){
   };
 }
 function activityLockHtml(blockIdx){
-  const b=DAY[blockIdx];
+  const b=blockFor(activeKid(),blockIdx);
   return `<div class="card" style="text-align:center;max-width:340px">
     <div style="font-size:2.2em">${b.icon}</div>
     <h3>It's ${b.title.split("—")[0].trim()} time! ${(b.tz||"").split("——")[0].split("（")[0]}時間到了！</h3>
@@ -1823,9 +1844,29 @@ let hubKid=null, actIdx=null, actTimerInt=null, actTimerLeft=0, actTimerTotal=0;
 const todayStr=()=>SQ_DAY.iso();
 const nowMins=()=>SQ_DAY.nowMins();
 let dayOverrides={}; /* {blockIdx:"HH:MM"} — today only */
+let dayBlockReplacements={}; /* {kid:{blockIdx:sourceIdx}} — today only */
 const PRACTICE_IDX=DAY.findIndex(function(b){return b.pool==="boredom";});
 const effT=i=>dayOverrides[i]!=null?dayOverrides[i]:DAY[i].t;
-function timelineInfo(){return SQTime.timelineInfo(DAY,dayOverrides,nowMins());}
+const replaceKey=()=>`day_block_replacements_${todayStr()}`;
+function parseBlockReplacements(){
+  try{
+    const fs=(store&&store.familySettings)||{};
+    const map=JSON.parse(fs[replaceKey()]||"{}");
+    return map&&typeof map==="object"?map:{};
+  }catch(e){return {};}
+}
+function replacementSource(id,i){
+  const map=dayBlockReplacements||{};
+  let v=map[id]&&map[id][i]!=null?map[id][i]:map.all&&map.all[i]!=null?map.all[i]:null;
+  v=+v;
+  return Number.isInteger(v)&&DAY[v]?v:null;
+}
+function blockFor(id,i){
+  const base=DAY[i]||{}, src=replacementSource(id,i);
+  return src==null?base:Object.assign({},DAY[src],{t:base.t,t0:base.t0,replacedFrom:src});
+}
+function dayFor(id){return DAY.map((b,i)=>blockFor(id,i));}
+function timelineInfo(){return SQTime.timelineInfo(dayFor(activeKid()),dayOverrides,nowMins());}
 /* games lock (design.md §2): coach, not cop — invite, never shame */
 /* {day,blockIdx} — Papa PIN unlock, rest of that block only. Kept in localStorage
    (not just a JS var) so a refresh mid-block doesn't re-lock the games. */
@@ -1862,7 +1903,7 @@ function gameLockState(){
   const id=activeKid();
   const done=id?dayState(id).done:{};
   const st=SQLock.computeLock({
-    day:DAY,overrides:dayOverrides,now:nowMins(),done:done,passOk:function(i){return passOkFor(id,i);},
+    day:dayFor(id),overrides:dayOverrides,now:nowMins(),done:done,passOk:function(i){return passOkFor(id,i);},
     redos:(id&&store&&store.redos&&store.redos[id])||{},
     brainOpen:id?brainGate(id).open:true
   });
@@ -1878,6 +1919,7 @@ function refreshOverrides(){
      on top. Both must be re-read together or a template change would only show
      up after a reload. */
   SQTime.applyTemplate(DAY,SQTime.parseTemplate(store&&store.familySettings&&store.familySettings.day_template_times));
+  dayBlockReplacements=parseBlockReplacements();
   dayOverrides=SQTime.resolveOverrides(store&&store.dayOverridesRaw,activeKid());
 }
 /* adapters for js/papa-tools.js */
@@ -1917,6 +1959,7 @@ function openHub(id){
   stopArena(); stopActTimer();
   if(hubKid!==id)openDayRow=null;
   hubKid=id; refreshOverrides(); showOnly("hub"); saveAppPlace("hub"); renderHub();
+  refreshStarsFromServer(id);
 }
 function dseed(str){let h=7;for(const c of str)h=(h*31+c.charCodeAt(0))>>>0;return h;}
 function dayState(id){
@@ -1925,38 +1968,39 @@ function dayState(id){
   return P.day;
 }
 function missionFor(id,i){
-  const b=DAY[i]; if(b.kind!=="mission") return null;
-  const pool=MISSIONS[b.pool][id];
+  const b=blockFor(id,i); if(b.kind!=="mission") return null;
+  const pool=MISSIONS[b.pool]&&MISSIONS[b.pool][id];
+  if(!pool||!pool.length)return null;
   const rr=(dayState(id).rr[i]||0);
   return pool[(dseed(todayStr()+id+i)+rr)%pool.length];
 }
 function canRerollMission(id,i){
-  const b=DAY[i];
-  return b&&b.kind==="mission"&&MISSIONS[b.pool][id].length>1;
+  const b=blockFor(id,i), pool=b&&MISSIONS[b.pool]&&MISSIONS[b.pool][id];
+  return b&&b.kind==="mission"&&pool&&pool.length>1;
 }
 /* Ledger reasons are Papa's audit trail, so they follow one shape:
    `Kind 中文 · where · what exactly`. The leading kind is what admin.js groups
    and filters on — keep the prefixes stable when adding a new star source. */
-function blockClock(i){
-  const m=SQTime.effMins(DAY,dayOverrides,i);
+function blockClock(id,i){
+  const m=SQTime.effMins(dayFor(id),dayOverrides,i);
   if(m==null)return "anytime 隨時";
   return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
 }
 function starReasonForBlock(id,i){
-  const b=DAY[i], mis=missionFor(id,i), where=`${blockClock(i)} ${b.title} ${b.tz||""}`.trim();
+  const b=blockFor(id,i), mis=missionFor(id,i), where=`${blockClock(id,i)} ${b.title} ${b.tz||""}`.trim();
   if(i===PRACTICE_IDX&&SQDrills.isPracticeDay(todayStr())){
     const s=SQDrills.sessionFor(id,todayStr());
     return `Practice 練習 · ${where} · ${s.drill.name[0]} / ${s.drill.name[1]}`;
   }
-  return `Mission 任務 · ${where} · ${mis[0]} / ${mis[1]}`;
+  return `Mission 任務 · ${where} · ${mis?mis[0]:""} / ${mis?mis[1]:""}`;
 }
 function dayBonusReason(id){
   const d=dayState(id);
   return `Bonus 獎勵 · Day complete 全部完成 · ${coveredCount(id,d)}/${DAY.length} blocks 格子`;
 }
 function screenStatus(i,d){
-  if(!String(DAY[i].title).includes("Screen"))return "";
-  const needed=SQTime.neededBefore(DAY,dayOverrides,i);
+  if(!String(blockFor(hubKid,i).title).includes("Screen"))return "";
+  const needed=SQTime.neededBefore(dayFor(hubKid),dayOverrides,i);
   const earned=needed.every(idx=>d.done[idx]||passOkFor(hubKid,idx));
   return earned
     ? `<span class="screenflag">🔓 Earned screen window 螢幕時間已解鎖</span>`
@@ -1986,10 +2030,10 @@ function passText(p){
   return `${kind} denied 未核准`;
 }
 function timeFlag(i,isDone,info){
-  if(isDone||SQTime.effMins(DAY,dayOverrides,i)==null)return "";
+  if(isDone||SQTime.effMins(dayFor(hubKid),dayOverrides,i)==null)return "";
   if(i===info.current)return `<span class="timeflag">Now 現在</span>`;
   if(i===info.next)return `<span class="timeflag">Next 下一個</span>`;
-  if(SQTime.effMins(DAY,dayOverrides,i)<info.now)return `<span class="timeflag">You can still start! 還來得及開始！</span>`;
+  if(SQTime.effMins(dayFor(hubKid),dayOverrides,i)<info.now)return `<span class="timeflag">You can still start! 還來得及開始！</span>`;
   return "";
 }
 function dayDetailHtml(i,b,mis,isPractice){
@@ -2019,8 +2063,9 @@ function tickBlockDone(i){
   const d2=dayState(hubKid);
   if(d2.done[i]){delete d2.done[i]; saveProgress(); renderMyDay(); refreshLockUI(); return;}
   d2.done[i]=true;
-  if(DAY[i].kind==="mission"){
-    if(DAY[i].pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
+  const b=blockFor(hubKid,i);
+  if(b.kind==="mission"){
+    if(b.pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
     sWin(); burst(16); star();
   } else { sGood(); }
   if(coveredCount(hubKid,d2)>=DAY.length){
@@ -2038,14 +2083,14 @@ function renderMyDay(skipScroll){
   const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${escHtml(store.papaNote)}</div>`:"";
   document.getElementById("dayList").innerHTML=
     brainNudge(hubKid)+note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div><div class="passline">Papa grants the star from the admin panel after a block is accepted. 爸爸會在管理板核准後發星星。</div>`+
-    SQTime.displayOrder(DAY,dayOverrides).map(i=>{
-      const b=DAY[i];
+    SQTime.displayOrder(dayFor(hubKid),dayOverrides).map(i=>{
+      const b=blockFor(hubKid,i);
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
       const isPractice=i===PRACTICE_IDX&&SQDrills.isPracticeDay(todayStr());
       const pass=passFor(hubKid,i), proof=proofFor(hubKid,i);
       const outing=pass&&pass.kind==="outing";
       const expanded=openDayRow===i;
-      const rowState=outing?"done":isDone?"done":i===info.current?"now":i===info.next?"next":SQTime.effMins(DAY,dayOverrides,i)!=null&&SQTime.effMins(DAY,dayOverrides,i)<info.now?"past":"";
+      const rowState=outing?"done":isDone?"done":i===info.current?"now":i===info.next?"next":SQTime.effMins(dayFor(hubKid),dayOverrides,i)!=null&&SQTime.effMins(dayFor(hubKid),dayOverrides,i)<info.now?"past":"";
       const excused=pass&&pass.kind==="excused"&&pass.status==="spent";
       return `<div class="dayrow ${b.kind} ${rowState}${excused?" excused":""}" data-row="${i}" tabindex="0"
         aria-expanded="${expanded}" aria-controls="day-detail-${i}">
@@ -2055,7 +2100,7 @@ function renderMyDay(skipScroll){
           <div class="dt-mis ${b.kind}">${isPractice
             ?(()=>{const s=SQDrills.sessionFor(hubKid,todayStr());
               return `🎶 Practice: ${s.drill.name[0]}<span class="zhs">練習：${s.drill.name[1]}</span>${!isDone&&!outing?`<button class="btn small" data-drill="1">▶ Start practice 開始練習</button>`:""}`;})()
-            :b.kind==="mission"
+            :b.kind==="mission"&&mis
               ?`🎯 ${mis[0]}<span class="zhs">${mis[1]}</span>`
             :`${b.txt?b.txt[hubKid]:""}<span class="zhs">${b.txtz?b.txtz[hubKid]:""}</span>`}
             ${screenStatus(i,d)}${timeFlag(i,isDone||outing,info)}
@@ -2128,7 +2173,7 @@ async function requestPass(i){
   o.className="overlay";
   o.innerHTML=`<div class="card">
     <h3>Pass request 申請券</h3>
-    <p>${DAY[i].title}<span class="zhs">${DAY[i].tz}</span></p>
+    <p>${blockFor(hubKid,i).title}<span class="zhs">${blockFor(hubKid,i).tz}</span></p>
     <div class="vrow">
       <button class="btn" data-kind="excused">Excused 請假</button>
       <button class="btn small" data-kind="golden">Golden 黃金</button>
@@ -2170,7 +2215,7 @@ async function uploadProof(i,file){
 }
 let lastTimelineBlock=null;
 function announceBlock(i){
-  const b=DAY[i]; if(!b||SQTime.effMins(DAY,dayOverrides,i)==null)return;
+  const b=blockFor(hubKid,i); if(!b||SQTime.effMins(dayFor(hubKid),dayOverrides,i)==null)return;
   if(i===PRACTICE_IDX&&SQDrills.isPracticeDay(todayStr())){
     sWin(); say("Practice time!","en-US"); setTimeout(function(){say("練習時間到了","zh-TW",true);},900);
     return;
@@ -2186,7 +2231,7 @@ function tickClock(){
   const c=SQ_DAY.clock();
   el.textContent=c.h+":"+c.m;
   document.getElementById("clockSec").textContent=c.s;
-  const info=timelineInfo(), b=DAY[info.current]||null;
+  const info=timelineInfo(), b=blockFor(activeKid(),info.current)||null;
   document.getElementById("clockNow").innerHTML=b
     ?`${b.icon} Now 現在: ${b.title.split("—")[0].trim()}<span class="zhs">${(b.tz||"").split("——")[0].split("（")[0]}</span>`
     :`🌙 Free time<span class="zhs">自由時間</span>`;
@@ -2303,7 +2348,7 @@ function refreshLockUI(){
       const g=brainGate(hubKid);
       card.innerHTML=`🧠 Brain Gym first! 先做頭腦體操！ ${g.doneCount}/${g.doneCount+g.remaining.length} today 今天 — tap a 🧠 game below to start! 點下面的頭腦遊戲開始！`;
     }else{
-      const b=DAY[ls.blockIdx];
+      const b=blockFor(hubKid,ls.blockIdx);
       card.innerHTML=`${b.icon} It's ${b.title.split("—")[0].trim()} time — games are resting 遊戲休息中。 Tick it in My Day to unlock! 在「我的一天」打勾就能解鎖！`;
     }
     /* the brain lock must leave the brain games reachable — hiding the whole row
@@ -2667,13 +2712,23 @@ function openBook(id){
   bookState={id:id,idx:0,cards:lyt==="spread"?null:cards.slice(),spreads:lyt==="spread"?cards.slice():null,layout:lyt,grid:false};
   try{localStorage.setItem("sq:bookId",id);}catch(e){}
   document.getElementById("bookTitle").textContent=b.icon+" "+b.titleEN+" · "+b.titleZH;
-  var total=lyt==="spread"?bookState.spreads.length:bookState.cards.length;
+  var total=lyt==="spread"?bookState.spreads.length*2:bookState.cards.length;
   document.getElementById("bookCount").textContent=total+" "+(lyt==="spread"?"spreads · ":"pages · ")+total+" "+(lyt==="spread"?"跨頁":"頁");
   document.getElementById("bookViewToggle").textContent=lyt==="spread"?"All Spreads 全部跨頁":"All Pages 全部頁面";
   document.documentElement.style.setProperty("--accent",hubKid&&KIDS[hubKid]?KIDS[hubKid].color:"var(--luis)");
   showOnly("book"); saveAppPlace("book");
+  var langBtn=document.getElementById("bookLangToggle");
+  langBtn.classList.toggle("hidden",lyt!=="spread");
+  if(lyt==="spread")setBookLang(localStorage.getItem("sq:bookLang")||"en");
+  else document.getElementById("book").removeAttribute("data-lang");
   renderBookSpread(); renderBookGrid(); updateBookView();
 }
+function setBookLang(lang){
+  document.getElementById("book").setAttribute("data-lang",lang);
+  document.getElementById("bookLangToggle").textContent=lang==="zh"?"English":"中文";
+  localStorage.setItem("sq:bookLang",lang);
+}
+function toggleBookLang(){setBookLang(document.getElementById("book").getAttribute("data-lang")==="zh"?"en":"zh");}
 function closeBook(){
   bookState.grid=false;
   hubTab="books";
@@ -2707,35 +2762,47 @@ function renderBookSpread(){
   document.getElementById("bookPhotoPane").onclick=function(){zoomBookImage(photo,c.nameEN+" · "+c.nameZH);};
   updateBookPager();
 }
+/* Minecraft keeps the magazine mini-page design (photo/text/quote pages, per-topic
+   tone) but shows 2 mini-pages per turn instead of 4 — no left-page scrolling, and
+   every one of the 25 topics' 4 authored blocks still gets its own page. Each topic
+   spans exactly 2 turns (pages [0,1] then [2,3]), so bookState.idx is a page-pair
+   index (0..spreads.length*2-1), not a topic index. */
 function renderMinecraftSpread(){
-  var s=bookState.spreads[bookState.idx], b=document.getElementById("bookSpread");
-  if(!s){b.className="book";b.innerHTML='<div class="msg">Could not load spread. 無法載入跨頁。</div>';return;}
-  var img=bookPhoto(mcraftSpreadImage(s,bookState.idx));
+  var spreadIndex=Math.floor(bookState.idx/2), within=bookState.idx%2;
+  var s=bookState.spreads[spreadIndex], b=document.getElementById("bookSpread");
+  if(!s){b.innerHTML='<div class="msg">Could not load spread. 無法載入跨頁。</div>';return;}
+  var img=bookPhoto(mcraftSpreadImage(s,spreadIndex));
   var year=mcraftSpreadYear(s);
-  var tone=mcraftTone(bookState.idx);
+  var tone=mcraftTone(spreadIndex);
   var blocks=(s.blocks||[]).slice(0,4);
   while(blocks.length<4)blocks.push({en:"",zh:""});
-  var html=
-    '<article class="mcraft-page photo" data-page="1" data-photo="'+bookEscape(img)+'" data-caption="'+bookEscape(s.titleEN+" · "+s.titleZH)+'">'+
-      '<img src="'+bookEscape(img)+'" alt="'+bookEscape(s.titleEN)+'" loading="lazy" onerror="this.style.display=\'none\'">'+
-      '<span class="mcraft-meta">SPREAD '+String(bookState.idx+1).padStart(2,"0")+' · '+bookEscape(year)+'</span>'+
-      '<div class="mcraft-copy">'+
-        '<span class="mcraft-kicker '+tone+'">'+bookEscape(mcraftKicker(year,1))+'</span>'+
-        '<h2 class="mcraft-title">'+bookEscape(s.titleEN)+'</h2>'+
-        '<div class="mcraft-title-zh">'+bookEscape(s.titleZH)+'</div>'+
-        '<p class="mcraft-body">'+bookEscape(blocks[0].en)+'</p>'+
-        '<p class="mcraft-body zh">'+bookEscape(blocks[0].zh)+'</p>'+
-        '<div class="mcraft-photo-hint">Tap image to zoom · 點擊放大</div>'+
-      '</div>'+
-    '</article>'+
-    mcraftTextPage(blocks[1],2,"text",tone,mcraftKicker(year,2))+
-    mcraftTextPage(blocks[2],3,"text",tone,mcraftKicker(year,3))+
-    mcraftTextPage(blocks[3],4,"quote",tone,mcraftKicker(year,4));
-  b.className="mcraft-spread";
+  var pageBase=spreadIndex*4,html,mag=window.SQMcraftMag;
+  if(within===0){
+    html=
+      '<article class="mcraft-page photo" data-page="'+(pageBase+1)+'" data-photo="'+bookEscape(img)+'" data-caption="'+bookEscape(s.titleEN+" · "+s.titleZH)+'">'+
+        '<img src="'+bookEscape(img)+'" alt="'+bookEscape(s.titleEN)+'" loading="lazy" onerror="this.style.display=\'none\'">'+
+        '<span class="mcraft-meta">SPREAD '+String(spreadIndex+1).padStart(2,"0")+' · '+bookEscape(year)+'</span>'+
+        (mag?mag.eraTag(s)+mag.statBadge(s):"")+
+        '<div class="mcraft-copy">'+
+          '<span class="mcraft-kicker '+tone+'">'+bookEscape(mcraftKicker(year,pageBase+1))+'</span>'+
+          '<h2 class="mcraft-title">'+bookEscape(s.titleEN)+'</h2>'+
+          '<div class="mcraft-title-zh">'+bookEscape(s.titleZH)+'</div>'+
+          '<p class="mcraft-body">'+bookEscape(blocks[0].en)+'</p>'+
+          '<p class="mcraft-body zh">'+bookEscape(blocks[0].zh)+'</p>'+
+          '<div class="mcraft-photo-hint">Tap image to zoom · 點擊放大</div>'+
+        '</div>'+
+      '</article>'+
+      mcraftTextPage(blocks[1],pageBase+2,"text",tone,mcraftKicker(year,pageBase+2),mag?mag.tipCard(s):"",mag?mag.runningHead(s,spreadIndex)+mag.imageBand(s,2,bookPhoto):"");
+  }else{
+    html=
+      mcraftTextPage(blocks[2],pageBase+3,"text",tone,mcraftKicker(year,pageBase+3),mag?mag.factCard(s):"",mag?mag.runningHead(s,spreadIndex)+mag.imageBand(s,3,bookPhoto):"")+
+      mcraftTextPage(blocks[3],pageBase+4,"quote",tone,mcraftKicker(year,pageBase+4),mag?mag.keyChips(s):"",mag?mag.runningHead(s,spreadIndex)+mag.imageBand(s,4,bookPhoto):"");
+  }
+  b.className="mcraft-spread "+tone;
   b.innerHTML=html;
-  b.querySelectorAll(".mcraft-page.photo").forEach(function(page){
-    page.onclick=function(){zoomBookImage(page.dataset.photo,page.dataset.caption);};
-  });
+  var photoPage=b.querySelector(".mcraft-page.photo");
+  if(photoPage)photoPage.onclick=function(){zoomBookImage(photoPage.dataset.photo,photoPage.dataset.caption);};
+  if(mag){mag.wireThumbs(b,zoomBookImage);mag.decorate(b,s,spreadIndex,within,bookPhoto);}
   updateBookPager();
 }
 var MCRAFT_FALLBACK_IMAGES=[
@@ -2766,7 +2833,7 @@ function mcraftTextPage(block,page,kind,tone,kicker){
   var en=block&&block.en?block.en:"";
   var zh=block&&block.zh?block.zh:"";
   if(kind==="quote"){
-    return '<article class="mcraft-page quote" data-page="'+page+'">'+
+    return '<article class="mcraft-page quote" data-page="'+page+'">'+(head||"")+
       '<div class="mcraft-copy">'+
         '<span class="mcraft-kicker '+tone+'">'+bookEscape(kicker)+'</span>'+
         '<p class="mcraft-pull">'+bookEscape(en)+'</p>'+
@@ -2774,7 +2841,7 @@ function mcraftTextPage(block,page,kind,tone,kicker){
       '</div>'+
     '</article>';
   }
-  return '<article class="mcraft-page text" data-page="'+page+'">'+
+  return '<article class="mcraft-page text" data-page="'+page+'">'+(head||"")+
     '<div class="mcraft-copy">'+
       '<span class="mcraft-kicker '+tone+'">'+bookEscape(kicker)+'</span>'+
       '<p class="mcraft-body">'+bookEscape(en)+'</p>'+
@@ -2782,7 +2849,7 @@ function mcraftTextPage(block,page,kind,tone,kicker){
     '</div>'+
   '</article>';
 }
-function bookTotal(){return bookState.layout==="spread"?bookState.spreads.length:bookState.cards.length;}
+function bookTotal(){return bookState.layout==="spread"?bookState.spreads.length*2:bookState.cards.length;}
 function turnBook(dir){
   var next=bookState.idx+dir;
   if(next<0||next>=bookTotal())return;
@@ -2819,7 +2886,7 @@ function renderBookGrid(){
   if(sp){
     bookState.spreads.forEach(function(s,i){
       var thumb=bookPhoto(mcraftSpreadImage(s,i));
-      html+='<div class="book-gridcard'+(i===bookState.idx?' current':'')+'" data-page="'+i+'">'+
+      html+='<div class="book-gridcard'+(i===Math.floor(bookState.idx/2)?' current':'')+'" data-page="'+(i*2)+'">'+
         '<img src="'+bookEscape(thumb)+'" alt="'+bookEscape(s.titleEN)+'" class="gthumb" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
         '<div class="emoji" style="display:none">⬛</div>'+
         '<div class="gname">'+bookEscape(s.titleEN)+'<span class="zh">'+bookEscape(s.titleZH)+'</span></div></div>';
@@ -2871,6 +2938,7 @@ document.getElementById("bookBack").onclick=closeBook;
 document.getElementById("bookPrev").onclick=function(){turnBook(-1);};
 document.getElementById("bookNext").onclick=function(){turnBook(1);};
 document.getElementById("bookViewToggle").onclick=toggleBookView;
+document.getElementById("bookLangToggle").onclick=toggleBookLang;
 document.addEventListener("keydown",onBookKey);
 var bookSwipeX=0, bookSwipeY=0;
 document.getElementById("bookStage").addEventListener("pointerdown",function(e){bookSwipeX=e.clientX;bookSwipeY=e.clientY;});
@@ -2983,16 +3051,34 @@ function stopAskRecord(){
   document.getElementById("askStop").disabled=true;
   document.getElementById("askStatus").textContent="Voice ready 語音準備好了";
 }
+async function refreshStarsFromServer(kidId){
+  if(!store||!store.refreshStarTotals)return;
+  try{
+    await store.refreshStarTotals(kidId);
+    if(hubKid){
+      renderHubHead();
+      if(hubTab==="captain")renderCaptain();
+    }else{
+      renderHome();
+    }
+  }catch(e){}
+}
 function setupRealtime(){
   if(!store)return;
-  store.onStars(row=>{
-    if(!row||row.source!=="admin")return;
+  store.onStars(async (row,eventType)=>{
+    if(!row)return;
+    if(row.source==="app"&&store.queue&&store.queue.some(op=>op.id===row.id))return;
     /* rebaseline through the store — a raw mutation here made the next save
        re-report Papa's grant as a second, unlabelled star */
-    store.applyServerStars(row.kid_id,row.delta||0);
+    await refreshStarsFromServer(row.kid_id);
+    if(eventType!=="INSERT"||row.source!=="admin")return;
     if(row.kid_id===(hubKid||kid)&&row.delta>0){bigFloat("🌟");sWin();}
     if(hubKid)renderHubHead(); else renderHome();
   });
+  const refreshAllStars=()=>refreshStarsFromServer();
+  addEventListener("focus",refreshAllStars);
+  addEventListener("online",refreshAllStars);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshAllStars();});
   store.onAsks(row=>{
     if(!row||row.kid_id!==hubKid)return;
     updateAskBadge();
@@ -3028,7 +3114,11 @@ function setupRealtime(){
     store.familySettings[row.key]=row.value;
     localStorage.setItem("sq:famSettings",JSON.stringify(store.familySettings));
     if(row.key==="admin_pin")localStorage.setItem("sq:adminPin",JSON.stringify(row.value||""));
-    if(row.key==="day_template_times"){refreshOverrides();refreshLockUI();if(hubKid&&hubTab==="day")renderMyDay();}
+    if(row.key==="day_template_times"||row.key===replaceKey()){
+      refreshOverrides();
+      refreshLockUI();
+      if(hubKid&&hubTab==="day")renderMyDay();
+    }
     leaveLockedCategory();
     if(hubKid&&!document.getElementById("hub").classList.contains("hidden"))renderHub();
     refreshAppLock();

@@ -158,6 +158,35 @@
       });
     }
 
+    queuedStarDelta(kid){
+      return this.queue.reduce(function(sum,op){
+        return sum+(op&&op.type==="stars"&&op.kid===kid?(op.delta||0):0);
+      },0);
+    }
+
+    applyStarTotals(rows,kid){
+      const serverTotals={};
+      (rows||[]).forEach(function(r){
+        if(r&&r.kid_id)serverTotals[r.kid_id]=r.stars||0;
+      });
+      KIDS.forEach(id=>{
+        if(kid&&id!==kid)return;
+        if(!(id in serverTotals))return;
+        ensureKid(this.progress,id);
+        ensureKid(this.last,id);
+        this.progress[id].stars=serverTotals[id]+this.queuedStarDelta(id);
+        this.last[id].stars=this.progress[id].stars;
+      });
+      this.persistLocal();
+    }
+
+    async refreshStarTotals(kid){
+      if(!this.supabase) return;
+      const {data,error}=await this.supabase.from("star_totals").select("kid_id,stars");
+      if(error) throw error;
+      this.applyStarTotals(data||[],kid);
+    }
+
     startFlush(){
       if(!this.supabase) return;
       addEventListener("online",()=>this.flush());
@@ -533,7 +562,7 @@
     onStars(cb){
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`stars-${Date.now()}`)
-        .on("postgres_changes",{event:"INSERT",schema:"public",table:"stars_ledger"},p=>cb(p.new))
+        .on("postgres_changes",{event:"*",schema:"public",table:"stars_ledger"},p=>cb(p.new||p.old,p.eventType))
         .subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }

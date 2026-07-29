@@ -1,11 +1,11 @@
 # Minecraft Image Scraping Guide
 
-**Goal:** gather relevant Minecraft images for the four-page evolution book using the `scrapling` command tool, then vendor them locally with clear source notes.
+**Goal:** gather relevant Minecraft images for the magazine-style evolution book using the `scrapling` command tool, then vendor them locally with clear source notes.
 
 **Applies to:**
 
 - `42-minecraft-evolution-book.md`
-- `43-minecraft-four-block-layout.md`
+- `43-minecraft-four-block-layout.md` / `47-minecraft-two-per-turn-layout.md` (the page design; `46-minecraft-two-page-layout.md` is superseded)
 - future `assets/books/minecraft/` image set
 
 ---
@@ -165,9 +165,9 @@ For early history, official screenshots may be harder to license or locate. Use 
 
 ---
 
-## Image Selection Map For The Four-Page Book
+## Image Selection Map For The Book
 
-One image per spread is enough. Some spreads can use no image if the text breathes better.
+One image per topic is enough — it fills the photo mini-page. Some spreads can use no image if the text breathes better (photo page falls back to a rotating placeholder).
 
 | Spreads | Best Image Type | Notes |
 |---|---|---|
@@ -236,4 +236,4 @@ Before accepting an image:
 - **Forgetting relative URLs.** `/content/dam/...` must become `https://www.minecraft.net/content/dam/...`.
 - **Using movie imagery for game-update history.** Use movie images only for the media-expansion spread.
 - **No credits README.** This breaks the Books feature pattern and makes future cleanup painful.
-- **Too many images.** The four-page layout needs rhythm. One strong image per spread is usually better than four tiny pictures.
+- **Too many images.** The right page holds one photo. One strong image per spread beats several tiny ones.

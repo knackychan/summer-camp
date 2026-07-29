@@ -39,11 +39,12 @@
      from now on. timeDrag holds a live gutter drag so a realtime event cannot
      re-render the board out from under Papa's finger. */
   const TEMPLATE_KEY="day_template_times";
+  const REPLACE_KEY_PREFIX="day_block_replacements_";
   const BOARD_SCOPES=[["all","Everyone"],["lucien","Lucien"],["lili","Lili"],["luis","Luis"]];
   /* Pixels of drag per 5-minute step. Tune to taste: lower = faster travel,
      higher = finer control. 4px puts a full hour at ~48px, roughly one board row. */
   const DRAG_PX=4;
-  let boardScope="all", timeDrag=null;
+  let boardScope="all", timeDrag=null, blockDrag=null;
   let browserNotifyEnabled=localStorage.getItem("sq-admin-notify")==="1";
   const silentRealtime=new Map();
   let currentRoute="today";
@@ -111,6 +112,25 @@
   const todayTicks=kid=>rows.ticks.filter(t=>t.kid_id===kid&&t.day===today);
   const tickFor=(kid,i)=>rows.ticks.find(t=>t.kid_id===kid&&t.day===today&&t.block_idx===i);
   const passFor=(kid,i,kind)=>rows.passes.find(p=>p.kid_id===kid&&p.day===today&&p.block_idx===i&&p.status==="granted"&&(!kind||p.kind===kind));
+  function replaceKey(){return REPLACE_KEY_PREFIX+today;}
+  function replacementMap(){
+    var row=rows.familySettings.find(function(x){return x.key===replaceKey();});
+    try{
+      var map=JSON.parse(row&&row.value||"{}");
+      return map&&typeof map==="object"?map:{};
+    }catch(e){return {};}
+  }
+  function replacementSource(kid,i){
+    var map=replacementMap();
+    var v=map[kid]&&map[kid][i]!=null?map[kid][i]:map.all&&map.all[i]!=null?map.all[i]:null;
+    v=+v;
+    return Number.isInteger(v)&&DAY[v]?v:null;
+  }
+  function effectiveBlock(kid,i){
+    var base=DAY[i]||{}, src=replacementSource(kid,i);
+    if(src==null)return base;
+    return Object.assign({},DAY[src],{t:base.t,t0:base.t0,replacedFrom:src});
+  }
   function archivedAskIds(){
     const row=rows.familySettings.find(r=>r.key==="archived_asks");
     try{return new Set(JSON.parse(row&&row.value||"[]"));}catch(e){return new Set();}
@@ -439,7 +459,7 @@
   function renderOverview(){
     var el=$("overview");
     if(!el)return;
-    if(timeDrag)return; /* a live drag owns the DOM until the finger lifts */
+    if(timeDrag||blockDrag)return; /* a live drag owns the DOM until the finger lifts */
     renderBoardScope();
     var eff=scopeEff();
     var info=SQTime.timelineInfo(DAY,eff,SQ_DAY.nowMins());
@@ -500,16 +520,45 @@
   }
 
   function boardCell(kid,i){
-    var b=DAY[i], eff=SQTime.resolveOverrides(overridesRaw,kid);
+    var displayIdx=blockAtSlot(kid,i);
+    var eff=SQTime.resolveOverrides(overridesRaw,kid);
+    var timed=SQTime.effMins(DAY,eff,displayIdx)!=null;
+    var removed=passFor(kid,displayIdx,"outing");
+    return '<div class="cell '+cellStateClass(kid,displayIdx)+'" data-kid="'+kid+'" data-slot="'+i+'" data-block="'+displayIdx+'" data-movable="'+(timed&&!removed?"true":"false")+'" draggable="false">'+
+      boardCellInner(kid,i,displayIdx)+
+    '</div>';
+  }
+
+  function blockAtSlot(kid,slotIdx){
+    var slotTime=SQTime.effMins(DAY,scopeEff(),slotIdx);
+    if(slotTime==null)return slotIdx;
+    var eff=SQTime.resolveOverrides(overridesRaw,kid);
+    var found=SQTime.timedOrder(DAY,eff).find(function(x){
+      return x.t===slotTime&&!passFor(kid,x.i,"outing");
+    });
+    return found?found.i:slotIdx;
+  }
+
+  function cellStateClass(kid,i){
+    var eff=SQTime.resolveOverrides(overridesRaw,kid);
     var mins=SQTime.effMins(DAY,eff,i), timed=mins!=null;
     var info=SQTime.timelineInfo(DAY,eff,SQ_DAY.nowMins());
-    var moved=(overridesRaw[kid]||{})[i]!=null;
     var removed=passFor(kid,i,"outing");
     var done=tickFor(kid,i);
-    var redo=rows.redos.some(function(r){return r.kid_id===kid&&r.block_idx===i;});
-    var isNow=i===info.current;
+    return removed?"is-off":done?"is-done":timed&&i===info.current?"is-now":"";
+  }
+
+  function boardCellInner(kid,i,displayIdx){
+    var b=effectiveBlock(kid,displayIdx), eff=SQTime.resolveOverrides(overridesRaw,kid);
+    var mins=SQTime.effMins(DAY,eff,displayIdx), timed=mins!=null;
+    var info=SQTime.timelineInfo(DAY,eff,SQ_DAY.nowMins());
+    var moved=(overridesRaw[kid]||{})[displayIdx]!=null;
+    var replaced=replacementSource(kid,displayIdx)!=null;
+    var removed=passFor(kid,displayIdx,"outing");
+    var done=tickFor(kid,displayIdx);
+    var redo=rows.redos.some(function(r){return r.kid_id===kid&&r.block_idx===displayIdx;});
+    var isNow=displayIdx===info.current;
     var isLate=timed&&mins<info.now&&!done&&!removed;
-    var stateClass=removed?"is-off":done?"is-done":isNow?"is-now":"";
     var statusTag="";
     if(done)statusTag='<span class="tag tag--done">Accepted</span>';
     else if(removed)statusTag='<span class="tag tag--off">Removed</span>';
@@ -520,23 +569,23 @@
 
     var actions="";
     if(done){
-      actions='<button class="btn btn--sm" data-unaccept="'+kid+':'+i+'">Undo</button><button class="btn btn--sm btn--danger" data-sendback="'+kid+':'+i+'">Send back</button>';
+      actions='<button class="btn btn--sm" data-unaccept="'+kid+':'+displayIdx+'">Undo</button><button class="btn btn--sm btn--danger" data-sendback="'+kid+':'+displayIdx+'">Send back</button>';
     }else if(removed){
-      var pass=rows.passes.find(function(p){return p.kid_id===kid&&p.day===today&&p.block_idx===i&&p.status==="granted";});
-      if(pass)actions='<button class="btn btn--sm" data-addback="'+pass.id+':'+kid+':'+i+':'+(pass.credited?1:0)+'">Add back</button>';
+      var pass=rows.passes.find(function(p){return p.kid_id===kid&&p.day===today&&p.block_idx===displayIdx&&p.status==="granted";});
+      if(pass)actions='<button class="btn btn--sm" data-addback="'+pass.id+':'+kid+':'+displayIdx+':'+(pass.credited?1:0)+'">Add back</button>';
     }else{
-      actions='<button class="btn btn--sm btn--primary" data-accept="'+kid+':'+i+'">Accept</button><button class="btn btn--sm" data-removeblock="'+kid+':'+i+'">Remove</button>';
+      actions='<button class="btn btn--sm btn--primary" data-accept="'+kid+':'+displayIdx+'">Accept</button><button class="btn btn--sm" data-removeblock="'+kid+':'+displayIdx+'">Remove</button>';
     }
+    actions+='<button class="btn btn--sm" data-replaceblock="'+kid+':'+displayIdx+'" title="Replace this block">Replace</button>';
 
     /* The kid chip is hidden on the wide grid (the column header names them) but
        shown once the board stacks to one column, where a bare cell is otherwise
        unattributable. Colour never carries the meaning alone. */
-    return '<div class="cell '+stateClass+'" data-kid="'+kid+'" data-block="'+i+'" draggable="'+(timed&&!removed?"true":"false")+'">'+
+    return '<span class="cell__grab" aria-hidden="true">::</span>'+
       '<span class="who k-'+kid+' cell__who"><span class="who__m">'+esc(kidName(kid)[0])+'</span><b>'+esc(kidName(kid))+'</b></span>'+
-      '<div class="cell__t">'+esc(b.title)+' <span>'+esc(b.tz)+'</span>'+(moved?' <span class="cell__moved">moved</span>':'')+'</div>'+
+      '<div class="cell__t">'+esc(b.title)+' <span>'+esc(b.tz)+'</span>'+(moved?' <span class="cell__moved">moved</span>':'')+(replaced?' <span class="cell__moved">replaced</span>':'')+'</div>'+
       '<div class="cell__b">'+statusTag+
-      '<div class="cell__acts">'+actions+'</div></div>'+
-    '</div>';
+      '<div class="cell__acts">'+actions+'</div></div>';
   }
 
   function bindScheduleBlocks(){
@@ -556,27 +605,53 @@
       var parts=b.dataset.addback.split(":");
       addBackBlock(parts[0],parts[1],+parts[2],parts[3]==="1");
     };});
-    /* Drag */
-    document.querySelectorAll(".cell[draggable=true]").forEach(function(cell){
-      cell.ondragstart=function(e){
-        dragState={kid:cell.dataset.kid,block:+cell.dataset.block};
-        cell.classList.add("is-dragging");
-        e.dataTransfer.effectAllowed="move";
-      };
-      cell.ondragend=function(){dragState=null;cell.classList.remove("is-dragging");clearDropTargets();};
-      cell.ondragover=function(e){
-        if(dragState&&dragState.kid===cell.dataset.kid&&cell.getAttribute("draggable")==="true"){
-          e.preventDefault();cell.classList.add("is-drop-target");
-        }
-      };
-      cell.ondragleave=function(){cell.classList.remove("is-drop-target");};
-      cell.ondrop=function(e){
-        e.preventDefault();clearDropTargets();
-        if(!dragState||dragState.kid!==cell.dataset.kid)return;
-        saveDraggedOrder(cell.dataset.kid,dragState.block,+cell.dataset.block);
+    document.querySelectorAll("[data-replaceblock]").forEach(function(b){b.onclick=function(e){
+      e.stopPropagation();
+      var parts=b.dataset.replaceblock.split(":");openBlockLibrary(parts[0],+parts[1]);
+    };});
+    /* Pointer reorder with live slot preview. HTML5 drag only changed after drop
+       and is unreliable on tablets; pointer events cover mouse, pen and touch. */
+    document.querySelectorAll(".cell").forEach(function(cell){
+      cell.onpointerdown=function(e){
+        if(e.button||inBoardControl(e.target))return;
+        var canMove=cell.dataset.movable==="true";
+        var startX=e.clientX,startY=e.clientY,kid=cell.dataset.kid,from=+cell.dataset.block,moved=false,to=from;
+        dragState={kid:kid,block:from};
+        cell.setPointerCapture(e.pointerId);
+        cell.onpointermove=function(ev){
+          if(!canMove)return;
+          var dist=Math.abs(ev.clientX-startX)+Math.abs(ev.clientY-startY);
+          if(dist<8)return;
+          moved=true;
+          ev.preventDefault();
+          if(!blockDrag){
+            blockDrag={kid:kid,from:from,to:from};
+            cell.classList.add("is-dragging");
+          }
+          var target=document.elementFromPoint(ev.clientX,ev.clientY);
+          target=target&&target.closest?target.closest(".cell[data-movable=true]"):null;
+          if(!target||target.dataset.kid!==kid)return;
+          var next=+target.dataset.block;
+          if(next===to)return;
+          to=next;
+          blockDrag.to=to;
+          previewDraggedOrder(kid,from,to);
+        };
+        cell.onpointerup=cell.onpointercancel=function(ev){
+          cell.onpointermove=cell.onpointerup=cell.onpointercancel=null;
+          cell.classList.remove("is-dragging");
+          clearDropTargets();
+          var finalTo=to;
+          var didMove=moved&&finalTo!==from;
+          blockDrag=null; dragState=null;
+          if(ev&&ev.type==="pointercancel"){renderOverview();return;}
+          if(didMove)saveDraggedOrder(kid,from,finalTo);
+          else openBlockLibrary(kid,from);
+        };
       };
       /* Keyboard reorder */
       cell.onkeydown=function(e){
+        if(cell.dataset.movable!=="true")return;
         if(e.key==="ArrowUp"||e.key==="ArrowDown"){
           e.preventDefault();
           var kid=cell.dataset.kid, from=+cell.dataset.block;
@@ -587,12 +662,99 @@
         }
       };
       cell.setAttribute("tabindex","0");
-      cell.setAttribute("aria-label","Block: "+blockTitle(+cell.dataset.block)+" for "+kidName(cell.dataset.kid)+" - use Arrow keys to reorder");
+      cell.setAttribute("aria-label","Block: "+blockTitle(+cell.dataset.block)+" for "+kidName(cell.dataset.kid)+" - click to replace, drag or use Arrow keys to reorder");
     });
+  }
+
+  function inBoardControl(el){
+    for(;el&&el.classList&&!el.classList.contains("cell");el=el.parentNode)
+      if(/^(BUTTON|LABEL|INPUT|A|SELECT|TEXTAREA)$/.test(el.tagName))return true;
+    return false;
   }
 
   function clearDropTargets(){
     document.querySelectorAll(".is-drop-target").forEach(function(x){x.classList.remove("is-drop-target");});
+  }
+
+  function movableOrder(kid){
+    return scheduleOrder(kid).filter(function(i){
+      return SQTime.effMins(DAY,SQTime.resolveOverrides(overridesRaw,kid),i)!=null&&!passFor(kid,i,"outing");
+    });
+  }
+
+  function previewDraggedOrder(kid,fromBlock,toBlock){
+    clearDropTargets();
+    const cells=Array.from(document.querySelectorAll('.cell[data-kid="'+kid+'"][data-movable=true]'));
+    const slots=cells.map(function(cell){return +cell.dataset.block;});
+    const order=slots.slice();
+    const from=order.indexOf(fromBlock), to=order.indexOf(toBlock);
+    if(from<0||to<0)return;
+    order.splice(to,0,order.splice(from,1)[0]);
+    cells.forEach(function(cell,n){
+      var slot=+cell.dataset.slot;
+      cell.innerHTML=boardCellInner(kid,slot,order[n]);
+      cell.classList.toggle("is-drop-target",+cell.dataset.block===toBlock);
+    });
+  }
+
+  function closeBlockLibrary(){
+    var el=document.getElementById("blockLibrary");
+    if(el)el.remove();
+  }
+
+  function openBlockLibrary(kid,i){
+    closeBlockLibrary();
+    var current=effectiveBlock(kid,i);
+    var currentSrc=replacementSource(kid,i);
+    var dialog=document.createElement("div");
+    dialog.className="block-picker";
+    dialog.id="blockLibrary";
+    dialog.setAttribute("role","dialog");
+    dialog.setAttribute("aria-modal","true");
+    dialog.setAttribute("aria-label","Replace block");
+    dialog.innerHTML=
+      '<div class="block-picker__panel">'+
+        '<div class="sheet__head"><h2>Replace block</h2><span class="lbl">'+esc(kidName(kid))+' today</span>'+
+          '<div class="sheet__tools"><button class="btn btn--sm" data-blockclose>Close</button></div></div>'+
+        '<div class="block-picker__current">'+
+          '<span class="block-picker__icon">'+esc(current.icon||"")+'</span>'+
+          '<div><b>'+esc(current.title||"Block")+'</b><span>'+esc(current.tz||"")+'</span></div>'+
+        '</div>'+
+        '<div class="block-picker__grid">'+
+          '<button class="block-choice'+(currentSrc==null?' is-selected':'')+'" data-blockpick="-1">'+
+            '<span class="block-choice__icon">Reset</span><b>Original slot</b><small>'+esc(DAY[i].title)+' &middot; '+esc(DAY[i].tz||"")+'</small></button>'+
+          DAY.map(function(b,idx){
+            return '<button class="block-choice'+(currentSrc===idx?' is-selected':'')+'" data-blockpick="'+idx+'">'+
+              '<span class="block-choice__icon">'+esc(b.icon||"")+'</span><b>'+esc(b.title)+'</b><small>'+esc(b.tz||"")+'</small></button>';
+          }).join("")+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(dialog);
+    dialog.querySelector("[data-blockclose]").onclick=closeBlockLibrary;
+    dialog.onclick=function(e){if(e.target===dialog)closeBlockLibrary();};
+    dialog.querySelectorAll("[data-blockpick]").forEach(function(b){
+      b.onclick=function(){saveBlockReplacement(kid,i,+b.dataset.blockpick);};
+    });
+    var first=dialog.querySelector(".block-choice.is-selected")||dialog.querySelector(".block-choice");
+    if(first)first.focus();
+  }
+
+  async function saveBlockReplacement(kid,i,src){
+    var key=replaceKey();
+    var map=replacementMap();
+    var bucket=map[kid]=map[kid]||{};
+    if(src<0||src===i)delete bucket[i];
+    else bucket[i]=src;
+    if(!Object.keys(bucket).length)delete map[kid];
+    suppressRealtime("family_settings",{key:key});
+    const {error}=await client.from("family_settings")
+      .upsert({key:key,value:JSON.stringify(map),updated_at:new Date().toISOString()});
+    if(error){writeFailed(error);return;}
+    var row=rows.familySettings.find(function(x){return x.key===key;});
+    if(row)row.value=JSON.stringify(map); else rows.familySettings.push({key:key,value:JSON.stringify(map)});
+    closeBlockLibrary();
+    toast(src<0||src===i?"Block restored":"Block replaced",true);
+    renderOverview();
   }
 
   /* ---- Time gutter: ripple drag + precise field ---- */
@@ -682,7 +844,7 @@
 
   async function saveDraggedOrder(kid,fromBlock,toBlock){
     if(fromBlock===toBlock)return;
-    const order=scheduleOrder(kid).filter(function(i){return SQTime.effMins(DAY,SQTime.resolveOverrides(overridesRaw,kid),i)!=null&&!passFor(kid,i,"outing");});
+    const order=movableOrder(kid);
     const from=order.indexOf(fromBlock), to=order.indexOf(toBlock);
     if(from<0||to<0)return;
     order.splice(to,0,order.splice(from,1)[0]);
@@ -691,7 +853,7 @@
     const jobs=order.map(function(i,n){return saveBlockTime(kid,i,clock(slots[n]),true);});
     const results=await Promise.all(jobs);
     const err=results.find(function(r){return r&&r.error;});
-    if(err){writeFailed(err.error);return;}
+    if(err){writeFailed(err.error);renderOverview();return;}
     toast(`Schedule moved for ${kidName(kid)}`,true);
     await loadAll();
   }
@@ -710,8 +872,8 @@
   }
 
   function starRefunds(kid,blocks,reason){
-    return blocks.filter(function(i){return DAY[i]&&DAY[i].kind==="mission";}).map(function(i){return {
-      kid_id:kid,delta:-1,reason:`${reason}: ${DAY[i].title}`,source:"admin",granted_by:session.user.id
+    return blocks.filter(function(i){return effectiveBlock(kid,i).kind==="mission";}).map(function(i){return {
+      kid_id:kid,delta:-1,reason:`${reason}: ${effectiveBlock(kid,i).title}`,source:"admin",granted_by:session.user.id
     };});
   }
 
@@ -723,14 +885,15 @@
     if(error){writeFailed(error);return;}
     await client.from("day_redos").delete().eq("kid_id",kid).eq("day",today).eq("block_idx",i);
     var grants=[];
-    if(DAY[i].kind==="mission")grants.push({kid_id:kid,delta:1,reason:`Admin accepted: ${DAY[i].title}`,source:"admin",granted_by:session.user.id});
+    var b=effectiveBlock(kid,i);
+    if(b.kind==="mission")grants.push({kid_id:kid,delta:1,reason:`Admin accepted: ${b.title}`,source:"admin",granted_by:session.user.id});
     var after=new Set([...coveredSet(kid),i]);
     if(!beforeComplete&&after.size>=DAY.length)grants.push({kid_id:kid,delta:2,reason:"Day-complete bonus",source:"admin",granted_by:session.user.id});
     if(grants.length){
       const r=await client.from("stars_ledger").insert(grants);
       if(r.error){writeFailed(r.error);return;}
     }
-    toast(`Accepted ✓ ${kidName(kid)} — ${DAY[i].title}`,true);
+    toast(`Accepted ✓ ${kidName(kid)} — ${b.title}`,true);
     await loadAll();
   }
 
@@ -768,10 +931,10 @@
     const r1=await client.from("passes").insert(pass);
     if(r1.error){writeFailed(r1.error);return;}
     if(credited){
-      const r2=await client.from("stars_ledger").insert({kid_id:kid,delta:1,reason:`Removed block counts: ${DAY[i].title}`,source:"admin",granted_by:session.user.id});
+      const r2=await client.from("stars_ledger").insert({kid_id:kid,delta:1,reason:`Removed block counts: ${effectiveBlock(kid,i).title}`,source:"admin",granted_by:session.user.id});
       if(r2.error){writeFailed(r2.error);return;}
     }
-    toast(`Removed — ${kidName(kid)} ${DAY[i].title}`,true);
+    toast(`Removed — ${kidName(kid)} ${effectiveBlock(kid,i).title}`,true);
     await loadAll();
   }
 
@@ -779,10 +942,10 @@
     const r1=await client.from("passes").delete().eq("id",passId);
     if(r1.error){writeFailed(r1.error);return;}
     if(credited){
-      const r2=await client.from("stars_ledger").insert({kid_id:kid,delta:-1,reason:`Removed block added back: ${DAY[i].title}`,source:"admin",granted_by:session.user.id});
+      const r2=await client.from("stars_ledger").insert({kid_id:kid,delta:-1,reason:`Removed block added back: ${effectiveBlock(kid,i).title}`,source:"admin",granted_by:session.user.id});
       if(r2.error){writeFailed(r2.error);return;}
     }
-    toast(`Added back — ${kidName(kid)} ${DAY[i].title}`,true);
+    toast(`Added back — ${kidName(kid)} ${effectiveBlock(kid,i).title}`,true);
     await loadAll();
   }
 
@@ -1883,6 +2046,7 @@
   function realtimeKey(table,row){
     if(!row)return "";
     if(table==="day_ticks")return row.kid_id+":"+row.day+":"+row.block_idx;
+    if(table==="family_settings")return row.key||"";
     return row.id||"";
   }
   function suppressRealtime(table,row){
