@@ -372,18 +372,23 @@ export default {
     R.bodies = [];
     R.quiz = null;
     R.quizStars = 0;
+    R.rootOverscroll = document.documentElement.style.overscrollBehavior;
+    document.documentElement.style.overscrollBehavior = "none";
 
     /* Mount canvas */
     var mount = ctx.mount;
     if (!mount.style.position || mount.style.position === "static") {
       mount.style.position = "relative";
     }
+    mount.style.touchAction = "none";
+    mount.style.overscrollBehavior = "none";
     mount.innerHTML = "";
 
     var canvas = document.createElement("canvas");
     canvas.style.display = "block";
     canvas.style.width = "100%";
     canvas.style.height = "100%";
+    canvas.style.touchAction = "none";
     mount.appendChild(canvas);
 
     /* Renderer */
@@ -1500,6 +1505,7 @@ export default {
     if (R._pointerUp) R.renderer.domElement.removeEventListener("pointerup", R._pointerUp);
     if (R._dblClick) R.renderer.domElement.removeEventListener("dblclick", R._dblClick);
     if (R._visChange) document.removeEventListener("visibilitychange", R._visChange);
+    if (typeof R.rootOverscroll === "string") document.documentElement.style.overscrollBehavior = R.rootOverscroll;
     if (R.ro) { R.ro.disconnect(); R.ro = null; }
     if (R.issBody) { R.issBody = null; }
     if (R.plutoBody) { R.plutoBody = null; }
