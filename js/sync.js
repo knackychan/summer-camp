@@ -4,14 +4,6 @@
   const SUPABASE_CDN="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
   const KIDS=["lucien","lili","luis"];
 
-  /* Every app star must name what earned it. A delta with no reason attached
-     means local `stars` moved without a matching noteStars() call — a bug, not
-     a normal path — so it gets labelled loudly instead of hidden in the generic
-     catch-all bucket that used to make the ledger unauditable. */
-  /* English only: no kid ever sees this string, it exists for the admin ledger
-     (kid-facing reasons below stay bilingual). */
-  const UNLABELLED="Unlabelled — check the app";
-
   /* Which game_stats keys are best scores.
 
      sync.js is a plain global script and cannot import the game registry
@@ -85,7 +77,7 @@
   }
 
   function ensureKid(progress,kid){
-    progress[kid]=progress[kid]||{stars:0,best:{},vocab:{},missions:0,day:{d:"",done:{},rr:{}}};
+    progress[kid]=progress[kid]||{best:{},vocab:{},missions:0,day:{d:"",done:{},rr:{}}};
     const p=progress[kid];
     p.best=p.best&&typeof p.best==="object"?p.best:{};
     p.vocab=p.vocab||{};
@@ -138,6 +130,9 @@
          offline boot silently discarded every star the kid earned. */
       const cfg=(typeof window!=="undefined"&&window.SQ_CONFIG)||null;
       this.configured=!!(cfg&&cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY);
+      /* The last star_totals we successfully read. Cached so an offline boot shows
+         the kid's real number instead of zero. Only applyStarTotals writes it. */
+      this.serverStars=loadJson("sq:serverStars",{});
     }
 
     static async init(seed){
@@ -176,20 +171,20 @@
       },0);
     }
 
+    /* The ONLY star number on a tablet. Server truth plus whatever this device
+       has earned and not yet sent — a star is in exactly one of the two terms at
+       any moment, so the count never moves when the queue drains. */
+    starsFor(kid){
+      return (this.serverStars[kid]||0)+this.queuedStarDelta(kid);
+    }
+
     applyStarTotals(rows,kid){
-      const serverTotals={};
-      (rows||[]).forEach(function(r){
-        if(r&&r.kid_id)serverTotals[r.kid_id]=r.stars||0;
+      (rows||[]).forEach(r=>{
+        if(!r||!r.kid_id)return;
+        if(kid&&r.kid_id!==kid)return;
+        this.serverStars[r.kid_id]=r.stars||0;
       });
-      KIDS.forEach(id=>{
-        if(kid&&id!==kid)return;
-        if(!(id in serverTotals))return;
-        ensureKid(this.progress,id);
-        ensureKid(this.last,id);
-        this.progress[id].stars=serverTotals[id]+this.queuedStarDelta(id);
-        this.last[id].stars=this.progress[id].stars;
-      });
-      this.persistLocal();
+      saveJson("sq:serverStars",this.serverStars);
     }
 
     async refreshStarTotals(kid){
@@ -271,7 +266,8 @@
       (ticks||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].day.done[r.block_idx]=true;});
       (rolls||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].day.rr[r.block_idx]=r.count||0;});
       (acts||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].actsDay.done[r.act_idx]=true;});
-      (totals||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].stars=r.stars||0;});
+      (totals||[]).forEach(r=>{ensureKid(p,r.kid_id);});
+      this.applyStarTotals(totals||[]);
       (vocab||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].vocab[r.word_key]=r.box||0;});
       (brain||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].brain.done[r.game_id]={score:r.score||0,ms:r.ms||0};});
       this.applyStatRows(p,stats||[]);
@@ -288,8 +284,6 @@
           P.day.rr[op.blockIdx]=Math.max(P.day.rr[op.blockIdx]||0,op.count||0);
         }else if(op.type==="actDone"&&op.day===day){
           P.actsDay.done[op.actIdx]=true;
-        }else if(op.type==="stars"){
-          P.stars=(P.stars||0)+(op.delta||0);
         }else if(op.type==="vocab"){
           P.vocab[op.wordKey]=op.box||0;
         }else if(op.type==="stat"){
@@ -309,11 +303,11 @@
       await this.flush();
     }
 
-    async save(progress,settings,starReasons){
+    async save(progress,settings){
       this.progress=normalize(progress);
       this.settings=settings;
       this.persistLocal();
-      if(this.configured) this.enqueueDiff(this.last,this.progress,starReasons);
+      if(this.configured) this.enqueueDiff(this.last,this.progress);
       this.last=clone(this.progress);
       await this.flush();
     }
@@ -323,14 +317,8 @@
       saveJson(QUEUE_KEY,this.queue);
     }
 
-    enqueueDiff(before,after,starReasons){
+    enqueueDiff(before,after){
       const day=todayISO();
-      const reasonsByKid={};
-      (starReasons||[]).forEach(r=>{
-        if(!r||!r.kid||!r.delta)return;
-        const list=reasonsByKid[r.kid]=reasonsByKid[r.kid]||[];
-        for(let i=0;i<r.delta;i++)list.push(r.reason||UNLABELLED);
-      });
       KIDS.forEach(kid=>{
         const a=after[kid], b=before[kid]||{};
         const ad=a.day&&a.day.d?a.day.d:day;
@@ -352,26 +340,6 @@
           if(!isFinite(+i)) return;   // never enqueue a key act_done cannot store
           if(!!aActs[i]&&!bActs[i]) this.enqueue({type:"actDone",kid,day:ad,actIdx:+i});
         });
-
-        let delta=(a.stars||0)-(b.stars||0);
-        const starReasonsForKid=reasonsByKid[kid]||[];
-        while(delta>0){
-          if(!starReasonsForKid.length){
-            /* One honest row for the whole unexplained remainder. Chunking it
-               into 3s only made a bug look like several innocent little grants. */
-            this.enqueue({type:"stars",kid,delta,reason:UNLABELLED});
-            delta=0;
-            continue;
-          }
-          const reason=starReasonsForKid.shift()||UNLABELLED;
-          let chunk=1;
-          while(chunk<delta&&starReasonsForKid[0]===reason){
-            starReasonsForKid.shift();
-            chunk++;
-          }
-          this.enqueue({type:"stars",kid,delta:chunk,reason});
-          delta-=chunk;
-        }
 
         const av=a.vocab||{}, bv=b.vocab||{};
         Object.keys(av).forEach(wordKey=>{
@@ -417,8 +385,8 @@
       }
       /* The op has left the queue; the server total must catch up in the same turn,
          or the displayed count (server + queued) dips by exactly the stars we just
-         successfully saved. activates in slice 52 once applyStarTotals writes to serverStars. */
-      // if(sentStars&&this.supabase) await this._refreshStarTotals();
+         successfully saved. */
+      if(sentStars&&this.supabase) await this._refreshStarTotals();
     }
 
     async applyOp(op){
@@ -523,21 +491,15 @@
       await this.setFamilySetting("braingate_"+kid,dayISO);
     }
     async addStars(kid,delta,reason){
+      if(!this.configured){
+        /* No server exists and never will. The local cache is the ledger, so the
+           kid still earns stars in a clean local-only deploy. */
+        this.serverStars[kid]=(this.serverStars[kid]||0)+delta;
+        saveJson("sq:serverStars",this.serverStars);
+        return;
+      }
       this.enqueue({type:"stars",kid,delta,reason});
       await this.flush();
-    }
-    /* A ledger row that arrived from the server (Papa's grant, a revoke, another
-       device) is already recorded. Move `last` together with `progress` so the
-       next diff sees no change. Without this the tablet re-enqueued the same
-       delta as a second, unlabelled star — and a negative correction left `last`
-       above `progress`, silently eating the kid's next real star. */
-    applyServerStars(kid,delta){
-      if(!kid||!delta) return;
-      ensureKid(this.progress,kid);
-      ensureKid(this.last,kid);
-      this.progress[kid].stars=(this.progress[kid].stars||0)+delta;
-      this.last[kid].stars=(this.last[kid].stars||0)+delta;
-      this.persistLocal();
     }
     async actDone(kid,dayISO,actIdx){
       this.enqueue({type:"actDone",kid,day:dayISO,actIdx});

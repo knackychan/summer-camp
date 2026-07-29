@@ -56,7 +56,7 @@ function loadSyncStore(localStorage) {
 
 const seedProgress = () => ({});
 
-// --- Test 1: enqueueDiff turns a progress diff into the right queue ops ---
+// --- Test 1: enqueueDiff never mints a star (slice 52) ---
 {
   const ls = makeLocalStorage();
   const SyncStore = loadSyncStore(ls);
@@ -67,7 +67,7 @@ const seedProgress = () => ({});
   const after = JSON.parse(JSON.stringify(store.progress));
   after.lili.day = { d: TODAY, done: { 2: true }, rr: { 4: 1 } };
   after.lili.actsDay = { d: TODAY, done: { 0: true } };
-  after.lili.stars = 5;                    // +5 with no reasons → one loud row
+  after.lili.stars = 5;                    // a stale field from an old localStorage payload
   after.lili.vocab["w:cat"] = 2;
   after.lili.best.race = 42;
   after.lili.best.city = 7;
@@ -75,76 +75,83 @@ const seedProgress = () => ({});
 
   store.enqueueDiff(before, after);
   const types = store.queue.map(o => o.type).sort();
-  assert.deepEqual(types, ["actDone", "roll", "stars", "stat", "stat", "stat", "tick", "vocab"]);
-  const starOps = store.queue.filter(o => o.type === "stars");
-  assert.equal(starOps.length, 1, "unexplained stars collapse into ONE row, not innocent-looking chunks");
-  assert.equal(starOps[0].delta, 5);
-  assert.match(starOps[0].reason, /^Unlabelled/, "a star with no reason is labelled, never bucketed");
+  assert.deepEqual(types, ["actDone", "roll", "stat", "stat", "stat", "tick", "vocab"]);
+  assert.equal(store.queue.filter(o => o.type === "stars").length, 0,
+    "enqueueDiff must never mint a star — addStars is the only path");
   assert.ok(store.queue.every(o => o.id), "every op carries a client uuid for dedupe");
-  console.log("ok - enqueueDiff produces correct ops");
+  console.log("ok - enqueueDiff never mints a star");
 }
 
-// --- Test 1b: reasons passed in survive onto the ledger ops, grouped by reason ---
+// --- Test 1b: addStars is the only star path, reason reaches the queue (slice 52) ---
 {
   const ls = makeLocalStorage();
   const SyncStore = loadSyncStore(ls);
   const store = new SyncStore({ progress: seedProgress(), settings: {} }, fakeSupabase({}, []));
+  store.configured = true;
 
+  store.addStars("luis", 1, "Brain Gym 頭腦體操 · daily set 每日三項 · test");
+  // synchronous: the op is on the queue before the first await, so the celebration UI renders correctly
+  assert.equal(store.queue.filter(o => o.type === "stars").length, 1, "addStars enqueued exactly one star op");
+  const op = store.queue.find(o => o.type === "stars");
+  assert.equal(op.delta, 1);
+  assert.equal(op.reason, "Brain Gym 頭腦體操 · daily set 每日三項 · test");
+  assert.ok(op.id, "op carries a uuid");
+
+  // starsFor reflects it immediately — no await needed (Constraint 2)
+  assert.equal(store.starsFor("luis"), 1, "starsFor reflects the pending op synchronously");
+  console.log("ok - addStars is the only star path");
+}
+
+// --- Test 1c: grant/revoke round trip through applyStarTotals (slice 52) ---
+{
+  const ls = makeLocalStorage();
+  const SyncStore = loadSyncStore(ls);
+  const store = new SyncStore({ progress: seedProgress(), settings: {} }, fakeSupabase({}, []));
+  store.configured = true;
+
+  // Papa grants +3 from admin
+  store.applyStarTotals([{ kid_id: "lili", stars: 3 }], "lili");
+  assert.equal(store.starsFor("lili"), 3, "Papa's grant shows on the tablet");
+
+  // any later save must not re-enqueue it
   const before = JSON.parse(JSON.stringify(store.progress));
-  const after = JSON.parse(JSON.stringify(store.progress));
-  after.luis.stars = 4;
-  store.enqueueDiff(before, after, [
-    { kid: "luis", delta: 2, reason: "Mission 任務 · 10:00 Homework 暑假作業 · one page" },
-    { kid: "luis", delta: 1, reason: "Activity 活動 · House help 家事幫手 · dishes" },
-    { kid: "luis", delta: 1, reason: "Learn 學習 · How to ask AI well · self-claimed" }
-  ]);
-  const stars = store.queue.filter(o => o.type === "stars");
-  assert.equal(stars.length, 3, "one row per distinct reason");
-  assert.deepEqual(stars.map(o => o.delta), [2, 1, 1], "same-reason stars merge, different ones do not");
-  assert.ok(stars.every(o => !/^Unlabelled/.test(o.reason)), "no row falls back to the unlabelled bucket");
-  console.log("ok - star reasons reach the ledger ops intact");
-}
-
-// --- Test 1c: a server-side star must not come back as a second, unlabelled one ---
-{
-  const ls = makeLocalStorage();
-  const SyncStore = loadSyncStore(ls);
-  const store = new SyncStore({ progress: seedProgress(), settings: {} }, fakeSupabase({}, []));
-  store.last = JSON.parse(JSON.stringify(store.progress));
-
-  store.applyServerStars("lili", 3);                 // Papa grants +3 from admin
-  assert.equal(store.progress.lili.stars, 3, "the grant shows on the tablet");
-
-  store.enqueueDiff(store.last, store.progress);     // any later save
+  store.last = before;
+  store.enqueueDiff(store.last, store.progress);
   assert.equal(store.queue.filter(o => o.type === "stars").length, 0,
     "Papa's grant is already in the ledger — it must never be re-enqueued");
 
-  store.applyServerStars("lili", -3);                // and a revoke
-  store.progress.lili.stars += 1;                    // then the kid earns one for real
-  store.enqueueDiff(store.last, store.progress, [{ kid: "lili", delta: 1, reason: "Mission 任務 · test" }]);
-  const earned = store.queue.filter(o => o.type === "stars");
-  assert.equal(earned.length, 1, "a revoke must not swallow the next real star");
-  assert.equal(earned[0].delta, 1);
-  console.log("ok - server-side stars rebaseline instead of duplicating");
+  // a revoke must actually lower the tablet
+  store.applyStarTotals([{ kid_id: "lili", stars: 0 }], "lili");
+  assert.equal(store.starsFor("lili"), 0, "a revoke must actually lower the tablet count");
+
+  // then the kid earns one for real — the queue must receive it
+  store.addStars("lili", 1, "Mission 任務 · test");
+  // synchronous: op is enqueued before the first await
+  const starOp = store.queue.find(o => o.type === "stars" && o.reason === "Mission 任務 · test");
+  assert.ok(starOp, "the earned star is on the queue before flush");
+  assert.equal(starOp.delta, 1, "revoke did not eat the star delta");
+  console.log("ok - grant and revoke round-trip through serverStars");
 }
 
-// --- Test 1d: refreshing totals uses the server view plus pending local ledger ops ---
+// --- Test 1d: totals + pending, no flicker guarantee (slice 52) ---
 {
   const ls = makeLocalStorage();
   const SyncStore = loadSyncStore(ls);
   const store = new SyncStore({ progress: seedProgress(), settings: {} }, fakeSupabase({}, []));
 
-  store.progress.lili.stars = 99;
-  store.last = JSON.parse(JSON.stringify(store.progress));
+  // server says 5 for lili, 0 for luis
+  store.applyStarTotals([{ kid_id: "lili", stars: 5 }, { kid_id: "luis", stars: 0 }]);
+  // one unflushed local op
   store.enqueue({ type: "stars", kid: "lili", delta: 2, reason: "offline win" });
-  store.applyStarTotals([{ kid_id: "lili", stars: 5 }, { kid_id: "luis", stars: 8 }], "lili");
 
-  assert.equal(store.progress.lili.stars, 7, "tablet shows server total plus its unflushed local stars");
-  assert.equal(store.progress.luis.stars, 0, "kid-scoped refresh leaves other totals alone");
-  store.enqueueDiff(store.last, store.progress);
-  assert.equal(store.queue.filter(o => o.type === "stars").length, 1,
-    "refreshed server stars are re-baselined and not enqueued again");
-  console.log("ok - star-total refresh follows server view without losing pending stars");
+  assert.equal(store.starsFor("lili"), 7, "tablet shows server total plus its unflushed local stars");
+  assert.equal(store.starsFor("luis"), 0, "luis has no pending stars");
+
+  // simulate the op being flushed and the server total refreshed to include it
+  store.queue = [];
+  store.applyStarTotals([{ kid_id: "lili", stars: 7 }], "lili");
+  assert.equal(store.starsFor("lili"), 7, "displayed count does not flicker at the sync boundary");
+  console.log("ok - displayed stars are self-balancing across a sync");
 }
 
 // --- Test 1e: an act key act_done cannot store never reaches (and stalls) the queue ---
@@ -165,7 +172,7 @@ const seedProgress = () => ({});
   console.log("ok - non-numeric act keys cannot stall the queue");
 }
 
-// --- Test 2: hydrate merges server rows THEN replays the pending queue ---
+// --- Test 2: hydrate merges server rows THEN replays the pending queue (slice 52) ---
 {
   const pending = [
     { id: "op-1", type: "tick", kid: "lili", day: TODAY, blockIdx: 7, ticked: true },
@@ -184,7 +191,7 @@ const seedProgress = () => ({});
   await store.hydrate();
   assert.equal(store.progress.lili.day.done[2], true, "server tick merged");
   assert.equal(store.progress.lili.day.done[7], true, "queued offline tick replayed locally");
-  assert.equal(store.progress.lili.stars, 7, "server total + optimistic queued delta");
+  assert.equal(store.starsFor("lili"), 5, "server total via starsFor after hydrate flush");
   assert.equal(store.kidPins.lili, "1234");
   assert.equal(store.queue.length, 0, "queue flushed to server");
   assert.ok(writes.some(w => w.table === "day_ticks" && w.op === "upsert"), "tick reached supabase");
@@ -192,18 +199,18 @@ const seedProgress = () => ({});
   console.log("ok - hydrate merges server state and replays pending queue");
 }
 
-// --- Test 3: local-only mode — no config, no client, save still persists ---
+// --- Test 3: local-only mode — stars still work with no server (slice 52) ---
 {
   const ls = makeLocalStorage();
   const SyncStore = loadSyncStore(ls);
   const store = await SyncStore.init({ progress: seedProgress(), settings: { a: 1 } });
   assert.equal(store.mode, "local-only");
-  store.progress.luis.stars = 3;
-  await store.save(store.progress, store.settings);
-  const persisted = JSON.parse(ls.getItem("keyquest:v2"));
-  assert.equal(persisted.progress.luis.stars, 3, "local-only save persists to localStorage");
+  store.addStars("luis", 3, "local-only test");
+  assert.equal(store.starsFor("luis"), 3, "stars still work with no server configured");
   assert.equal(store.queue.length, 0, "local-only mode never queues network ops");
-  console.log("ok - local-only fallback works without config");
+  const persisted = JSON.parse(ls.getItem("sq:serverStars"));
+  assert.equal(persisted.luis, 3, "serverStars persisted for local-only mode");
+  console.log("ok - local-only stars work without config");
 }
 
 // --- Test 4: brain best scores round-trip through hydration and diffing ---
@@ -346,7 +353,6 @@ const seedProgress = () => ({});
     assert.fail("init must not reject when hydrate fails");
   }
   assert.ok(store, "init returns a store even when hydrate fails");
-  assert.equal(store.progress.lili.stars, 12, "locally persisted stars survived failed hydrate");
   assert.equal(store.queue.length, 1, "pending queue op not dropped");
   assert.equal(store.mode, "supabase", "mode stays supabase even when server unreachable");
   console.log("ok - init survives a failed hydrate");
@@ -367,16 +373,14 @@ const seedProgress = () => ({});
   const before = JSON.parse(JSON.stringify(store.progress));
   const after = JSON.parse(JSON.stringify(store.progress));
   after.lili.day = { d: TODAY, done: { 3: true }, rr: {} };
-  after.lili.stars = 2;
 
-  store.enqueueDiff(before, after, [{ kid: "lili", delta: 2, reason: "Brain Gym · test" }]);
-  assert.ok(store.queue.length > 0, "configured + offline still queues ops");
-  assert.ok(store.queue.some(o => o.type === "stars"), "star ops are queued offline");
+  store.enqueueDiff(before, after);
+  assert.ok(store.queue.length > 0, "configured + offline still queues tick ops");
+  assert.ok(store.queue.some(o => o.type === "tick"), "tick ops are queued offline");
 
   // round-trip through saveJson into localStorage
   const loaded = JSON.parse(ls._map.get("sq:queue"));
   assert.ok(loaded.some(o => o.type === "tick"), "tick op persists to localStorage queue");
-  assert.ok(loaded.some(o => o.type === "stars" && o.reason === "Brain Gym · test"), "star op with reason persists to localStorage queue");
   console.log("ok - configured but offline still queues");
 }
 
@@ -425,6 +429,39 @@ const seedProgress = () => ({});
   assert.ok(writes.some(w => w.table === "stars_ledger" && w.op === "insert"), "star was flushed to ledger");
   assert.ok(totalsCalls >= 1, "star_totals was read at least once");
   console.log("ok - totals read cannot overtake a flush");
+}
+
+// --- Test: full offline round trip (slice 52 end-to-end) ---
+{
+  const ls = makeLocalStorage();
+
+  // Phase 1: earn a star offline
+  const SyncStore = loadSyncStore(ls);
+  const store = new SyncStore({ progress: seedProgress(), settings: {} }, fakeSupabase({}, []));
+  store.configured = true;
+  store.addStars("lili", 2, "offline win");
+  assert.equal(store.starsFor("lili"), 2, "earned star shows immediately");
+
+  // Phase 2: simulate reload — fresh store over same localStorage
+  const queued = JSON.parse(ls._map.get("sq:queue"));
+  const SyncStore2 = loadSyncStore(ls);
+  const store2 = new SyncStore2({ progress: seedProgress(), settings: {} }, fakeSupabase({}, []));
+  assert.equal(store2.starsFor("lili"), 2, "stars survive a reload with pending queue");
+
+  // Phase 3: flush against a fake client that reflects the star
+  const writes = [];
+  const client = fakeSupabase({ star_totals: [{ kid_id: "lili", stars: 5 }] }, writes);
+  const SyncStore3 = loadSyncStore(makeLocalStorage({ "sq:queue": ls._map.get("sq:queue") }));
+  const store3 = new SyncStore3({ progress: seedProgress(), settings: {} }, client);
+  store3.configured = true;
+  assert.equal(store3.starsFor("lili"), 2, "starsFor with only the queued term");
+
+  // Phase 4: flush sends the star, then refresh picks up the new total
+  await store3.flush();
+  assert.equal(store3.queue.length, 0, "queue drained after flush");
+  store3.applyStarTotals([{ kid_id: "lili", stars: 7 }], "lili");
+  assert.equal(store3.starsFor("lili"), 7, "post-sync total matches — no flicker, no dip");
+  console.log("ok - full offline round trip");
 }
 
 console.log("sync tests passed");

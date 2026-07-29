@@ -1208,15 +1208,16 @@ let sound=true, kid=null, level=null, kb={}, currentGame=null;
 /* best is filled lazily — bestOf() already treats a missing key as 0, and
    seeding names here was the fifth of the seven edit points a new game used
    to need (design.md Context). */
-const newProg=()=>({stars:0,best:{},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
+const newProg=()=>({best:{},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
 let progress={lucien:newProg(),lili:newProg(),luis:newProg()};
 const bestOf=(id,mode)=>{const b=progress[id].best; return (b&&typeof b==="object")?(b[mode]||0):0;};
+const starsOf=id=>store?store.starsFor(id):0;
 const heroBest=id=>{const lvl=KIDS[id].level;
   if(lvl==="race") return bestOf(id,"race")+" wpm";
   if(lvl==="orc") return bestOf(id,"orc");
   if(lvl==="balloon") return bestOf(id,"balloon");
-  if(lvl==="machines") return (progress[id].stars||0)+" ⭐";
-  return progress[id].stars||0;};
+  if(lvl==="machines") return starsOf(id)+" ⭐";
+  return starsOf(id);};
 let settings={
   balloon:{speed:2, count:3},                 /* speed 1-5, balloons on screen 1-6 */
   orc:{diff:"easy", speed:2, count:2},        /* diff: easy(letters)/medium/hard, speed 1-5, orcs 1-5 */
@@ -1226,10 +1227,6 @@ let settings={
 
 /* ============ STORAGE ============ */
 let store=null;
-let pendingStarReasons=[];
-function noteStars(kidId,delta,reason){
-  pendingStarReasons.push({kid:kidId,delta:delta,reason:reason});
-}
 function normalizeProgressShape(){
   Object.keys(progress).forEach(k=>{const P=progress[k];
     if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0,city:0,dig:0};
@@ -1250,10 +1247,7 @@ async function loadProgress(){
   }catch(e){normalizeProgressShape();}
 }
 async function saveProgress(){
-  const reasons=pendingStarReasons;
-  pendingStarReasons=[];
-  try{ if(store) await store.save(progress,settings,reasons); }
-  catch(e){ pendingStarReasons=reasons.concat(pendingStarReasons); }
+  try{ if(store) await store.save(progress,settings); }catch(e){}
 }
 
 /* ============ SOUND ============ */
@@ -1288,14 +1282,13 @@ function sayPair(en,fr){ say(en); if(fr) say(fr,"fr-FR",true); }
 function renderHome(){
   const box=document.getElementById("heroes"); box.innerHTML="";
   Object.entries(KIDS).forEach(([id,k])=>{
-    const p=progress[id]||{stars:0,best:0};
     const b=document.createElement("button"); b.className="hero";
     b.innerHTML=`<div class="glow" style="background:${k.color}"></div>
       <div class="av">${k.av}</div>
       <div class="age">Age ${k.age}</div>
       <h2 style="color:${k.color}">${k.name}</h2>
       <div class="mode">${LEVELS[k.level].icon} ${LEVELS[k.level].title}</div>
-      <div class="stats"><span>⭐ <b>${p.stars||0}</b> stars</span>
+      <div class="stats"><span>⭐ <b>${starsOf(id)}</b> stars</span>
         <span>🏁 best <b>${heroBest(id)}</b></span></div>`;
     b.onclick=()=>selectKid(id);
     box.appendChild(b);
@@ -1456,7 +1449,7 @@ function gameCtx(mountEl,game,kidId){
     hud:hud, say:say, sayPair:sayPair, sfx:H.sfx, keys:H.keys, fx:H.fx,
     settings:settings, rand:rand, shuffle:shuffle,
     kids:KIDS, best:bestOf(kidId,game.bestKey||""),
-    stars:p.stars||0,
+    stars:starsOf(kidId),
     words:{easy:WORDS_EASY, hard:ALL_WORDS, all:ALL_WORDS, sentences:SENT, letters:LETTERS},
     finish:function(res){ finishRegistered(game,res,kidId); },
     saveProgress:saveProgress,
@@ -1563,8 +1556,7 @@ function finishBrain(k,res){
     /* the ledger has no unique constraint, so p.brain.starred is what stops a
        replay from awarding a second star */
     p.brain.starred=true;
-    progress[k].stars=(progress[k].stars||0)+1;
-    noteStars(k,1,"Brain Gym 頭腦體操 · daily set 每日三項 · "+day);
+    store.addStars(k,1,"Brain Gym 頭腦體操 · daily set 每日三項 · "+day);
     earned=true;
   }
   saveProgress();
@@ -2273,9 +2265,9 @@ function startTimelineWatcher(){
   tick(); setInterval(tick,5000);
 }
 function renderHubHead(){
-  const k=KIDS[hubKid], P=progress[hubKid];
+  const k=KIDS[hubKid];
   const sub=hubTab==="day"?"Here is your day 📅":hubTab==="captain"?"Captain board 隊長看板 👑":"What do you want to do?";
-  document.getElementById("hubStars").innerHTML=`<span class="starpill">⭐ ${P.stars||0}</span>`;
+  document.getElementById("hubStars").innerHTML=`<span class="starpill">⭐ ${starsOf(hubKid)}</span>`;
   document.getElementById("hubHead").innerHTML=
     `<span class="av">${k.av}</span><div><h2 style="color:${k.color}">Hi ${k.name}!</h2>
      <p>${sub}</p></div>`;
@@ -2427,8 +2419,7 @@ function renderAct(){
   d.onclick=()=>{
     if(actsToday(hubKid)[actIdx])return;
     actsToday(hubKid)[actIdx]=true;
-    progress[hubKid].stars=(progress[hubKid].stars||0)+1;
-    noteStars(hubKid,1,`Activity 活動 · ${BANK[actIdx].cat} ${BANK[actIdx].catz||""} · ${BANK[actIdx][hubKid]} / ${(BANK[actIdx].z||{})[hubKid]||""}`);
+    store.addStars(hubKid,1,`Activity 活動 · ${BANK[actIdx].cat} ${BANK[actIdx].catz||""} · ${BANK[actIdx][hubKid]} / ${(BANK[actIdx].z||{})[hubKid]||""}`);
     if(g.type==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
     saveProgress(); sWin(); burst(30); star();
     renderAct();
@@ -2528,8 +2519,7 @@ function openLearn(key){
   document.getElementById("actDone").onclick=()=>{
     if(actsToday(hubKid)[aKey])return;
     actsToday(hubKid)[aKey]=true;
-    progress[hubKid].stars=(progress[hubKid].stars||0)+1;
-    noteStars(hubKid,1,`Learn 學習 · ${g.title} ${g.tz} · self-claimed 自己申報`);
+    store.addStars(hubKid,1,`Learn 學習 · ${g.title} ${g.tz} · self-claimed 自己申報`);
     saveProgress(); sWin(); burst(30); star();
     openLearn(key);
   };
@@ -2548,7 +2538,7 @@ function renderCaptain(){
     const k=KIDS[id], P=progress[id], done=Object.keys(dayState(id).done).length;
     return `<article class="gamecard" style="border-color:${k.raw}">
       <span class="gi">${k.av}</span><b>${k.name}</b>
-      <small>${done}/${DAY.length} blocks 格子 · ⭐ ${P.stars||0} · 📸 ${P.missions||0}</small>
+      <small>${done}/${DAY.length} blocks 格子 · ⭐ ${starsOf(id)} · 📸 ${P.missions||0}</small>
       <div class="progress" style="margin-top:10px"><div class="progress__fill" style="width:${done/DAY.length*100}%;background:${k.raw}"></div></div>
     </article>`;
   }).join("");
@@ -3209,7 +3199,7 @@ window.SQHost={
   keys:{build:buildKeyboard,highlight:highlightTarget,highlightSet:highlightSet,press:pressFx},
   fx:{flash:flash,burst:burst,burstAt:burstAt,bigFloat:bigFloat,wobbleMsg:wobbleMsg,hint:hint},
   rand:rand, shuffle:shuffle,
-  saveProgress:saveProgress, noteStars:noteStars,
+  saveProgress:saveProgress,
   stage:function(){return document.getElementById("stage");},
   mount:function(){return document.getElementById("stage");}
 };

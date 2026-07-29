@@ -529,21 +529,30 @@ try {
   }
 }
 
-// Star provenance: every local `stars` bump must name what earned it, or the
-// diff in sync.js has nothing to attach and the row lands in the "Unlabelled"
-// bucket. Checked as "a noteStars() call within 2 lines", which is how all
-// existing grant sites are written.
+// Stars are the ledger, never a stored counter (CLAUDE.md non-negotiable;
+// plan 2026-07-29-star-source-of-truth D7/D8). The previous gate keyed on
+// noteStars(), which that plan deleted — replaced rather than dropped, since a
+// gate that matches nothing is green forever while guarding nothing.
 {
-  const appLines = appScript.split("\n");
-  appLines.forEach((line, i) => {
-    if (!/progress\[[^\]]+\]\.stars\s*(\+=|=\s*\(?progress)/.test(line)) return;
-    const window = appLines.slice(i, i + 3).join("\n");
-    if (!window.includes("noteStars(")) {
-      fail("star provenance", `index.html line ~${i + 1} changes stars with no noteStars() reason`);
-    }
+  const syncJs = readFileSync(new URL("js/sync.js", root), "utf8");
+  if (/\.stars\b/.test(appScript)) {
+    fail("stars are a ledger", "index.html touches a .stars field — read store.starsFor(kid), award with store.addStars(kid, n, reason)");
+  }
+  if (/noteStars/.test(appScript)) {
+    fail("stars are a ledger", "noteStars() survived the migration to derived stars");
+  }
+  if (/UNLABELLED|App progress/.test(syncJs)) {
+    fail("stars are a ledger", "sync.js still has an anonymous star bucket");
+  }
+  const grants = [...appScript.matchAll(/addStars\(([^)]*)\)/g)];
+  if (grants.length < 3) {
+    fail("stars are a ledger", `only ${grants.length} addStars call sites; the app has three ways to earn a star`);
+  }
+  grants.forEach(([, args]) => {
+    if (args.split(",").length < 3) fail("stars are a ledger", `addStars(${args}) passes no reason — the ledger would be unauditable`);
   });
-  if (/App progress/.test(readFileSync(new URL("js/sync.js", root), "utf8"))) {
-    fail("star provenance", "sync.js still has the anonymous 'App progress' bucket");
+  if (!/starsFor\s*\(/.test(syncJs)) {
+    fail("stars are a ledger", "sync.js has no starsFor() — nothing derives the displayed total");
   }
 }
 
