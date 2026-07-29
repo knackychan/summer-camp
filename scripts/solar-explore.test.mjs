@@ -13,6 +13,8 @@ test("solar module exports the expected contract without touching vendor files",
   assert.equal(solar.hitRadius(0.3), 0.9);
   assert.equal(solar.hitRadius(0.5), 1.25);
   assert.equal(solar.hitRadius(1.2), 3.0);
+  assert.equal(solar.satelliteSafeHitRadius(1.2, 0), 3.0);
+  assert.ok(Math.abs(solar.satelliteSafeHitRadius(1.2, 1.7) - 1.55) < 1e-9);
 
   /* angleAt for Earth at 365 days gives exactly 2π (full turn) */
   assert.ok(typeof solar.angleAt === "function");

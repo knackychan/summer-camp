@@ -520,23 +520,12 @@
   }
 
   function boardCell(kid,i){
-    var displayIdx=blockAtSlot(kid,i);
     var eff=SQTime.resolveOverrides(overridesRaw,kid);
-    var timed=SQTime.effMins(DAY,eff,displayIdx)!=null;
-    var removed=passFor(kid,displayIdx,"outing");
-    return '<div class="cell '+cellStateClass(kid,displayIdx)+'" data-kid="'+kid+'" data-slot="'+i+'" data-block="'+displayIdx+'" data-movable="'+(timed&&!removed?"true":"false")+'" draggable="false">'+
-      boardCellInner(kid,i,displayIdx)+
+    var timed=SQTime.effMins(DAY,eff,i)!=null;
+    var removed=passFor(kid,i,"outing");
+    return '<div class="cell '+cellStateClass(kid,i)+'" data-kid="'+kid+'" data-slot="'+i+'" data-block="'+i+'" data-movable="'+(timed&&!removed?"true":"false")+'" draggable="false">'+
+      boardCellInner(kid,i,i)+
     '</div>';
-  }
-
-  function blockAtSlot(kid,slotIdx){
-    var slotTime=SQTime.effMins(DAY,scopeEff(),slotIdx);
-    if(slotTime==null)return slotIdx;
-    var eff=SQTime.resolveOverrides(overridesRaw,kid);
-    var found=SQTime.timedOrder(DAY,eff).find(function(x){
-      return x.t===slotTime&&!passFor(kid,x.i,"outing");
-    });
-    return found?found.i:slotIdx;
   }
 
   function cellStateClass(kid,i){
@@ -550,14 +539,14 @@
 
   function boardCellInner(kid,i,displayIdx){
     var b=effectiveBlock(kid,displayIdx), eff=SQTime.resolveOverrides(overridesRaw,kid);
-    var mins=SQTime.effMins(DAY,eff,displayIdx), timed=mins!=null;
+    var mins=SQTime.effMins(DAY,eff,i), timed=mins!=null;
     var info=SQTime.timelineInfo(DAY,eff,SQ_DAY.nowMins());
-    var moved=(overridesRaw[kid]||{})[displayIdx]!=null;
+    var moved=(overridesRaw[kid]||{})[i]!=null;
     var replaced=replacementSource(kid,displayIdx)!=null;
-    var removed=passFor(kid,displayIdx,"outing");
-    var done=tickFor(kid,displayIdx);
-    var redo=rows.redos.some(function(r){return r.kid_id===kid&&r.block_idx===displayIdx;});
-    var isNow=displayIdx===info.current;
+    var removed=passFor(kid,i,"outing");
+    var done=tickFor(kid,i);
+    var redo=rows.redos.some(function(r){return r.kid_id===kid&&r.block_idx===i;});
+    var isNow=i===info.current;
     var isLate=timed&&mins<info.now&&!done&&!removed;
     var statusTag="";
     if(done)statusTag='<span class="tag tag--done">Accepted</span>';
@@ -569,14 +558,14 @@
 
     var actions="";
     if(done){
-      actions='<button class="btn btn--sm" data-unaccept="'+kid+':'+displayIdx+'">Undo</button><button class="btn btn--sm btn--danger" data-sendback="'+kid+':'+displayIdx+'">Send back</button>';
+      actions='<button class="btn btn--sm" data-unaccept="'+kid+':'+i+'">Undo</button><button class="btn btn--sm btn--danger" data-sendback="'+kid+':'+i+'">Send back</button>';
     }else if(removed){
-      var pass=rows.passes.find(function(p){return p.kid_id===kid&&p.day===today&&p.block_idx===displayIdx&&p.status==="granted";});
-      if(pass)actions='<button class="btn btn--sm" data-addback="'+pass.id+':'+kid+':'+displayIdx+':'+(pass.credited?1:0)+'">Add back</button>';
+      var pass=rows.passes.find(function(p){return p.kid_id===kid&&p.day===today&&p.block_idx===i&&p.status==="granted";});
+      if(pass)actions='<button class="btn btn--sm" data-addback="'+pass.id+':'+kid+':'+i+':'+(pass.credited?1:0)+'">Add back</button>';
     }else{
-      actions='<button class="btn btn--sm btn--primary" data-accept="'+kid+':'+displayIdx+'">Accept</button><button class="btn btn--sm" data-removeblock="'+kid+':'+displayIdx+'">Remove</button>';
+      actions='<button class="btn btn--sm btn--primary" data-accept="'+kid+':'+i+'">Accept</button><button class="btn btn--sm" data-removeblock="'+kid+':'+i+'">Remove</button>';
     }
-    actions+='<button class="btn btn--sm" data-replaceblock="'+kid+':'+displayIdx+'" title="Replace this block">Replace</button>';
+    actions+='<button class="btn btn--sm" data-replaceblock="'+kid+':'+i+'" title="Replace this block">Replace</button>';
 
     /* The kid chip is hidden on the wide grid (the column header names them) but
        shown once the board stacks to one column, where a bare cell is otherwise

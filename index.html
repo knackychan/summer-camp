@@ -3092,6 +3092,7 @@ function setupRealtime(){
   addEventListener("focus",refreshAllStars);
   addEventListener("online",refreshAllStars);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshAllStars();});
+  setInterval(()=>{if(!document.hidden)refreshAllStars();},15000);
   store.onAsks(row=>{
     if(!row||row.kid_id!==hubKid)return;
     updateAskBadge();

@@ -22,6 +22,11 @@ PLANETS.forEach(function (p) { AVAILABLE_PHOTOS[p.photo] = true; });
 /* ====== Pure helpers (exported for testing) ====== */
 
 export function hitRadius(size) { return Math.max(2.5 * size, 0.9); }
+export function satelliteSafeHitRadius(size, nearestOrbit) {
+  var r = hitRadius(size);
+  if (!(nearestOrbit > 0) || r < nearestOrbit) return r;
+  return Math.max(size * 1.2, nearestOrbit - 0.15);
+}
 export function angleAt(body, totalDays) { return (totalDays / body.yearDays) * Math.PI * 2; }
 export function focusDistance(id, size) { return id === "sun" ? 18 : Math.max(7, Math.min(24, size * 8)); }
 export function bodyOpacity(bodyId, focusId) {
@@ -555,6 +560,14 @@ export default {
       var or = SCENE.orbits[p.id];
       var sz = SCENE.sizes[p.id];
       var sa = startAngles[pi] * Math.PI * 2;
+      var planetSats = SATELLITES[p.id];
+      var nearestSatOrbit = 0;
+      if (planetSats) {
+        planetSats.forEach(function (sat) {
+          var cfg = SCENE.sats[sat.id];
+          if (cfg && (!nearestSatOrbit || cfg.orbit < nearestSatOrbit)) nearestSatOrbit = cfg.orbit;
+        });
+      }
       group.position.set(Math.cos(sa) * or, 0, Math.sin(sa) * or);
 
       var mat = new THREE.MeshLambertMaterial({ color: p.color, transparent: true, opacity: 1 });
@@ -583,7 +596,7 @@ export default {
         function () {}
       );
 
-      var hitR = hitRadius(sz);
+      var hitR = satelliteSafeHitRadius(sz, nearestSatOrbit);
       if (p.id === "earth") hitR = hitR * 0.55;
       var hitMesh = new THREE.Mesh(
         new THREE.SphereGeometry(hitR, 12, 8),
@@ -634,7 +647,6 @@ export default {
         };
       }
 
-      var planetSats = SATELLITES[p.id];
       if (planetSats) {
         R.satBodies = R.satBodies || [];
         planetSats.forEach(function (sat) {
