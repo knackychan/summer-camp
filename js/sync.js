@@ -204,6 +204,7 @@
          re-baseline over ops that had not been sent yet. */
       addEventListener("online",()=>this.flush().then(()=>this.hydrate()).catch(()=>{}));
       this.flushTimer=setInterval(()=>this.flush(),30000);
+      if(this.flushTimer&&this.flushTimer.unref)this.flushTimer.unref();
       this.flush();
     }
 
@@ -603,7 +604,7 @@
     onBrainDone(cb){
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`brain-${Date.now()}`)
-        .on("postgres_changes",{event:"*",schema:"public",table:"brain_done"},p=>cb(p.new||p.old))
+        .on("postgres_changes",{event:"*",schema:"public",table:"brain_done"},p=>cb(p.new||p.old,p.eventType))
         .subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }

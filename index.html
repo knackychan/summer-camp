@@ -3128,6 +3128,21 @@ function setupRealtime(){
     if(hubKid&&!document.getElementById("hub").classList.contains("hidden"))renderHub();
     refreshAppLock();
   });
+  store.onBrainDone((row,eventType)=>{
+    if(!row||row.day!==todayStr()||!progress[row.kid_id])return;
+    brainToday(row.kid_id);
+    if(eventType==="DELETE"){
+      delete progress[row.kid_id].brain.done[row.game_id];
+      progress[row.kid_id].brain.starred=false;
+    }else{
+      progress[row.kid_id].brain.done[row.game_id]={score:row.score||0,ms:row.ms||0};
+    }
+    if(store.persistLocal)store.persistLocal();
+    if(row.kid_id!==hubKid)return;
+    if(hubTab==="day")renderMyDay();
+    else if(hubTab==="games")renderHub();
+    refreshLockUI();
+  });
   store.onHelpClaims(async row=>{
     if(!row||hubKid!=="luis")return;
     await store.hydrate();
@@ -3153,6 +3168,11 @@ function restoreAppPlace(){
     return;
   }
   hubTab=tabs[hashTab]?hashTab:(tabs[savedTab]?savedTab:"day");
+  if(!brainGate(savedKid).open){
+    hubTab="day";
+    openHub(savedKid);
+    return;
+  }
   if(savedView==="act"){
     hubKid=savedKid; refreshOverrides();
     const raw=localStorage.getItem("sq:actIdx");

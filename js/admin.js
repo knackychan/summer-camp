@@ -1800,6 +1800,7 @@
         return '<button class="chip" aria-pressed="'+(on?"true":"false")+'" data-braintier="'+kid+':'+t[0]+'">'+t[1]+'</button>';
       }).join("")+'</div>'+
       '<p class="field__hint" style="margin-top:9px">Off skips the daily-3 gate — games are free to play. Difficulty applies only while Brain Gym is required.</p>'+
+      '<button class="btn btn--sm btn--danger" data-resetbrain="'+kid+'" style="margin-top:10px">Reset today\'s Brain Gym</button>'+
       '<div class="grid-2" style="margin-top:18px">'+
       '<label class="field"><span class="lbl">Kid PIN</span><input class="inp num" id="pin-'+kid+'" inputmode="numeric" maxlength="4" value="'+esc(pin||"")+'" placeholder="optional" autocomplete="off"><span class="field__hint">4 digits · used to open profile on tablet.</span></label>'+
       '<label class="field"><span class="lbl">Last seen</span><input class="inp" value="'+lastSeen+'" readonly><span class="field__hint">Derived from day_ticks.</span></label></div>'+
@@ -1846,7 +1847,26 @@
       toast(kidName(id)+" Brain Gym difficulty: "+tier,true);
       await loadAll();
     };});
+    document.querySelectorAll("[data-resetbrain]").forEach(function(b){b.onclick=function(){resetBrainDay(b.dataset.resetbrain);};});
     document.querySelectorAll("[data-savepin]").forEach(function(b){b.onclick=function(){savePin(b.dataset.savepin,false);};});
+  }
+
+  async function resetBrainDay(kid){
+    if(!confirm("Reset today's Brain Gym for "+kidName(kid)+"?"))return;
+    const ledger=await client.from("stars_ledger").select("delta,reason")
+      .eq("kid_id",kid).ilike("reason","%Brain Gym%"+today+"%");
+    if(ledger.error){writeFailed(ledger.error);return;}
+    var net=(ledger.data||[]).reduce(function(s,r){return s+(r.delta||0);},0);
+    suppressRealtime("family_settings",{key:"braingate_"+kid});
+    const results=await Promise.all([
+      client.from("brain_done").delete().eq("kid_id",kid).eq("day",today),
+      client.from("family_settings").upsert({key:"braingate_"+kid,value:"",updated_at:new Date().toISOString()}),
+      net>0?client.from("stars_ledger").insert({kid_id:kid,delta:-net,reason:"Brain Gym day reset · "+today,source:"admin",granted_by:session.user.id}):Promise.resolve({error:null})
+    ]);
+    const failed=results.find(function(r){return r.error;});
+    if(failed){writeFailed(failed.error);return;}
+    toast(kidName(kid)+" Brain Gym reset for today",true);
+    await loadAll();
   }
 
   async function savePin(id,clear){

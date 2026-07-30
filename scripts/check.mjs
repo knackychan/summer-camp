@@ -572,6 +572,18 @@ if (!indexHtml.includes('reason==="brain"')) {
 if (!indexHtml.includes("brainNudge")) {
   fail("brain gate", "day tab missing the Brain Gym prompt — kids would never see the routine");
 }
+if (!indexHtml.includes("onBrainDone")) {
+  fail("brain gate", "kid app is not subscribed to brain_done realtime updates");
+}
+if (!/!brainGate\(savedKid\)\.open/.test(indexHtml)) {
+  fail("brain gate", "app restore can skip My Day while today's Brain Gym is pending");
+}
+{
+  const adminJs = readFileSync(new URL("js/admin.js", root), "utf8");
+  if (!adminJs.includes("data-resetbrain") || !adminJs.includes('from("brain_done").delete()')) {
+    fail("brain gate", "admin is missing the per-kid Brain Gym day reset");
+  }
+}
 // the gate hides the rest of the row; hiding the brain games too would deadlock the kid
 if (!indexHtml.includes(".brainlocked #gameRow .gamecard:not(.brain)")) {
   fail("brain gate", "brain games are not exempt from the locked-row rule");
