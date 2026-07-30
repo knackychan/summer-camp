@@ -1803,6 +1803,7 @@
         return '<button class="chip" aria-pressed="'+(on?"true":"false")+'" data-braintier="'+kid+':'+t[0]+'">'+t[1]+'</button>';
       }).join("")+'</div>'+
       '<p class="field__hint" style="margin-top:9px">Off skips the daily-3 gate — games are free to play. Difficulty applies only while Brain Gym is required.</p>'+
+      '<p class="field__hint" style="margin-top:9px"><b>Status:</b> '+(brainIsEnabled(fs,kid)?"Required daily":"Off")+' (stored '+esc(fs["brain_enabled_"+kid]||"default")+')</p>'+
       '<div class="vrow" style="margin-top:10px;justify-content:flex-start">'+
       '<button class="btn btn--sm '+(brainIsEnabled(fs,kid)?"":"btn--primary")+'" data-brainenabled="'+kid+'" data-enabled="'+(brainIsEnabled(fs,kid)?1:0)+'">'+(brainIsEnabled(fs,kid)?"Turn off Brain Gym":"Require Brain Gym")+'</button>'+
       '<button class="btn btn--sm btn--danger" data-resetbrain="'+kid+'">Reset today\'s Brain Gym</button></div>'+
@@ -1866,11 +1867,12 @@
     const results=await Promise.all([
       client.from("brain_done").delete().eq("kid_id",kid).eq("day",today),
       client.from("family_settings").upsert({key:"braingate_"+kid,value:"",updated_at:new Date().toISOString()}),
+      client.from("family_settings").upsert({key:"brain_enabled_"+kid,value:"1",updated_at:new Date().toISOString()}),
       net>0?client.from("stars_ledger").insert({kid_id:kid,delta:-net,reason:"Brain Gym day reset · "+today,source:"admin",granted_by:session.user.id}):Promise.resolve({error:null})
     ]);
     const failed=results.find(function(r){return r.error;});
     if(failed){writeFailed(failed.error);return;}
-    toast(kidName(kid)+" Brain Gym reset for today",true);
+    toast(kidName(kid)+" Brain Gym reset and required today",true);
     await loadAll();
   }
 
