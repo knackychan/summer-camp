@@ -48,6 +48,7 @@
   let browserNotifyEnabled=localStorage.getItem("sq-admin-notify")==="1";
   const silentRealtime=new Map();
   let currentRoute="today";
+  let activeKidDetail=null;
 
   const CHAT_KEY="sq-admin-chat-filters";
   const CHAT_TYPES=[
@@ -1765,11 +1766,14 @@
     document.querySelectorAll("[data-kiddetail]").forEach(function(b){
       b.onclick=function(){renderKidDetail(b.dataset.kiddetail);};
     });
+    if(activeKidDetail&&KIDS[activeKidDetail])renderKidDetail(activeKidDetail,{quiet:true});
   }
 
-  function renderKidDetail(kid){
+  function renderKidDetail(kid,opts){
+    opts=opts||{};
     var el=$("kidDetail");
     if(!el)return;
+    activeKidDetail=kid;
     var k=KIDS[kid];
     var fs=Object.fromEntries(rows.familySettings.map(function(r){return [r.key,r.value];}));
     var paused=(fs["applock_"+kid]||"")!=="";
@@ -1794,20 +1798,21 @@
       '<p class="field__hint" style="margin-top:9px">My Day, guides, Learn and the ask channel stay open in every state except a full pause.</p>'+
       '<span class="lbl" style="display:block;margin:18px 0 8px">Brain Gym</span>'+
       '<div class="chips">'+
-      '<button class="chip" aria-pressed="'+(brainIsEnabled(fs,kid)?"true":"false")+'" data-brainenabled="'+kid+'" data-enabled="'+(brainIsEnabled(fs,kid)?1:0)+'">'+(brainIsEnabled(fs,kid)?"Required daily":"Off")+'</button>'+
       BRAIN_TIERS.map(function(t){
         var on=brainTierValue(fs,kid)===t[0];
         return '<button class="chip" aria-pressed="'+(on?"true":"false")+'" data-braintier="'+kid+':'+t[0]+'">'+t[1]+'</button>';
       }).join("")+'</div>'+
       '<p class="field__hint" style="margin-top:9px">Off skips the daily-3 gate — games are free to play. Difficulty applies only while Brain Gym is required.</p>'+
-      '<button class="btn btn--sm btn--danger" data-resetbrain="'+kid+'" style="margin-top:10px">Reset today\'s Brain Gym</button>'+
+      '<div class="vrow" style="margin-top:10px;justify-content:flex-start">'+
+      '<button class="btn btn--sm '+(brainIsEnabled(fs,kid)?"":"btn--primary")+'" data-brainenabled="'+kid+'" data-enabled="'+(brainIsEnabled(fs,kid)?1:0)+'">'+(brainIsEnabled(fs,kid)?"Turn off Brain Gym":"Require Brain Gym")+'</button>'+
+      '<button class="btn btn--sm btn--danger" data-resetbrain="'+kid+'">Reset today\'s Brain Gym</button></div>'+
       '<div class="grid-2" style="margin-top:18px">'+
       '<label class="field"><span class="lbl">Kid PIN</span><input class="inp num" id="pin-'+kid+'" inputmode="numeric" maxlength="4" value="'+esc(pin||"")+'" placeholder="optional" autocomplete="off"><span class="field__hint">4 digits · used to open profile on tablet.</span></label>'+
       '<label class="field"><span class="lbl">Last seen</span><input class="inp" value="'+lastSeen+'" readonly><span class="field__hint">Derived from day_ticks.</span></label></div>'+
       '<button class="btn btn--primary" data-savepin="'+kid+'">Save changes</button>'+
       '<p class="message pin-message '+(feedback.type==="ok"?"message--ok":feedback.type==="error"?"message--error":"")+'" id="pinmsg-'+kid+'" aria-live="polite">'+(feedback.text||"")+'</p>'+
     '</div>';
-    el.scrollIntoView({behavior:"smooth"});
+    if(!opts.quiet)el.scrollIntoView({behavior:"smooth"});
     bindKidDetailActions();
   }
 
