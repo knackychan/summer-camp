@@ -10,6 +10,7 @@ bottom, mission prompt at top, and rolling cars already moving in view.
 FORM: Existing Summer Quest arcade extension; no new visual identity. */
 
 var R = null;
+var initToken = 0;
 
 export var meta = {
   icon: "\ud83d\udede\ufe0f",
@@ -33,6 +34,12 @@ function wrapAngle(a) {
   return a;
 }
 function lerp(a, b, t) { return a + (b - a) * t; }
+
+function orientVehicle(mesh, heading, pitch, roll) {
+  mesh.rotation.set(0, -heading, 0);
+  mesh.rotateZ(-pitch);
+  mesh.rotateX(roll);
+}
 
 function groundHeight(x, z) {
   var h = 0;
@@ -127,7 +134,6 @@ function makeTruck(THREE, mats) {
     wheel.rotation.x = Math.PI / 2;
     wheel.position.set(o[0], 0.7, o[1]);
     var hub = cylinder(THREE, 0.28, 0.28, 0.62, 8, hubMat);
-    hub.rotation.x = Math.PI / 2;
     wheel.add(hub);
     truck.userData.wheels.push(wheel);
     truck.add(addShadow(wheel));
@@ -362,8 +368,8 @@ function updateCars(dt) {
     var toTruck = Math.hypot(R.truck.x - car.x, R.truck.z - car.z);
     if (toTruck < 7) {
       car.targetH = Math.atan2(car.z - R.truck.z, car.x - R.truck.x);
-      car.speed = lerp(car.speed, 6.2, 0.02);
-    } else if (Math.random() < 0.018) {
+      car.speed = lerp(car.speed, 6.2, 1 - Math.pow(0.98, dt * 60));
+    } else if (Math.random() < 1 - Math.pow(1 - 0.018, dt * 60)) {
       car.targetH += rand(-0.9, 0.9);
       car.speed = rand(3.0, 5.8);
     }
@@ -377,7 +383,7 @@ function updateCars(dt) {
     car.z = clamp(car.z, -HALF + 2.2, HALF - 2.2);
     var gy = groundHeight(car.x, car.z);
     car.mesh.position.set(car.x, gy + 0.05, car.z);
-    car.mesh.rotation.set(groundPitch(car.x, car.z, car.h) * 0.35, -car.h + Math.PI / 2, groundRoll(car.x, car.z, car.h) * 0.35);
+    orientVehicle(car.mesh, car.h, groundPitch(car.x, car.z, car.h) * 0.35, groundRoll(car.x, car.z, car.h) * 0.35);
 
     var dx = R.truck.x - car.x, dz = R.truck.z - car.z;
     var dist = Math.hypot(dx, dz);
@@ -436,13 +442,12 @@ function updateDebris(dt) {
 function updateTruck(dt) {
   var k = R.keys;
   var truck = R.truck;
-  var accel = k.g ? 18 : 0;
-  var brake = k.b ? -14 : 0;
-  truck.v += (accel + brake) * dt;
+  var drive = (k.g ? 1 : 0) - (k.b ? 1 : 0);
+  truck.v += (drive > 0 ? 18 : drive < 0 ? -14 : 0) * dt;
   truck.v *= Math.pow(0.48, dt);
   truck.v = clamp(truck.v, -9, 18);
 
-  var steer = (k.l ? 1 : 0) - (k.r ? 1 : 0);
+  var steer = (k.r ? 1 : 0) - (k.l ? 1 : 0);
   var steerPower = 1.8 * (0.35 + Math.min(Math.abs(truck.v) / 12, 1) * 0.65);
   truck.h += steer * steerPower * dt * (truck.v >= 0 ? 1 : -1);
 
@@ -488,11 +493,14 @@ function updateTruck(dt) {
   }
 
   truck.mesh.position.set(truck.x, truck.y + 0.12, truck.z);
-  truck.mesh.rotation.y = -truck.h + Math.PI / 2;
-  truck.mesh.rotation.x = groundPitch(truck.x, truck.z, truck.h) + clamp(-truck.vy * 0.025, -0.18, 0.18);
-  truck.mesh.rotation.z = groundRoll(truck.x, truck.z, truck.h) + steer * 0.08;
+  orientVehicle(
+    truck.mesh,
+    truck.h,
+    groundPitch(truck.x, truck.z, truck.h) + clamp(-truck.vy * 0.025, -0.18, 0.18),
+    groundRoll(truck.x, truck.z, truck.h) + steer * 0.08
+  );
   for (var i = 0; i < truck.mesh.userData.wheels.length; i++) {
-    truck.mesh.userData.wheels[i].rotation.y += truck.v * dt * 1.8;
+    truck.mesh.userData.wheels[i].rotateY(truck.v * dt * 1.8);
   }
 }
 
@@ -527,20 +535,38 @@ function tick() {
 function hold(id, key) {
   var el = R.ui.querySelector("#" + id);
   if (!el) return;
+  var pointerId = null;
   var down = function (e) {
     e.preventDefault();
+    if (pointerId !== null) return;
+    pointerId = e.pointerId;
+    if (el.setPointerCapture) {
+      try { el.setPointerCapture(pointerId); } catch (err) {}
+    }
     R.keys[key] = true;
     el.classList.add("is-down");
   };
-  var up = function () {
+  var up = function (e) {
+    if (e && pointerId !== null && e.pointerId !== pointerId) return;
+    pointerId = null;
     R.keys[key] = false;
     el.classList.remove("is-down");
   };
   el.addEventListener("pointerdown", down);
   el.addEventListener("pointerup", up);
   el.addEventListener("pointercancel", up);
-  el.addEventListener("pointerout", up);
-  R.listeners.push([el, "pointerdown", down], [el, "pointerup", up], [el, "pointercancel", up], [el, "pointerout", up]);
+  el.addEventListener("lostpointercapture", up);
+  R.listeners.push([el, "pointerdown", down], [el, "pointerup", up], [el, "pointercancel", up], [el, "lostpointercapture", up]);
+  R.controlReleases.push(up);
+}
+
+function releaseControls() {
+  if (!R) return;
+  for (var i = 0; i < R.controlReleases.length; i++) R.controlReleases[i]();
+  R.keys.l = R.keys.r = R.keys.g = R.keys.b = false;
+  if (R.ui) {
+    R.ui.querySelectorAll(".mt-btn.is-down").forEach(function (el) { el.classList.remove("is-down"); });
+  }
 }
 
 function bindKeys() {
@@ -566,7 +592,7 @@ function buildUi() {
   ui.innerHTML =
     '<div class="mt-prompt">Crush cars and jump! \u58d3\u8eca\u548c\u98db\u8d8a\u5c0f\u5c71!</div>' +
     '<div class="mt-air-pop" aria-live="polite">BIG AIR<br><span>\u5927\u98db\u8e8d</span></div>' +
-    '<div class="mt-controls" aria-label="Monster truck controls">' +
+    '<div class="mt-controls" aria-label="Monster truck controls 怪獸卡車控制">' +
       '<div class="mt-left">' +
         '<button id="mtLeft" class="mt-btn" title="Left \u5de6" aria-label="Left \u5de6">\u25c0</button>' +
         '<button id="mtRight" class="mt-btn" title="Right \u53f3" aria-label="Right \u53f3">\u25b6</button>' +
@@ -597,6 +623,7 @@ function disposeScene(scene) {
 function onVisibility() {
   if (!R) return;
   if (document.hidden) {
+    releaseControls();
     if (R.raf) { cancelAnimationFrame(R.raf); R.raf = null; }
   } else if (!R.raf) {
     if (R.timer) R.timer.reset();
@@ -698,6 +725,7 @@ var MT_CSS = [
   ".mt-btn--gas{width:94px;height:82px;background:rgba(255,201,60,.94);color:#1C1436;border-color:#FFF1A8}",
   ".mt-btn--back{background:rgba(21,24,33,.88);border-color:#7F8BA3;color:#fff}",
   ".mt-btn.is-down,.mt-btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.26)}",
+  ".mt-btn:focus-visible{outline:4px solid #fff;outline-offset:3px}",
   "@media (max-width:620px){.mt-btn{width:58px;height:58px;font-size:24px}.mt-btn--drive{width:76px;height:66px;font-size:14px}.mt-btn--drive strong{font-size:20px}.mt-btn--drive span{font-size:15px}.mt-btn--gas{width:82px;height:72px}.mt-left,.mt-right{gap:8px}.mt-controls{left:8px;right:8px;bottom:8px}.mt-air-pop{min-width:190px;font-size:31px}.mt-air-pop span{font-size:21px}}"
 ].join("\n");
 
@@ -708,7 +736,9 @@ export default {
   bestKey: "monster_truck",
 
   async init(ctx) {
+    var token = ++initToken;
     var THREE = await import("../vendor/three.module.min.js");
+    if (token !== initToken) return;
     var mount = ctx.mount;
     if (!mount.style.position || mount.style.position === "static") {
       mount.style.position = "relative";
@@ -725,6 +755,7 @@ export default {
       airborne: false,
       airPeak: 0,
       listeners: [],
+      controlReleases: [],
       root: document.createElement("div"),
       styleNode: addStyle(MT_CSS),
       timer: new THREE.Timer()
@@ -741,6 +772,8 @@ export default {
     hold("mtGas", "g");
     hold("mtBack", "b");
     bindKeys();
+    R.blur = releaseControls;
+    addEventListener("blur", R.blur);
     document.addEventListener("visibilitychange", onVisibility);
 
     if (ctx.sayPair) ctx.sayPair("Crush cars and jump!", "\u58d3\u8eca\u548c\u98db\u8d8a\u5c0f\u5c71!");
@@ -749,11 +782,14 @@ export default {
   },
 
   stop: function () {
+    initToken++;
     if (!R) return;
     R.running = false;
+    releaseControls();
     if (R.raf) { cancelAnimationFrame(R.raf); R.raf = null; }
     if (R.keydown) removeEventListener("keydown", R.keydown);
     if (R.keyup) removeEventListener("keyup", R.keyup);
+    if (R.blur) removeEventListener("blur", R.blur);
     document.removeEventListener("visibilitychange", onVisibility);
     for (var i = 0; i < R.listeners.length; i++) {
       var l = R.listeners[i];
