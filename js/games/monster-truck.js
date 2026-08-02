@@ -318,6 +318,18 @@ function crushCar(car) {
   car.mesh.visible = false;
 }
 
+function showBigAir() {
+  if (!R.airPop) return;
+  R.airPop.classList.remove("is-show");
+  R.airPop.offsetWidth;
+  R.airPop.classList.add("is-show");
+  clearTimeout(R.airPopTimer);
+  R.airPopTimer = setTimeout(function () {
+    if (R && R.airPop) R.airPop.classList.remove("is-show");
+  }, 900);
+  if (R.ctx && R.ctx.sfx && R.ctx.sfx.good) R.ctx.sfx.good();
+}
+
 function resetCar(car) {
   car.x = rand(-16, 16);
   car.z = rand(-15, 15);
@@ -455,13 +467,24 @@ function updateTruck(dt) {
   }
   truck.vy -= 16 * dt;
   truck.y += truck.vy * dt;
+  if (truck.y > g + 0.35) {
+    R.airborne = true;
+    R.airPeak = Math.max(R.airPeak || 0, truck.y - g);
+  }
   if (truck.y <= g) {
+    var bigAir = R.airborne && ((R.airPeak || 0) > 1.15 || truck.vy < -5.4);
     if (truck.vy < -4.5) {
       addArenaDust(truck.x, truck.z, 8, 0xB77B3A);
       if (R.ctx && R.ctx.sfx) R.ctx.sfx.hit();
     }
+    if (bigAir) {
+      addArenaDust(truck.x, truck.z, 16, 0xFFC93C);
+      showBigAir();
+    }
     truck.y = g;
     truck.vy = Math.max(0, truck.vy * -0.18);
+    R.airborne = false;
+    R.airPeak = 0;
   }
 
   truck.mesh.position.set(truck.x, truck.y + 0.12, truck.z);
@@ -477,9 +500,15 @@ function updateCamera(dt) {
   var THREE = R.THREE;
   var back = new THREE.Vector3(-Math.cos(R.truck.h) * 9, 6.2, -Math.sin(R.truck.h) * 9);
   var target = new THREE.Vector3(R.truck.x, R.truck.y + 1.6, R.truck.z);
+  var lookAhead = clamp(R.truck.v / 18, 0, 1) * 4.2;
+  var focus = new THREE.Vector3(
+    R.truck.x + Math.cos(R.truck.h) * lookAhead,
+    R.truck.y + 1.7,
+    R.truck.z + Math.sin(R.truck.h) * lookAhead
+  );
   var desired = target.clone().add(back);
   R.camera.position.lerp(desired, 1 - Math.pow(0.03, dt));
-  R.camera.lookAt(target);
+  R.camera.lookAt(focus);
 }
 
 function tick() {
@@ -536,16 +565,18 @@ function buildUi() {
   ui.className = "mt-ui";
   ui.innerHTML =
     '<div class="mt-prompt">Crush cars and jump! \u58d3\u8eca\u548c\u98db\u8d8a\u5c0f\u5c71!</div>' +
+    '<div class="mt-air-pop" aria-live="polite">BIG AIR<br><span>\u5927\u98db\u8e8d</span></div>' +
     '<div class="mt-controls" aria-label="Monster truck controls">' +
       '<div class="mt-left">' +
         '<button id="mtLeft" class="mt-btn" title="Left \u5de6" aria-label="Left \u5de6">\u25c0</button>' +
         '<button id="mtRight" class="mt-btn" title="Right \u53f3" aria-label="Right \u53f3">\u25b6</button>' +
       '</div>' +
       '<div class="mt-right">' +
-        '<button id="mtBack" class="mt-btn mt-btn--back" title="Reverse \u5f8c\u9000" aria-label="Reverse \u5f8c\u9000">\u25bc</button>' +
-        '<button id="mtGas" class="mt-btn mt-btn--gas" title="Gas \u6cb9\u9580" aria-label="Gas \u6cb9\u9580">\u26a1</button>' +
+        '<button id="mtBack" class="mt-btn mt-btn--drive mt-btn--back" title="BACK \u5f8c\u9000" aria-label="BACK \u5f8c\u9000"><strong>BACK</strong><span>\u5f8c\u9000</span></button>' +
+        '<button id="mtGas" class="mt-btn mt-btn--drive mt-btn--gas" title="GO \u524d\u9032" aria-label="GO \u524d\u9032"><strong>GO</strong><span>\u524d\u9032</span></button>' +
       '</div>' +
     '</div>';
+  R.airPop = ui.querySelector(".mt-air-pop");
   return ui;
 }
 
@@ -655,13 +686,19 @@ var MT_CSS = [
   ".mt-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}",
   ".mt-ui{position:absolute;inset:0;z-index:2;pointer-events:none;font-family:'Fredoka',system-ui,sans-serif}",
   ".mt-prompt{position:absolute;top:8px;left:50%;transform:translateX(-50%);max-width:92%;background:rgba(28,20,54,.78);color:#F7F4FF;border:2px solid #FFC93C;border-radius:12px;padding:7px 12px;font-weight:700;font-size:17px;text-align:center;white-space:normal;box-shadow:0 8px 20px rgba(0,0,0,.18)}",
+  ".mt-air-pop{position:absolute;top:46%;left:50%;transform:translate(-50%,-50%) scale(.72);min-width:220px;padding:12px 18px;border:3px solid #FFF1A8;border-radius:16px;background:rgba(28,20,54,.86);color:#FFC93C;text-align:center;font-weight:900;font-size:38px;line-height:.92;letter-spacing:0;opacity:0;filter:drop-shadow(0 8px 0 rgba(0,0,0,.24));transition:opacity .16s ease,transform .34s cubic-bezier(.16,1,.3,1);will-change:transform,opacity}",
+  ".mt-air-pop span{display:block;margin-top:7px;color:#fff;font-size:24px;line-height:1}",
+  ".mt-air-pop.is-show{opacity:1;transform:translate(-50%,-50%) scale(1)}",
   ".mt-controls{position:absolute;left:10px;right:10px;bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}",
   ".mt-left,.mt-right{display:flex;gap:10px;align-items:flex-end}",
   ".mt-btn{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.7);background:rgba(28,20,54,.62);color:#fff;font-family:'Fredoka',system-ui,sans-serif;font-weight:800;font-size:28px;display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none;box-shadow:0 6px 0 rgba(0,0,0,.26);user-select:none;-webkit-tap-highlight-color:transparent}",
-  ".mt-btn--gas{width:78px;height:78px;background:rgba(255,201,60,.92);color:#1C1436;border-color:#FFF1A8;font-size:34px}",
-  ".mt-btn--back{background:rgba(78,168,255,.7);border-color:#BDEBFF}",
+  ".mt-btn--drive{width:88px;height:76px;border-radius:18px;flex-direction:column;gap:2px;font-size:16px;line-height:1}",
+  ".mt-btn--drive strong{font-size:24px;line-height:1}",
+  ".mt-btn--drive span{font-size:17px;line-height:1}",
+  ".mt-btn--gas{width:94px;height:82px;background:rgba(255,201,60,.94);color:#1C1436;border-color:#FFF1A8}",
+  ".mt-btn--back{background:rgba(21,24,33,.88);border-color:#7F8BA3;color:#fff}",
   ".mt-btn.is-down,.mt-btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.26)}",
-  "@media (max-width:620px){.mt-btn{width:58px;height:58px;font-size:24px}.mt-btn--gas{width:70px;height:70px;font-size:30px}.mt-left,.mt-right{gap:8px}.mt-controls{left:8px;right:8px;bottom:8px}}"
+  "@media (max-width:620px){.mt-btn{width:58px;height:58px;font-size:24px}.mt-btn--drive{width:76px;height:66px;font-size:14px}.mt-btn--drive strong{font-size:20px}.mt-btn--drive span{font-size:15px}.mt-btn--gas{width:82px;height:72px}.mt-left,.mt-right{gap:8px}.mt-controls{left:8px;right:8px;bottom:8px}.mt-air-pop{min-width:190px;font-size:31px}.mt-air-pop span{font-size:21px}}"
 ].join("\n");
 
 export default {
@@ -685,6 +722,8 @@ export default {
       score: 0,
       running: true,
       keys: { l: false, r: false, g: false, b: false },
+      airborne: false,
+      airPeak: 0,
       listeners: [],
       root: document.createElement("div"),
       styleNode: addStyle(MT_CSS),
@@ -721,6 +760,7 @@ export default {
       l[0].removeEventListener(l[1], l[2]);
     }
     if (R.ro) { R.ro.disconnect(); R.ro = null; }
+    if (R.airPopTimer) clearTimeout(R.airPopTimer);
     if (R.scene) disposeScene(R.scene);
     if (R.renderer) {
       R.renderer.dispose();
