@@ -247,6 +247,22 @@
       }
       this.adminPin=this.familySettings.admin_pin||"";
       saveJson("sq:adminPin",this.adminPin);
+
+      /* Papa started a new season (admin Settings → Start a new season). The
+         server is empty; this tablet still holds last season's progress, and
+         hydrate only ever ADDS server rows — vocab boxes, best scores and a
+         pending queue would all survive it and get pushed straight back. Drop
+         every local key and reload into a clean boot. The stamp is written
+         first, so the reload cannot loop. */
+      const resetStamp=this.familySettings.season_reset_at||"";
+      if(resetStamp&&loadJson("sq:seasonReset","")!==resetStamp){
+        saveJson("sq:seasonReset",resetStamp);
+        [STORAGE_KEY,QUEUE_KEY,"sq:kidPins","sq:adminPin","sq:famSettings",
+         "sq:redos","sq:dayOverrides","sq:serverStars"]
+          .forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+        if(typeof location!=="undefined"&&location.reload)location.reload();
+        return;
+      }
       if(Array.isArray(redos)){
         this.redos={};
         redos.forEach(r=>{(this.redos[r.kid_id]=this.redos[r.kid_id]||{})[r.block_idx]=r.note||"";});
@@ -497,10 +513,21 @@
            kid still earns stars in a clean local-only deploy. */
         this.serverStars[kid]=(this.serverStars[kid]||0)+delta;
         saveJson("sq:serverStars",this.serverStars);
+        this.announceStars(kid,delta,reason);
         return;
       }
       this.enqueue({type:"stars",kid,delta,reason});
+      /* after enqueue, before flush: starsFor() already counts it, so the
+         notification and the number a kid sees can never disagree */
+      this.announceStars(kid,delta,reason);
       await this.flush();
+    }
+    /* The one place every self-earned star passes through. index.html sets
+       onLocalStars to raise the toast — admin grants arrive over realtime
+       instead and are announced there. */
+    announceStars(kid,delta,reason){
+      if(typeof this.onLocalStars!=="function")return;
+      try{this.onLocalStars(kid,delta,reason);}catch(e){}
     }
     async actDone(kid,dayISO,actIdx){
       this.enqueue({type:"actDone",kid,day:dayISO,actIdx});

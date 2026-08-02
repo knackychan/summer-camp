@@ -1933,6 +1933,7 @@
     if($("accessPanel"))renderAccessPanel();
     if($("behaviourPanel"))renderBehaviourPanel();
     if($("dangerZone"))renderDangerZone();
+    if($("seasonReset"))renderSeasonReset();
     updateNotifyState();
   }
 
@@ -2035,6 +2036,47 @@
       toast("All apps paused",true);
       await loadAll();
     };
+  }
+
+  /* Whole-database reset. One RPC (supabase/migrations/20260802_season_reset.sql)
+     so the wipe is atomic — sixteen chained deletes from here would leave a
+     half-erased season on the first network blip. Typed confirmation because
+     nothing on this page undoes it. The RPC checks auth.uid() against the
+     `admins` table, so a signed-in stranger gets "not an admin", not a wipe. */
+  function renderSeasonReset(){
+    var el=$("seasonReset");
+    if(!el)return;
+    el.innerHTML='<div class="note note--error" style="margin-bottom:14px">'+
+      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M8 2.2 14.6 13H1.4z"/><path d="M8 6.4v3M8 11.3v.1"/></svg>'+
+      '<div><b>This erases every kid’s whole history</b>'+
+      'Stars and the entire ledger, day ticks, missions, activities, Brain Gym, word mastery, game best scores, asks, passes, photo records, Papa’s notes and help claims. The Papa PIN and the three kid PINs are cleared, every app pause lifts, and the schedule goes back to the times in the day template. Tablets drop their local copy the next time they sync.</div></div>'+
+      '<label class="field" style="max-width:260px;margin-bottom:0"><span class="lbl">Type RESET to confirm</span>'+
+      '<input class="inp" id="seasonResetConfirm" autocomplete="off" placeholder="RESET" aria-describedby="seasonResetStatus"></label>'+
+      '<div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">'+
+      '<button class="btn btn--danger" id="seasonResetBtn" disabled>Reset the whole database</button>'+
+      '<span class="tbl__note" id="seasonResetStatus" aria-live="polite"></span></div>'+
+      '<p class="field__hint" style="margin-top:10px">Photo and voice files already uploaded to Storage are left in place — the rows pointing at them are gone, so nothing in the app shows them.</p>';
+    var input=$("seasonResetConfirm"),btn=$("seasonResetBtn");
+    input.oninput=function(){btn.disabled=input.value.trim().toUpperCase()!=="RESET";};
+    btn.onclick=runSeasonReset;
+  }
+
+  async function runSeasonReset(){
+    var btn=$("seasonResetBtn"),status=$("seasonResetStatus");
+    btn.disabled=true;
+    status.textContent="Resetting…";
+    const {error}=await client.rpc("reset_season");
+    if(error){
+      status.textContent=error.message||"Could not reset";
+      writeFailed(error);
+      btn.disabled=false;
+      return;
+    }
+    /* The PIN editor keeps its own copy of the old value; drop it or the field
+       repaints last season's PIN over an empty table. */
+    adminPinFeedback.type=""; adminPinFeedback.text=""; adminPinFeedback.value=undefined;
+    toast("New season — database reset",true);
+    await loadAll();
   }
 
   async function resetStars(kid){

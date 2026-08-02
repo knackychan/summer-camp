@@ -8,6 +8,8 @@ export var MANIFEST = [
     meta: { icon: "\ud83d\ude9c", title: "Big Machines",  tz: "\u5927\u6a5f\u5668",   blurb: "Race, dig & fly" } },
   { id: "city",     brain: false, keyboard: false, bestKey: "city",    legacy: false,
     meta: { icon: "\ud83c\udfd9\ufe0f", title: "City Drive",    tz: "\u57ce\u5e02\u958b\u8eca", blurb: "Drive & deliver" } },
+  { id: "monster-truck", brain: false, keyboard: false, bestKey: "monster_truck", legacy: false,
+    meta: { icon: "\ud83d\udede\ufe0f", title: "Monster Truck", tz: "\u602a\u7378\u5361\u8eca", blurb: "Crush cars in 3D \u00b7 3D\u58d3\u8eca" } },
   { id: "dig",      brain: false, keyboard: false, bestKey: "dig",     legacy: false,
     meta: { icon: "\u26cf\ufe0f", title: "Dig Site",      tz: "\u6316\u571f\u5de5\u5730", blurb: "Dig the right rocks" } },
   { id: "balloon",  brain: false, keyboard: true,  bestKey: "balloon", legacy: false,
@@ -25,6 +27,11 @@ export var MANIFEST = [
 
   { id: "solar",    brain: false, keyboard: false, bestKey: null,      legacy: false,
     meta: { icon: "\ud83e\ude90", title: "Solar System", tz: "\u592a\u967d\u7cfb", blurb: "Explore the planets" } },
+
+  /* Creative tool, not screen-time reward \u2014 startGame() lets it through the block
+     lock the same way Brain Gym goes through. */
+  { id: "paint",    brain: false, keyboard: false, bestKey: null,      legacy: false,
+    meta: { icon: "\ud83c\udfa8", title: "Paint & Colour", tz: "\u756b\u756b\u8457\u8272", blurb: "Colour the sheets" } },
 
   /* music: true keeps these out of the Games grid \u2014 they live in the Music Room
      tab, which hosts them full-screen (design.md D15 supersedes D1). They stay in

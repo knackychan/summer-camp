@@ -464,4 +464,37 @@ const seedProgress = () => ({});
   console.log("ok - full offline round trip");
 }
 
+// --- Test: a season reset wipes the tablet's local copy, and only once ---
+{
+  const ls = makeLocalStorage({
+    "keyquest:v2": JSON.stringify({ progress: { lili: { vocab: { "w:cat": 3 }, best: { race: 40 } } }, settings: {} }),
+    "sq:queue": JSON.stringify([{ id: "op-old", type: "stars", kid: "lili", delta: 2, reason: "last season" }]),
+    "sq:serverStars": JSON.stringify({ lili: 40 })
+  });
+  const SyncStore = loadSyncStore(ls);
+  const writes = [];
+  const client = fakeSupabase({
+    family_settings: [{ key: "season_reset_at", value: "2026-08-02T04:00:00Z" }]
+  }, writes);
+  const store = new SyncStore({ progress: seedProgress(), settings: {} }, client);
+
+  await store.hydrate();
+  assert.equal(ls._map.has("keyquest:v2"), false, "last season's progress dropped");
+  assert.equal(ls._map.has("sq:queue"), false, "pending ops from last season dropped, not replayed");
+  assert.equal(ls._map.has("sq:serverStars"), false, "cached star totals dropped");
+  assert.equal(ls._map.get("sq:seasonReset"), '"2026-08-02T04:00:00Z"', "stamp recorded so the wipe cannot loop");
+  assert.equal(writes.length, 0, "nothing from last season is pushed back to the server");
+
+  // Same stamp on the next boot: hydrate must run normally, not wipe again.
+  const SyncStore2 = loadSyncStore(ls);
+  const writes2 = [];
+  const store2 = new SyncStore2({ progress: seedProgress(), settings: {} }, fakeSupabase({
+    family_settings: [{ key: "season_reset_at", value: "2026-08-02T04:00:00Z" }],
+    star_totals: [{ kid_id: "lili", stars: 0 }]
+  }, writes2));
+  await store2.hydrate();
+  assert.equal(store2.starsFor("lili"), 0, "new season starts at zero and hydrate completed");
+  console.log("ok - a season reset wipes the tablet once");
+}
+
 console.log("sync tests passed");

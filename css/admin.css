@@ -101,6 +101,10 @@ code { color: var(--star); }
   flex-wrap: wrap;
 }
 .sheet__head h2 { font-size: 13.5px; font-weight: 650; letter-spacing: -.005em; }
+/* Danger sheet — the one destructive control on the page reads red before it is read at all */
+.sheet--danger { border-color: color-mix(in srgb, var(--status-late) 40%, transparent); }
+.sheet--danger .sheet__head { background: var(--status-late-bg); border-bottom-color: color-mix(in srgb, var(--status-late) 30%, transparent); }
+.sheet--danger .sheet__head h2, .sheet--danger .sheet__head .lbl { color: var(--status-late); }
 .sheet__tools { margin-left: auto; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .sheet__pad { padding: 16px; }
 .sheet__foot {

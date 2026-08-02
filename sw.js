@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v65";
+const CACHE_NAME = "summer-quest-v68";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -23,6 +23,7 @@ const APP_SHELL = [
   "./js/admin-nav.js",
   "./js/admin.js?v=63",
   "./js/sync.js",
+  "./js/notify.js",
   "./js/brain-data.js",
   "./js/brain-core.js",
   "./js/brain-audio-cues.js",
@@ -64,6 +65,7 @@ const APP_SHELL = [
   "./js/games/solar.js",
   "./js/games/dig.js",
   "./js/games/city.js",
+  "./js/games/monster-truck.js",
   "./js/games/hunt.js",
   "./js/games/home.js",
   "./js/games/race.js",
@@ -71,6 +73,8 @@ const APP_SHELL = [
   "./js/games/orc.js",
   "./js/games/machines.js",
   "./js/games/vocab.js",
+  "./js/games/paint.js",
+  "./js/games/paint-sheets.js",
   "./js/vendor/three.core.min.js",
   "./js/vendor/three.module.min.js",
   "./js/vendor/OrbitControls.js",

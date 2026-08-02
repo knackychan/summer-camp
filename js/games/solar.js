@@ -1372,9 +1372,6 @@ export default {
       R.bodies.forEach(function (b) {
         var oc = orbitCount(R.totalDays, b.yearDays);
         parts.push(b.data.name + " <b>" + oc.count + "</b>y");
-        if (oc.count > b.prevCount && b.prevCount >= 0) {
-          try { R.ctx.sfx.pop(); } catch (e) {}
-        }
         b.prevCount = oc.count;
       });
       if (R.issBody) {

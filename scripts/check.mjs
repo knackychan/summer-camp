@@ -617,7 +617,7 @@ if (!adminHtml.includes("helpClaims") && !/helpClaims/.test(readFileSync(new URL
     // Skip dynamic IDs with interpolation
     if (id.includes("${") || id.includes("+")) continue;
     // Skip synthetic ids created by JS itself (render functions that build DOM dynamically)
-    if (/^(exportCsv|ledgerRange|dangerResetDay|dangerPauseAll|notifyCheck|chatClearFilters|settingsLogout|noteBodyZh|saveNoteBtn|saveAdminPinBtn|noteBody|noteStatus|noteDay|adminPin|removedCredited|queueKidFilter|adminPinStatus|pin-.+|recstatus-.+|answer-.+|pinmsg-.+|themeSelect)$/.test(id)) continue;
+    if (/^(exportCsv|ledgerRange|dangerResetDay|dangerPauseAll|notifyCheck|chatClearFilters|settingsLogout|noteBodyZh|saveNoteBtn|saveAdminPinBtn|noteBody|noteStatus|noteDay|adminPin|removedCredited|queueKidFilter|adminPinStatus|pin-.+|recstatus-.+|answer-.+|pinmsg-.+|themeSelect|seasonResetConfirm|seasonResetBtn|seasonResetStatus)$/.test(id)) continue;
     if (!adminHtmlLower.includes(`id="${id.toLowerCase()}"`) && !adminHtmlLower.includes(`id='${id.toLowerCase()}'`)) {
       fail("admin routes: orphan control", `$("${id}") in JS has no matching id in admin.html`);
     }

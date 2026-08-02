@@ -586,6 +586,41 @@ body.music-mode{overflow:hidden}
   padding:12px 14px;margin-bottom:12px;font-weight:800;color:var(--ink);white-space:pre-wrap;text-align:left}
 .badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:99px;
   background:var(--bad);color:white;font-size:12px;font-weight:900;margin-left:4px;padding:0 6px}
+/* toasts — above the lock overlay (40) and confetti (50) so a star still lands
+   while a game or an overlay is up */
+#sqToasts{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:60;display:flex;
+  flex-direction:column;gap:8px;width:min(430px,calc(100vw - 24px));pointer-events:none}
+.sqtoast{pointer-events:auto;cursor:pointer;display:flex;gap:10px;align-items:center;text-align:left;
+  background:var(--panel2);border:2px solid var(--line);border-left:6px solid var(--gold);
+  border-radius:16px;padding:10px 14px;box-shadow:0 8px 0 rgba(0,0,0,.3);animation:sqtin .28s ease-out}
+.sqtoast.out{opacity:0;transform:translateY(-12px);transition:opacity .3s,transform .3s}
+.sqtoast--ok{border-left-color:var(--ok)}
+.sqtoast--msg{border-left-color:var(--luis)}
+.sqtoast .e{font-size:28px;line-height:1}
+.sqtoast .tx{min-width:0}
+.sqtoast .tx b{display:block;font-family:'Fredoka';font-weight:600;font-size:16px}
+.sqtoast .tx i{display:block;font-style:normal;color:var(--ink);font-weight:800;font-size:13px}
+.sqtoast .tx small{display:block;color:var(--muted);font-weight:800;font-size:11px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sqtoast .tx small:empty{display:none}
+@keyframes sqtin{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+/* rewards tab */
+.achvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.achv{background:rgba(0,0,0,.2);border:2px solid var(--line);border-radius:16px;padding:12px 8px;text-align:center}
+.achv.on{border-color:var(--gold);background:rgba(255,201,60,.12)}
+.achv .e{display:block;font-size:34px}
+.achv.off .e{filter:grayscale(1);opacity:.45}
+.achv b{display:block;font-family:'Fredoka';font-weight:600;font-size:14px;margin-top:4px}
+.achv span{display:block;color:var(--muted);font-weight:800;font-size:12px}
+.feedrow{display:flex;gap:10px;align-items:flex-start;text-align:left;background:rgba(0,0,0,.2);
+  border:2px solid var(--line);border-radius:16px;padding:10px 12px}
+.feedrow .e{font-size:24px;line-height:1.2}
+.feedrow .tx{flex:1;min-width:0}
+.feedrow .tx b{display:block;font-family:'Fredoka';font-weight:600;font-size:15px}
+.feedrow .tx span{display:block;color:var(--ink);font-weight:800;font-size:13px}
+.feedrow .tx small{display:block;color:var(--muted);font-weight:800;font-size:12px;margin-top:2px}
+.feedrow .tx small:empty{display:none}
+.feedrow time{color:var(--muted);font-weight:800;font-size:11px;white-space:nowrap}
 .asklist{display:grid;gap:10px;margin-top:12px}
 .askcard{background:rgba(0,0,0,.2);border:2px solid var(--line);border-radius:16px;padding:12px;text-align:left}
 .askcard.open{border-color:var(--gold)}
@@ -710,6 +745,7 @@ body.music-mode{overflow:hidden}
       <button class="chip" data-t="books">📚 Books 書籍</button>
       <button class="chip" data-t="music">🎵 Music 音樂</button>
       <button class="chip" data-t="ask">💬 Ask 求助<span class="badge hidden" id="askBadge">0</span></button>
+      <button class="chip" data-t="rewards">🏆 Rewards 獎勵<span class="badge hidden" id="rewardBadge">0</span></button>
       <button class="chip hidden" id="captainTab" data-t="captain">👑 Captain 隊長</button>
     </div>
     <div id="tab-day">
@@ -762,6 +798,13 @@ body.music-mode{overflow:hidden}
         <div class="tipline" id="askStatus">Papa will see this in the admin inbox · 爸爸會在管理頁看到</div>
       </div>
       <div class="asklist" id="askList"></div>
+    </div>
+    <div id="tab-rewards" class="hidden">
+      <div class="bigcard">
+        <h3>🏆 My Rewards <span class="zhs" style="font-size:14px">我的獎勵與紀錄</span></h3>
+        <div class="kidtabs" id="rwSeg"></div>
+        <div id="rwBody"></div>
+      </div>
     </div>
     <div id="tab-captain" class="hidden">
       <div class="bigcard">
@@ -866,6 +909,7 @@ body.music-mode{overflow:hidden}
 <script src="js/day.js"></script>
 <script src="js/vendor/supabase.js"></script>
 <script src="js/sync.js"></script>
+<script src="js/notify.js"></script>
 <script src="js/day-data.js"></script>
 <script src="js/act-data.js"></script>
 <script src="js/learn-data.js"></script>
@@ -1054,24 +1098,24 @@ outdoor:{
  luis:[["Bike a longer loop — use your hand signals", "騎一段更長的路——記得打手勢"],["Football: 10 juggles, then shooting practice", "足球顛球10下，然後練射門"],["1v1 basketball to 10 points", "1對1籃球，先到10分"],["Basketball layups: 10 each side", "上籃：左右各10次"],["Sprint ladder: 5 sprints, walk back to rest", "衝刺梯：衝刺5趟，走回來休息"]],
 },
 desk:{
- lucien:[["Colour a whole picture inside the lines", "整張圖著色不塗出線"],["Play-dough: make 3 animals", "黏土做3隻動物"],["Finish a big puzzle", "完成一個大拼圖"],["Sticker scene: tell a story with stickers", "用貼紙拼出一個故事"],["Draw your family and name everyone", "畫你的家人，寫上名字"]],
- lili:[["Drawing challenge: draw today's animal from a book", "畫畫挑戰：照著書畫今天的動物"],["Origami: fold one new model", "摺紙：摺一個新作品"],["Make a bead bracelet", "做一條串珠手鍊"],["Draw a 6-panel comic about your morning", "畫6格漫畫，畫你的早上"],["Follow one 'learn to draw' step", "照著「學畫畫」步驟畫一次"]],
- luis:[["Sketch one subject for 20 minutes (hands, faces…)", "素描一個主題20分鐘（手、臉…）"],["Journal: write today's paragraph", "日記：寫今天的一段"],["Draw a full comic page — 6 panels", "畫一整頁6格漫畫"],["Design an invention on paper, label the parts", "在紙上設計一個發明，標出零件"],["Read your chapter book 20 minutes — note 3 events", "讀章節書20分鐘——記下3件事"]],
+ lucien:[["Colour a whole picture inside the lines", "整張圖著色不塗出線"],["Play-dough: make 3 animals", "黏土做3隻動物"],["Finish a big puzzle", "完成一個大拼圖"],["Sticker scene: tell a story with stickers", "用貼紙拼出一個故事"],["Draw your family and name everyone", "畫你的家人，寫上名字"],["Paint & Colour 🎨: fill in one whole sheet", "畫畫著色 🎨：把一整張圖塗滿"],["Paint & Colour 🎨: colour the digger any colours you like", "畫畫著色 🎨：挖土機想塗什麼顏色都可以"],["Draw a treasure map with a big X on it", "畫一張藏寶圖，標一個大大的X"]],
+ lili:[["Drawing challenge: draw today's animal from a book", "畫畫挑戰：照著書畫今天的動物"],["Origami: fold one new model", "摺紙：摺一個新作品"],["Make a bead bracelet", "做一條串珠手鍊"],["Draw a 6-panel comic about your morning", "畫6格漫畫，畫你的早上"],["Follow one 'learn to draw' step", "照著「學畫畫」步驟畫一次"],["Paint & Colour 🎨: finish one sheet — every part coloured", "畫畫著色 🎨：完成一張圖——每一格都塗到"],["Paint & Colour 🎨: colour the butterfly with only 3 colours", "畫畫著色 🎨：只用3種顏色塗蝴蝶"],["Paint & Colour 🎨: pick the blank page and draw our house", "畫畫著色 🎨：選空白頁，畫我們家"],["Draw your own treasure map — add 5 landmarks", "畫你自己的藏寶圖——加上5個地標"],["Draw the same animal 3 times: happy, sleepy, angry", "同一隻動物畫3次：開心、想睡、生氣"]],
+ luis:[["Sketch one subject for 20 minutes (hands, faces…)", "素描一個主題20分鐘（手、臉…）"],["Journal: write today's paragraph", "日記：寫今天的一段"],["Draw a full comic page — 6 panels", "畫一整頁6格漫畫"],["Design an invention on paper, label the parts", "在紙上設計一個發明，標出零件"],["Read your chapter book 20 minutes — note 3 events", "讀章節書20分鐘——記下3件事"],["Design a treasure map with a legend and a scale", "設計一張有圖例和比例尺的藏寶圖"],["Paint & Colour 🎨: blank page — draw a monster, then name it", "畫畫著色 🎨：空白頁——畫一隻怪物，幫牠取名字"]],
 },
 craft:{
- lucien:[["Handprint art: make a handprint animal", "手印畫：做一隻手印動物"],["Pasta necklace for someone you love", "做一條義大利麵項鍊送給你愛的人"],["Fold and decorate a paper animal", "摺一隻紙動物並裝飾"]],
- lili:[["Paper plane contest: build 3 designs and test them", "紙飛機比賽：做3種設計來試飛"],["Salt dough: make and bake one shape", "鹽麵團：做一個形狀並烤好"],["Finish a bracelet for a sibling", "完成一條送兄弟姊妹的手鍊"]],
- luis:[["Marble run: add one new cardboard section", "彈珠軌道：加一段新的紙板軌道"],["Stop-motion: shoot 10 seconds of animation", "停格動畫：拍10秒"],["Sewing: 10 neat stitches in a straight line", "縫紉：縫10針直線"]],
+ lucien:[["Handprint art: make a handprint animal", "手印畫：做一隻手印動物"],["Pasta necklace for someone you love", "做一條義大利麵項鍊送給你愛的人"],["Fold and decorate a paper animal", "摺一隻紙動物並裝飾"],["Make a paper crown and decorate it", "做一頂紙皇冠並裝飾"],["Decorate a small box to keep your treasures in", "裝飾一個小盒子，用來放你的寶物"]],
+ lili:[["Paper plane contest: build 3 designs and test them", "紙飛機比賽：做3種設計來試飛"],["Salt dough: make and bake one shape", "鹽麵團：做一個形狀並烤好"],["Finish a bracelet for a sibling", "完成一條送兄弟姊妹的手鍊"],["Make a treasure chest from a shoebox", "用鞋盒做一個藏寶箱"],["Make 5 clue cards and stain them to look ancient", "做5張線索卡，弄舊讓它們看起來很古老"],["Sew or tape a little treasure pouch", "縫或用膠帶做一個小藏寶袋"],["Make a paper crown for the treasure-hunt winner", "幫尋寶冠軍做一頂紙皇冠"]],
+ luis:[["Marble run: add one new cardboard section", "彈珠軌道：加一段新的紙板軌道"],["Stop-motion: shoot 10 seconds of animation", "停格動畫：拍10秒"],["Sewing: 10 neat stitches in a straight line", "縫紉：縫10針直線"],["Build a cardboard puzzle box with a hidden opening", "做一個有暗門的紙板機關盒"],["Make a map-and-compass kit for the next hunt", "做一套地圖＋指南針，給下次尋寶用"],["Build a cardboard trap that catches a soft toy", "做一個紙板陷阱，能抓住娃娃"]],
 },
 computer:{
- lucien:[["Look up 3 animal pictures with your buddy — pick a favourite", "和夥伴一起查3張動物圖片——選一張最喜歡的"],["Ask the AI for a silly story about an excavator 🚜", "請AI講一個挖土機的搞笑故事 🚜"],["Draw a picture in the paint app", "用畫圖軟體畫一張圖"],["Ask 'why is the sky blue?' with a grown-up and listen", "和大人一起問「天空為什麼是藍色？」然後聽答案"]],
- lili:[["Search your question of the day — tell one fact at dinner", "查今天的問題——晚餐時說一件新知識"],["Ask AI to explain something you don't understand", "請AI解釋一件你不懂的事"],["Ask AI to quiz you: 5 questions about animals", "請AI出題考你：5題動物問題"],["Make a 1-slide 'All About Me'", "做一頁「關於我」的投影片"],["Paint a picture on the computer", "在電腦上畫一張圖"]],
+ lucien:[["Look up 3 animal pictures with your buddy — pick a favourite", "和夥伴一起查3張動物圖片——選一張最喜歡的"],["Ask the AI for a silly story about an excavator 🚜", "請AI講一個挖土機的搞笑故事 🚜"],["Paint & Colour 🎨: colour one whole sheet", "畫畫著色 🎨：完整塗完一張圖"],["Ask 'why is the sky blue?' with a grown-up and listen", "和大人一起問「天空為什麼是藍色？」然後聽答案"],["Paint & Colour 🎨: colour the rainbow, then count the colours", "畫畫著色 🎨：塗彩虹，然後數有幾個顏色"]],
+ lili:[["Search your question of the day — tell one fact at dinner", "查今天的問題——晚餐時說一件新知識"],["Ask AI to explain something you don't understand", "請AI解釋一件你不懂的事"],["Ask AI to quiz you: 5 questions about animals", "請AI出題考你：5題動物問題"],["Make a 1-slide 'All About Me'", "做一頁「關於我」的投影片"],["Paint & Colour 🎨: finish a sheet, then draw one thing yourself", "畫畫著色 🎨：塗完一張圖，再自己畫一樣東西"],["Paint & Colour 🎨: colour the treasure map for your next hunt", "畫畫著色 🎨：塗一張藏寶圖，下次尋寶用"],["Type your name, then 3 words you can spell", "打出你的名字，再打3個你會拼的字"],["Ask AI for ONE animal fact — then draw that animal", "請AI講一個動物冷知識——然後把牠畫下來"],["Look at 3 photos of the same animal, then draw it from memory", "看3張同一種動物的照片，然後憑記憶畫出來"],["Ask a grown-up to search WITH you — you say the words to type", "請大人陪你一起搜尋——你來說要打什麼字"]],
  luis:[["Research a topic: 3 sources → 3 facts in YOUR own words", "研究一個主題：3個來源→用自己的話寫3個事實"],["AI study buddy: get quizzed on times tables", "AI學習夥伴：考你乘法表"],["Ask AI to check your writing — then check IT for mistakes", "請AI檢查你的作文——再檢查它有沒有錯"],["Scratch: make something move on screen", "Scratch：讓東西在螢幕上動起來"],["Build 3 slides about a topic you love", "做3頁你最愛主題的投影片"]],
 },
 boredom:{
- lucien:[["Pick 3 random objects and invent a game", "隨便挑3個東西，發明一個遊戲"],["Build the tallest tower you can — then knock it down", "蓋一座最高的塔——然後推倒它"],["Make an obstacle path for your toy cars", "幫玩具車做一條障礙路線"]],
- lili:[["Invent a game with rules — teach it tonight", "發明一個有規則的遊戲——今晚教大家"],["Make a treasure hunt for Lucien", "幫Lucien做一個尋寶遊戲"],["Build a cushion fort and give it a name", "用抱枕蓋堡壘，幫它取名字"]],
- luis:[["Invent a game all three of you can play — teach it tonight", "發明一個三個人都能玩的遊戲——今晚教大家"],["Design a treasure hunt with 5 clues", "設計一個有5條線索的尋寶遊戲"],["Start a weekly project: plan it on paper first", "開始一個本週計畫：先在紙上規劃"]],
+ lucien:[["Pick 3 random objects and invent a game", "隨便挑3個東西，發明一個遊戲"],["Build the tallest tower you can — then knock it down", "蓋一座最高的塔——然後推倒它"],["Make an obstacle path for your toy cars", "幫玩具車做一條障礙路線"],["Hide 3 toys, then draw a map so Lili can find them", "藏3個玩具，畫一張地圖讓Lili來找"],["Colour hunt: bring me something red, blue and yellow", "顏色大搜查：拿紅色、藍色、黃色的東西各一樣給我"],["Mystery bag: guess 5 things just by touching them", "神秘袋：只用摸的猜出5樣東西"],["Follow the arrow trail a big kid made for you", "跟著哥哥姊姊排的箭頭路線走"],["Sound hunt: close your eyes, name 5 sounds you hear", "聲音大搜查：閉上眼睛，說出聽到的5種聲音"]],
+ lili:[["Invent a game with rules — teach it tonight", "發明一個有規則的遊戲——今晚教大家"],["Make a treasure hunt for Lucien", "幫Lucien做一個尋寶遊戲"],["Build a cushion fort and give it a name", "用抱枕蓋堡壘，幫它取名字"],["Treasure hunt: hide a prize, draw a map with a big X", "尋寶遊戲：藏一個獎品，畫地圖標上大大的X"],["Make 4 clue cards — each one points to the next hiding place", "做4張線索卡——每張指向下一個藏東西的地方"],["Secret code: write a message in symbols, give Luis the key", "密碼訊息：用符號寫一句話，把解碼表給Luis"],["Scavenger list: find something soft, round, shiny, tiny and old", "尋寶清單：找軟的、圓的、亮的、小的、舊的各一樣"],["Riddle hunt: 3 riddles that lead to a snack", "謎語尋寶：出3個謎語，最後找到點心"],["Hide 10 paper stars around one room for Lucien to find", "在一個房間藏10顆紙星星，讓Lucien來找"],["Nature hunt outside: collect 6 different leaves or stones", "戶外自然大搜查：撿6種不同的葉子或石頭"]],
+ luis:[["Invent a game all three of you can play — teach it tonight", "發明一個三個人都能玩的遊戲——今晚教大家"],["Design a treasure hunt with 5 clues", "設計一個有5條線索的尋寶遊戲"],["Start a weekly project: plan it on paper first", "開始一個本週計畫：先在紙上規劃"],["Treasure hunt with rhyming clues — 6 stops, one prize", "押韻線索尋寶：6個關卡，一個獎品"],["Build an escape room in one room: 3 puzzles to get out", "在一個房間做密室逃脫：3個謎題才能出來"],["Invent a secret code, teach it to Lili, send 3 messages", "發明一種密碼，教Lili，互傳3則訊息"],["Draw an old-looking treasure map of our home", "畫一張看起來很古老的我們家藏寶圖"],["Spy mission: hide 5 clues outside, then time Lili's hunt", "間諜任務：在外面藏5條線索，幫Lili計時"],["Run a hunt for BOTH: easy clues for Lucien, hard for Lili", "辦一場兩個人的尋寶：Lucien的線索簡單，Lili的難一點"]],
 },
 house:{
  lucien:[["Pair all the clean socks", "把乾淨的襪子全部配對"],["Put every toy back in its box", "把每個玩具放回它的盒子"],["Water the plants with the small can", "用小澆水壺幫植物澆水"],["Put your clothes in the right drawer", "把衣服放進對的抽屜"]],
@@ -1089,9 +1133,9 @@ minecraft:{
  luis:[["Working farm: crops + one animal pen", "運作的農場：農作物＋一個動物圍欄"],["Redstone door that opens and closes", "會開關的紅石門"],["Recreate one room of our home", "重現我們家的一個房間"]],
 },
 skill:{
- lucien:[["Practice pouring cereal & spreading butter 🍳", "練習倒麥片和塗奶油 🍳"],["Get fully dressed by yourself — shoes too 👟", "自己穿好全部衣服——鞋子也是 👟"],["Count to 30 out loud — fingers allowed", "大聲數到30——可以用手指"],["Play Big Machines 🚜 and get 10 wins", "玩「大機器」🚜 拿10次勝利"],["Word Wizard 🧙: learn 2 new words", "文字巫師 🧙：學2個新單字"],["Write your name in big letters ✍", "用大大的字寫你的名字 ✍"],["Sort the laundry into colours", "把衣服按顏色分類"],["Fold 2 simple origami", "摺2個簡單摺紙"],["Memory game with a buddy ♟", "和夥伴玩記憶遊戲 ♟"]],
- lili:[["Make toast and cut fruit with your kid knife 🍳", "用兒童刀做吐司、切水果 🍳"],["Read one page aloud to someone 📚", "大聲唸一頁書給別人聽 📚"],["Practice the ×2 table — ask AI to quiz you", "練習2的乘法表——請AI考你"],["Word Wizard 🧙: master 3 new words", "文字巫師 🧙：精通3個新單字"],["Tie your shoelaces 5 times, fast", "快速綁鞋帶5次"],["Write 3 neat sentences ✍", "寫3句工整的句子 ✍"],["Origami: one new model 🌸", "摺紙：一個新作品 🌸"],["Connect 4 or checkers with Luis ♟", "和Luis玩四連環或西洋跳棋 ♟"],["Practice reading the clock ⏰", "練習看時鐘 ⏰"]],
- luis:[["Cook simple eggs or a sandwich — and clean up 🍳", "煎蛋或做三明治——然後收拾乾淨 🍳"],["Times tables: pick a hard one and drill it", "乘法表：挑一個難的來練"],["Word Wizard Sentences 💬: master 3 sentences", "文字巫師句子 💬：精通3個句子"],["Word Racer 🚀: beat your WPM record", "文字競速 🚀：打破你的WPM紀錄"],["Chess: one game or 3 puzzles ♟", "西洋棋：一盤棋或3道謎題 ♟"],["Origami: work toward your hard model 🌸", "摺紙：挑戰你的困難作品 🌸"],["Plan tomorrow morning yourself ⏰", "自己規劃明天早上 ⏰"],["Typing: 5 minutes of home-row practice ⌨", "打字：5分鐘基準鍵練習 ⌨"],["Stop-motion: plan your 1-minute film 🎬", "停格動畫：規劃你的1分鐘影片 🎬"]],
+ lucien:[["Practice pouring cereal & spreading butter 🍳", "練習倒麥片和塗奶油 🍳"],["Get fully dressed by yourself — shoes too 👟", "自己穿好全部衣服——鞋子也是 👟"],["Count to 30 out loud — fingers allowed", "大聲數到30——可以用手指"],["Play Big Machines 🚜 and get 10 wins", "玩「大機器」🚜 拿10次勝利"],["Word Wizard 🧙: learn 2 new words", "文字巫師 🧙：學2個新單字"],["Write your name in big letters ✍", "用大大的字寫你的名字 ✍"],["Sort the laundry into colours", "把衣服按顏色分類"],["Fold 2 simple origami", "摺2個簡單摺紙"],["Memory game with a buddy ♟", "和夥伴玩記憶遊戲 ♟"],["Paint & Colour 🎨: stay inside the lines on one whole sheet", "畫畫著色 🎨：一整張圖都不塗出線"],["Find something starting with A, then B, then C", "找出A開頭、B開頭、C開頭的東西各一樣"],["Hide one toy and give a grown-up 2 clues to find it", "藏一個玩具，給大人2條線索去找"]],
+ lili:[["Make toast and cut fruit with your kid knife 🍳", "用兒童刀做吐司、切水果 🍳"],["Read one page aloud to someone 📚", "大聲唸一頁書給別人聽 📚"],["Practice the ×2 table — ask AI to quiz you", "練習2的乘法表——請AI考你"],["Word Wizard 🧙: master 3 new words", "文字巫師 🧙：精通3個新單字"],["Tie your shoelaces 5 times, fast", "快速綁鞋帶5次"],["Write 3 neat sentences ✍", "寫3句工整的句子 ✍"],["Origami: one new model 🌸", "摺紙：一個新作品 🌸"],["Connect 4 or checkers with Luis ♟", "和Luis玩四連環或西洋跳棋 ♟"],["Practice reading the clock ⏰", "練習看時鐘 ⏰"],["Paint & Colour 🎨: finish one sheet without going outside the lines", "畫畫著色 🎨：完成一張圖，不塗出線"],["Count backwards from 20 out loud", "從20倒數到1，大聲數"],["Fold a paper boat and test if it floats 🚢", "摺一艘紙船，試試會不會浮 🚢"],["Draw 5 things in your room and write their English names ✍", "畫出房間裡5樣東西，寫上英文名字 ✍"],["Write 3 clues for a hiding place — make them rhyme", "幫一個藏東西的地方寫3條線索——要押韻"]],
+ luis:[["Cook simple eggs or a sandwich — and clean up 🍳", "煎蛋或做三明治——然後收拾乾淨 🍳"],["Times tables: pick a hard one and drill it", "乘法表：挑一個難的來練"],["Word Wizard Sentences 💬: master 3 sentences", "文字巫師句子 💬：精通3個句子"],["Word Racer 🚀: beat your WPM record", "文字競速 🚀：打破你的WPM紀錄"],["Chess: one game or 3 puzzles ♟", "西洋棋：一盤棋或3道謎題 ♟"],["Origami: work toward your hard model 🌸", "摺紙：挑戰你的困難作品 🌸"],["Plan tomorrow morning yourself ⏰", "自己規劃明天早上 ⏰"],["Typing: 5 minutes of home-row practice ⌨", "打字：5分鐘基準鍵練習 ⌨"],["Stop-motion: plan your 1-minute film 🎬", "停格動畫：規劃你的1分鐘影片 🎬"],["Hide 5 clues for Lili — write each one so SHE can read it 🗺️", "幫Lili藏5條線索——每條都要她讀得懂 🗺️"],["Map skills: draw our street from memory, then go and check it 🗺️", "地圖技能：憑記憶畫我們這條街，再去對照 🗺️"],["Teach Lucien one thing you can do — be patient 👑", "教Lucien一件你會的事——要有耐心 👑"]],
 },
 homework:{
  lucien:[["Quiet work — coloring, tracing or a puzzle 🎨", "安靜活動——著色、描寫或拼圖 🎨"]],
@@ -1401,7 +1445,9 @@ function startGame(id,lvl){
      category lock and the games lock, or the door could never be opened.
      Only a full Papa app-pause stops it. */
   const isBrain=!!(gameMeta(lvl)&&gameMeta(lvl).brain);
-  if(!isBrain){
+  /* Paint is a creative tool, not screen time — same open door as Brain Gym, so
+     it is usable during Project time before the block is ticked. */
+  if(!isBrain&&lvl!=="paint"){
     if(catLockReason(id,"games")){hubKid=id; hubTab="day"; saveAppPlace("hub"); renderHub(); bigFloat("🔒"); return;}
     const ls=gameLockState();
     if(ls.locked){showLockOverlay(ls);return;}
@@ -1757,7 +1803,7 @@ function leaveLockedCategory(){
   if(!hubKid)return;
   /* Brain Gym passes the games category lock (see startGame), so it must not be
      evicted by it either */
-  const inBrain=!!(level&&LEVELS[level]&&LEVELS[level].brain);
+  const inBrain=level==="paint"||!!(level&&LEVELS[level]&&LEVELS[level].brain);
   if(!inBrain&&!document.getElementById("game").classList.contains("hidden")&&catLockReason(hubKid,"games")){
     stopArena(); showOnly("hub"); hubTab="day"; saveAppPlace("hub"); renderHub(); return;
   }
@@ -2255,7 +2301,7 @@ function startTimelineWatcher(){
     }
     const ls=gameLockState();
     /* never evict a kid from a Brain Gym round — it is what opens the lock */
-    const inBrain=!!(level&&LEVELS[level]&&LEVELS[level].brain);
+    const inBrain=level==="paint"||!!(level&&LEVELS[level]&&LEVELS[level].brain);
     if(ls.locked&&!inBrain&&!document.getElementById("game").classList.contains("hidden")){
       goHome(); showLockOverlay(ls);
     }
@@ -2294,13 +2340,19 @@ function renderHub(){
   document.getElementById("tab-acts").classList.toggle("hidden",hubTab!=="acts");
   document.getElementById("tab-learn").classList.toggle("hidden",hubTab!=="learn");
   document.getElementById("tab-ask").classList.toggle("hidden",hubTab!=="ask");
+  document.getElementById("tab-rewards").classList.toggle("hidden",hubTab!=="rewards");
   document.getElementById("tab-captain").classList.toggle("hidden",hubTab!=="captain");
   document.getElementById("tab-books").classList.toggle("hidden",hubTab!=="books");
   document.getElementById("tab-music").classList.toggle("hidden",hubTab!=="music");
   refreshLockUI();
+  /* before the tab paints, so a badge unlocked while the app was closed is
+     already in the grid when the Rewards tab renders it */
+  checkAchievements(hubKid);
+  updateRewardBadge();
   if(hubTab==="learn") renderLearn();
   if(hubTab==="day") renderMyDay();
   if(hubTab==="ask") renderAsk();
+  if(hubTab==="rewards") renderRewards();
   if(hubTab==="captain") renderCaptain();
   if(hubTab==="books") renderBooks();
   if(hubTab==="music") renderMusic();
@@ -2735,6 +2787,7 @@ function closeBook(){
   showOnly("hub"); saveAppPlace("hub"); renderHub();
 }
 function renderBookSpread(){
+  document.getElementById("bookSpread").className="book";
   if(bookState.layout==="spread"){renderMinecraftSpread();return;}
   var c=bookState.cards[bookState.idx], b=document.getElementById("bookSpread");
   if(!c){b.innerHTML='<div class="msg">Could not load card data. 無法載入卡片資料。</div>';return;}
@@ -3055,6 +3108,113 @@ function stopAskRecord(){
   document.getElementById("askStop").disabled=true;
   document.getElementById("askStatus").textContent="Voice ready 語音準備好了";
 }
+/* ============ REWARDS TAB — badges · stars · news · Papa ============ */
+const RW_SEGS=[["badges","🏆 Badges 徽章"],["stars","⭐ Stars 星星"],["news","🔔 News 通知"],["msgs","💬 Papa 爸爸"]];
+let rwSeg="badges";
+
+/* Everything an achievement can test, read straight off data the app already
+   keeps — no counters to maintain and nothing new to sync. */
+function achvStats(id){
+  const P=progress[id]||{}, v=P.vocab||{}, b=P.best||{};
+  let words=0;
+  Object.keys(v).forEach(k=>{if((v[k]||0)>=3)words++;});   /* box 3 = mastered */
+  return {
+    stars:starsOf(id),
+    words:words,
+    games:Object.keys(b).filter(k=>(b[k]||0)>0).length,
+    acts:Object.keys(actsToday(id)).length,
+    fullDay:coveredCount(id,dayState(id))>=DAY.length,
+    brain:brainGate(id).remaining.length===0
+  };
+}
+function checkAchievements(id){
+  if(!id||!window.SQNotify||!progress[id])return;
+  const fresh=SQNotify.check(id,achvStats(id));
+  if(!fresh.length)return;
+  fresh.forEach(a=>SQNotify.push(id,hubKid,{kind:"achv",icon:a.icon,tone:"ok",
+    en:"Achievement unlocked — "+a.en,zh:"解鎖成就——"+a.zh}));
+  if(id===hubKid){sWin();burst(30);}
+}
+function updateRewardBadge(){
+  const badge=document.getElementById("rewardBadge");
+  if(!badge||!hubKid||!window.SQNotify)return;
+  const n=SQNotify.unread(hubKid);
+  badge.textContent=n;
+  badge.classList.toggle("hidden",n===0);
+}
+function fmtWhen(t){
+  const d=new Date(t);
+  if(isNaN(d.getTime()))return "";
+  return d.toLocaleDateString()===new Date().toLocaleDateString()
+    ? d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})
+    : d.toLocaleDateString([],{month:"short",day:"numeric"});
+}
+function feedHtml(rows,empty){
+  if(!rows.length)return `<div class="tipline">${empty}</div>`;
+  return `<div class="asklist">${rows.map(r=>`
+    <div class="feedrow"><span class="e">${escHtml(r.icon||"🔔")}</span>
+      <div class="tx"><b>${escHtml(r.en||"")}</b><span>${escHtml(r.zh||"")}</span>
+        <small>${escHtml(r.sub||"")}</small></div>
+      <time>${escHtml(fmtWhen(r.t))}</time></div>`).join("")}</div>`;
+}
+function badgesHtml(id){
+  const have=SQNotify.earned(id);
+  const cards=SQNotify.ACHIEVEMENTS.map(a=>{
+    const on=have.indexOf(a.id)>=0;
+    return `<div class="achv ${on?"on":"off"}"><span class="e">${on?escHtml(a.icon):"🔒"}</span>
+      <b>${escHtml(a.en)}</b><span>${escHtml(a.zh)}</span></div>`;
+  }).join("");
+  return `<div class="achvgrid">${cards}</div>
+    <div class="tipline">${have.length}/${SQNotify.ACHIEVEMENTS.length} unlocked 已解鎖 · keep going! 繼續加油！</div>`;
+}
+/* The ledger is the truth, but it needs wifi — with none, the local feed still
+   shows every star this tablet saw. */
+async function starHistory(id){
+  if(store&&store.supabase){
+    try{
+      const {data}=await store.supabase.from("stars_ledger")
+        .select("delta,reason,source,created_at").eq("kid_id",id)
+        .order("created_at",{ascending:false}).limit(50);
+      if(data)return data.map(r=>({
+        t:r.created_at,
+        icon:r.delta>0?(r.source==="admin"?"🌟":"⭐"):"↩️",
+        en:(r.delta>0?"+":"")+r.delta+" ⭐"+(r.source==="admin"?" from Papa":""),
+        zh:(r.delta>0?"+":"")+r.delta+" 顆星"+(r.source==="admin"?"（爸爸給的）":""),
+        sub:r.reason||""}));
+    }catch(e){}
+  }
+  return SQNotify.feed(id).filter(r=>r.kind==="star");
+}
+async function papaMessages(id){
+  return (await fetchAsks(id)).filter(a=>a.answer||a.answered_at||a.kind==="papa").map(a=>({
+    t:a.answered_at||a.created_at,icon:"💬",
+    en:a.kind==="papa"?"Message from Papa":"Papa answered you",
+    zh:a.kind==="papa"?"爸爸的訊息":"爸爸回覆了你",
+    sub:a.answer||a.body||""}));
+}
+async function renderRewards(){
+  const seg=document.getElementById("rwSeg"), body=document.getElementById("rwBody");
+  if(!seg||!body||!hubKid)return;
+  seg.innerHTML=RW_SEGS.map(([id,label])=>
+    `<button class="chip${id===rwSeg?" on":""}" data-rw="${id}">${label}</button>`).join("");
+  /* .chip.on paints its text dark and drops its border — without the kid colour
+     behind it the selected segment reads as dark-on-dark (same as #hubTabs) */
+  seg.querySelectorAll("[data-rw]").forEach(b=>{
+    if(b.dataset.rw===rwSeg)b.style.background=KIDS[hubKid].raw;
+    b.onclick=()=>{rwSeg=b.dataset.rw;renderRewards();};
+  });
+  SQNotify.markSeen(hubKid);
+  updateRewardBadge();
+  if(rwSeg==="badges"){body.innerHTML=badgesHtml(hubKid);return;}
+  if(rwSeg==="news"){body.innerHTML=feedHtml(SQNotify.feed(hubKid),"Nothing yet — go earn a star! 還沒有通知——去拿星星吧！");return;}
+  body.innerHTML=`<div class="tipline">Loading… 讀取中…</div>`;
+  /* a second tap while this awaits must not repaint the segment it left */
+  const want=rwSeg, forKid=hubKid;
+  const rows=await (want==="stars"?starHistory(forKid):papaMessages(forKid));
+  if(rwSeg!==want||hubKid!==forKid)return;
+  body.innerHTML=feedHtml(rows,want==="stars"?"No stars yet 還沒有星星":"No messages yet 還沒有訊息");
+}
+
 async function refreshStarsFromServer(kidId){
   if(!store||!store.refreshStarTotals)return;
   try{
@@ -3069,6 +3229,15 @@ async function refreshStarsFromServer(kidId){
 }
 function setupRealtime(){
   if(!store)return;
+  /* Every self-earned star — mission, activity, Learn, Brain Gym, a game —
+     routes through store.addStars, so this one hook covers all of them. */
+  store.onLocalStars=function(kidId,delta,reason){
+    SQNotify.push(kidId,hubKid,{kind:"star",icon:"⭐",tone:"ok",
+      en:"+"+delta+" ⭐ earned!",zh:"獲得 "+delta+" 顆星！",sub:reason||""});
+    checkAchievements(kidId);
+    updateRewardBadge();
+    if(kidId===hubKid&&hubTab==="rewards")renderRewards();
+  };
   store.onStars(async (row,eventType)=>{
     if(!row)return;
     if(row.source==="app"&&store.queue&&store.queue.some(op=>op.id===row.id))return;
@@ -3076,8 +3245,18 @@ function setupRealtime(){
        re-report Papa's grant as a second, unlabelled star */
     await refreshStarsFromServer(row.kid_id);
     if(eventType!=="INSERT"||row.source!=="admin")return;
-    if(row.kid_id===(hubKid||kid)&&row.delta>0){bigFloat("🌟");sWin();}
+    const up=row.delta>0;
+    /* coach, not cop: a revoke is "Papa updated your stars", never a telling-off */
+    SQNotify.push(row.kid_id,hubKid,{kind:"star",ref:"ledger:"+row.id,
+      icon:up?"🌟":"↩️",tone:up?"ok":"",
+      en:up?"+"+row.delta+" ⭐ from Papa!":row.delta+" ⭐ — Papa updated your stars",
+      zh:up?"爸爸給你 "+row.delta+" 顆星！":"爸爸調整了你的星星 "+row.delta,
+      sub:row.reason||""});
+    if(row.kid_id===(hubKid||kid)&&up){bigFloat("🌟");sWin();}
+    checkAchievements(row.kid_id);
+    updateRewardBadge();
     if(hubKid)renderHubHead(); else renderHome();
+    if(hubKid===row.kid_id&&hubTab==="rewards")renderRewards();
   });
   const refreshAllStars=()=>refreshStarsFromServer();
   addEventListener("focus",refreshAllStars);
@@ -3085,7 +3264,19 @@ function setupRealtime(){
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshAllStars();});
   setInterval(()=>{if(!document.hidden)refreshAllStars();},15000);
   store.onAsks(row=>{
-    if(!row||row.kid_id!==hubKid)return;
+    if(!row)return;
+    /* notify before the hubKid guard: a message for a sibling still belongs in
+       that sibling's history on this tablet, it just does not toast now */
+    if(row.answered_at||row.kind==="papa"){
+      SQNotify.push(row.kid_id,hubKid,{kind:"msg",tone:"msg",icon:"💬",
+        ref:"ask:"+row.id+":"+(row.answered_at||row.created_at),
+        en:row.kind==="papa"?"Message from Papa":"Papa answered you",
+        zh:row.kind==="papa"?"爸爸的訊息":"爸爸回覆了你",
+        sub:row.answer||row.body||""});
+      updateRewardBadge();
+      if(row.kid_id===hubKid&&hubTab==="rewards")renderRewards();
+    }
+    if(row.kid_id!==hubKid)return;
     updateAskBadge();
     if(hubTab==="ask")renderAsk();
   });
@@ -3161,7 +3352,7 @@ function restoreAppPlace(){
   const savedKid=localStorage.getItem("sq:kid");
   const savedView=localStorage.getItem("sq:view")||"home";
   const savedTab=localStorage.getItem("sq:hubTab")||"day";
-  const tabs={day:1,games:1,acts:1,learn:1,ask:1,books:1,music:1,captain:1};
+  const tabs={day:1,games:1,acts:1,learn:1,ask:1,rewards:1,books:1,music:1,captain:1};
   const hashTab=location.hash?location.hash.slice(1):"";
   if(!savedKid||!KIDS[savedKid]||(savedView==="home"&&!tabs[hashTab])){
     showOnly("home");
