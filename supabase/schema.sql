@@ -102,6 +102,8 @@ begin
   execute 'drop policy if exists "read vocab" on public.vocab_mastery';
   execute 'drop policy if exists "read stats" on public.game_stats';
   execute 'drop policy if exists "kid tick" on public.day_ticks';
+  execute 'drop policy if exists "kid retick" on public.day_ticks';
+  execute 'drop policy if exists "kid react" on public.act_done';
   execute 'drop policy if exists "kid untick" on public.day_ticks';
   execute 'drop policy if exists "kid roll" on public.day_rolls';
   execute 'drop policy if exists "kid star" on public.stars_ledger';
@@ -120,6 +122,11 @@ begin
   execute 'create policy "read vocab" on public.vocab_mastery for select using (true)';
   execute 'create policy "read stats" on public.game_stats for select using (true)';
   execute 'create policy "kid tick" on public.day_ticks for insert with check (true)';
+  -- sync.js writes these with .upsert(): on a repeat write Postgres takes the
+  -- ON CONFLICT DO UPDATE path, which needs UPDATE as well as INSERT. Without it
+  -- the op fails 42501 forever and _flush() parks the whole queue behind it.
+  execute 'create policy "kid retick" on public.day_ticks for update using (true) with check (true)';
+  execute 'create policy "kid react" on public.act_done for update using (true) with check (true)';
   execute 'create policy "kid untick" on public.day_ticks for delete using (true)';
   execute 'create policy "kid roll" on public.day_rolls for all using (true) with check (true)';
   execute 'create policy "kid star" on public.stars_ledger for insert with check (source = ''app'' and delta between 1 and 3)';
@@ -522,11 +529,14 @@ do $$
 begin
   execute 'drop policy if exists "read brain" on public.brain_done';
   execute 'drop policy if exists "kid brain" on public.brain_done';
+  execute 'drop policy if exists "kid rebrain" on public.brain_done';
   execute 'drop policy if exists "admin brain" on public.brain_done';
   execute 'drop policy if exists "kid braingate" on public.family_settings';
 
   execute 'create policy "read brain" on public.brain_done for select using (true)';
   execute 'create policy "kid brain" on public.brain_done for insert with check (true)';
+  -- replaying the same game the same day is an upsert -> ON CONFLICT DO UPDATE
+  execute 'create policy "kid rebrain" on public.brain_done for update using (true) with check (true)';
   execute 'create policy "admin brain" on public.brain_done for all to authenticated using (true) with check (true)';
 
   -- Kid-device (anon) may only write the brain-gate bypass flag, set by the
@@ -623,7 +633,7 @@ begin
     day_ticks, day_rolls, stars_ledger, act_done, vocab_mastery, game_stats,
     papa_notes, asks, passes, photos, search_log, help_claims,
     day_overrides, day_redos, brain_done, family_settings;
-  update kids set pin = null;
+  update kids set pin = null where pin is not null;
   insert into family_settings (key, value) values ('season_reset_at', now()::text);
 end;
 $$;
