@@ -728,6 +728,36 @@
   .brain-change__hint { display: none; }
 }
 
+@media (height < 650px) and (width >= 600px) {
+  .brain-round--contained .brain-scene:has(.brain-generic__keypad) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .72fr);
+    align-items: center;
+    gap: var(--brain-space-4);
+  }
+
+  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-task-card,
+  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-answer {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-task-card {
+    padding: var(--brain-space-4);
+  }
+
+  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-generic__pad {
+    gap: var(--brain-space-3);
+  }
+
+  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-corrective {
+    grid-column: 1 / -1;
+    width: min(100%, 720px);
+    margin: 0 auto;
+  }
+}
+
 @media (height < 650px) and (width >= 601px) {
   .brain-round--contained .brain-change {
     justify-content: flex-start;
