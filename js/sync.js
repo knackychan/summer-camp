@@ -630,6 +630,18 @@
         .subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }
+    /* Papa accepting or undoing a block in the admin panel is a day_ticks write
+       and nothing else. Without this channel the tablet only learned about it on
+       the next hydrate — so an accepted block stayed open (games still locked)
+       and an undone one stayed ticked, sometimes for hours. Send back appeared
+       to work only because it also writes day_redos, which does have a channel. */
+    onTicks(cb){
+      if(!this.supabase) return ()=>{};
+      const ch=this.supabase.channel(`ticks-${Date.now()}`)
+        .on("postgres_changes",{event:"*",schema:"public",table:"day_ticks"},p=>cb(p.new||p.old,p.eventType))
+        .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
     onRedos(cb){
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`redos-${Date.now()}`)

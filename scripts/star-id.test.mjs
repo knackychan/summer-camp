@@ -88,6 +88,24 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   console.log("ok - deterministic star ids decode for admin actions");
 }
 
+// --- 4b: one rule for what a block is worth ---
+// The admin panel and the tablet both ask blockDelta(). While they each decided
+// it inline, Remove credited +1 on a routine block that Accept granted nothing
+// for, so Remove -> Add back -> Accept lost a star nothing could give back.
+{
+  const { DAY } = require("../js/day-data.js");
+  assert.equal(SQStarId.blockDelta({ kind: "mission" }), 1);
+  assert.equal(SQStarId.blockDelta({ kind: "routine" }), 0);
+  for (const junk of [null, undefined, {}, { kind: "" }]) {
+    assert.equal(SQStarId.blockDelta(junk), 0, "an unknown block is worth nothing, never NaN");
+  }
+  // the real day plan must still be worth what it was before the rule moved
+  const missions = DAY.filter(b => b.kind === "mission").length;
+  assert.equal(DAY.reduce((s, b) => s + SQStarId.blockDelta(b), 0), missions);
+  assert.equal(SQStarId.BONUS_DELTA, 2, "the day-complete bonus is frozen at +2");
+  console.log("ok - one rule prices a block for both apps");
+}
+
 // --- 5: addStars treats a repeat of the same id as the same star ---
 {
   const src = readFileSync(new URL("../js/sync.js", import.meta.url), "utf8");

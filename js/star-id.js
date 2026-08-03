@@ -33,9 +33,18 @@
       "-"+String(k).padStart(4,"0")+"-"+String(slot).padStart(12,"0");
   }
 
+  /* What covering a block is worth. Papa's Accept, the kid's tick and a credited
+     Remove all ask this one function: three inline copies of `kind==="mission"`
+     is what let Remove mint a star on a routine block that Accept never grants,
+     so Remove → Add back → Accept lost a star nothing could give back. The
+     amount lives beside the id because the id is what the amount is keyed to. */
+  const BONUS_DELTA=2;
+
   const api={
     block:function(kid,dayISO,blockIdx){return starId(kid,dayISO,blockIdx);},
     bonus:function(kid,dayISO){return starId(kid,dayISO,BONUS_SLOT);},
+    blockDelta:function(block){return block&&block.kind==="mission"?1:0;},
+    BONUS_DELTA:BONUS_DELTA,
     parse:function(id){
       const m=String(id||"").match(/^b10c57a2-(\d{4})-(\d{2})(\d{2})-(\d{4})-(\d{12})$/);
       if(!m)return null;

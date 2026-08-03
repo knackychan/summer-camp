@@ -546,7 +546,14 @@ try {
   }
   const grants = [...appScript.matchAll(/addStars\(([^)]*)\)/g)];
   if (grants.length < 3) {
-    fail("stars are a ledger", `only ${grants.length} addStars call sites; the app has three ways to earn a star`);
+    fail("stars are a ledger", `only ${grants.length} addStars call sites; the app earns via block, day-complete bonus and the Brain Gym set`);
+  }
+  // Papa, 2026-08-03: stars come from the schedule, where Papa sees the block and
+  // can accept or send it back. The Activities and Learn tabs used to hand one out
+  // for a single "I did it" tap — free stars, and the Learn ledger reason said
+  // "self-claimed" out loud. Neither may come back without a new decision.
+  if (/addStars\([^)]*(Activity 活動|self-claimed)/.test(appScript)) {
+    fail("stars are a ledger", "a self-claimed Activity/Learn star is back — stars come from the schedule (Papa, 2026-08-03)");
   }
   grants.forEach(([, args]) => {
     if (args.split(",").length < 3) fail("stars are a ledger", `addStars(${args}) passes no reason — the ledger would be unauditable`);
