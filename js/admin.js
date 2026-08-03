@@ -892,26 +892,35 @@
     return result;
   }
 
-  function starRefunds(kid,blocks,reason){
-    return blocks.filter(function(i){return effectiveBlock(kid,i).kind==="mission";}).map(function(i){return {
-      kid_id:kid,delta:-1,reason:`${reason}: ${effectiveBlock(kid,i).title}`,source:"admin",granted_by:session.user.id
-    };});
+  /* Revoking a block star is a delete of the one row that block can own, never a
+     -1 insert. A -1 was wrong twice over: it fired whether or not a +1 had ever
+     been granted (the kid's own tick grants directly from the tablet, so most
+     blocks Papa sees were never granted here), and it matched on the block's
+     CURRENT kind and title, so replacing a block between accept and undo
+     refunded the wrong thing. Deleting the id is exact and a no-op when there is
+     nothing to take back. See js/star-id.js. */
+  async function dropStars(ids){
+    var real=ids.filter(Boolean);
+    if(!real.length)return null;
+    const {error}=await client.from("stars_ledger").delete().in("id",real);
+    return error||null;
   }
 
   async function acceptBlock(kid,i){
     if(tickFor(kid,i)||passFor(kid,i,"outing"))return;
-    var beforeComplete=dayComplete(kid);
     suppressRealtime("day_ticks",{kid_id:kid,day:today,block_idx:i});
     const {error}=await client.from("day_ticks").insert({kid_id:kid,day:today,block_idx:i});
     if(error){writeFailed(error);return;}
     await client.from("day_redos").delete().eq("kid_id",kid).eq("day",today).eq("block_idx",i);
     var grants=[];
     var b=effectiveBlock(kid,i);
-    if(b.kind==="mission")grants.push({kid_id:kid,delta:1,reason:`Admin accepted: ${b.title}`,source:"admin",granted_by:session.user.id});
+    if(b.kind==="mission")grants.push({id:SQStarId.block(kid,today,i),kid_id:kid,delta:1,reason:`Admin accepted: ${b.title}`,source:"admin",granted_by:session.user.id});
     var after=new Set([...coveredSet(kid),i]);
-    if(!beforeComplete&&after.size>=DAY.length)grants.push({kid_id:kid,delta:2,reason:"Day-complete bonus",source:"admin",granted_by:session.user.id});
+    if(after.size>=DAY.length)grants.push({id:SQStarId.bonus(kid,today),kid_id:kid,delta:2,reason:"Day-complete bonus",source:"admin",granted_by:session.user.id});
     if(grants.length){
-      const r=await client.from("stars_ledger").insert(grants);
+      /* 23505 means the kid's tablet already granted it — the same star, not a
+         second one, so accepting on top of a tick is silent rather than an error. */
+      const r=await client.from("stars_ledger").upsert(grants,{onConflict:"id",ignoreDuplicates:true});
       if(r.error){writeFailed(r.error);return;}
     }
     toast(`Accepted ✓ ${kidName(kid)} — ${b.title}`,true);
@@ -920,17 +929,16 @@
 
   async function unacceptBlock(kid,i,redoNote){
     if(!tickFor(kid,i))return;
-    var beforeComplete=dayComplete(kid);
     const {error}=await client.from("day_ticks").delete().eq("kid_id",kid).eq("day",today).eq("block_idx",i);
     if(error){writeFailed(error);return;}
     var after=coveredSet(kid);
     after.delete(i);
     if(rows.passes.some(function(p){return p.kid_id===kid&&p.day===today&&p.block_idx===i&&["granted","spent"].includes(p.status);}))after.add(i);
-    var refunds=starRefunds(kid,[i],redoNote?"Sent back":"Admin undo");
-    if(beforeComplete&&after.size<DAY.length)refunds.push({kid_id:kid,delta:-2,reason:"Day-complete bonus undone",source:"admin",granted_by:session.user.id});
-    if(refunds.length){
-      const r=await client.from("stars_ledger").insert(refunds);
-      if(r.error){writeFailed(r.error);return;}
+    var drop=[SQStarId.block(kid,today,i)];
+    if(after.size<DAY.length)drop.push(SQStarId.bonus(kid,today));
+    {
+      const err=await dropStars(drop);
+      if(err){writeFailed(err);return;}
     }
     if(redoNote!=null){
       const r=await client.from("day_redos").upsert({kid_id:kid,day:today,block_idx:i,note:redoNote});
@@ -952,7 +960,12 @@
     const r1=await client.from("passes").insert(pass);
     if(r1.error){writeFailed(r1.error);return;}
     if(credited){
-      const r2=await client.from("stars_ledger").insert({kid_id:kid,delta:1,reason:`Removed block counts: ${effectiveBlock(kid,i).title}`,source:"admin",granted_by:session.user.id});
+      /* Same id as the block's own star: "removed but still counts" is that
+         block's one star, so removing twice — or removing a block the kid had
+         already ticked — cannot stack a second one. */
+      const r2=await client.from("stars_ledger").upsert(
+        {id:SQStarId.block(kid,today,i),kid_id:kid,delta:1,reason:`Removed block counts: ${effectiveBlock(kid,i).title}`,source:"admin",granted_by:session.user.id},
+        {onConflict:"id",ignoreDuplicates:true});
       if(r2.error){writeFailed(r2.error);return;}
     }
     toast(`Removed — ${kidName(kid)} ${effectiveBlock(kid,i).title}`,true);
@@ -963,8 +976,8 @@
     const r1=await client.from("passes").delete().eq("id",passId);
     if(r1.error){writeFailed(r1.error);return;}
     if(credited){
-      const r2=await client.from("stars_ledger").insert({kid_id:kid,delta:-1,reason:`Removed block added back: ${effectiveBlock(kid,i).title}`,source:"admin",granted_by:session.user.id});
-      if(r2.error){writeFailed(r2.error);return;}
+      const err=await dropStars([SQStarId.block(kid,today,i)]);
+      if(err){writeFailed(err);return;}
     }
     toast(`Added back — ${kidName(kid)} ${effectiveBlock(kid,i).title}`,true);
     await loadAll();
@@ -972,13 +985,12 @@
 
   async function resetAcceptedDay(){
     const ticks=rows.ticks.filter(function(t){return t.day===today;});
-    var refunds=[];
+    var drop=[];
     Object.keys(KIDS).forEach(function(kid){
-      const kidTicks=ticks.filter(function(t){return t.kid_id===kid;}).map(function(t){return t.block_idx;});
-      refunds.push.apply(refunds,starRefunds(kid,kidTicks,"Day reset"));
+      ticks.filter(function(t){return t.kid_id===kid;})
+        .forEach(function(t){drop.push(SQStarId.block(kid,today,t.block_idx));});
       var passOnly=new Set(rows.passes.filter(function(p){return p.kid_id===kid&&p.day===today&&["granted","spent"].includes(p.status);}).map(function(p){return p.block_idx;}));
-      if(dayComplete(kid)&&passOnly.size<DAY.length)
-        refunds.push({kid_id:kid,delta:-2,reason:"Day reset bonus undo",source:"admin",granted_by:session.user.id});
+      if(passOnly.size<DAY.length)drop.push(SQStarId.bonus(kid,today));
     });
     if(ticks.length){
       const r1=await client.from("day_ticks").delete().eq("day",today);
@@ -995,9 +1007,9 @@
     ]);
     const resetError=resetResults.find(function(r){return r.error;});
     if(resetError){writeFailed(resetError.error);return;}
-    if(refunds.length){
-      const r2=await client.from("stars_ledger").insert(refunds);
-      if(r2.error){writeFailed(r2.error);return;}
+    {
+      const err=await dropStars(drop);
+      if(err){writeFailed(err);return;}
     }
     toast("Day reset — original activities and times restored",true);
     await loadAll();

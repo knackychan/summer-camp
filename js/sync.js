@@ -133,6 +133,8 @@
       /* The last star_totals we successfully read. Cached so an offline boot shows
          the kid's real number instead of zero. Only applyStarTotals writes it. */
       this.serverStars=loadJson("sq:serverStars",{});
+      /* Local-only mode has no primary key to dedup against — see addStars. */
+      this.localStarIds=loadJson("sq:localStarIds",[]);
     }
 
     static async init(seed){
@@ -258,7 +260,7 @@
       if(resetStamp&&loadJson("sq:seasonReset","")!==resetStamp){
         saveJson("sq:seasonReset",resetStamp);
         [STORAGE_KEY,QUEUE_KEY,"sq:kidPins","sq:adminPin","sq:famSettings",
-         "sq:redos","sq:dayOverrides","sq:serverStars"]
+         "sq:redos","sq:dayOverrides","sq:serverStars","sq:localStarIds"]
           .forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
         if(typeof location!=="undefined"&&location.reload)location.reload();
         return;
@@ -507,16 +509,30 @@
     async clearBrainGate(kid,dayISO){
       await this.setFamilySetting("braingate_"+kid,dayISO);
     }
-    async addStars(kid,delta,reason){
+    /* `id` is optional and only passed for stars that must happen at most once —
+       see js/star-id.js. It becomes the stars_ledger primary key, so a repeat is
+       a 23505 the server rejects rather than a second star. */
+    async addStars(kid,delta,reason,id){
       if(!this.configured){
         /* No server exists and never will. The local cache is the ledger, so the
-           kid still earns stars in a clean local-only deploy. */
+           kid still earns stars in a clean local-only deploy — including the PK
+           dedup, which there is nothing else to enforce. */
+        if(id){
+          if(this.localStarIds.indexOf(id)>=0)return;
+          this.localStarIds.push(id);
+          saveJson("sq:localStarIds",this.localStarIds);
+        }
         this.serverStars[kid]=(this.serverStars[kid]||0)+delta;
         saveJson("sq:serverStars",this.serverStars);
         this.announceStars(kid,delta,reason);
         return;
       }
-      this.enqueue({type:"stars",kid,delta,reason});
+      /* Two pending inserts of one id can only ever become one row, so counting
+         both in starsFor() would just show a number that later drops. */
+      if(id&&this.queue.some(function(op){return op&&op.type==="stars"&&op.id===id;}))return;
+      const op={type:"stars",kid,delta,reason};
+      if(id)op.id=id;
+      this.enqueue(op);
       /* after enqueue, before flush: starsFor() already counts it, so the
          notification and the number a kid sees can never disagree */
       this.announceStars(kid,delta,reason);

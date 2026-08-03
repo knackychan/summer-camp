@@ -907,6 +907,7 @@ body.music-mode{overflow:hidden}
 
 <script src="js/config.js"></script>
 <script src="js/day.js"></script>
+<script src="js/star-id.js"></script>
 <script src="js/vendor/supabase.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/notify.js"></script>
@@ -2112,11 +2113,20 @@ function tickBlockDone(i){
   if(d2.done[i]){delete d2.done[i]; saveProgress(); renderMyDay(); refreshLockUI(); return;}
   d2.done[i]=true;
   const b=blockFor(hubKid,i);
+  const day=todayStr();
   if(b.kind==="mission"){
     if(b.pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
+    /* The star lands now, not when Papa gets round to the admin panel (Papa's
+       policy, 2026-08-02: earn immediately, Papa revokes after if he must).
+       The id makes it once-per-block-per-day, so untick/re-tick cannot mint a
+       second one — and if Papa sends the block back, deleting that row is what
+       lets the kid earn it again for real. */
+    const reason=`Block 格子 · ${b.title} ${b.tz||""} · ${day}`;
+    if(store) store.addStars(hubKid,1,reason,SQStarId.block(hubKid,day,i));
     sWin(); burst(16); star();
   } else { sGood(); }
   if(coveredCount(hubKid,d2)>=DAY.length){
+    if(store) store.addStars(hubKid,2,`Day complete 全部完成 · ${day}`,SQStarId.bonus(hubKid,day));
     sWin(); burst(60); bigFloat("🌟");
   }
   saveProgress(); renderMyDay(); renderHubHead(); refreshLockUI();
@@ -2130,7 +2140,7 @@ function renderMyDay(skipScroll){
   document.getElementById("dayTxt").textContent=done+" / "+total+(done>=total?"  — DAY COMPLETE! 全部完成！🌟":"");
   const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${escHtml(store.papaNote)}</div>`:"";
   document.getElementById("dayList").innerHTML=
-    brainNudge(hubKid)+note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div><div class="passline">Papa grants the star from the admin panel after a block is accepted. 爸爸會在管理板核准後發星星。</div>`+
+    brainNudge(hubKid)+note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div><div class="passline">Tick a mission block and the star is yours straight away. 完成任務格子，星星馬上到手。</div>`+
     SQTime.displayOrder(dayFor(hubKid),dayOverrides).map(i=>{
       const b=blockFor(hubKid,i);
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
