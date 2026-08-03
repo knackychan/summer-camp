@@ -75,73 +75,33 @@ test("resolveOverrides: kid row wins over all row", () => {
   assert.deepEqual(SQTime.resolveOverrides(null, "lili"), {});
 });
 
-const LDAY = [
-  { t: "8:00", title: "Wake", tz: "起床" },
-  { t: "10:00", title: "Homework", tz: "暑假作業" },
-  { t: "11:15", title: "Screen #1 — earned", tz: "螢幕#1" },
-  { t: "12:00", title: "Lunch", tz: "午餐" },
-  { t: "✨", title: "Bonus", tz: "加碼" },
-];
 const noPass = () => false;
 /* drops `reason` so the pre-gate expectations below stay readable — the reason
    itself is asserted by the brain-gate tests further down */
-const lock = (now, done, passOk = noPass, overrides = {}, redos = {}) => {
-  const st = SQLock.computeLock({ day: LDAY, overrides, now, done, passOk, redos });
+const lock = (done, redos = {}, passOk = noPass) => {
+  const st = SQLock.computeLock({ done, passOk, redos });
   return { locked: st.locked, blockIdx: st.blockIdx };
 };
 
-test("locked during unticked activity block", () => {
-  assert.deepEqual(lock(10 * 60 + 30, {}), { locked: true, blockIdx: 1 });
+test("free by default (games are only gated by redo/brain, not the schedule)", () => {
+  assert.deepEqual(lock({}), { locked: false, blockIdx: null });
 });
 
-test("unlocked once current activity ticked", () => {
-  assert.deepEqual(lock(10 * 60 + 30, { 1: true }), { locked: false, blockIdx: null });
-});
-
-test("pass on current block unlocks", () => {
-  assert.deepEqual(lock(10 * 60 + 30, {}, i => i === 1), { locked: false, blockIdx: null });
-});
-
-test("overrun linger: screen block current, previous activity unticked", () => {
-  assert.deepEqual(lock(11 * 60 + 30, { 0: true }), { locked: true, blockIdx: 1 });
-  assert.deepEqual(lock(11 * 60 + 30, { 0: true, 1: true }), { locked: false, blockIdx: null });
-});
-
-test("current activity governs alone even if earlier one unticked", () => {
-  assert.deepEqual(lock(12 * 60 + 10, { 3: true }), { locked: false, blockIdx: null });
-  assert.deepEqual(lock(12 * 60 + 10, {}), { locked: true, blockIdx: 3 });
-});
-
-test("before first block: unlocked", () => {
-  assert.deepEqual(lock(6 * 60, {}), { locked: false, blockIdx: null });
-});
-
-test("override moves the governing block", () => {
-  assert.deepEqual(lock(10 * 60 + 30, {}, noPass, { 1: "15:00" }), { locked: true, blockIdx: 0 });
-  assert.deepEqual(lock(10 * 60 + 30, { 0: true }, noPass, { 1: "15:00" }), { locked: false, blockIdx: null });
-});
-
-test("redo block locks games regardless of clock", () => {
-  // 6:00 — before any block, normally unlocked; redo flag on homework forces the lock
-  assert.deepEqual(lock(6 * 60, {}, noPass, {}, { 1: true }), { locked: true, blockIdx: 1 });
+test("redo block locks games regardless of the schedule", () => {
+  assert.deepEqual(lock({}, { 1: true }), { locked: true, blockIdx: 1 });
 });
 
 test("re-ticked redo block unlocks", () => {
-  assert.deepEqual(lock(6 * 60, { 1: true }, noPass, {}, { 1: true }), { locked: false, blockIdx: null });
+  assert.deepEqual(lock({ 1: true }, { 1: true }), { locked: false, blockIdx: null });
 });
 
 test("pass on redo block unlocks", () => {
-  assert.deepEqual(lock(6 * 60, {}, i => i === 1, {}, { 1: true }), { locked: false, blockIdx: null });
-});
-
-test("redo lock outranks current-block verdict", () => {
-  // 12:10 lunch current+ticked, homework redo-flagged and unticked → locked by homework
-  assert.deepEqual(lock(12 * 60 + 10, { 3: true }, noPass, {}, { 1: true }), { locked: true, blockIdx: 1 });
+  assert.deepEqual(lock({}, { 1: true }, i => i === 1), { locked: false, blockIdx: null });
 });
 
 /* ---- Brain Gym gate (slice 11) ---- */
 const gateLock = (ctx) =>
-  SQLock.computeLock({ day: LDAY, overrides: {}, now: 10 * 60 + 30, passOk: noPass, redos: {}, ...ctx });
+  SQLock.computeLock({ passOk: noPass, redos: {}, ...ctx });
 
 test("gateState counts only today's trio", () => {
   const trio = ["a", "b", "c"];
@@ -186,28 +146,21 @@ test("brainEnabled defaults to true and only '0' turns it off", () => {
 });
 
 test("computeLock reports a reason for every lock", () => {
-  assert.deepEqual(gateLock({ now: 9 * 60, done: {}, redos: { 3: 1 }, brainOpen: true }),
+  assert.deepEqual(gateLock({ done: {}, redos: { 3: 1 }, brainOpen: true }),
     { locked: true, blockIdx: 3, reason: "redo" });
+  assert.deepEqual(gateLock({ done: {}, brainOpen: false }),
+    { locked: true, blockIdx: null, reason: "brain" });
   assert.deepEqual(gateLock({ done: {}, brainOpen: true }),
-    { locked: true, blockIdx: 1, reason: "activity" });
-  assert.deepEqual(gateLock({ done: { 1: 1 }, brainOpen: true }),
     { locked: false, blockIdx: null, reason: null });
 });
 
-test("computeLock falls through to the brain gate once the day is clear", () => {
-  assert.deepEqual(gateLock({ done: { 1: 1 }, brainOpen: false }),
-    { locked: true, blockIdx: null, reason: "brain" });
-  // and before the first block of the day, when nothing else can lock
-  assert.deepEqual(gateLock({ now: 6 * 60, done: {}, brainOpen: false }),
-    { locked: true, blockIdx: null, reason: "brain" });
-});
-
-test("an activity lock outranks the brain gate", () => {
-  assert.equal(gateLock({ done: {}, brainOpen: false }).reason, "activity");
+test("redo lock outranks the brain gate", () => {
+  assert.deepEqual(gateLock({ done: {}, redos: { 3: 1 }, brainOpen: false }),
+    { locked: true, blockIdx: 3, reason: "redo" });
 });
 
 test("brainOpen defaults to open so pre-gate callers are unaffected", () => {
-  assert.equal(gateLock({ done: { 1: 1 } }).locked, false);
+  assert.equal(gateLock({ done: {} }).locked, false);
 });
 
 test("practice-day alternation is deterministic and roughly half", () => {

@@ -766,7 +766,7 @@ body.music-mode{overflow:hidden}
     </div>
     <div id="tab-acts" class="hidden">
       <div class="bankgrid" id="actGrid"></div>
-      <div class="tipline">✓ Finish an activity to earn a star — once per day · 完成活動得一顆星——每天每項一次 ⭐</div>
+      <div class="tipline">✓ Pick something fun — once per day. Stars come from My Day! · 挑一件好玩的事——每天每項一次。星星要在「我的一天」拿喔！</div>
     </div>
     <div id="tab-learn" class="hidden">
       <div class="bigcard">
@@ -1843,9 +1843,6 @@ function appLockReason(id){
 function catLockReason(id,cat){
   if(isTestMode())return null;
   const v=(store&&store.familySettings&&store.familySettings[`catlock_${id}_${cat}`])||"";
-  /* Games default to locked (Papa, 2026-07-27): no row yet = locked; Papa
-     grants a pass by setting the value to "unlocked", not by clearing it. */
-  if(cat==="games")return v==="unlocked"?null:"Papa";
   return v||null;
 }
 function tabLocked(cat){
@@ -2011,11 +2008,11 @@ function gameLockState(){
   const id=activeKid();
   const done=id?dayState(id).done:{};
   const st=SQLock.computeLock({
-    day:dayFor(id),overrides:dayOverrides,now:nowMins(),done:done,passOk:function(i){return passOkFor(id,i);},
+    done:done,passOk:function(i){return passOkFor(id,i);},
     redos:(id&&store&&store.redos&&store.redos[id])||{},
     brainOpen:id?brainGate(id).open:true
   });
-  /* the PIN override frees one activity block only — it must not open the brain
+  /* the PIN override frees one redo block only — it must not open the brain
      gate, whose blockIdx is also null (Papa has clearBrainGate for that) */
   if(st.locked&&st.reason!=="brain"&&lockOverride&&lockOverride.day===todayStr()&&lockOverride.blockIdx===st.blockIdx)
     return {locked:false,blockIdx:null,reason:null};
@@ -2173,7 +2170,10 @@ function tickBlockDone(i){
   d2.done[i]=true;
   const b=blockFor(hubKid,i);
   const day=todayStr();
-  if(b.kind==="mission"){
+  /* What the block is worth is SQStarId's call, not this function's — Papa's
+     Accept has to agree with it to the star. See js/star-id.js. */
+  const blockDelta=SQStarId.blockDelta(b);
+  if(blockDelta){
     if(b.pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
     /* The star lands now, not when Papa gets round to the admin panel (Papa's
        policy, 2026-08-02: earn immediately, Papa revokes after if he must).
@@ -2181,11 +2181,11 @@ function tickBlockDone(i){
        second one — and if Papa sends the block back, deleting that row is what
        lets the kid earn it again for real. */
     const reason=`Block 格子 · ${b.title} ${b.tz||""} · ${day}`;
-    if(store) store.addStars(hubKid,1,reason,SQStarId.block(hubKid,day,i));
+    if(store) store.addStars(hubKid,blockDelta,reason,SQStarId.block(hubKid,day,i));
     sWin(); burst(16); star();
   } else { sGood(); }
   if(coveredCount(hubKid,d2)>=DAY.length){
-    if(store) store.addStars(hubKid,2,`Day complete 全部完成 · ${day}`,SQStarId.bonus(hubKid,day));
+    if(store) store.addStars(hubKid,SQStarId.BONUS_DELTA,`Day complete 全部完成 · ${day}`,SQStarId.bonus(hubKid,day));
     sWin(); burst(60); bigFloat("🌟");
   }
   saveProgress(); renderMyDay(); renderHubHead(); refreshLockUI();
@@ -2513,7 +2513,7 @@ function renderAct(){
     <div style="text-align:center;margin-top:4px">
       <button class="btn" id="actDone" ${done?"disabled":""}
         style="background:${done?'var(--panel)':k.raw};color:${done?'var(--muted)':'#1c1436'}">
-        ${done?"✓ Done today 今天完成了 — see you tomorrow!":"✓ I did it! 我做到了！+⭐"}</button>
+        ${done?"✓ Done today 今天完成了 — see you tomorrow!":"✓ I did it! 我做到了！"}</button>
     </div>`;
   document.getElementById("misBtn").onclick=()=>{
     if(isPhoto){
@@ -2537,12 +2537,16 @@ function renderAct(){
       document.getElementById("timerBtn").textContent="▶️ Start";};
   }
   const d=document.getElementById("actDone");
+  /* No star here (Papa, 2026-08-03). A self-claimed "I did it" is one tap away
+     from free stars, so every star now comes from the schedule, where Papa can
+     see the block and accept or send it back. The completion still syncs to
+     act_done — reports and the once-a-day rule need it — it just is not currency.
+     The celebration stays; it must not promise a ⭐ that is not coming. */
   d.onclick=()=>{
     if(actsToday(hubKid)[actIdx])return;
     actsToday(hubKid)[actIdx]=true;
-    store.addStars(hubKid,1,`Activity 活動 · ${BANK[actIdx].cat} ${BANK[actIdx].catz||""} · ${BANK[actIdx][hubKid]} / ${(BANK[actIdx].z||{})[hubKid]||""}`);
     if(g.type==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
-    saveProgress(); sWin(); burst(30); star();
+    saveProgress(); sWin(); burst(30); bigFloat("🎉");
     renderAct();
   };
 }
@@ -2635,13 +2639,15 @@ function openLearn(key){
     <div style="text-align:center;margin-top:4px">
       <button class="btn" id="actDone" ${done?"disabled":""}
         style="background:${done?'var(--panel)':k.raw};color:${done?'var(--muted)':'#1c1436'}">
-        ${done?"✓ Done today 今天完成了":"✓ I learned something! 我學到了！+⭐"}</button>
+        ${done?"✓ Done today 今天完成了":"✓ I learned something! 我學到了！"}</button>
     </div>`;
+  /* Same call as the Activities tab above: this star was labelled "self-claimed"
+     in its own ledger reason, which is the exploit written down. Removing only
+     the Activity one would just move the free tap one tab across. */
   document.getElementById("actDone").onclick=()=>{
     if(actsToday(hubKid)[aKey])return;
     actsToday(hubKid)[aKey]=true;
-    store.addStars(hubKid,1,`Learn 學習 · ${g.title} ${g.tz} · self-claimed 自己申報`);
-    saveProgress(); sWin(); burst(30); star();
+    saveProgress(); sWin(); burst(30); bigFloat("🎉");
     openLearn(key);
   };
 }
@@ -3365,6 +3371,16 @@ function setupRealtime(){
     }
     refreshOverrides();
     if(hubKid&&hubTab==="day")renderMyDay();
+    refreshLockUI();
+  });
+  /* hydrate() rebuilds today's ticks from the server, replays anything still
+     queued on this tablet over the top, and re-baselines `last` — so Papa's undo
+     cannot be pushed straight back by the next save(). Same shape as onRedos. */
+  store.onTicks(async row=>{
+    if(!row||row.day!==todayStr())return;
+    await store.hydrate();
+    if(hubKid&&hubTab==="day")renderMyDay();
+    if(hubKid)renderHubHead();
     refreshLockUI();
   });
   store.onRedos(async row=>{

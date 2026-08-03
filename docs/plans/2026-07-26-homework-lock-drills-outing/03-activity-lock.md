@@ -1,5 +1,7 @@
 # Slice 03 — Hybrid Activity Lock Implementation Plan
 
+> **Superseded 2026-08-03 (Papa):** the unticked-activity-block lock described below was removed. Games are now free all day by default; only a Papa redo send-back and the Brain Gym gate still lock them automatically, plus Papa's general Games category-lock toggle in admin.html. This slice's history (the PIN pad, the `family_settings` admin PIN, the redo mechanism) is otherwise still live — see `js/lock-core.js` for the current rule.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Games become unplayable while a scheduled activity block is current and unticked (with overrun linger), unlockable by tick, pass, or Papa's 4-digit PIN. Guides, Learn, My Day, ask channel never lock.

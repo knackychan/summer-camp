@@ -7,12 +7,11 @@
   };
   const DAY=window.SQ_DAY_DATA||[];
   const BANK=window.SQ_ACT_DATA||[];
-  /* Games default to locked (Papa, 2026-07-27): no catlock row yet reads as
-     locked; Papa grants a pass by setting the value to "unlocked", not by
-     clearing it. Every other category keeps the old any-value-locks rule. */
+  /* Games default to free, same as every other category (Papa, 2026-08-03,
+     reverses the 2026-07-27 "games default locked" decision): no catlock row
+     = unlocked; Papa locks by setting any non-empty value. */
   const catIsLocked=function(fs,id,cat){
-    var v=fs['catlock_'+id+'_'+cat]||"";
-    return cat==="games"?v!=="unlocked":v!=="";
+    return (fs['catlock_'+id+'_'+cat]||"")!=="";
   };
   const LOCK_CATS=[
     ["games","Games"],
@@ -614,7 +613,7 @@
       var parts=b.dataset.accept.split(":");acceptBlock(parts[0],+parts[1]);
     };});
     document.querySelectorAll("[data-unaccept]").forEach(function(b){b.onclick=function(){
-      var parts=b.dataset.unaccept.split(":");unacceptBlock(parts[0],+parts[1],false);
+      var parts=b.dataset.unaccept.split(":");unacceptBlock(parts[0],+parts[1],null);
     };});
     document.querySelectorAll("[data-sendback]").forEach(function(b){b.onclick=function(){
       var parts=b.dataset.sendback.split(":");sendBackBlock(parts[0],+parts[1]);
@@ -906,62 +905,70 @@
     return error||null;
   }
 
-  function staleScheduleRevokes(kid,day,blockIdxs,includeBonus){
-    var titles=blockIdxs.map(function(i){return effectiveBlock(kid,i).title;}).filter(Boolean);
-    return rows.ledger.filter(function(r){
-      var reason=String(r.reason||"");
-      if(r.kid_id!==kid||r.delta>=0||r.source!=="admin"||!/^\s*Revoked\b/.test(reason))return false;
-      if(reason.indexOf(day)<0)return false;
-      if(includeBonus&&/Day complete|Day-complete bonus/.test(reason))return true;
-      return titles.some(function(title){return title&&reason.indexOf(title)>=0;});
-    }).map(function(r){return r.id;});
+  /* 23505 means someone already granted this exact star — the kid's tablet on
+     tick, or Papa a moment ago. Same star, not a second one. */
+  async function grantStarRows(grants){
+    var real=grants.filter(Boolean);
+    if(!real.length)return null;
+    const {error}=await client.from("stars_ledger").upsert(real,{onConflict:"id",ignoreDuplicates:true});
+    return error||null;
+  }
+
+  function blockStarGrant(kid,i,reason){
+    var b=effectiveBlock(kid,i);
+    if(!SQStarId.blockDelta(b))return null;
+    return {id:SQStarId.block(kid,today,i),kid_id:kid,delta:SQStarId.blockDelta(b),
+      reason:reason||`Admin accepted: ${b.title}`,source:"admin",granted_by:session.user.id};
+  }
+
+  /* The day-complete bonus is a fact about the covered set, not an event. Every
+     path that changes what is covered re-derives it here, so it can neither
+     survive the day falling apart nor stay missing after the last block lands —
+     and because it is keyed by id, re-deriving it twice is still one star. */
+  async function syncDayBonus(kid,covered){
+    return covered.size>=DAY.length
+      ? grantStarRows([{id:SQStarId.bonus(kid,today),kid_id:kid,delta:SQStarId.BONUS_DELTA,
+          reason:"Day-complete bonus",source:"admin",granted_by:session.user.id}])
+      : dropStars([SQStarId.bonus(kid,today)]);
   }
 
   async function acceptBlock(kid,i){
-    if(tickFor(kid,i)||passFor(kid,i,"outing"))return;
+    if(passFor(kid,i,"outing"))return;
     suppressRealtime("day_ticks",{kid_id:kid,day:today,block_idx:i});
-    const {error}=await client.from("day_ticks").insert({kid_id:kid,day:today,block_idx:i});
+    /* upsert, not insert: a tick the kid made a second ago is the same fact, and
+       the 23505 it used to raise aborted the call here — block left accepted,
+       star never granted. Accepting an already-ticked block now repairs it. */
+    const {error}=await client.from("day_ticks").upsert({kid_id:kid,day:today,block_idx:i});
     if(error){writeFailed(error);return;}
     await client.from("day_redos").delete().eq("kid_id",kid).eq("day",today).eq("block_idx",i);
-    var grants=[];
-    var b=effectiveBlock(kid,i);
-    if(b.kind==="mission")grants.push({id:SQStarId.block(kid,today,i),kid_id:kid,delta:1,reason:`Admin accepted: ${b.title}`,source:"admin",granted_by:session.user.id});
-    var after=new Set([...coveredSet(kid),i]);
-    var completesDay=after.size>=DAY.length;
-    if(completesDay)grants.push({id:SQStarId.bonus(kid,today),kid_id:kid,delta:2,reason:"Day-complete bonus",source:"admin",granted_by:session.user.id});
-    if(grants.length){
-      /* 23505 means the kid's tablet already granted it — the same star, not a
-         second one, so accepting on top of a tick is silent rather than an error. */
-      const r=await client.from("stars_ledger").upsert(grants,{onConflict:"id",ignoreDuplicates:true});
-      if(r.error){writeFailed(r.error);return;}
-      const stale=staleScheduleRevokes(kid,today,[i],completesDay);
-      if(stale.length){
-        const err=await dropStars(stale);
-        if(err){writeFailed(err);return;}
-      }
-    }
-    toast(`Accepted ✓ ${kidName(kid)} — ${b.title}`,true);
+    var err=await grantStarRows([blockStarGrant(kid,i)]);
+    if(err){writeFailed(err);return;}
+    err=await syncDayBonus(kid,new Set([...coveredSet(kid),i]));
+    if(err){writeFailed(err);return;}
+    toast(`Accepted ✓ ${kidName(kid)} — ${effectiveBlock(kid,i).title}`,true);
     await loadAll();
   }
 
+  /* redoNote is a string only for Send back. The Undo button passes false and
+     the old `!= null` let it through, so every plain Undo also wrote a redo row
+     — tagging the block "Sent back" and locking the kid's games (js/lock-core.js). */
   async function unacceptBlock(kid,i,redoNote){
-    if(!tickFor(kid,i))return;
+    const sentBack=typeof redoNote==="string";
+    suppressRealtime("day_ticks",{kid_id:kid,day:today,block_idx:i});
     const {error}=await client.from("day_ticks").delete().eq("kid_id",kid).eq("day",today).eq("block_idx",i);
     if(error){writeFailed(error);return;}
+    var err=await dropStars([SQStarId.block(kid,today,i)]);
+    if(err){writeFailed(err);return;}
     var after=coveredSet(kid);
     after.delete(i);
     if(rows.passes.some(function(p){return p.kid_id===kid&&p.day===today&&p.block_idx===i&&["granted","spent"].includes(p.status);}))after.add(i);
-    var drop=[SQStarId.block(kid,today,i)];
-    if(after.size<DAY.length)drop.push(SQStarId.bonus(kid,today));
-    {
-      const err=await dropStars(drop);
-      if(err){writeFailed(err);return;}
-    }
-    if(redoNote!=null){
+    err=await syncDayBonus(kid,after);
+    if(err){writeFailed(err);return;}
+    if(sentBack){
       const r=await client.from("day_redos").upsert({kid_id:kid,day:today,block_idx:i,note:redoNote});
       if(r.error){writeFailed(r.error);return;}
     }
-    toast(`${redoNote!=null?"Sent back":"Acceptance undone"} — ${kidName(kid)}`,true);
+    toast(`${sentBack?"Sent back":"Acceptance undone"} — ${kidName(kid)}`,true);
     await loadAll();
   }
 
@@ -977,14 +984,17 @@
     const r1=await client.from("passes").insert(pass);
     if(r1.error){writeFailed(r1.error);return;}
     if(credited){
-      /* Same id as the block's own star: "removed but still counts" is that
-         block's one star, so removing twice — or removing a block the kid had
-         already ticked — cannot stack a second one. */
-      const r2=await client.from("stars_ledger").upsert(
-        {id:SQStarId.block(kid,today,i),kid_id:kid,delta:1,reason:`Removed block counts: ${effectiveBlock(kid,i).title}`,source:"admin",granted_by:session.user.id},
-        {onConflict:"id",ignoreDuplicates:true});
-      if(r2.error){writeFailed(r2.error);return;}
+      /* Same id and same amount as the block's own star: "removed but still
+         counts" is that block's one star, so removing twice — or removing a
+         block the kid had already ticked — cannot stack a second one, and a
+         routine block stays worth what Accept says it is worth. */
+      const err=await grantStarRows([blockStarGrant(kid,i,`Removed block counts: ${effectiveBlock(kid,i).title}`)]);
+      if(err){writeFailed(err);return;}
     }
+    /* An outing pass covers the block whether or not it was credited, so the
+       day can complete on a removal — reconcile either way. */
+    const errB=await syncDayBonus(kid,new Set([...coveredSet(kid),i]));
+    if(errB){writeFailed(errB);return;}
     toast(`Removed — ${kidName(kid)} ${effectiveBlock(kid,i).title}`,true);
     await loadAll();
   }
@@ -992,10 +1002,16 @@
   async function addBackBlock(passId,kid,i,credited){
     const r1=await client.from("passes").delete().eq("id",passId);
     if(r1.error){writeFailed(r1.error);return;}
-    if(credited){
+    /* Only take the star back if the pass is the only thing holding it. A kid
+       who ticked the block while it was removed earned that same id honestly. */
+    if(credited&&!tickFor(kid,i)){
       const err=await dropStars([SQStarId.block(kid,today,i)]);
       if(err){writeFailed(err);return;}
     }
+    var after=coveredSet(kid);
+    if(!tickFor(kid,i))after.delete(i);
+    const errB=await syncDayBonus(kid,after);
+    if(errB){writeFailed(errB);return;}
     toast(`Added back — ${kidName(kid)} ${effectiveBlock(kid,i).title}`,true);
     await loadAll();
   }
@@ -1189,6 +1205,17 @@
   function bindLedgerActions(){
     document.querySelectorAll("[data-dropstar]").forEach(function(b){
       b.onclick=async function(){
+        /* A block's star and its tick are one fact. Deleting only the ledger row
+           left the block still reading "Accepted" with nothing behind it, no way
+           to re-earn it (Accept is not offered on an accepted block) and the
+           block's own Undo standing by to take a second star. Same operation,
+           whichever screen Papa reaches for. Only today's board is loaded, so an
+           older day's star is still a plain delete. */
+        var info=SQStarId.parse(b.dataset.dropstar);
+        if(info&&info.kind==="block"&&info.day===today){
+          await unacceptBlock(info.kid,info.slot,null);
+          return;
+        }
         const {error}=await client.from("stars_ledger").delete().eq("id",b.dataset.dropstar);
         if(error){writeFailed(error);return;}
         toast("Schedule star revoked",true);
@@ -1836,7 +1863,7 @@
       '<span class="lbl" style="display:block;margin-bottom:8px">Category locks</span>'+
       '<div class="chips">'+cats.map(function(c){
         var locked=catIsLocked(fs,kid,c[0]);
-        var label=c[0]==="games"&&!locked?" · pass":locked?" · locked":"";
+        var label=locked?" · locked":"";
         return '<button class="chip" aria-pressed="'+(locked?"true":"false")+'" data-catlock="'+kid+':'+c[0]+'" data-locked="'+(locked?1:0)+'">'+esc(c[1])+label+'</button>';
       }).join("")+'</div>'+
       '<p class="field__hint" style="margin-top:9px">My Day, guides, Learn and the ask channel stay open in every state except a full pause.</p>'+
@@ -1873,11 +1900,11 @@
     };});
     document.querySelectorAll("[data-catlock]").forEach(function(b){b.onclick=async function(){
       var parts=b.dataset.catlock.split(":"), id=parts[0], cat=parts[1], locked=b.dataset.locked==="1";
-      var value=cat==="games"?(locked?"unlocked":""):(locked?"":"1");
+      var value=locked?"":"1";
       suppressRealtime("family_settings",{key:'catlock_'+id+'_'+cat});
       const {error}=await client.from("family_settings").upsert({key:'catlock_'+id+'_'+cat,value,updated_at:new Date().toISOString()});
       if(error){writeFailed(error);return;}
-      toast(kidName(id)+" "+cat+" "+(locked?(cat==="games"?"pass granted":"unlocked"):"locked"),true);
+      toast(kidName(id)+" "+cat+" "+(locked?"unlocked":"locked"),true);
       await loadAll();
     };});
     document.querySelectorAll("[data-brainenabled]").forEach(function(b){b.onclick=async function(){
