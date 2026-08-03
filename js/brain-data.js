@@ -252,22 +252,35 @@
   let WORD_POOL=["cat","dog","fish","bird","apple","water","house","book",
     "green","jump","friend","music","river","cloud","spoon","tiger"];
   const EMOJI_POOL=["🐱","🐶","🐟","🐦","🍎","💧","🏠","📚","🌳","⭐","🚗","🎈"];
+  let BOPOMOFO_POOL=["ㄇㄠ","ㄍㄡˇ","ㄩˊ","ㄋㄧㄠˇ","ㄆㄧㄥˊㄍㄨㄛˇ","ㄕㄨㄟˇ","ㄕㄨ","ㄆㄥˊㄧㄡˇ"];
+  let INPUT_SCRIPT="abc";
   function setWordPool(list){if(list&&list.length>=12)WORD_POOL=list.slice();}
+  function setBopomofoPool(list){if(list&&list.length>=8)BOPOMOFO_POOL=list.slice();}
+  function setInputScript(mode){INPUT_SCRIPT=mode==="bpmf"?"bpmf":"abc";}
+  function cleanBopomofo(s){return String(s||"").replace(/[^\u3105-\u312f\u02ca\u02c7\u02cb\u02d9]+/g,"");}
 
   function wordMemItem(rnd,count,studyMs){
-    const words=shuffleWith(rnd,WORD_POOL.slice()).slice(0,count);
+    const bpmf=INPUT_SCRIPT==="bpmf";
+    const words=shuffleWith(rnd,(bpmf?BOPOMOFO_POOL:WORD_POOL).slice()).slice(0,count);
     const want={};
-    words.forEach(function(w){want[w.toLowerCase()]=true;});
+    words.forEach(function(w){want[bpmf?cleanBopomofo(w):w.toLowerCase()]=true;});
     return {
       prompt:{type:"wordlist",words:words,studyMs:studyMs,
-        en:"Remember these words",zh:"記住這些單字"},
+        en:bpmf?"Remember these Bopomofo":"Remember these words",
+        zh:bpmf?"記住這些注音":"記住這些單字"},
       worth:count,
       answer:words.join(" "),
       grade:function(given){
         const hit={};
-        String(given).toLowerCase().split(/[^a-z']+/).forEach(function(w){
-          if(w&&want[w])hit[w]=true;
-        });
+        if(bpmf){
+          String(given).split(/[^\u3105-\u312f\u02ca\u02c7\u02cb\u02d9]+/).forEach(function(w){
+            w=cleanBopomofo(w); if(w&&want[w])hit[w]=true;
+          });
+        }else{
+          String(given).toLowerCase().split(/[^a-z']+/).forEach(function(w){
+            if(w&&want[w])hit[w]=true;
+          });
+        }
         return Object.keys(hit).length;
       }
     };
@@ -404,7 +417,8 @@
 
   const api={TIERS:TIERS,TIER_DEFAULT:TIER_DEFAULT,GAMES:GAMES,SHOP_PRODUCTS:SHOP_PRODUCTS,
     pick:pick,intBetween:intBetween,numChoices:numChoices,shuffleWith:shuffleWith,zhNum:zhNum,
-    greedyPieceCount:greedyPieceCount,setWordPool:setWordPool};
+    greedyPieceCount:greedyPieceCount,setWordPool:setWordPool,setBopomofoPool:setBopomofoPool,
+    setInputScript:setInputScript};
   if(typeof window!=="undefined")window.SQBrainData=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

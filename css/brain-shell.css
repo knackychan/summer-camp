@@ -127,7 +127,8 @@
 }
 
 .brain-round__quit,
-.brain-round__mute {
+.brain-round__mute,
+.brain-round__script {
   justify-self: start;
   min-height: 44px;
   min-width: 44px;
@@ -141,9 +142,12 @@
   font-size: var(--brain-type-label);
   cursor: pointer;
 }
-.brain-round__mute { justify-self: end; }
+.brain-round__actions { justify-self: end; display: flex; align-items: center; gap: var(--brain-space-2); }
+.brain-round__mute,
+.brain-round__script { justify-self: auto; }
 .brain-round__quit:focus-visible,
-.brain-round__mute:focus-visible { outline: 4px solid var(--brain-focus); outline-offset: 3px; }
+.brain-round__mute:focus-visible,
+.brain-round__script:focus-visible { outline: 4px solid var(--brain-focus); outline-offset: 3px; }
 
 .brain-round__identity {
   text-align: center;

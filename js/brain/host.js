@@ -90,7 +90,10 @@ function createRound(opts) {
     '<header class="brain-round__header">' +
       '<button class="brain-round__quit" type="button">Later <span class="zht">待會再玩</span></button>' +
       '<div class="brain-round__identity"></div>' +
-      '<button class="brain-round__mute" type="button"></button>' +
+      '<div class="brain-round__actions">' +
+        '<button class="brain-round__script" type="button"></button>' +
+        '<button class="brain-round__mute" type="button"></button>' +
+      '</div>' +
     '</header>' +
     '<div class="brain-round__status">' +
       '<div class="brain-progress"></div>' +
@@ -103,6 +106,7 @@ function createRound(opts) {
 
   var quitBtn = overlay.querySelector(".brain-round__quit");
   var identityEl = overlay.querySelector(".brain-round__identity");
+  var scriptBtn = overlay.querySelector(".brain-round__script");
   var muteBtn = overlay.querySelector(".brain-round__mute");
   var progressEl = overlay.querySelector(".brain-progress");
   var clockEl = overlay.querySelector(".brain-clock");
@@ -117,6 +121,12 @@ function createRound(opts) {
     muteBtn.setAttribute("aria-label", muted ? "Sound off 靜音" : "Sound on 有聲音");
   }
   renderMute();
+  function renderScriptMode() {
+    var mode = opts.inputScript === "bpmf" ? "bpmf" : "abc";
+    scriptBtn.textContent = mode === "bpmf" ? "ㄅㄆㄇ" : "ABC";
+    scriptBtn.setAttribute("aria-label", mode === "bpmf" ? "Bopomofo mode 注音模式" : "ABC mode 英文模式");
+  }
+  renderScriptMode();
 
   function renderProgress() {
     var html = "";
@@ -173,6 +183,10 @@ function createRound(opts) {
     audioSvc.setMuted(!muted);
     renderMute();
   };
+  scriptBtn.onclick = function () {
+    if (!opts.onInputModeChange) return;
+    opts.onInputModeChange(opts.inputScript === "bpmf" ? "abc" : "bpmf");
+  };
 
   function startActiveClock() {
     if (!round.clock) return;
@@ -211,7 +225,9 @@ function createRound(opts) {
       motion: motionSvc,
       scheduler: scheduler,
       reducedMotion: reducedMotion,
-      random: visualRnd
+      random: visualRnd,
+      inputScript: opts.inputScript === "bpmf" ? "bpmf" : "abc",
+      bopomofo: window.SQBopomofo || null
     });
   }
 

@@ -906,6 +906,17 @@
     return error||null;
   }
 
+  function staleScheduleRevokes(kid,day,blockIdxs,includeBonus){
+    var titles=blockIdxs.map(function(i){return effectiveBlock(kid,i).title;}).filter(Boolean);
+    return rows.ledger.filter(function(r){
+      var reason=String(r.reason||"");
+      if(r.kid_id!==kid||r.delta>=0||r.source!=="admin"||!/^\s*Revoked\b/.test(reason))return false;
+      if(reason.indexOf(day)<0)return false;
+      if(includeBonus&&/Day complete|Day-complete bonus/.test(reason))return true;
+      return titles.some(function(title){return title&&reason.indexOf(title)>=0;});
+    }).map(function(r){return r.id;});
+  }
+
   async function acceptBlock(kid,i){
     if(tickFor(kid,i)||passFor(kid,i,"outing"))return;
     suppressRealtime("day_ticks",{kid_id:kid,day:today,block_idx:i});
@@ -916,12 +927,18 @@
     var b=effectiveBlock(kid,i);
     if(b.kind==="mission")grants.push({id:SQStarId.block(kid,today,i),kid_id:kid,delta:1,reason:`Admin accepted: ${b.title}`,source:"admin",granted_by:session.user.id});
     var after=new Set([...coveredSet(kid),i]);
-    if(after.size>=DAY.length)grants.push({id:SQStarId.bonus(kid,today),kid_id:kid,delta:2,reason:"Day-complete bonus",source:"admin",granted_by:session.user.id});
+    var completesDay=after.size>=DAY.length;
+    if(completesDay)grants.push({id:SQStarId.bonus(kid,today),kid_id:kid,delta:2,reason:"Day-complete bonus",source:"admin",granted_by:session.user.id});
     if(grants.length){
       /* 23505 means the kid's tablet already granted it — the same star, not a
          second one, so accepting on top of a tick is silent rather than an error. */
       const r=await client.from("stars_ledger").upsert(grants,{onConflict:"id",ignoreDuplicates:true});
       if(r.error){writeFailed(r.error);return;}
+      const stale=staleScheduleRevokes(kid,today,[i],completesDay);
+      if(stale.length){
+        const err=await dropStars(stale);
+        if(err){writeFailed(err);return;}
+      }
     }
     toast(`Accepted ✓ ${kidName(kid)} — ${b.title}`,true);
     await loadAll();
@@ -1091,7 +1108,7 @@
   const STAR_KINDS=[
     {key:"unlabelled",label:"Unlabelled",test:function(r){return /^Unlabelled|^App progress/.test(r);}},
     {key:"revoked",   label:"Revoked",   test:function(r){return /^Revoked|^Star reset|^Day reset|^Day-complete bonus undone/.test(r);}},
-    {key:"mission",   label:"Mission",   test:function(r){return /^Mission |^My Day mission|^Admin accepted:/.test(r);}},
+    {key:"mission",   label:"Mission",   test:function(r){return /^Block |^Mission |^My Day mission|^Admin accepted:/.test(r);}},
     {key:"practice",  label:"Practice",  test:function(r){return /^Practice /.test(r);}},
     {key:"activity",  label:"Activity",  test:function(r){return /^Activity /.test(r);}},
     {key:"learn",     label:"Learn",     test:function(r){return /^Learn /.test(r);}},
@@ -1104,6 +1121,12 @@
     var hit=STAR_KINDS.find(function(k){return k.test(reason);});
     if(hit)return hit;
     return {key:r&&r.source==="admin"?"papa":"other",label:r&&r.source==="admin"?"Papa":"Other"};
+  }
+
+  function scheduleStarInfo(r){
+    if(!r||r.delta<=0||!window.SQStarId||typeof SQStarId.parse!=="function")return null;
+    var info=SQStarId.parse(r.id);
+    return info&&info.kid===r.kid_id?info:null;
   }
 
   function ledgerVisible(){
@@ -1158,11 +1181,20 @@
   }
 
   function ledgerActionsHtml(r){
+    if(scheduleStarInfo(r))return '<button class="btn btn--sm btn--danger" data-dropstar="'+r.id+'" title="Revoke schedule star">Undo</button>';
     if(r.source==="admin")return '<button class="btn btn--sm btn--danger" data-delstar="'+r.id+'" title="Undo">Undo</button>';
     return r.delta>0?'<button class="btn btn--sm btn--danger" data-revokestar="'+r.id+'" title="Revoke">Undo</button>':"";
   }
 
   function bindLedgerActions(){
+    document.querySelectorAll("[data-dropstar]").forEach(function(b){
+      b.onclick=async function(){
+        const {error}=await client.from("stars_ledger").delete().eq("id",b.dataset.dropstar);
+        if(error){writeFailed(error);return;}
+        toast("Schedule star revoked",true);
+        await loadAll();
+      };
+    });
     document.querySelectorAll("[data-delstar]").forEach(function(b){
       b.onclick=async function(){
         const {error}=await client.from("stars_ledger").delete().eq("id",b.dataset.delstar);

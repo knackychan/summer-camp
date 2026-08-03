@@ -19,6 +19,7 @@
   /* Fixed: this is an id encoding, not a display order. Never reorder — doing so
      silently re-points every historical id at a different kid. */
   const KID_SLOT={lucien:1,lili:2,luis:3};
+  const SLOT_KID={1:"lucien",2:"lili",3:"luis"};
   /* The day-complete bonus is not a block, so it gets a slot no block index can
      reach (DAY is 16 long). */
   const BONUS_SLOT=999;
@@ -34,7 +35,15 @@
 
   const api={
     block:function(kid,dayISO,blockIdx){return starId(kid,dayISO,blockIdx);},
-    bonus:function(kid,dayISO){return starId(kid,dayISO,BONUS_SLOT);}
+    bonus:function(kid,dayISO){return starId(kid,dayISO,BONUS_SLOT);},
+    parse:function(id){
+      const m=String(id||"").match(/^b10c57a2-(\d{4})-(\d{2})(\d{2})-(\d{4})-(\d{12})$/);
+      if(!m)return null;
+      const kid=SLOT_KID[+m[4]], day=m[1]+"-"+m[2]+"-"+m[3], slot=+m[5];
+      if(!kid)return null;
+      if(starId(kid,day,slot)!==id)return null;
+      return {kid:kid,day:day,slot:slot,kind:slot===BONUS_SLOT?"bonus":"block"};
+    }
   };
   if(typeof window!=="undefined")window.SQStarId=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;

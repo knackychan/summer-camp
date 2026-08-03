@@ -243,6 +243,10 @@ body.game-mode .wrap{max-width:none;width:100%}
   display:flex;align-items:center;justify-content:center;font-family:'Fredoka';font-weight:600;
   font-size:clamp(14px,3.4vw,20px);color:#20183f;position:relative;cursor:pointer;
   box-shadow:0 4px 0 rgba(0,0,0,.28);transition:transform .06s,filter .06s;opacity:.92}
+.kb.bpmf{gap:6px}
+.kb.bpmf .krow{gap:6px}
+.kb.bpmf .key{width:clamp(28px,6.4vw,48px);font-size:clamp(18px,4vw,24px)}
+.kb.bpmf .key.space{font-size:clamp(14px,3vw,18px)}
 .key.space{width:clamp(150px,40vw,320px)}
 .key.pressed{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.28);filter:brightness(.9)}
 .key.target{opacity:1;animation:pulse 1s infinite;outline:3px solid #fff;z-index:2}
@@ -267,6 +271,7 @@ body.game-mode .wrap{max-width:none;width:100%}
   body.game-mode .krow{gap:5px}
   body.game-mode .key{width:clamp(30px,5.6vw,46px);height:clamp(40px,6.2dvh,46px);
     border-radius:10px;font-size:clamp(14px,3vw,18px);box-shadow:0 3px 0 rgba(0,0,0,.28)}
+  body.game-mode .kb.bpmf .key{width:clamp(27px,5.1vw,42px);font-size:clamp(16px,3vw,20px)}
   body.game-mode .key.space{width:clamp(150px,34vw,260px)}
 }
 @media(min-width:600px) and (max-width:1100px){
@@ -919,6 +924,7 @@ body.music-mode{overflow:hidden}
 <script src="js/pinpad.js"></script>
 <script src="js/papa-tools.js?v=63"></script>
 <script src="js/drills.js"></script>
+<script src="js/bopomofo.js"></script>
 <script src="js/brain-data.js"></script>
 <script src="js/brain-core.js"></script>
 <script src="js/brain-audio-cues.js"></script>
@@ -1078,6 +1084,7 @@ const SENT=[
 if(typeof SQBrainData!=="undefined")SQBrainData.setWordPool(Object.keys(VOCAB).reduce(function(acc,k){
   return acc.concat(VOCAB[k].words.map(function(w){return w[0];}));
 },[]).filter(function(w){return /^[a-z]+$/.test(w);}));
+if(typeof SQBrainData!=="undefined"&&window.SQBopomofo)SQBrainData.setBopomofoPool(SQBopomofo.WORDS.map(function(w){return w[0];}));
 const ALL_WORDS=Object.values(VOCAB).reduce((all,p)=>all.concat(p.words),[]);
 /* ---- SUMMER CAMP data (from summer_schedule_kids.xlsx: Activity Bank + Photo Missions) ---- */
 const BANK=window.SQ_ACT_DATA;  /* js/act-data.js — shared with admin.html */
@@ -1249,7 +1256,7 @@ const fingerVar=ch=>{const f=FINGER[(ch||"").toLowerCase()];return f?f[0]:"--f-t
 const ROWS=["1234567890","qwertyuiop","asdfghjkl","zxcvbnm"];
 
 /* ============ STATE ============ */
-let sound=true, kid=null, level=null, kb={}, currentGame=null;
+let sound=true, kid=null, level=null, kb={}, kbMode="", currentGame=null;
 /* best is filled lazily — bestOf() already treats a missing key as 0, and
    seeding names here was the fifth of the seven edit points a new game used
    to need (design.md Context). */
@@ -1264,6 +1271,7 @@ const heroBest=id=>{const lvl=KIDS[id].level;
   if(lvl==="machines") return starsOf(id)+" ⭐";
   return starsOf(id);};
 let settings={
+  inputScript:"abc",
   balloon:{speed:2, count:3},                 /* speed 1-5, balloons on screen 1-6 */
   orc:{diff:"easy", speed:2, count:2},        /* diff: easy(letters)/medium/hard, speed 1-5, orcs 1-5 */
   vocab:{mode:"study", pack:"animals", speed:2, tts:true,
@@ -1273,6 +1281,7 @@ let settings={
 /* ============ STORAGE ============ */
 let store=null;
 function normalizeProgressShape(){
+  if(settings.inputScript!=="bpmf")settings.inputScript="abc";
   Object.keys(progress).forEach(k=>{const P=progress[k];
     if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0,city:0,dig:0};
     if(P.best.shop==null)P.best.shop=0;
@@ -1375,14 +1384,42 @@ function showPin(id,pin){
 }
 
 /* ============ KEYBOARD ============ */
+function preferredInputScript(){return settings.inputScript==="bpmf"?"bpmf":"abc";}
+function wordInputLevel(lvl){return lvl==="race"||lvl==="vocab";}
+function activeInputScript(){return wordInputLevel(level)?preferredInputScript():"abc";}
+function keyboardRows(){return activeInputScript()==="bpmf"&&window.SQBopomofo?SQBopomofo.ROWS:ROWS;}
+function keyLabel(ch){return ch===" "?(activeInputScript()==="bpmf"?"空格":"space"):ch.toUpperCase();}
+function inputModeToggle(ctx,opts){
+  opts=opts||{};
+  const on=activeInputScript()==="bpmf";
+  const grp=document.createElement("div"); grp.className="grp dchips";
+  [["abc","ABC"],["bpmf","ㄅㄆㄇ"]].forEach(function(d){
+    const btn=document.createElement("button");
+    btn.className="chip"+((on&&d[0]==="bpmf")||(!on&&d[0]==="abc")?" on":"");
+    if(btn.className.indexOf(" on")>=0)btn.style.background=ctx.kids[ctx.kid].raw;
+    btn.textContent=d[1];
+    btn.onclick=function(){
+      settings.inputScript=d[0];
+      buildKeyboard();
+      if(window.SQBrainData&&SQBrainData.setInputScript)SQBrainData.setInputScript(settings.inputScript);
+      ctx.saveSettings();
+      if(opts.restart)ctx.restart();
+      else inputModeToggleRefresh();
+    };
+    grp.appendChild(btn);
+  });
+  return grp;
+}
+function inputModeToggleRefresh(){renderSetbar();}
 function buildKeyboard(){
-  const el=document.getElementById("kb"); el.innerHTML=""; kb={};
-  ROWS.forEach(row=>{
+  const el=document.getElementById("kb"); el.innerHTML=""; kb={}; kbMode=activeInputScript();
+  el.classList.toggle("bpmf",kbMode==="bpmf");
+  keyboardRows().forEach(row=>{
     const r=document.createElement("div"); r.className="krow";
-    row.split("").forEach(ch=>{
+    (Array.isArray(row)?row:row.split("")).forEach(ch=>{
       const key=document.createElement("div"); key.className="key";
-      key.textContent=ch.toUpperCase();
-      key.style.background=`var(${fingerVar(ch)})`;
+      key.textContent=keyLabel(ch);
+      key.style.background=kbMode==="bpmf"?"var(--gold)":`var(${fingerVar(ch)})`;
       key.dataset.k=ch;
       key.onclick=()=>handleInput(ch);
       kb[ch]=key; r.appendChild(key);
@@ -1391,9 +1428,13 @@ function buildKeyboard(){
   });
   const r=document.createElement("div"); r.className="krow";
   const sp=document.createElement("div"); sp.className="key space";
-  sp.style.background="var(--f-th)"; sp.textContent="space"; sp.dataset.k=" ";
+  sp.style.background="var(--f-th)"; sp.textContent=keyLabel(" "); sp.dataset.k=" ";
   sp.onclick=()=>handleInput(" "); kb[" "]=sp; r.appendChild(sp);
   el.appendChild(r);
+  if(kbMode==="bpmf"){
+    document.getElementById("legend").innerHTML="<span>ㄅㄆㄇ Bopomofo</span><span>注音練習</span>";
+    return;
+  }
   const L=[["--f-lp","Pinky"],["--f-lr","Ring"],["--f-lm","Middle"],["--f-li","L index"],
     ["--f-ri","R index"],["--f-rm","Middle"],["--f-rr","Ring"],["--f-rp","Pinky"]];
   document.getElementById("legend").innerHTML=
@@ -1401,7 +1442,7 @@ function buildKeyboard(){
 }
 function ensureKeyboard(){
   const el=document.getElementById("kb");
-  if(!el||el.children.length) return;
+  if(!el||el.children.length&&kbMode===activeInputScript()) return;
   buildKeyboard();
 }
 function highlightTarget(ch){
@@ -1427,12 +1468,16 @@ function hud(items){
 /* ============ SETTINGS BAR ============ */
 function renderSetbar(){
   var bar=document.getElementById("setbar");
-  if(currentGame && currentGame.settings){
+  var wordInput=currentGame&&(currentGame.id==="race"||currentGame.id==="vocab");
+  if(currentGame && (currentGame.settings||wordInput)){
     bar.classList.remove("hidden");
-    currentGame.settings(bar, {
+    var ctx={
       kid:kid, kids:KIDS, settings:settings,
-      saveProgress:saveProgress, restart:function(){ startGame(kid,level); }
-    });
+      saveProgress:saveProgress, saveSettings:saveProgress, restart:function(){ startGame(kid,level); }
+    };
+    if(currentGame.settings)currentGame.settings(bar,ctx);
+    else bar.innerHTML="";
+    if(wordInput)bar.appendChild(inputModeToggle(ctx,{restart:true}));
     return;
   }
   bar.classList.add("hidden");
@@ -1497,8 +1542,13 @@ function gameCtx(mountEl,game,kidId){
     settings:settings, rand:rand, shuffle:shuffle,
     kids:KIDS, best:bestOf(kidId,game.bestKey||""),
     stars:starsOf(kidId),
-    words:{easy:WORDS_EASY, hard:ALL_WORDS, all:ALL_WORDS, sentences:SENT, letters:LETTERS},
+    words:{easy:WORDS_EASY, hard:ALL_WORDS, all:ALL_WORDS, sentences:SENT, letters:LETTERS,
+      bopomofo:window.SQBopomofo?SQBopomofo.WORDS:[]},
+    inputScript:activeInputScript(),
+    bopomofo:window.SQBopomofo||null,
     finish:function(res){ finishRegistered(game,res,kidId); },
+    sayZh:function(txt){say(txt,"zh-TW");},
+    saveSettings:saveProgress,
     saveProgress:saveProgress,
     vocab:p.vocab||{}
   };
@@ -1556,8 +1606,9 @@ function startLegacy(lvl){
 }
 /* Brain Gym round (design.md §8). Bests live in progress[kid].best.brain_<id>. */
 function startBrain(gameId){
-  const k=kid, settings=(store&&store.familySettings)||{};
-  const tier=SQBrainCore.tierFor(k,settings);
+  const k=kid, familySettings=(store&&store.familySettings)||{};
+  if(window.SQBrainData&&SQBrainData.setInputScript)SQBrainData.setInputScript(preferredInputScript());
+  const tier=SQBrainCore.tierFor(k,familySettings);
   const p=progress[k];
   brainToday(k); /* rolls p.brain (and any stale resume) over to today first */
   const inProgress=p.brain.inProgress;
@@ -1573,6 +1624,14 @@ function startBrain(gameId){
     onProgress:function(state){ p.brain.inProgress=state; saveProgress(); },
     say:function(pair){say(pair[0],"en-US");setTimeout(function(){say(pair[1],"zh-TW",true);},1200);},
     sayPair:function(pair){sayPair(pair[0],pair[1]);},
+    inputScript:preferredInputScript(),
+    onInputModeChange:function(mode){
+      if(mode!=="bpmf")mode="abc";
+      settings.inputScript=mode;
+      if(window.SQBrainData&&SQBrainData.setInputScript)SQBrainData.setInputScript(mode);
+      saveProgress();
+      startBrain(gameId);
+    },
     isMuted:function(){return !sound;},
     setMuted:function(m){if(!!m!==!sound)toggleMute();},
     onQuit:goHome,
@@ -1872,7 +1931,7 @@ addEventListener("keydown",e=>{
   if(e.key==="Escape"){goHome();return;}
   let ch=e.key;
   if(ch===" ")e.preventDefault();
-  if(ch.length===1 && /[a-zA-Z0-9 ;'/]/.test(ch)) { handleInput(ch.toLowerCase()); }
+  if(ch.length===1 && /[a-zA-Z0-9 ;'/\u3105-\u312f\u02ca\u02c7\u02cb\u02d9]/.test(ch)) { handleInput(ch.toLowerCase()); }
 });
 addEventListener("keyup",e=>{
   /* city drive module handles its own keyup — nothing inline to do */
@@ -3418,6 +3477,8 @@ window.SQHost={
   hud:hud, say:say, sayPair:sayPair,
   sfx:{good:sGood,bad:sBad,pop:sPop,zap:sZap,hit:sHit,win:sWin},
   keys:{build:buildKeyboard,highlight:highlightTarget,highlightSet:highlightSet,press:pressFx},
+  inputScript:activeInputScript,
+  bopomofo:window.SQBopomofo||null,
   fx:{flash:flash,burst:burst,burstAt:burstAt,bigFloat:bigFloat,wobbleMsg:wobbleMsg,hint:hint},
   rand:rand, shuffle:shuffle,
   saveProgress:saveProgress,

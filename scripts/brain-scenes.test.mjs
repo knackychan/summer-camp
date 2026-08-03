@@ -13,6 +13,7 @@ import { createMoneyTray } from "../js/brain/scenes/change.js";
 import sceneIndex from "../js/brain/scenes/index.js";
 import generic from "../js/brain/scenes/generic.js";
 import changeScene from "../js/brain/scenes/change.js";
+import recallScene, { recallView } from "../js/brain/scenes/recall.js";
 
 installDom();
 const require = createRequire(import.meta.url);
@@ -85,10 +86,13 @@ test("SCENE_LOADERS keys are all known brain-data game ids", () => {
   }
 });
 
-test("change.js and generic.js report a matching id and a create() function", async () => {
+test("bespoke and generic scenes report matching ids and create() functions", async () => {
   const loaded = await sceneIndex.change();
   assert.equal(loaded.default.id, "change");
   assert.equal(typeof loaded.default.create, "function");
+  const loadedRecall = await sceneIndex.recall();
+  assert.equal(loadedRecall.default.id, "recall");
+  assert.equal(typeof loadedRecall.default.create, "function");
   assert.equal(generic.id, "generic");
   assert.equal(typeof generic.create, "function");
 });
@@ -146,6 +150,63 @@ test("generic scene: showFeedback on a wrong answer shows the corrective panel a
   const panel = ctx.mount.querySelector(".brain-corrective");
   assert.equal(panel.hidden, false);
   await result;
+  scene.destroy();
+});
+
+/* ---------- recall.js contract ---------- */
+
+test("recallView: shows the current sum result as the next thing to remember", () => {
+  const item = {
+    shown: "9",
+    answer: "7",
+    prompt: { en: "4 + 5 = ?", zh: "4 + 5 = ?" }
+  };
+  assert.deepEqual(recallView(item), {
+    first: false,
+    oldValue: "7",
+    freshValue: "9",
+    freshText: "4 + 5 = 9"
+  });
+});
+
+test("recall scene: first item renders a Next button instead of answer choices", () => {
+  const round = SQBrainCore.buildRound("recall", "tot", SQBrainCore.mulberry32(41));
+  const ctx = fakeCtx({ gameId: "recall", tier: "tot" });
+  const scene = recallScene.create(ctx);
+  scene.present(round.items[0], { index: 0, count: round.items.length, isFirst: true, clocked: false });
+  scene.setInputEnabled(true);
+  assert.ok(ctx.mount.querySelector(".brain-recall--first"));
+  assert.equal(ctx.mount.querySelectorAll(".brain-key").length, 0);
+  ctx.mount.querySelector("[data-next]").onclick();
+  assert.deepEqual(ctx._submitted, [""]);
+  scene.destroy();
+});
+
+test("recall scene: choice tier submits the old answer, not the new value", () => {
+  const round = SQBrainCore.buildRound("recall", "tot", SQBrainCore.mulberry32(41));
+  const ctx = fakeCtx({ gameId: "recall", tier: "tot" });
+  const scene = recallScene.create(ctx);
+  const item = round.items[1];
+  scene.present(item, { index: 1, count: round.items.length, isFirst: false, clocked: false });
+  scene.setInputEnabled(true);
+  assert.equal(ctx.mount.querySelector(".brain-recall__old-value").textContent, item.answer);
+  const correct = ctx.mount.querySelectorAll(".brain-key").filter((b) => b.dataset.v === item.answer)[0];
+  correct.onclick();
+  assert.deepEqual(ctx._submitted, [item.answer]);
+  scene.destroy();
+});
+
+test("recall scene: keypad tier accumulates digits and submits on checkmark", () => {
+  const round = SQBrainCore.buildRound("recall", "mid", SQBrainCore.mulberry32(41));
+  const ctx = fakeCtx({ gameId: "recall", tier: "mid" });
+  const scene = recallScene.create(ctx);
+  const item = round.items[1];
+  scene.present(item, { index: 1, count: round.items.length, isFirst: false, clocked: true });
+  scene.setInputEnabled(true);
+  const press = (v) => ctx.mount.querySelectorAll(".brain-key").filter((b) => b.dataset.v === v)[0].onclick();
+  item.answer.split("").forEach(press);
+  press("✓");
+  assert.deepEqual(ctx._submitted, [item.answer]);
   scene.destroy();
 });
 

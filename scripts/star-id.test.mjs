@@ -62,7 +62,33 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   console.log("ok - bad input yields no id");
 }
 
-// --- 4: addStars treats a repeat of the same id as the same star ---
+// --- 4: deterministic ids can be decoded for exact admin revoke ---
+{
+  assert.deepEqual(SQStarId.parse(SQStarId.block("lili", DAY, 4)), {
+    kid: "lili",
+    day: DAY,
+    slot: 4,
+    kind: "block"
+  });
+  assert.deepEqual(SQStarId.parse(SQStarId.bonus("luis", DAY)), {
+    kid: "luis",
+    day: DAY,
+    slot: 999,
+    kind: "bonus"
+  });
+  for (const bad of [
+    "",
+    "not-a-uuid",
+    "b10c57a2-2026-0803-0009-000000000004",
+    "b10c57a2-2026-0803-0002-000000000004".toUpperCase(),
+    "10000000-1000-4000-8000-100000000000"
+  ]) {
+    assert.equal(SQStarId.parse(bad), null, "bad id must not look schedule-owned");
+  }
+  console.log("ok - deterministic star ids decode for admin actions");
+}
+
+// --- 5: addStars treats a repeat of the same id as the same star ---
 {
   const src = readFileSync(new URL("../js/sync.js", import.meta.url), "utf8");
   const store = new Map();

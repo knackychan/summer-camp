@@ -4,7 +4,8 @@
    state for a Brain game whose bespoke scene has not shipped yet (slices 36-37). */
 
 export var SCENE_LOADERS = Object.freeze({
-  change: function () { return import("./change.js"); }
+  change: function () { return import("./change.js"); },
+  recall: function () { return import("./recall.js"); }
 });
 
 export default SCENE_LOADERS;

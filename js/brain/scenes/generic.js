@@ -49,6 +49,7 @@ function padHtml(pad, entry) {
   }
   if (pad === "type") {
     return '<textarea class="brain-generic__type" data-role="type" rows="3" placeholder="Type the words 打出單字"></textarea>' +
+      '<div class="brain-generic__bpmfpad" data-role="bpmfpad"></div>' +
       '<button class="brain-key" data-v="✓">Done 完成</button>';
   }
   if (pad === "keypad") {
@@ -85,6 +86,7 @@ function create(ctx) {
   var inputEnabled = false;
 
   function root() { return ctx.mount; }
+  function isBopomofoType() { return pad === "type" && ctx.inputScript === "bpmf" && ctx.bopomofo; }
 
   function renderEntry() {
     var box = root().querySelector(".brain-generic__entry");
@@ -101,6 +103,16 @@ function create(ctx) {
     if (v === "✓") { if (entry === "") return; submitValue(entry); return; }
     if (entry.length >= 4) return;
     entry += v; renderEntry();
+  }
+  function syncTextarea() {
+    var ta = root().querySelector('[data-role="type"]');
+    if (ta) ta.value = entry;
+  }
+  function pressType(v) {
+    if (v === "⌫") entry = Array.from(entry).slice(0, -1).join("");
+    else if (v === "空格") entry += " ";
+    else entry += v;
+    syncTextarea();
   }
 
   function wireKeys() {
@@ -149,7 +161,7 @@ function create(ctx) {
     if (!host) return;
     host.innerHTML = item.prompt.words.map(function (w) { return '<span class="brain-generic__word">' + w + '</span>'; }).join("");
     var ta = root().querySelector('[data-role="type"]');
-    if (ta) ta.disabled = true;
+    if (ta) { ta.disabled = true; ta.dataset.studying = "1"; }
     ctx.scheduler.after(item.prompt.studyMs, function () {
       if (!currentItem || currentItem !== item) return;
       if (item.choices) {
@@ -160,10 +172,34 @@ function create(ctx) {
         mountChoices(item);
         return;
       }
-      host.innerHTML = '<span class="brain-generic__sub">Now type what you remember 現在打出你記得的</span>';
+      host.innerHTML = '<span class="brain-generic__sub">' +
+        (isBopomofoType() ? "Now type the Bopomofo 現在打出注音" : "Now type what you remember 現在打出你記得的") +
+        '</span>';
       var box = root().querySelector('[data-role="type"]');
-      if (box) { box.disabled = false; box.focus(); }
+      if (box) { delete box.dataset.studying; box.disabled = false; box.focus(); }
+      root().querySelectorAll(".brain-key").forEach(function (b) { b.disabled = false; });
     });
+  }
+  function mountBopomofoPad() {
+    var host = root().querySelector('[data-role="bpmfpad"]');
+    if (!host) return;
+    if (!isBopomofoType()) { host.hidden = true; return; }
+    host.hidden = false;
+    host.innerHTML = ctx.bopomofo.ROWS.map(function (row) {
+      return '<div class="brain-generic__bpmfrow">' + row.map(function (k) {
+        return '<button class="brain-key brain-key--bpmf" type="button" data-v="' + k + '">' + k + '</button>';
+      }).join("") + '</div>';
+    }).join("") +
+      '<div class="brain-generic__bpmfrow">' +
+        '<button class="brain-key brain-key--bpmf brain-key--wide" type="button" data-v="空格">空格</button>' +
+        '<button class="brain-key brain-key--bpmf" type="button" data-v="⌫">⌫</button>' +
+      '</div>';
+    host.querySelectorAll(".brain-key--bpmf").forEach(function (b) {
+      b.disabled = !inputEnabled;
+      b.onclick = function () { if (inputEnabled) pressType(b.dataset.v); };
+    });
+    var ta = root().querySelector('[data-role="type"]');
+    if (ta) ta.setAttribute("inputmode", "none");
   }
 
   function present(item) {
@@ -181,12 +217,14 @@ function create(ctx) {
     else if (item.prompt.type === "wordlist") mountWords(item);
     else if (pad === "choice") mountChoices(item);
     else wireKeys();
+    if (pad === "type") mountBopomofoPad();
   }
 
   function setInputEnabled(enabled) {
     inputEnabled = !!enabled;
-    root().querySelectorAll(".brain-key").forEach(function (b) { b.disabled = !inputEnabled; });
     var ta = root().querySelector('[data-role="type"]');
+    var studying = !!(ta && ta.dataset.studying);
+    root().querySelectorAll(".brain-key").forEach(function (b) { b.disabled = !inputEnabled || studying; });
     if (ta && !ta.dataset.studying) ta.disabled = !inputEnabled;
   }
 

@@ -1,10 +1,17 @@
 /* Word Racer 🚀 文字競速 — timed typing game migrated from index.html:1378-1425, 2005-2042 (slice 18). */
 var S = null, C = null;
 
+function isBopomofo() { return C && C.inputScript === "bpmf" && C.bopomofo; }
 function clean(s) { return s.replace(/[^a-zA-Z ]/g, "").replace(/\s+/g, " ").trim().toLowerCase(); }
 function entryText(entry) { return clean(String(Array.isArray(entry) ? entry[0] : entry || "")); }
+function entryBopomofo(entry) { return C.bopomofo.normalize(Array.isArray(entry) ? entry[0] : entry); }
 
 function makeRacePool() {
+  if (isBopomofo()) {
+    var bpmfWords = C.words.bopomofo || [];
+    var bpmf = C.shuffle(bpmfWords.slice()).map(function (w) { return [entryBopomofo(w), w[2] || ""]; }).filter(function (w) { return w[0]; });
+    return bpmf.length ? bpmf.concat(C.shuffle(bpmf)) : [["ㄇㄠ", "貓"]];
+  }
   var hard = C.words.hard || C.words.all || C.words.easy || [];
   var sentences = C.words.sentences || [];
   var words = C.shuffle(hard.slice()).map(function (w) { return [entryText(w), ""]; }).filter(function (w) { return w[0]; });
@@ -29,7 +36,8 @@ function drawWord() {
   C.stage.innerHTML =
     '<div class="game-scene game-scene--race">'
     + '<div class="game-scene__center">'
-    + '<div class="cue">Type it!</div>'
+    + '<div class="cue">' + (isBopomofo() ? "Type the Bopomofo! 打注音！" : "Type it!") + '</div>'
+    + (isBopomofo() && S.pool[S.i][1] ? '<div class="vzh">' + S.pool[S.i][1] + '</div>' : '')
     + '<div class="word">' + spans + '</div>'
     + '<div class="msg" id="msg"></div>'
     + '</div>'

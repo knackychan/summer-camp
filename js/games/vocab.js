@@ -57,15 +57,22 @@ var SENT = [
 ];
 
 /* ---- shared helpers ---- */
+function isBopomofo() {
+  return C && C.inputScript === "bpmf" && C.bopomofo;
+}
+
 function vLevel() {
+  if (isBopomofo()) return "bopomofo";
   return (C.settings.vocab.levels[C.kid] || "copy");
 }
 
 function vPool() {
+  if (isBopomofo()) return C.words.bopomofo || [];
   return vLevel() === "sentences" ? SENT : C.words.all;
 }
 
 function vKey(w) {
+  if (isBopomofo()) return "b:" + w;
   return (vLevel() === "sentences" ? "s:" : "w:") + w;
 }
 
@@ -90,6 +97,7 @@ function buildVocabQueue() {
 }
 
 function pickPrompt(lvl) {
+  if (lvl === "bopomofo") return "zh";
   if (lvl === "copy" || lvl === "recall") return "pic";
   var r = Math.random();
   if (lvl === "sentences") return r < 0.6 ? "fr" : "both";
@@ -120,7 +128,7 @@ function highlightVocab() {
 function vocabHud() {
   var st = packStats();
   C.hud([
-    { k: vLevel() === "sentences" ? "Sentences" : "Words", v: st.done + "/" + st.total, c: C.kids[C.kid].raw },
+    { k: vLevel() === "sentences" ? "Sentences" : vLevel() === "bopomofo" ? "ㄅㄆㄇ" : "Words", v: st.done + "/" + st.total, c: C.kids[C.kid].raw },
     { k: "Streak", v: S.streak },
     { k: "Stars", v: C.stars }
   ]);
@@ -130,12 +138,13 @@ function vocabHud() {
 function drawVocab() {
   var lvl = vLevel();
   var showPic = (S.prompt !== "fr");
-  var showFr = ((lvl === "translate" || lvl === "sentences") && S.prompt !== "pic");
+  var showFr = lvl === "bopomofo" || ((lvl === "translate" || lvl === "sentences") && S.prompt !== "pic");
   var wstyle = S.word.length > 14 ? 'style="font-size:clamp(22px,4.6vw,36px);letter-spacing:1px"' : "";
   var got = vPool().filter(function (w) { return vMastered(w[0]); }).map(function (w) { return w[1]; });
   var shelf = got.slice(0, 28).join("") + (got.length > 28 ? " +" + (got.length - 28) : "");
   var cue = lvl === "copy" ? "Type the word you see!"
     : lvl === "recall" ? "What is it in English?"
+    : lvl === "bopomofo" ? "Type the Bopomofo! 打注音！"
     : lvl === "sentences" ? "Say it in English! \ud83d\udcac"
     : "Type it in English!";
   C.stage.innerHTML =
@@ -153,14 +162,14 @@ function drawVocab() {
     + '<div class="vshelf"><span class="lbl">YOUR COLLECTION</span>' + (shelf || "\u2026") + '</div>'
     + '</div>'
     + '</div>';
-  document.getElementById("sayBtn").onclick = function () { C.say(S.word); };
+  document.getElementById("sayBtn").onclick = function () { if (isBopomofo() && C.sayZh) C.sayZh(S.fr); else C.say(S.word); };
   var hb = document.getElementById("hintBtn");
   if (hb) hb.onclick = function () {
     S.hintUsed = true;
     var r = Math.max(S.revealed, S.pos);
     do { r++; } while (r < S.word.length && S.word[r - 1] === " ");
     S.revealed = Math.min(r, S.word.length);
-    C.say(S.word);
+    if (isBopomofo() && C.sayZh) C.sayZh(S.fr); else C.say(S.word);
     redrawVocabWord();
   };
   highlightVocab();
@@ -177,6 +186,7 @@ function nextVocab() {
   S.prompt = pickPrompt(lvl);
   drawVocab(); vocabHud();
   if (lvl === "copy") C.say(en);
+  if (lvl === "bopomofo" && C.sayZh) C.sayZh(fr);
 }
 
 function vocabComplete() {
@@ -185,7 +195,8 @@ function vocabComplete() {
   C.vocab[k] = success ? Math.min(vBox(S.word) + 1, 3) : Math.max(vBox(S.word) - 1, 0);
   var now = vMastered(S.word);
   S.streak = success ? S.streak + 1 : 0;
-  C.say(S.word); C.sfx.win(); C.fx.burst(12); C.fx.flash("ok");
+  if (isBopomofo() && C.sayZh) C.sayZh(S.fr); else C.say(S.word);
+  C.sfx.win(); C.fx.burst(12); C.fx.flash("ok");
   if (now && !was) {
     S.sessionMastered++;
     C.fx.bigFloat(S.em);
@@ -221,13 +232,14 @@ function nextCustomer() {
   S.custStart = performance.now(); S.dur = shopDur();
   drawShop(); shopHud();
   if (lvl === "copy") C.say(en);
+  if (lvl === "bopomofo" && C.sayZh) C.sayZh(fr);
   if (!S.raf) S.raf = requestAnimationFrame(shopLoop);
 }
 
 function drawShop() {
   var lvl = vLevel();
   var showPic = (S.prompt !== "fr");
-  var showFr = ((lvl === "translate" || lvl === "sentences") && S.prompt !== "pic");
+  var showFr = lvl === "bopomofo" || ((lvl === "translate" || lvl === "sentences") && S.prompt !== "pic");
   var wstyle = S.word.length > 14 ? 'style="font-size:clamp(22px,4.6vw,36px);letter-spacing:1px"' : "";
   var bub = [showPic ? S.em : "", showFr ? S.fr : "", lvl === "copy" ? S.word : ""]
     .filter(Boolean).join("  ");
@@ -270,7 +282,7 @@ function shopLoop(now) {
     shopHud();
     if (S.hp <= 0) { finishShop(); return; }
     C.fx.hint('It was "' + S.word + '" — ' + S.em + ' ' + S.fr + "\u30fb" + S.zh);
-    C.say(S.word);
+    if (isBopomofo() && C.sayZh) C.sayZh(S.fr); else C.say(S.word);
     S.timeout = setTimeout(function () { if (S && S.running) nextCustomer(); }, 1400);
     S.custStart = now + 999999;
   }
@@ -284,7 +296,8 @@ function shopComplete() {
   var k = vKey(S.word);
   C.vocab[k] = Math.min(vBox(S.word) + 1, 3);
   C.finish({ score: S.score });
-  C.say(S.word); C.sfx.win(); C.fx.burst(12); C.fx.flash("ok");
+  if (isBopomofo() && C.sayZh) C.sayZh(S.fr); else C.say(S.word);
+  C.sfx.win(); C.fx.burst(12); C.fx.flash("ok");
   shopHud();
   S.custStart = performance.now() + 999999;
   S.timeout = setTimeout(function () { if (S && S.running) nextCustomer(); }, 600);
