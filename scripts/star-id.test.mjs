@@ -94,14 +94,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // for, so Remove -> Add back -> Accept lost a star nothing could give back.
 {
   const { DAY } = require("../js/day-data.js");
+  // Flat 1 per block (Papa, 2026-08-04): the schedule is what pays, so routine
+  // blocks are worth the same as mission blocks.
   assert.equal(SQStarId.blockDelta({ kind: "mission" }), 1);
-  assert.equal(SQStarId.blockDelta({ kind: "routine" }), 0);
+  assert.equal(SQStarId.blockDelta({ kind: "routine" }), 1);
   for (const junk of [null, undefined, {}, { kind: "" }]) {
     assert.equal(SQStarId.blockDelta(junk), 0, "an unknown block is worth nothing, never NaN");
   }
-  // the real day plan must still be worth what it was before the rule moved
-  const missions = DAY.filter(b => b.kind === "mission").length;
-  assert.equal(DAY.reduce((s, b) => s + SQStarId.blockDelta(b), 0), missions);
+  // every block in the real day plan pays, so a full day is DAY.length + bonus
+  assert.equal(DAY.reduce((s, b) => s + SQStarId.blockDelta(b), 0), DAY.length);
   assert.equal(SQStarId.BONUS_DELTA, 2, "the day-complete bonus is frozen at +2");
   console.log("ok - one rule prices a block for both apps");
 }

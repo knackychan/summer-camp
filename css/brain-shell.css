@@ -42,7 +42,7 @@
 
   --brain-type-title: clamp(22px, 3vw, 32px);
   --brain-type-instruction: clamp(16px, 2.2vw, 20px);
-  --brain-type-task: clamp(38px, 8vw, 72px);
+  --brain-type-task: clamp(30px, min(8vw, 15cqh), 72px);
   --brain-type-answer: clamp(24px, 4.6vw, 42px);
   --brain-type-label: clamp(14px, 1.8vw, 17px);
   --brain-type-small: 13px;
@@ -94,10 +94,16 @@
   border-radius: inherit;
 }
 
+/* 2026-08-04: the round is the size container every scene measures itself
+   against. Viewport media queries lied on a tablet browser — an address bar
+   eats 100+px of the stage, the round shrinks, and the old height<650 rules
+   never fired, so keypads were cropped by the scene's overflow:hidden. cqh here
+   is the real box, chrome or no chrome. */
 .brain-round--contained {
   border-top: 0;
   background: transparent;
   overflow: hidden;
+  container-type: size;
 }
 
 /* Fallback only: no mount was supplied (e.g. a standalone/test caller), so the
@@ -202,10 +208,19 @@
 
 .brain-round--contained .brain-scene {
   height: 100%;
-  padding: clamp(var(--brain-space-3), 1.8vw, var(--brain-space-5));
+  padding: clamp(var(--brain-space-2), 1.8vw, var(--brain-space-5));
   background: transparent;
-  overflow: hidden;
+  /* backstop: if a box is still too short for the compacted layout, the kid can
+     reach the keys instead of the pad being silently clipped. */
+  overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
+  container-type: size;
+  /* every pad key sizes off the round's height, so browser chrome shrinks keys
+     rather than pushing them out of view. */
+  --brain-key-h: clamp(34px, 11cqh, 60px);
+  --brain-key-font: clamp(15px, 3.6cqh, 20px);
+  --brain-bpmf-key: clamp(26px, min(4.4cqi, 7.4cqh), 48px);
 }
 
 .brain-loading {
@@ -237,8 +252,8 @@
 
 .brain-task-card {
   max-width: 720px;
-  margin: 0 auto var(--brain-space-5);
-  padding: var(--brain-space-5);
+  margin: 0 auto clamp(var(--brain-space-2), 3cqh, var(--brain-space-5));
+  padding: clamp(var(--brain-space-2), 3cqh, var(--brain-space-5));
   border: 2px solid var(--brain-outline);
   border-radius: 18px;
   background: var(--brain-white);

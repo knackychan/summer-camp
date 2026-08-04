@@ -94,6 +94,7 @@ body.game-mode .wrap{max-width:none;width:100%}
 .setbar input[type=range]::-moz-range-thumb{width:22px;height:22px;border:none;
   border-radius:50%;background:var(--gold);box-shadow:0 2px 0 rgba(0,0,0,.3);cursor:pointer}
 .setbar .dchips{display:flex;gap:6px}
+.setbar__own{display:contents}
 
 /* ---------- STAGE ---------- */
 .stage{background:linear-gradient(180deg,var(--bg2),var(--panel));border-radius:26px;
@@ -273,6 +274,29 @@ body.game-mode .wrap{max-width:none;width:100%}
     border-radius:10px;font-size:clamp(14px,3vw,18px);box-shadow:0 3px 0 rgba(0,0,0,.28)}
   body.game-mode .kb.bpmf .key{width:clamp(27px,5.1vw,42px);font-size:clamp(16px,3vw,20px)}
   body.game-mode .key.space{width:clamp(150px,34vw,260px)}
+  /* 7" tablet: the setbar is chrome, the stage is the game. Word Wizard's nine
+     chips wrapped to two tablet-sized rows and left the stage ~139px. */
+  #game>.setbar{gap:6px;padding:5px 8px}
+  #game>.setbar .chip{padding:7px 9px;font-size:13px}
+  #game>.setbar .dchips{gap:4px}
+  #game>.setbar .grp{font-size:12px;gap:6px}
+  #game>.setbar input[type=range]{width:110px}
+  /* same trade for the stat row — it was pushing Say it / Hint off the stage */
+  #game>.hud{gap:6px}
+  #game>.hud .stat{padding:5px 10px;min-width:76px}
+  #game>.hud .stat .k{font-size:10px}
+  #game>.hud .stat .v{font-size:19px}
+  /* Word Wizard's scene is taller than a 600px-high tablet stage, and which parts
+     render depends on the prompt (picture / French / both) — so trimming sizes can
+     only ever fix the combination you measured. `safe center` + scroll makes Say it
+     and Hint reachable in every combination; the trims just mean less scrolling.
+     !important beats the inline font-sizes drawVocab writes. */
+  .game-scene--vocab .word-em{font-size:34px!important;line-height:1}
+  .game-scene--vocab .vshelf{display:none}
+  .game-scene--vocab .game-scene__center{gap:5px;padding:6px;
+    justify-content:safe center;overflow-y:auto}
+  .game-scene--vocab .vrow .btn{padding:9px 14px}
+  .game-scene--vocab .word{font-size:clamp(20px,3.4vw,30px)!important;line-height:1.15}
 }
 @media(min-width:600px) and (max-width:1100px){
   .wrap{max-width:920px;padding:16px 20px 40px}
@@ -1385,7 +1409,7 @@ function showPin(id,pin){
 
 /* ============ KEYBOARD ============ */
 function preferredInputScript(){return settings.inputScript==="bpmf"?"bpmf":"abc";}
-function wordInputLevel(lvl){return lvl==="race"||lvl==="vocab";}
+function wordInputLevel(lvl){return lvl==="race"||lvl==="vocab"||lvl==="hunt"||lvl==="home";}
 function activeInputScript(){return wordInputLevel(level)?preferredInputScript():"abc";}
 function keyboardRows(){return activeInputScript()==="bpmf"&&window.SQBopomofo?SQBopomofo.ROWS:ROWS;}
 function keyLabel(ch){return ch===" "?(activeInputScript()==="bpmf"?"空格":"space"):ch.toUpperCase();}
@@ -1468,15 +1492,21 @@ function hud(items){
 /* ============ SETTINGS BAR ============ */
 function renderSetbar(){
   var bar=document.getElementById("setbar");
-  var wordInput=currentGame&&(currentGame.id==="race"||currentGame.id==="vocab");
+  var wordInput=!!currentGame&&wordInputLevel(currentGame.id);
   if(currentGame && (currentGame.settings||wordInput)){
     bar.classList.remove("hidden");
     var ctx={
       kid:kid, kids:KIDS, settings:settings,
       saveProgress:saveProgress, saveSettings:saveProgress, restart:function(){ startGame(kid,level); }
     };
-    if(currentGame.settings)currentGame.settings(bar,ctx);
-    else bar.innerHTML="";
+    bar.innerHTML="";
+    /* A game owns only its own slot, never the whole bar. Word Wizard's Voice chip
+       re-renders by wiping what it was handed — which used to take the ABC/ㄅㄆㄇ
+       toggle with it until the next game start. `display:contents` keeps the
+       wrapper out of the flex layout, so the bar still looks like one row. */
+    var own=document.createElement("div"); own.className="setbar__own";
+    bar.appendChild(own);
+    if(currentGame.settings)currentGame.settings(own,ctx);
     if(wordInput)bar.appendChild(inputModeToggle(ctx,{restart:true}));
     return;
   }
@@ -1751,7 +1781,7 @@ function showLockOverlay(st){
   if(document.getElementById("lockOverlay"))return;
   const o=document.createElement("div");
   o.className="overlay"; o.id="lockOverlay";
-  o.innerHTML=st.reason==="brain"?brainLockHtml():activityLockHtml(st.blockIdx);
+  o.innerHTML=st.reason==="brain"?brainLockHtml():redoLockHtml(st.blockIdx);
   document.body.appendChild(o);
   const day=o.querySelector("#lockGoDay");
   if(day)day.onclick=function(){o.remove();if(hubKid){hubTab="day";renderHub();}};
@@ -1771,17 +1801,27 @@ function showLockOverlay(st){
       onOk:function(){lockOverride={day:todayStr(),blockIdx:st.blockIdx};saveLockOverride(lockOverride);o.remove();refreshLockUI();}});
   };
 }
-function activityLockHtml(blockIdx){
+/* The only non-brain lock is a Papa send-back, so the card names *that* — the
+   block title is what to redo, never the reason (a clock-based lock no longer
+   exists and copy that sounds like one sent Papa hunting in admin). */
+function redoLockHtml(blockIdx){
   const b=blockFor(activeKid(),blockIdx);
   return `<div class="card" style="text-align:center;max-width:340px">
     <div style="font-size:2.2em">${b.icon}</div>
-    <h3>It's ${b.title.split("—")[0].trim()} time! ${(b.tz||"").split("——")[0].split("（")[0]}時間到了！</h3>
-    <p>Games are resting 遊戲休息中 😌<br>Finish the activity, then tick it in My Day! 完成活動後在「我的一天」打勾！</p>
+    <h3>Papa asked for a redo 爸爸請你再做一次</h3>
+    <p>${b.title.split("—")[0].trim()} ${(b.tz||"").split("——")[0].split("（")[0]} 💪<br>Finish it and tick it in My Day to open games! 完成後在「我的一天」打勾就能玩遊戲！</p>
+    ${brainAlsoWaiting()}
     <div class="vrow">
       <button class="btn" id="lockGoDay">📅 My Day 我的一天</button>
       <button class="btn small" id="lockPapa">🔧 Papa 爸爸</button>
     </div>
   </div>`;
+}
+/* A redo outranks the brain gate in computeLock, so the gate would otherwise
+   stay invisible until the redo clears — say both at once. */
+function brainAlsoWaiting(){
+  const id=activeKid(), g=id?brainGate(id):{open:true};
+  return g.open?"":`<p class="zhs">🧠 Brain Gym is waiting too 頭腦體操也還沒做 (${g.doneCount}/${g.doneCount+g.remaining.length})</p>`;
 }
 /* Invites, never scolds (design.md §7): no red, no countdown, no blame. */
 function brainLockHtml(){
@@ -2199,7 +2239,7 @@ function renderMyDay(skipScroll){
   document.getElementById("dayTxt").textContent=done+" / "+total+(done>=total?"  — DAY COMPLETE! 全部完成！🌟":"");
   const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${escHtml(store.papaNote)}</div>`:"";
   document.getElementById("dayList").innerHTML=
-    brainNudge(hubKid)+note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div><div class="passline">Tick a mission block and the star is yours straight away. 完成任務格子，星星馬上到手。</div>`+
+    brainNudge(hubKid)+note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div><div class="passline">Tick any block and the star is yours straight away. 完成任何格子，星星馬上到手。</div>`+
     SQTime.displayOrder(dayFor(hubKid),dayOverrides).map(i=>{
       const b=blockFor(hubKid,i);
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
@@ -2472,7 +2512,7 @@ function refreshLockUI(){
       card.innerHTML=`🧠 Brain Gym first! 先做頭腦體操！ ${g.doneCount}/${g.doneCount+g.remaining.length} today 今天 — tap a 🧠 game below to start! 點下面的頭腦遊戲開始！`;
     }else{
       const b=blockFor(hubKid,ls.blockIdx);
-      card.innerHTML=`${b.icon} It's ${b.title.split("—")[0].trim()} time — games are resting 遊戲休息中。 Tick it in My Day to unlock! 在「我的一天」打勾就能解鎖！`;
+      card.innerHTML=`${b.icon} Papa asked for a redo 爸爸請你再做一次: ${b.title.split("—")[0].trim()} — tick it in My Day to open games! 在「我的一天」打勾就能玩遊戲！`+brainAlsoWaiting();
     }
     /* the brain lock must leave the brain games reachable — hiding the whole row
        would lock the kid out of the very thing that opens the door */

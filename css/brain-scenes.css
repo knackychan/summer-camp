@@ -23,7 +23,7 @@
 }
 .brain-generic__sub .zhs { display: block; margin-top: 2px; }
 .brain-generic__swatch {
-  width: 140px; height: 140px;
+  width: clamp(84px, 24cqh, 140px); height: clamp(84px, 24cqh, 140px);
   margin: 0 auto;
   border-radius: 22px;
   border: 3px solid var(--brain-outline);
@@ -56,10 +56,14 @@
 }
 .brain-generic__word.is-hidden { background: var(--brain-ink-2); color: var(--brain-white); }
 
-.brain-generic__pad { display: flex; flex-direction: column; align-items: center; gap: var(--brain-space-4); }
+/* The clock face is the tallest prompt in the generic scene; it shrinks with the
+   box like every key does (index.html's .bclockface 150px is the unhosted default). */
+.brain-scene .bclockface { width: clamp(84px, 26cqh, 140px); height: auto; margin: 0 auto; }
+
+.brain-generic__pad { display: flex; flex-direction: column; align-items: center; gap: clamp(var(--brain-space-1), 2cqh, var(--brain-space-4)); }
 .brain-generic__choices { display: grid; grid-template-columns: repeat(2, minmax(120px,1fr)); gap: var(--brain-space-3); width: 100%; max-width: 480px; }
 .brain-generic__entry {
-  min-height: 56px;
+  min-height: var(--brain-key-h, 56px);
   min-width: 160px;
   display: grid; place-items: center;
   padding: 0 var(--brain-space-4);
@@ -70,31 +74,35 @@
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
-.brain-generic__keypad { display: grid; grid-template-columns: repeat(3, 64px); gap: var(--brain-space-2); }
-.brain-generic__type { width: 100%; max-width: 640px; min-height: 96px; padding: var(--brain-space-3); border: 3px solid var(--brain-outline); border-radius: 14px; font: inherit; font-size: 18px; }
-.brain-generic__bpmfpad { display: flex; flex-direction: column; gap: var(--brain-space-2); align-items: center; max-width: 640px; }
+.brain-generic__keypad { display: grid; grid-template-columns: repeat(3, var(--brain-key-h, 64px)); gap: clamp(var(--brain-space-1), 1.4cqh, var(--brain-space-2)); }
+.brain-generic__type { width: 100%; max-width: 640px; min-height: clamp(44px, 16cqh, 96px); padding: var(--brain-space-3); border: 3px solid var(--brain-outline); border-radius: 14px; font: inherit; font-size: 18px; }
+.brain-generic__bpmfpad { display: flex; flex-direction: column; gap: clamp(2px, 1.2cqh, var(--brain-space-2)); align-items: center; max-width: 640px; }
 .brain-generic__bpmfpad[hidden] { display: none; }
-.brain-generic__bpmfrow { display: flex; flex-wrap: nowrap; justify-content: center; gap: var(--brain-space-2); }
+.brain-generic__bpmfrow { display: flex; flex-wrap: nowrap; justify-content: center; gap: clamp(2px, 1.2cqh, var(--brain-space-2)); }
 
 .brain-key {
-  min-width: 56px; min-height: 56px;
+  min-width: var(--brain-key-h, 56px); min-height: var(--brain-key-h, 56px);
   border: 3px solid var(--brain-outline);
   border-radius: 15px;
-  padding: var(--brain-space-2) var(--brain-space-3);
+  padding: clamp(2px, 1.2cqh, var(--brain-space-2)) var(--brain-space-3);
   background: var(--brain-white);
   color: var(--brain-ink);
   box-shadow: 0 4px 0 var(--brain-outline);
   font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
   font-weight: 900;
-  font-size: 20px;
+  font-size: var(--brain-key-font, 20px);
   cursor: pointer;
 }
 .brain-key:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--brain-outline); }
 .brain-key:disabled { opacity: .48; cursor: not-allowed; }
 .brain-key:focus-visible { outline: 4px solid var(--brain-focus); outline-offset: 3px; }
-.brain-key--swatch { min-width: 64px; min-height: 64px; border-radius: 50%; }
-.brain-key--bpmf { min-width: 48px; min-height: 48px; padding: var(--brain-space-1) var(--brain-space-2); font-size: 21px; }
-.brain-key--wide { min-width: 132px; font-size: 17px; }
+.brain-key--swatch { min-width: clamp(38px, 12cqh, 64px); min-height: clamp(38px, 12cqh, 64px); border-radius: 50%; }
+.brain-key--bpmf {
+  min-width: var(--brain-bpmf-key, 48px); min-height: var(--brain-bpmf-key, 48px);
+  padding: 0 var(--brain-space-1);
+  font-size: clamp(14px, calc(var(--brain-bpmf-key, 48px) * .44), 21px);
+}
+.brain-key--wide { min-width: calc(var(--brain-bpmf-key, 48px) * 2.75); font-size: 17px; }
 
 /* ---------- shared primitives for bespoke scenes ---------- */
 
@@ -179,7 +187,7 @@
 
 /* 2026-07-29: responsive checkout composition. The rail makes viewport-based
    breakpoints unreliable, so this scene adapts to the width of its own stage. */
-.brain-round--change .brain-scene { container-type: inline-size; }
+.brain-round--change .brain-scene { container-type: size; }
 
 .brain-round--contained .brain-change {
   position: relative;
@@ -736,7 +744,7 @@
 /* ---------- Math Recall: old answer / new memory split ---------- */
 
 .brain-round--recall { --brain-scene-accent: var(--brain-recall); }
-.brain-round--recall .brain-scene { container-type: inline-size; }
+.brain-round--recall .brain-scene { container-type: size; }
 
 .brain-round--contained .brain-recall {
   width: min(100%, 880px);
@@ -845,7 +853,7 @@
 
 .brain-recall__entry {
   min-width: 160px;
-  min-height: 56px;
+  min-height: var(--brain-key-h, 56px);
   display: grid;
   place-items: center;
   padding: 0 var(--brain-space-4);
@@ -861,8 +869,8 @@
 
 .brain-recall__keypad {
   display: grid;
-  grid-template-columns: repeat(3, 64px);
-  gap: var(--brain-space-2);
+  grid-template-columns: repeat(3, var(--brain-key-h, 64px));
+  gap: clamp(var(--brain-space-1), 1.4cqh, var(--brain-space-2));
 }
 
 .brain-recall__next {
@@ -890,7 +898,7 @@
   .brain-recall__panel { min-height: 128px; }
 }
 
-@media (height < 650px) and (width >= 600px) {
+@container (height < 500px) and (width > 560px) {
   .brain-round--contained .brain-recall {
     grid-template-columns: minmax(0, 1fr) minmax(230px, .55fr);
     grid-template-areas:
@@ -903,37 +911,41 @@
   .brain-recall__choices { grid-template-columns: 1fr; }
 }
 
-@media (height < 650px) and (width >= 600px) {
-  .brain-round--contained .brain-scene:has(.brain-generic__keypad) {
+/* Short box (a browser address bar counts) and wide enough for two columns:
+   prompt beside the pad instead of above it, so the keys stay in the box.
+   Every pad, not just the number keypad — the choice pad under a clock face and
+   the Bopomofo pad under a word list ran out of room the same way. */
+@container (height < 530px) and (width > 560px) {
+  .brain-round--contained .brain-scene:has(.brain-generic__pad) {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, .72fr);
+    grid-template-columns: minmax(0, 1fr) minmax(280px, auto);
     align-items: center;
     gap: var(--brain-space-4);
   }
 
-  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-task-card,
-  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-answer {
+  .brain-round--contained .brain-scene:has(.brain-generic__pad) .brain-task-card,
+  .brain-round--contained .brain-scene:has(.brain-generic__pad) .brain-answer {
     width: 100%;
     max-width: none;
     margin: 0;
   }
 
-  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-task-card {
+  .brain-round--contained .brain-scene:has(.brain-generic__pad) .brain-task-card {
     padding: var(--brain-space-4);
   }
 
-  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-generic__pad {
+  .brain-round--contained .brain-scene:has(.brain-generic__pad) .brain-generic__pad {
     gap: var(--brain-space-3);
   }
 
-  .brain-round--contained .brain-scene:has(.brain-generic__keypad) .brain-corrective {
+  .brain-round--contained .brain-scene:has(.brain-generic__pad) .brain-corrective {
     grid-column: 1 / -1;
     width: min(100%, 720px);
     margin: 0 auto;
   }
 }
 
-@media (height < 650px) and (width >= 601px) {
+@container (height < 640px) and (width > 560px) {
   .brain-round--contained .brain-change {
     justify-content: flex-start;
     gap: 6px;

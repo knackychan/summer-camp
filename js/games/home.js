@@ -1,6 +1,16 @@
 /* Home Row 🎯 基準鍵 — typing practice game migrated from index.html:1367-1376 + 1408-1421 (slice 18). */
 var S = null, C = null;
 
+function isBopomofo() {
+  return !!(C && C.inputScript === "bpmf" && C.bopomofo && (C.words.bopomofo || []).length);
+}
+
+/* Same easy-word shape [text, emoji], fed from the zhuyin pack in Bopomofo mode. */
+function homePool() {
+  if (!isBopomofo()) return C.words.easy;
+  return C.words.bopomofo.map(function (w) { return [w[0], w[1]]; });
+}
+
 function drawWord() {
   var w = S.word, pos = S.pos;
   var wordEl = S._wordEl;
@@ -26,7 +36,7 @@ function homeHud() {
 
 function nextHome() {
   S.i++;
-  if (S.i >= S.queue.length) { S.queue = C.shuffle(C.words.easy.slice()); S.i = 0; }
+  if (S.i >= S.queue.length) { S.queue = C.shuffle(homePool().slice()); S.i = 0; }
   S.word = S.queue[S.i][0]; S.em = S.queue[S.i][1];
   S.pos = 0; S.wrong = false;
   if (S._emEl) S._emEl.textContent = S.em || "";
@@ -36,7 +46,7 @@ function nextHome() {
 function init(ctx) {
   C = ctx;
   S = {
-    queue: C.shuffle(C.words.easy.slice()), i: 0, pos: 0,
+    queue: C.shuffle(homePool().slice()), i: 0, pos: 0,
     correct: 0, errors: 0, words: 0, em: "", word: "", wrong: false,
     running: true, wordTimeout: null
   };
@@ -44,7 +54,7 @@ function init(ctx) {
   C.stage.innerHTML =
     '<div class="game-scene game-scene--home">'
     + '<div class="game-scene__center">'
-    + '<div class="cue">Type the word</div>'
+    + '<div class="cue">' + (isBopomofo() ? "Type the Bopomofo 打注音" : "Type the word 打單字") + '</div>'
     + '<div class="word-em" id="homeEm"></div>'
     + '<div class="word" id="homeWord"></div>'
     + '<div class="msg" id="msg"></div>'
@@ -73,7 +83,7 @@ function key(ch) {
     S.errors = (S.errors || 0) + 1; S.wrong = true; C.sfx.bad(); C.fx.flash("bad");
     drawWord();
     var f = FINGER_MAP[(ch || "").toLowerCase()] || [""];
-    var hint = f[1] ? 'Use your ' + f[1] + ' for "' + ch.toUpperCase() + '"' : "Try again!";
+    var hint = (f[1] && !isBopomofo()) ? 'Use your ' + f[1] + ' for "' + ch.toUpperCase() + '"' : "Try again! 再試一次";
     C.fx.hint(hint);
     homeHud();
   }
