@@ -218,7 +218,7 @@
   container-type: size;
   /* every pad key sizes off the round's height, so browser chrome shrinks keys
      rather than pushing them out of view. */
-  --brain-key-h: clamp(34px, 11cqh, 60px);
+  --brain-key-h: clamp(44px, 11cqh, 60px);   /* 44px floor: coarse-pointer target */
   --brain-key-font: clamp(15px, 3.6cqh, 20px);
   --brain-bpmf-key: clamp(26px, min(4.4cqi, 9.5cqh), 48px);
 }

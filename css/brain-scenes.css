@@ -913,12 +913,30 @@
   .brain-recall__choices { grid-template-columns: 1fr; }
 }
 
-/* Landscape box (every tablet, address bar or not): prompt beside the pad
-   instead of above it, so the keys stay in the box. Every pad, not just the
-   number keypad — the choice pad under a clock face and the Bopomofo keyboard
-   under a word list ran out of room the same way. Portrait boxes are taller than
-   this and keep the stacked layout. */
-@container (height < 760px) and (width > 560px) {
+/* The Bopomofo keyboard is the one pad that never fits under its prompt on a
+   landscape tablet (6 rows of keys + the box to type in), so it sits beside the
+   word list at any height. */
+@container (width > 560px) {
+  .brain-round--contained .brain-scene:has(.brain-generic__bpmfpad:not([hidden])) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, auto);
+    align-items: center;
+    gap: var(--brain-space-4);
+  }
+  .brain-round--contained .brain-scene:has(.brain-generic__bpmfpad:not([hidden])) .brain-task-card,
+  .brain-round--contained .brain-scene:has(.brain-generic__bpmfpad:not([hidden])) .brain-answer {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+}
+
+/* Short box — a browser address bar is enough to cause it — and wide enough for
+   two columns: prompt beside the pad instead of above it, so the keys stay in
+   the box. Every pad, not just the number keypad: the choice pad under a clock
+   face ran out of room the same way. Measured against the round, not the
+   viewport, which is the whole point — the viewport lied about the space left. */
+@container (height < 530px) and (width > 560px) {
   .brain-round--contained .brain-scene:has(.brain-generic__pad) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(280px, auto);
