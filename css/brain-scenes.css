@@ -1018,15 +1018,19 @@
   .brain-round--contained .brain-change { overflow-y: auto; gap: 6px; }
   .brain-round--contained .brain-change__summary { gap: 6px; }
   .brain-round--contained .brain-change__panel { min-height: 0; padding: 6px 8px; }
-  .brain-round--contained .brain-change__display { min-height: 38px; font-size: clamp(18px, 2.2cqi, 24px); }
+  .brain-round--contained .brain-change__display { min-height: 32px; font-size: 19px; }
   .brain-round--contained .brain-change__register-label { display: none; }
-  .brain-round--contained .brain-change__paid { min-height: 42px; margin-top: 4px; font-size: clamp(20px, 2.2cqi, 26px); }
-  .brain-change__picture { width: 44px; height: 48px; }
-  .brain-change__product-icon { font-size: 26px; }
-  .brain-round--contained .brain-change__price { font-size: 23px; }
+  .brain-round--contained .brain-change__paid { min-height: 36px; margin-top: 3px; font-size: 19px; }
+  .brain-change__paid::after { font-size: 18px; }
+  .brain-round--contained .brain-change__payment .brain-generic__sub { margin-top: 0; font-size: 12px; line-height: 1.2; }
+  .brain-round--contained .brain-change__payment .brain-generic__sub .zhs { display: inline; margin-left: 4px; }
+  .brain-change__picture { width: 40px; height: 44px; }
+  .brain-change__product-icon { font-size: 22px; }
+  .brain-round--contained .brain-change__price { font-size: 20px; }
   .brain-round--contained .brain-change__work { gap: 6px; }
   .brain-round--contained .brain-change__till-col { padding: 6px; }
-  .brain-round--contained .brain-change__label { min-height: 20px; margin-bottom: 4px; font-size: 12px; }
+  .brain-round--contained .brain-change__label { min-height: 18px; margin-bottom: 4px; font-size: 12px; }
+  .brain-change__hint { display: none; }
   .brain-round--contained .brain-change__till-drawer { gap: 5px; padding: 5px; }
   .brain-round--contained .brain-change__token { min-height: 50px; font-size: 13px; }
   .brain-round--contained .brain-change__token .sprite-coin { --sprite-zoom: .6; }
