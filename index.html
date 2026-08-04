@@ -1694,10 +1694,12 @@ function finishBrain(k,res){
   const gate=SQBrainCore.gateState({trio:brainTrio(k),done:p.brain.done,bypass:false});
   let earned=false;
   if(gate.open&&!p.brain.starred){
-    /* the ledger has no unique constraint, so p.brain.starred is what stops a
-       replay from awarding a second star */
+    /* The id is what stops a second star — one per (kid, day), enforced by the
+       ledger's primary key like blocks and the bonus, so a cleared tablet or a
+       second device cannot pay the trio twice. p.brain.starred is now only a
+       local fast-path (and what keeps the burst from replaying). */
     p.brain.starred=true;
-    store.addStars(k,1,"Brain Gym 頭腦體操 · daily set 每日三項 · "+day);
+    store.addStars(k,1,"Brain Gym 頭腦體操 · daily set 每日三項 · "+day,SQStarId.brain(k,day));
     earned=true;
   }
   saveProgress();

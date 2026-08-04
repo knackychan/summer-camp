@@ -20,9 +20,11 @@
      silently re-points every historical id at a different kid. */
   const KID_SLOT={lucien:1,lili:2,luis:3};
   const SLOT_KID={1:"lucien",2:"lili",3:"luis"};
-  /* The day-complete bonus is not a block, so it gets a slot no block index can
-     reach (DAY is 16 long). */
+  /* The day-complete bonus and the Brain Gym daily set are not blocks, so they get
+     slots no block index can reach (DAY is 16 long). Both are once-per-kid-per-day
+     facts, which is exactly what an id buys. */
   const BONUS_SLOT=999;
+  const BRAIN_SLOT=998;
 
   function starId(kid,dayISO,slot){
     const k=KID_SLOT[kid];
@@ -50,6 +52,7 @@
   const api={
     block:function(kid,dayISO,blockIdx){return starId(kid,dayISO,blockIdx);},
     bonus:function(kid,dayISO){return starId(kid,dayISO,BONUS_SLOT);},
+    brain:function(kid,dayISO){return starId(kid,dayISO,BRAIN_SLOT);},
     /* Still gated on a known kind, not just truthiness: a `{}` reaching here is a
        bug upstream, and paying it a star would hide that. */
     blockDelta:function(block){return block&&(block.kind==="mission"||block.kind==="routine")?1:0;},
@@ -60,7 +63,8 @@
       const kid=SLOT_KID[+m[4]], day=m[1]+"-"+m[2]+"-"+m[3], slot=+m[5];
       if(!kid)return null;
       if(starId(kid,day,slot)!==id)return null;
-      return {kid:kid,day:day,slot:slot,kind:slot===BONUS_SLOT?"bonus":"block"};
+      return {kid:kid,day:day,slot:slot,
+        kind:slot===BONUS_SLOT?"bonus":slot===BRAIN_SLOT?"brain":"block"};
     }
   };
   if(typeof window!=="undefined")window.SQStarId=api;

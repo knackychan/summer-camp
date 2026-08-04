@@ -35,14 +35,14 @@
   margin: 0 auto;
 }
 .brain-generic__field span { font-variant-numeric: tabular-nums; }
-.brain-generic__grid { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--brain-space-3); margin: 0 auto var(--brain-space-3); }
+.brain-generic__grid { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(var(--brain-space-1), 2cqh, var(--brain-space-3)); margin: 0 auto clamp(var(--brain-space-1), 2cqh, var(--brain-space-3)); }
 .brain-generic__cell {
-  min-width: 56px; min-height: 56px;
+  min-width: clamp(38px, 12cqh, 56px); min-height: clamp(38px, 12cqh, 56px);
   display: grid; place-items: center;
   border: 3px solid var(--brain-outline);
   border-radius: 14px;
   background: var(--brain-paper-2);
-  font-size: 24px; font-weight: 900;
+  font-size: clamp(17px, 4.4cqh, 24px); font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
 .brain-generic__cell.is-hidden { background: var(--brain-ink-2); color: var(--brain-white); }
@@ -75,7 +75,9 @@
   font-variant-numeric: tabular-nums;
 }
 .brain-generic__keypad { display: grid; grid-template-columns: repeat(3, var(--brain-key-h, 64px)); gap: clamp(var(--brain-space-1), 1.4cqh, var(--brain-space-2)); }
-.brain-generic__type { width: 100%; max-width: 640px; min-height: clamp(44px, 16cqh, 96px); padding: var(--brain-space-3); border: 3px solid var(--brain-outline); border-radius: 14px; font: inherit; font-size: 18px; }
+/* height, not min-height: the textarea's rows="3" is what sets its box, and a
+   3-row box plus the Bopomofo keyboard does not fit a short landscape stage. */
+.brain-generic__type { width: 100%; max-width: 640px; height: clamp(44px, 16cqh, 96px); padding: var(--brain-space-3); border: 3px solid var(--brain-outline); border-radius: 14px; font: inherit; font-size: 18px; }
 .brain-generic__bpmfpad { display: flex; flex-direction: column; gap: clamp(2px, 1.2cqh, var(--brain-space-2)); align-items: center; max-width: 640px; }
 .brain-generic__bpmfpad[hidden] { display: none; }
 .brain-generic__bpmfrow { display: flex; flex-wrap: nowrap; justify-content: center; gap: clamp(2px, 1.2cqh, var(--brain-space-2)); }
@@ -1006,6 +1008,35 @@
     min-height: 46px;
     padding: 5px 8px;
   }
+}
+
+/* One step tighter than the block above: a 7" tablet in landscape *with* a
+   browser address bar leaves ~340px for the whole shop, and the give/reset
+   buttons were the part that fell off the bottom. Below this the shop scrolls
+   rather than clipping. */
+@container (height < 470px) and (width > 560px) {
+  .brain-round--contained .brain-change { overflow-y: auto; gap: 6px; }
+  .brain-round--contained .brain-change__summary { gap: 6px; }
+  .brain-round--contained .brain-change__panel { min-height: 0; padding: 6px 8px; }
+  .brain-round--contained .brain-change__display { min-height: 38px; font-size: clamp(18px, 2.2cqi, 24px); }
+  .brain-round--contained .brain-change__register-label { display: none; }
+  .brain-round--contained .brain-change__paid { min-height: 42px; margin-top: 4px; font-size: clamp(20px, 2.2cqi, 26px); }
+  .brain-change__picture { width: 44px; height: 48px; }
+  .brain-change__product-icon { font-size: 26px; }
+  .brain-round--contained .brain-change__price { font-size: 23px; }
+  .brain-round--contained .brain-change__work { gap: 6px; }
+  .brain-round--contained .brain-change__till-col { padding: 6px; }
+  .brain-round--contained .brain-change__label { min-height: 20px; margin-bottom: 4px; font-size: 12px; }
+  .brain-round--contained .brain-change__till-drawer { gap: 5px; padding: 5px; }
+  .brain-round--contained .brain-change__token { min-height: 50px; font-size: 13px; }
+  .brain-round--contained .brain-change__token .sprite-coin { --sprite-zoom: .6; }
+  .brain-round--contained .brain-change__token .sprite-note { --sprite-zoom: .3; }
+  .brain-round--contained .brain-change__tray { min-height: 58px; padding: 6px; }
+  .brain-round--contained .brain-change__tray-groups { min-height: 40px; }
+  .brain-round--contained .brain-change__tray-total { font-size: clamp(20px, 2.4cqi, 28px); }
+  .brain-round--contained .brain-change__tray-group { min-height: 46px; }
+  .brain-round--contained .brain-change__actions { gap: 5px; }
+  .brain-round--contained .brain-change__actions .brain-button { min-height: 38px; padding: 3px 6px; font-size: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

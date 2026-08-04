@@ -107,6 +107,28 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   console.log("ok - one rule prices a block for both apps");
 }
 
+// --- 4c: the Brain Gym daily set is once per kid per day, like the bonus ---
+// It used to have no id at all: a local `p.brain.starred` flag was the only thing
+// between the trio and a second star, so clearing the tablet paid it again.
+{
+  const brain = SQStarId.brain("lili", "2026-08-04");
+  assert.equal(brain, SQStarId.brain("lili", "2026-08-04"), "same kid+day, same id");
+  assert.notEqual(brain, SQStarId.brain("luis", "2026-08-04"));
+  assert.notEqual(brain, SQStarId.brain("lili", "2026-08-05"));
+  // must not collide with any block index or the bonus
+  assert.notEqual(brain, SQStarId.bonus("lili", "2026-08-04"));
+  const { DAY } = require("../js/day-data.js");
+  for (let i = 0; i < DAY.length; i++) {
+    assert.notEqual(brain, SQStarId.block("lili", "2026-08-04", i));
+  }
+  const info = SQStarId.parse(brain);
+  assert.deepEqual(info, { kid: "lili", day: "2026-08-04", slot: 998, kind: "brain" });
+  // admin routes only kind:"block" through unacceptBlock — a brain star is a plain delete
+  assert.notEqual(info.kind, "block");
+  assert.equal(SQStarId.brain("nobody", "2026-08-04"), null);
+  console.log("ok - brain gym pays once per kid per day");
+}
+
 // --- 5: addStars treats a repeat of the same id as the same star ---
 {
   const src = readFileSync(new URL("../js/sync.js", import.meta.url), "utf8");
