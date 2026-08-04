@@ -705,6 +705,11 @@ body.music-mode{overflow:hidden}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
 .overlay{position:fixed;inset:0;background:rgba(20,14,40,.82);display:flex;align-items:center;
   justify-content:center;z-index:40;padding:20px}
+/* Every popup leaves the same two ways: tap the backdrop, or tap the ✕. The ✕ is
+   a pseudo-element so hits land on the overlay itself — one handler covers both. */
+.overlay::after{content:"✕";position:absolute;top:10px;right:14px;font-size:30px;font-weight:800;
+  color:#fff;opacity:.7;line-height:1;padding:10px 14px;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+.overlay[data-nodismiss]::after{content:none}
 .card{background:var(--panel);border-radius:26px;padding:30px 26px;text-align:center;max-width:420px;width:100%;
   border:2px solid var(--line);box-shadow:0 14px 0 rgba(0,0,0,.3)}
 .card h3{font-family:'Fredoka';font-weight:700;font-size:34px;margin-bottom:6px}
@@ -1777,6 +1782,16 @@ function bigFloat(txt){
   requestAnimationFrame(()=>{d.style.top="12%";d.style.opacity="0";d.style.fontSize="120px";});
   setTimeout(()=>d.remove(),900);
 }
+/* One dismiss for every .overlay popup, here and in js/ — a tap on the backdrop
+   or on its ✕ (both report the overlay as the target; the card swallows its own
+   clicks). Overlays needing cleanup listen for the same tap themselves before
+   this runs (js/drills.js stops its metronome). data-nodismiss opts out the
+   app-pause card — only Papa lifts that one. Locks re-check on entry anyway, so
+   closing a lock card never opens what it was guarding. */
+addEventListener("click",function(e){
+  const o=e.target;
+  if(o&&o.classList&&o.classList.contains("overlay")&&!o.hasAttribute("data-nodismiss"))o.remove();
+});
 function showLockOverlay(st){
   if(document.getElementById("lockOverlay"))return;
   const o=document.createElement("div");
@@ -1917,7 +1932,7 @@ function refreshAppLock(){
   }
   if(o)return;
   o=document.createElement("div");
-  o.className="overlay";o.id="appLockOverlay";
+  o.className="overlay";o.id="appLockOverlay";o.dataset.nodismiss="1";
   o.innerHTML=`<div class="card" style="text-align:center;max-width:340px">
     <div style="font-size:2.2em">😌</div>
     <h3>Time for a break 休息一下</h3>

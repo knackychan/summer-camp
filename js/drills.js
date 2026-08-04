@@ -89,6 +89,9 @@
     document.body.appendChild(o);
     function speak(){if(opts.say)opts.say(drill.steps[step]);}
     function close(){metronome().stop();o.remove();}
+    /* backdrop/✕ tap dismisses like every other popup, but through close() so
+       the metronome doesn't keep ticking behind a removed overlay */
+    o.addEventListener("click",function(e){if(e.target===o)close();});
     function render(){
       const last=step===drill.steps.length-1;
       o.innerHTML=`<div class="card drillcard">

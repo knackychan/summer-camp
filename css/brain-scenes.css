@@ -911,11 +911,12 @@
   .brain-recall__choices { grid-template-columns: 1fr; }
 }
 
-/* Short box (a browser address bar counts) and wide enough for two columns:
-   prompt beside the pad instead of above it, so the keys stay in the box.
-   Every pad, not just the number keypad — the choice pad under a clock face and
-   the Bopomofo pad under a word list ran out of room the same way. */
-@container (height < 530px) and (width > 560px) {
+/* Landscape box (every tablet, address bar or not): prompt beside the pad
+   instead of above it, so the keys stay in the box. Every pad, not just the
+   number keypad — the choice pad under a clock face and the Bopomofo keyboard
+   under a word list ran out of room the same way. Portrait boxes are taller than
+   this and keep the stacked layout. */
+@container (height < 760px) and (width > 560px) {
   .brain-round--contained .brain-scene:has(.brain-generic__pad) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(280px, auto);
