@@ -2066,6 +2066,22 @@
     renderSettings();
   }
 
+  function ttsEnabledValue(){
+    var row=rows.familySettings.find(function(x){return x.key==="tts_enabled";});
+    return row&&row.value==="1";
+  }
+
+  async function saveTtsEnabled(enabled){
+    var value=enabled?"1":"0";
+    suppressRealtime("family_settings",{key:"tts_enabled"});
+    const {error}=await client.from("family_settings").upsert({key:"tts_enabled",value:value,updated_at:new Date().toISOString()});
+    if(error){writeFailed(error);renderSettings();return;}
+    var row=rows.familySettings.find(function(x){return x.key==="tts_enabled";});
+    if(row)row.value=value; else rows.familySettings.push({key:"tts_enabled",value:value});
+    toast(enabled?"Kid text-to-speech enabled":"Kid text-to-speech muted",true);
+    renderSettings();
+  }
+
   function renderBehaviourPanel(){
     var el=$("behaviourPanel");
     if(!el)return;
@@ -2074,11 +2090,16 @@
       '<input type="checkbox" id="removedCredited" '+(credited?"checked":"")+' style="margin-top:2px;width:16px;height:16px">'+
       '<span><b style="font-weight:650">Removed blocks still earn stars</b>'+
       '<span class="field__hint" style="margin-top:2px">When you remove a block for an outing, the kid keeps the star for it.</span></span></label>'+
+      '<label class="field" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px">'+
+      '<input type="checkbox" id="ttsEnabled" '+(ttsEnabledValue()?"checked":"")+' style="margin-top:2px;width:16px;height:16px">'+
+      '<span><b style="font-weight:650">Text-to-speech on kid tablets</b>'+
+      '<span class="field__hint" style="margin-top:2px">Off by default. Enables spoken prompts and announcements across the kid app.</span></span></label>'+
       '<label class="field" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:0">'+
       '<input type="checkbox" id="notifyCheck" '+(browserNotifyEnabled?"checked":"")+' style="margin-top:2px;width:16px;height:16px">'+
       '<span><b style="font-weight:650">Desktop notifications for asks and claims</b>'+
       '<span class="field__hint" style="margin-top:2px">Only things waiting on you. System events never notify.</span></span></label>';
     $("removedCredited").onchange=function(){localStorage.setItem("sq-removed-credited",$("removedCredited").checked?"1":"0");};
+    $("ttsEnabled").onchange=function(){saveTtsEnabled($("ttsEnabled").checked);};
     $("notifyCheck").onchange=function(){toggleBrowserNotifications();};
   }
 

@@ -1351,8 +1351,11 @@ const sPop =()=>{beep(880,.06,"square",.12);setTimeout(()=>beep(1320,.08,"triang
 const sZap =()=>{beep(1200,.05,"sawtooth",.1);setTimeout(()=>beep(500,.1,"square",.12),50);};
 const sHit =()=>{beep(120,.25,"sawtooth",.16);};
 const sWin =()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.14,"triangle",.16),i*90));};
+function ttsEnabled(){
+  return !!(store&&store.familySettings&&store.familySettings.tts_enabled==="1");
+}
 function say(txt,lang,keep){
-  if(!settings.vocab.tts) return;
+  if(!ttsEnabled()||!settings.vocab.tts) return;
   try{ if(!keep) speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(txt);
     u.lang=lang||"en-US"; u.rate=.85; u.pitch=1.05;
@@ -3452,6 +3455,7 @@ function setupRealtime(){
     store.familySettings[row.key]=row.value;
     localStorage.setItem("sq:famSettings",JSON.stringify(store.familySettings));
     if(row.key==="admin_pin")localStorage.setItem("sq:adminPin",JSON.stringify(row.value||""));
+    if(row.key==="tts_enabled"&&row.value!=="1")try{speechSynthesis.cancel();}catch(e){}
     if(row.key==="day_template_times"||row.key===replaceKey()){
       refreshOverrides();
       refreshLockUI();
