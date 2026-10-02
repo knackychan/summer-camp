@@ -1,7 +1,7 @@
 # Pixel Planet — world home redesign
 
 **Date:** 2026-10-02
-**Status:** Approved by Papa (brainstorm 2026-10-02; toys + mini-games addendum approved the same day)
+**Status:** Approved by Papa (brainstorm 2026-10-02; toys + mini-games addendum approved the same day) · Implemented (slices 60–64, 2026-10-02); tablet acceptance pending.
 **Supersedes:** the low-poly floating-island look of `js/world/world-explorer.js` (Three.js). The approved world *behaviour* from `docs/plans/2026-09-23-learning-runtime-planet-home/design.md` — explorable home, tap a place, GO opens real content, Classic menu always available — stays in force. Only the rendering, the art and the touch model change.
 **Slices:** 60–64 in this folder. A reference implementation of every module was built and exercised in a scratch browser harness while planning; the slices carry that code verbatim.
 
