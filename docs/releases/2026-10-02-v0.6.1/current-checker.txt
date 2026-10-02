@@ -1,0 +1,141 @@
+fatal: not a git repository (or any of the parent directories): .git
+(node:24216) ExperimentalWarning: globSync is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24216) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///mnt/data/sq-v061/summer-quest/js/games/index.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /mnt/data/sq-v061/summer-quest/package.json.
+Summer Quest check failed (132)
+- offline: sw.js precaches ./js/config.js but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/README.md but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2009-origin.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2010-nether.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2017-world-of-color.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2018-aquatic.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2019-buzzy-bees.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2019-village-pillage.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2020-nether-update.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2021-caves-cliffs-p1.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2021-caves-cliffs.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2022-wild-update.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2023-trails-tales.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2024-garden-awakens.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2024-tricky-trials.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-chase-skies.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-copper-age.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-mounts-mayhem.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-spring-to-life.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-chaos-cubed.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-block-set.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-cave-biome.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-cave-explore.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-caves.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-cube-game.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-cube-honeycomb.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-cube-ice.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-cube-tnt.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-cubes-cave.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-cubes-variety.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-sulfur-geyser.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-tiny-takeover.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/minecraft-java-bedrock.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2023-bats-pots-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2023-trails-tales-c.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2024-armored-paws-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2024-bundles-bravery-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2024-garden-awakens-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2024-tricky-trials-c.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-chase-skies-c.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-copper-age-c.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-mounts-mayhem-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-spring-to-life-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-chaos-cubed-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-tiny-takeover-c.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/whats-happening.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/mc-experience.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/mc-creator.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/education-planet.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/realms-tile.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/servers-tile.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/texture-packs.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/add-ons.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2023-bats-pots.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2023-trails-tales-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2024-armored-paws.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2024-bundles-bravery.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2024-tricky-trials-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-chase-skies-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2025-copper-age-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/2026-tiny-takeover-b.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/build-worlds.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/education-hero.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/game-drops.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/marketplace.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/mc-dungeons.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/mc-legends.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/microsoft-redmond.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/minecraft-live.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/mojang-stockholm.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/realms-multiplayer.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/tips-beginners.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/vanilla-wallpaper.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/overlays/creeper.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/overlays/sniffer.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/minecraft/overlays/warden.png but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/README.md but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/giraffe.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/neck.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/spots.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/tongue.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/food.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/legs.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/baby.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/sleep.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/habitat.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- offline: sw.js precaches ./assets/books/giraffe/family.jpg but the file does not exist — cache.addAll will reject and the service worker will never update
+- books: giraffe/giraffe missing photo ../assets/books/giraffe/giraffe.jpg
+- books: giraffe/neck missing photo ../assets/books/giraffe/neck.jpg
+- books: giraffe/spots missing photo ../assets/books/giraffe/spots.jpg
+- books: giraffe/tongue missing photo ../assets/books/giraffe/tongue.jpg
+- books: giraffe/food missing photo ../assets/books/giraffe/food.jpg
+- books: giraffe/legs missing photo ../assets/books/giraffe/legs.jpg
+- books: giraffe/baby missing photo ../assets/books/giraffe/baby.jpg
+- books: giraffe/sleep missing photo ../assets/books/giraffe/sleep.jpg
+- books: giraffe/habitat missing photo ../assets/books/giraffe/habitat.jpg
+- books: giraffe/family missing photo ../assets/books/giraffe/family.jpg
+- git scan: Command failed: git ls-files
+fatal: not a git repository (or any of the parent directories): .git
+
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 5 "--brain-backdrop: #17132f;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 6 "--brain-shell: #27214f;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 7 "--brain-shell-2: #332b66;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 8 "--brain-paper: #fff5dc;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 9 "--brain-paper-2: #f1e3bf;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 10 "--brain-ink: #2f2845;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 11 "--brain-ink-2: #655d76;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 12 "--brain-outline: #3b3159;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 13 "--brain-shadow: #171229;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 14 "--brain-white: #fffdf7;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 15 "--brain-success: #2f9e68;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 16 "--brain-success-soft: #dff4e8;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 17 "--brain-hint: #d99416;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 18 "--brain-hint-soft: #fff0c7;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 19 "--brain-focus: #68c8ff;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 20 "--brain-disabled: #aaa3b6;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 22 "--brain-calc: #ee7b54;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 23 "--brain-signs: #dda62b;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 24 "--brain-lowhigh: #3f9fc8;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 25 "--brain-stroop: #8b63b8;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 26 "--brain-crunch: #319f91;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 27 "--brain-clock: #5e6fc4;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 28 "--brain-change: #2f9e68;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 29 "--brain-wordmem: #8255a4;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 30 "--brain-recall: #d9783d;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 32 "--brain-red: #cf3f4a;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 33 "--brain-blue: #2775bd;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 34 "--brain-green: #24845a;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 35 "--brain-yellow: #c28a08;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 37 "--brain-header-border: #5c5292;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 38 "--brain-header-sub: #c8c2ea;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 39 "--brain-status-border: #453b7a;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 40 "--brain-progress-border: #7167a3;"
+- brain tokens: colour literal in CSS: css/brain-shell.css ~line 41 "--brain-clock-ink: #ded9f2;"

@@ -1,0 +1,274 @@
+TAP version 13
+# Subtest: science: every approved clue remains bilingual, literal and free of assessment fields
+ok 1 - science: every approved clue remains bilingual, literal and free of assessment fields
+  ---
+  duration_ms: 2.070238
+  type: 'test'
+  ...
+# Subtest: geography: every approved clue remains bilingual, literal and free of assessment fields
+ok 2 - geography: every approved clue remains bilingual, literal and free of assessment fields
+  ---
+  duration_ms: 0.67061
+  type: 'test'
+  ...
+# Subtest: history: every approved clue remains bilingual, literal and free of assessment fields
+ok 3 - history: every approved clue remains bilingual, literal and free of assessment fields
+  ---
+  duration_ms: 0.275054
+  type: 'test'
+  ...
+# Subtest: pre-reader defaults to a visual; explicit visual focus is preserved locally
+ok 4 - pre-reader defaults to a visual; explicit visual focus is preserved locally
+  ---
+  duration_ms: 0.1656
+  type: 'test'
+  ...
+# Subtest: start, snapshot and opening local help make no remote calls
+ok 5 - start, snapshot and opening local help make no remote calls
+  ---
+  duration_ms: 1.717146
+  type: 'test'
+  ...
+# Subtest: one explicit selection records actual route and nullable usage, never mastery or answers
+ok 6 - one explicit selection records actual route and nullable usage, never mastery or answers
+  ---
+  duration_ms: 2.66191
+  type: 'test'
+  ...
+# Subtest: double taps share one claim; reopening and Another clue do not repeat a model call
+ok 7 - double taps share one claim; reopening and Another clue do not repeat a model call
+  ---
+  duration_ms: 8.462516
+  type: 'test'
+  ...
+# Subtest: no configured client returns usable local help and unavailable cost
+ok 8 - no configured client returns usable local help and unavailable cost
+  ---
+  duration_ms: 0.713905
+  type: 'test'
+  ...
+# Subtest: science: Check mode blocks help before and after a recorded answer
+ok 9 - science: Check mode blocks help before and after a recorded answer
+  ---
+  duration_ms: 1.148289
+  type: 'test'
+  ...
+# Subtest: geography: Check mode blocks help before and after a recorded answer
+ok 10 - geography: Check mode blocks help before and after a recorded answer
+  ---
+  duration_ms: 0.614165
+  type: 'test'
+  ...
+# Subtest: history: Check mode blocks help before and after a recorded answer
+ok 11 - history: Check mode blocks help before and after a recorded answer
+  ---
+  duration_ms: 0.410448
+  type: 'test'
+  ...
+# Subtest: help requires the current learner, domain, session, intro and eligible age
+ok 12 - help requires the current learner, domain, session, intro and eligible age
+  ---
+  duration_ms: 0.659123
+  type: 'test'
+  ...
+# Subtest: invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"fact:unknown"})
+ok 13 - invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"fact:unknown"})
+  ---
+  duration_ms: 1.448592
+  type: 'test'
+  ...
+# Subtest: invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"<script>"})
+ok 14 - invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"<script>"})
+  ---
+  duration_ms: 0.463519
+  type: 'test'
+  ...
+# Subtest: invalid selection falls back without rendering provider prose ({"kind":"lesson_hint","message":"wrong task"})
+ok 15 - invalid selection falls back without rendering provider prose ({"kind":"lesson_hint","message":"wrong task"})
+  ---
+  duration_ms: 0.33205
+  type: 'test'
+  ...
+# Subtest: invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"fact:any","message":"invented prose"})
+ok 16 - invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"fact:any","message":"invented prose"})
+  ---
+  duration_ms: 0.425231
+  type: 'test'
+  ...
+# Subtest: provider errors are bounded local fallback, not retry or escalation
+ok 17 - provider errors are bounded local fallback, not retry or escalation
+  ---
+  duration_ms: 0.449827
+  type: 'test'
+  ...
+# Subtest: non-resolving custom client is timed out and receives cancellation
+ok 18 - non-resolving custom client is timed out and receives cancellation
+  ---
+  duration_ms: 8.92929
+  type: 'test'
+  ...
+# Subtest: cancel aborts promptly even when an adapter ignores the signal
+ok 19 - cancel aborts promptly even when an adapter ignores the signal
+  ---
+  duration_ms: 1.225706
+  type: 'test'
+  ...
+# Subtest: late help cannot rewind an answered question or alter an attempt
+ok 20 - late help cannot rewind an answered question or alter an attempt
+  ---
+  duration_ms: 2.040253
+  type: 'test'
+  ...
+# Subtest: Another clue wins over a pending remote selection
+ok 21 - Another clue wins over a pending remote selection
+  ---
+  duration_ms: 0.707035
+  type: 'test'
+  ...
+# Subtest: reset plus replacement cannot be resurrected by a late request
+ok 22 - reset plus replacement cannot be resurrected by a late request
+  ---
+  duration_ms: 0.903892
+  type: 'test'
+  ...
+# Subtest: a stale cancel cannot cancel a replacement session
+ok 23 - a stale cancel cannot cancel a replacement session
+  ---
+  duration_ms: 0.450839
+  type: 'test'
+  ...
+# Subtest: interrupted persisted request restores local help without a second paid attempt
+ok 24 - interrupted persisted request restores local help without a second paid attempt
+  ---
+  duration_ms: 0.853115
+  type: 'test'
+  ...
+# Subtest: saved selection survives bridge reload; injected saved text is ignored
+ok 25 - saved selection survives bridge reload; injected saved text is ignored
+  ---
+  duration_ms: 0.528376
+  type: 'test'
+  ...
+# Subtest: server canonicalizes client content, strips private extras and supplies only catalogue cues
+ok 26 - server canonicalizes client content, strips private extras and supplies only catalogue cues
+  ---
+  duration_ms: 0.977042
+  type: 'test'
+  ...
+# Subtest: server blocks wrong stages, mismatched tasks, unknown lessons and Check requests before provider use
+ok 27 - server blocks wrong stages, mismatched tasks, unknown lessons and Check requests before provider use
+  ---
+  duration_ms: 0.52415
+  type: 'test'
+  ...
+# Subtest: server rejects an out-of-lesson cue even if it exists in another lesson
+ok 28 - server rejects an out-of-lesson cue even if it exists in another lesson
+  ---
+  duration_ms: 0.27873
+  type: 'test'
+  ...
+# Subtest: client cannot authorize a stronger profile; server route and usage remain authoritative
+ok 29 - client cannot authorize a stronger profile; server route and usage remain authoritative
+  ---
+  duration_ms: 0.247192
+  type: 'test'
+  ...
+# Subtest: server-authorized manual override works without an automatic escalation path
+ok 30 - server-authorized manual override works without an automatic escalation path
+  ---
+  duration_ms: 0.217879
+  type: 'test'
+  ...
+# Subtest: implicit task, JSON schema and provider prompt all dispatch to the bounded selector
+ok 31 - implicit task, JSON schema and provider prompt all dispatch to the bounded selector
+  ---
+  duration_ms: 0.29179
+  type: 'test'
+  ...
+# Subtest: HTTP client forwards external cancellation to its fetch without exposing secrets
+ok 32 - HTTP client forwards external cancellation to its fetch without exposing secrets
+  ---
+  duration_ms: 0.27251
+  type: 'test'
+  ...
+# Subtest: diagnostic normalization retains unknown metrics as null and does not coerce missing fields to zero
+ok 33 - diagnostic normalization retains unknown metrics as null and does not coerce missing fields to zero
+  ---
+  duration_ms: 0.264658
+  type: 'test'
+  ...
+# Subtest: adult diagnostic table displays Unavailable rather than a fabricated zero cost
+ok 34 - adult diagnostic table displays Unavailable rather than a fabricated zero cost
+  ---
+  duration_ms: 1.364004
+  type: 'test'
+  ...
+# Subtest: every new runtime module and its transitive imports is included in the offline shell
+ok 35 - every new runtime module and its transitive imports is included in the offline shell
+  ---
+  duration_ms: 0.989029
+  type: 'test'
+  ...
+# Subtest: navigation cancellation before the network claim prevents a late request from starting
+ok 36 - navigation cancellation before the network claim prevents a late request from starting
+  ---
+  duration_ms: 0.71681
+  type: 'test'
+  ...
+# Subtest: a local next-clue action before the network claim prevents a late request from starting
+ok 37 - a local next-clue action before the network claim prevents a late request from starting
+  ---
+  duration_ms: 0.227002
+  type: 'test'
+  ...
+# Subtest: invalid HTTP response becomes invalid_response, not model text or fabricated usage
+ok 38 - invalid HTTP response becomes invalid_response, not model text or fabricated usage
+  ---
+  duration_ms: 19.035301
+  type: 'test'
+  ...
+# Subtest: boolean or null provider counters are unavailable; zero is kept only when actually reported
+ok 39 - boolean or null provider counters are unavailable; zero is kept only when actually reported
+  ---
+  duration_ms: 0.239731
+  type: 'test'
+  ...
+# Subtest: unknown persisted session versions remain unreadable, matching the pre-help snapshot contract
+ok 40 - unknown persisted session versions remain unreadable, matching the pre-help snapshot contract
+  ---
+  duration_ms: 0.184337
+  type: 'test'
+  ...
+# Subtest: end-to-end client → fetch handler → protected proxy → selection → bridge works without a live provider
+ok 41 - end-to-end client → fetch handler → protected proxy → selection → bridge works without a live provider
+  ---
+  duration_ms: 10.623711
+  type: 'test'
+  ...
+# Subtest: fetch-handler provider outage preserves the local card without a retry
+ok 42 - fetch-handler provider outage preserves the local card without a retry
+  ---
+  duration_ms: 0.939114
+  type: 'test'
+  ...
+# Subtest: operational help diagnostics cannot evict graded attempts from the local evidence window
+ok 43 - operational help diagnostics cannot evict graded attempts from the local evidence window
+  ---
+  duration_ms: 11.121261
+  type: 'test'
+  ...
+# Subtest: repeated diagnostic IDs cannot bypass the separate retention bound
+ok 44 - repeated diagnostic IDs cannot bypass the separate retention bound
+  ---
+  duration_ms: 0.482006
+  type: 'test'
+  ...
+1..44
+# tests 44
+# suites 0
+# pass 44
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 164.022521
