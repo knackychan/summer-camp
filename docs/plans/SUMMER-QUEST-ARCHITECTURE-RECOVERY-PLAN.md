@@ -1,6 +1,6 @@
 # Summer Quest architecture recovery plan
 
-Date: 2026-10-02. **Strategy C approved by the user; implementation and acceptance results recorded below. Physical tablet acceptance remains blocked on ADB authorization.**
+Date: 2026-10-02. **Strategy C approved by the user; implementation and software acceptance results recorded below. Physical tablet acceptance deferred by the user: the tablet is disconnected.**
 
 Basis: [architecture audit](../audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-AUDIT.md) and its evidence appendices. The user's implementation instruction explicitly passed the audit review stop. Existing plans remain historical references; Strategy C supersedes their conflicting shell-in-iframe direction.
 
@@ -126,7 +126,7 @@ Dependencies: none. Required before claims about the physical tablet cause.
 
 - [x] Record overlaid source, generated payload identity, exact selector path, and browser behavior.
 - [x] Add a re-runnable probe that exposes the world/game coexistence failure.
-- [x] Check device availability: ADB sees one unauthorized device; authorize USB debugging on that device before inspecting its runtime.
+- [x] Check device availability: implementation pass saw one unauthorized device; the follow-up acceptance attempt on 2026-10-02 saw no device. The user confirmed the tablet was removed and deferred the physical pass.
 - [ ] Capture installed package ID/version, launch activity, WebView `location.href`, loaded root/module URLs, service-worker controller/scope/cache identity, bridge-native flag, current surface and saved view keys.
 - [ ] Compare actual native `assets/public` and installed APK payload against source/dist before rebuilding.
 - [ ] Record the exact device entry-selection cause; do not infer it from the badge or bundle metadata.
@@ -242,3 +242,9 @@ The audit-only delivery remains recorded at `29b1f0e`. The user authorized imple
 ### Validation and remaining acceptance
 
 Command results, artifact identities, clean-checkout comparison and evidence limits are recorded in the [recovery results appendix](../audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-RESULTS.md). The checklist's device-specific boxes stay open until hardware evidence is available. Visual polish remains deferred.
+
+### Physical acceptance follow-up — deferred, 2026-10-02
+
+Branch `fix/android-device-acceptance` starts at `eb2065b`. Only acceptance documentation changed; no device inspection beyond ADB availability, installation, settings change or physical test occurred. Existing installation identity and the cause of the tablet mismatch remain unknown.
+
+Resume Phase 0 before installing: capture the original APK, package/version/signature/activity, actual WebView entry/modules/bridge/cache/surface and available saved-state evidence in ignored local storage. Establish a compatible package, signer, versionCode and unchanged storage origin before updating in place. Preserve family state and queued ledger operations; no uninstall, data clear or cache deletion. Continue physical content/navigation/touch/audio/lifecycle/offline acceptance afterward, retaining the distinction between device observations and desktop regression results.

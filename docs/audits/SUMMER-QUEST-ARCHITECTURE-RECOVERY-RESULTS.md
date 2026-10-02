@@ -65,6 +65,10 @@ The clean export has the same payload file set. Compared with the working overla
 
 ## Remaining hardware gate
 
-ADB was rechecked and still reports one unauthorized device. The installed package/version, launch activity, WebView URL, service-worker state, actual bridge flag and entry-selection cause remain unverified. Nothing was installed, uninstalled or cleared on the tablet, and its app ID/storage origin were not changed.
+The implementation pass detected one unauthorized device. At the subsequent physical acceptance attempt on 2026-10-02, `adb devices -l` completed with an empty device list. The user confirmed that the tablet had been removed and explicitly deferred the physical pass until later.
 
-After USB-debugging authorization, inspect and preserve the installed entry evidence before any replacement. Then run physical touch, audio, Back, background/resume and offline process-start checks. The plan's hardware boxes and visual polish remain open.
+Follow-up branch: `fix/android-device-acceptance`, created from implementation commit `eb2065b` without resetting or discarding workspace changes. This follow-up only records the deferral; no build, install, launch, smoke test or physical acceptance check was performed. No device settings or app/browser data were changed. The previous software results above were not rerun and remain software evidence only.
+
+The installed package/version, signing certificate, launch activity, WebView debugging availability, entry URL, loaded modules, service-worker/cache identity, bridge flag and current surface remain unverified. No original APK could be captured. The source diagnosis still identifies the Planet selector and its `LEGACY` adapter badge; why the installed tablet entered that path remains uncertain. All physical checks are blocked by the absent tablet, with no physical pass or failure established.
+
+On resumption, reconnect/unlock the tablet and authorize USB debugging if prompted. Inspect the existing installation and preserve its APK and diagnostics in ignored `apps/android/.reports/` before replacement. Verify package ID, signing compatibility, versionCode and storage origin before any in-place update; the template's `1.0` / `1` is not an approved upgrade. Never uninstall, clear data or delete caches to pass acceptance. Then complete the physical checklist, including existing profiles/PINs/progress/queued stars, content, touch, audio, Back, rotation, lifecycle and offline process restart. The plan's hardware boxes and visual polish remain open.

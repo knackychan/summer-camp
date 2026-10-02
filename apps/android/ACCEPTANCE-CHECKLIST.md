@@ -1,9 +1,23 @@
-# Summer Quest Android physical-device acceptance — v0.6.1
+# Summer Quest Android physical-device acceptance — v0.6.2-recovery
 
 This checklist is the release gate for a real Android tablet. Automated repository tests and ADB smoke checks do **not** replace it.
 
-Target baseline: `v0.6.1`
+Target web baseline: `v0.6.2-recovery`. Native upgrade version remains pending installed-package inspection; generated `versionName 1.0` / `versionCode 1` is not assumed compatible.
 Package: `com.summerquest.app`
+
+## Current attempt — deferred, 2026-10-02
+
+Branch: `fix/android-device-acceptance`, based on `eb2065b`. `adb devices -l` returned no devices. The user confirmed the tablet was removed and requested the physical pass later. Nothing was installed or launched, no settings/data/caches were changed, and no physical checks passed or failed. All hardware gates remain open. Earlier software validation is recorded in the [recovery results](../../docs/audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-RESULTS.md).
+
+## 0. Preserve the existing installation before updating
+
+- [ ] Reconnect/unlock the tablet, enable USB debugging and accept this computer's trust prompt if required.
+- [ ] Identify the actual installed package, versionName/versionCode, signing certificate and launch activity; determine WebView debugging availability.
+- [ ] Capture the current entry URL/origin, loaded scripts/modules, bridge flag, service-worker/controller/cache identity and visible surface where accessible. Explicitly record inaccessible evidence.
+- [ ] Preserve the original APK and useful diagnostics in ignored `apps/android/.reports/`; compare its assets with the root build. Keep identifiers, credentials and family data out of commits.
+- [ ] Establish the tablet's selector/LEGACY cause from device evidence, or record the remaining uncertainty.
+- [ ] Verify the candidate APK's package ID, compatible signing, versionCode and unchanged storage origin before installation. Stop if replacement requires data loss or incompatible signing.
+- [ ] Record existing profiles, PIN behavior, progress, saved views and queued star operations privately for comparison. Never uninstall, clear app/browser data, reset profiles or delete caches to make acceptance pass.
 
 ## 1. Build provenance
 
