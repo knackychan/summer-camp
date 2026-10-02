@@ -6,6 +6,7 @@ import vm from "node:vm";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
+const WORLD_MODULES = ["world-explorer", "planet-palette", "planet-map", "planet-globe", "planet-sprites", "planet-toys", "planet-minigames"];
 
 test("miniature world is a real root-runtime surface, not a wrapper", () => {
   const html = read("index.html");
@@ -17,25 +18,25 @@ test("miniature world is a real root-runtime surface, not a wrapper", () => {
   assert.doesNotMatch(html, /<iframe[^>]+world/i);
 });
 
-test("world explorer uses vendored Three.js and content registry only for launches", () => {
+test("world is a pixel planet on a 2D canvas and launches content through the registry only", () => {
   const source = read("js/world/world-explorer.js");
-  assert.match(source, /from "\.\.\/vendor\/three\.module\.min\.js"/);
-  assert.match(source, /from "\.\.\/vendor\/OrbitControls\.js"/);
+  assert.match(source, /from "\.\/planet-globe\.js"/);
+  assert.match(source, /getContext\("2d"\)/);
+  assert.match(source, /dataset\.sqWorld="planet"/);
   assert.match(source, /registry\.open\(selected\.id,\{origin:"world"\}\)/);
-  assert.match(source, /new THREE\.WebGLRenderer/);
-  assert.match(source, /new OrbitControls/);
-  assert.match(source, /Raycaster/);
+  assert.doesNotMatch(source, /three\.module|OrbitControls|WebGLRenderer|Raycaster/);
   assert.doesNotMatch(source, /iframe|legacy\.html|apps\/kid/);
   assert.doesNotMatch(source, /window\.location|location\.href/);
+  for (const name of WORLD_MODULES.slice(1)) {
+    assert.doesNotMatch(read(`js/world/${name}.js`), /document\.cookie|localStorage|addStars|stars_ledger|registry\.open/, `${name} stays out of family state`);
+  }
 });
 
 test("world exposes physical destinations and featured real content", () => {
-  const source = read("js/world/world-explorer.js");
-  for (const id of ["section:quests","section:games","section:acts","section:learn","section:books","section:music","section:day","section:rewards"]) {
-    assert.match(source, new RegExp(id.replace(":", "\\:")));
-  }
-  for (const id of ["game:monster-truck","game:solar","book:space","game:paint"]) {
-    assert.match(source, new RegExp(id.replace(":", "\\:")));
+  const map = read("js/world/planet-map.js");
+  for (const id of ["section:quests","section:games","section:acts","section:learn","section:books","section:music","section:day","section:rewards",
+    "game:monster-truck","game:solar","book:space","game:paint"]) {
+    assert.match(map, new RegExp(`"${id.replace(":", "\\:")}"`));
   }
 });
 
@@ -50,28 +51,48 @@ test("content opened from the world can return to that same surface", () => {
   assert.match(html, /hubReturnSurface==="world"/);
 });
 
+test("native Back ends a planet mini-game before leaving the world, and toys use the app's muted-aware beep", () => {
+  const html = read("index.html");
+  assert.match(html, /worldExplorerModule&&worldExplorerModule\.back&&worldExplorerModule\.back\(\)/);
+  assert.match(html, /beep:beep/);
+  assert.match(html, /Tap a place 點一個地方/);
+});
+
 test("world runtime is packaged offline for PWA and Android", () => {
   const sw = read("sw.js");
   assert.match(sw, /const CACHE_NAME\s*=\s*["']summer-quest-/);
   assert.match(sw, /\.\/css\/world-explorer\.css/);
-  assert.match(sw, /\.\/js\/world\/world-explorer\.js/);
-  assert.match(sw, /\.\/js\/vendor\/three\.module\.min\.js/);
-  assert.match(sw, /\.\/js\/vendor\/OrbitControls\.js/);
+  for (const name of WORLD_MODULES) {
+    assert.match(sw, new RegExp(`\\./js/world/${name}\\.js`), `${name} precached`);
+    assert.equal(existsSync(resolve(root, `js/world/${name}.js`)), true);
+  }
+  assert.match(sw, /\.\/js\/vendor\/three\.module\.min\.js/, "Solar still needs Three.js offline");
   assert.equal(existsSync(resolve(root, "css/world-explorer.css")), true);
-  assert.equal(existsSync(resolve(root, "js/world/world-explorer.js")), true);
+  assert.match(read("css/world-explorer.css"), /image-rendering:pixelated/);
 });
 
-test("world persistence accepts bounded finite vectors and rejects corrupt saved views", () => {
+test("world persistence accepts a unit quaternion + zoom and rejects corrupt or old saved views", () => {
   const source = read("js/world/world-explorer.js");
   let stored = null;
   const context = { savedViews: new Map(), window: { localStorage: { getItem: () => stored } } };
   vm.createContext(context);
   vm.runInContext(source.slice(source.indexOf("function readView("), source.indexOf("function clamp(")), context);
-  const valid = { camera: [9, 7, 10], target: [0, 1, 0], selected: "section:books" };
-  stored = JSON.stringify(valid);
-  assert.equal(context.readView("lucien").selected, valid.selected);
-  for (const value of ["broken JSON", "null", '{"camera":[1,2],"target":[0,1,0]}', '{"camera":[1,2,999],"target":[0,1,0]}', '{"camera":[1,2,"3"],"target":[0,1,0]}']) {
+  stored = JSON.stringify({ rotation: [0, 0.2, 0, 0.98], zoom: 1.4, selected: "section:books" });
+  const view = context.readView("lucien");
+  assert.equal(view.selected, "section:books");
+  assert.equal(view.zoom, 1.4);
+  assert.ok(Math.abs(Math.hypot(...view.rotation) - 1) < 1e-9, "rotation re-normalised");
+  for (const value of [
+    "broken JSON", "null",
+    JSON.stringify({ camera: [9, 7, 10], target: [0, 1, 0], selected: "section:books" }),
+    JSON.stringify({ rotation: [0, 0, 0], zoom: 1 }),
+    JSON.stringify({ rotation: [0, 0, 0, 2], zoom: 1 }),
+    JSON.stringify({ rotation: [0, 0, 0, 0.5], zoom: 1 }),
+    JSON.stringify({ rotation: [0, 0, 0, "1"], zoom: 1 }),
+    JSON.stringify({ rotation: [0, 0, 0, 1], zoom: 3 }),
+    JSON.stringify({ rotation: [0, 0, 0, 1] })
+  ]) {
     stored = value;
-    assert.equal(context.readView("lucien"), null);
+    assert.equal(context.readView("lucien"), null, value);
   }
 });

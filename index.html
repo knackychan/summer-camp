@@ -798,10 +798,10 @@ body.music-mode{overflow:hidden}
     </div>
   </section>
 
-  <!-- MINIATURE 3D WORLD — primary child exploration surface -->
+  <!-- PIXEL PLANET WORLD — primary child exploration surface (docs/plans/2026-10-02-pixel-planet) -->
   <section id="world" class="hidden" aria-label="Summer Quest world">
     <div class="world-shell">
-      <div class="world-canvas" id="worldMount" aria-label="Interactive 3D Summer Quest world"></div>
+      <div class="world-canvas" id="worldMount" aria-label="Interactive pixel planet · 互動像素星球"></div>
       <div class="world-hud">
         <button class="world-back" id="worldHeroes">← Heroes</button>
         <div class="world-kid" id="worldKid">
@@ -810,7 +810,7 @@ body.music-mode{overflow:hidden}
         </div>
         <button class="world-menu" id="worldClassic">☰ Classic menu</button>
       </div>
-      <div class="world-hint" id="worldHint">☝️ Tap a place · ↔️ drag to look around · 🤏 pinch to zoom</div>
+      <div class="world-hint" id="worldHint">☝️ Tap a place 點一個地方 · ↔️ spin the planet 轉動星球 · 🤏 pinch to zoom 雙指縮放</div>
       <div class="world-selection hidden" id="worldSelection" aria-live="polite">
         <div class="world-selection__icon" id="worldSelectionIcon">✨</div>
         <div class="world-selection__copy"><b id="worldSelectionTitle">Adventure</b><span id="worldSelectionSubtitle"></span></div>
@@ -1595,7 +1595,7 @@ async function openWorld(id){
       mount:document.getElementById("worldMount"),kidId:id,kid:KIDS[id],registry:window.SQContentRegistry,
       selectionEl:document.getElementById("worldSelection"),iconEl:document.getElementById("worldSelectionIcon"),
       titleEl:document.getElementById("worldSelectionTitle"),subtitleEl:document.getElementById("worldSelectionSubtitle"),goEl:document.getElementById("worldGo"),
-      haptic:function(kind){return window.SQPlatform&&SQPlatform.haptic?SQPlatform.haptic(kind):null;},
+      beep:beep,haptic:function(kind){return window.SQPlatform&&SQPlatform.haptic?SQPlatform.haptic(kind):null;},
       onStatus:function(state,error){status.textContent=worldMessage+(error?" ("+String(error.message||error)+")":"");status.classList.toggle("hidden",state!=="paused");}
     });
     return {ok:true,id:"world"};
@@ -5031,7 +5031,7 @@ function summerQuestBack(){
   const hub=document.getElementById("hub");
   if(hub&&!hub.classList.contains("hidden")){stopActTimer();if(hubReturnSurface==="world"&&hubKid){const id=hubKid;hubReturnSurface=null;openWorld(id);return true;}hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;}
   const world=document.getElementById("world");
-  if(world&&!world.classList.contains("hidden")){hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;}
+  if(world&&!world.classList.contains("hidden")){if(worldExplorerModule&&worldExplorerModule.back&&worldExplorerModule.back())return true;hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;}
   return false;
 }
 function runtimeSurface(){return window.SQActivityRouter?SQActivityRouter.context():{surface:"home"};}

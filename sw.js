@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v113-desktop-acceptance";
+const CACHE_NAME = "summer-quest-v114-pixel-planet";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -171,6 +171,12 @@ const APP_SHELL = [
   "./js/games/paint.js",
   "./js/games/paint-sheets.js",
   "./js/world/world-explorer.js",
+  "./js/world/planet-palette.js",
+  "./js/world/planet-map.js",
+  "./js/world/planet-globe.js",
+  "./js/world/planet-sprites.js",
+  "./js/world/planet-toys.js",
+  "./js/world/planet-minigames.js",
   "./js/vendor/three.core.min.js",
   "./js/vendor/three.module.min.js",
   "./js/vendor/OrbitControls.js",
