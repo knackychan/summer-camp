@@ -248,3 +248,17 @@ Command results, artifact identities, clean-checkout comparison and evidence lim
 Branch `fix/android-device-acceptance` starts at `eb2065b`. Only acceptance documentation changed; no device inspection beyond ADB availability, installation, settings change or physical test occurred. Existing installation identity and the cause of the tablet mismatch remain unknown.
 
 Resume Phase 0 before installing: capture the original APK, package/version/signature/activity, actual WebView entry/modules/bridge/cache/surface and available saved-state evidence in ignored local storage. Establish a compatible package, signer, versionCode and unchanged storage origin before updating in place. Preserve family state and queued ledger operations; no uninstall, data clear or cache deletion. Continue physical content/navigation/touch/audio/lifecycle/offline acceptance afterward, retaining the distinction between device observations and desktop regression results.
+
+### Desktop acceptance follow-up — 2026-10-02
+
+The user deferred Android work and authorized focused desktop fixes, browser validation, commits and a pushed follow-up branch. `fix/desktop-browser-acceptance` starts at `e00a2eb`, preserving both recovery implementation and Android deferral. Root authority, catalogs/IDs, SyncStore keys, learning access and star rules remain the contract; no new shell/router/catalog or redesign is introduced.
+
+- [x] Build shared modules and serve root HTTP at `http://127.0.0.1:9000/index.html`; use visible installed Edge with isolated synthetic profiles and local-only configuration.
+- [x] Observe hardware-rendered 3D, mouse rotation/wheel limits/landmark GO, Classic switching, content return and camera restoration.
+- [x] Account for every catalog entry through visible controls: 81 launches, 5 schedule-unavailable quests, 4 offline reward requests; verify six youngest-profile lesson restrictions. Separate launch coverage from representative gameplay.
+- [x] Fix double book Escape, keyboard book/PIN/keybed interaction, missing knowledge feedback, failed-game error visibility and browser Back/Forward through shared navigation. Preserve directed learning when traversing history; keep native restoration unchanged.
+- [x] Fix missing offline book images and protect runtime cache writes; strengthen asset/worker/browser checks without clearing family data.
+- [x] Finish final required gate, source/web runtime checks, synthetic persistence and controlled offline reload/new-document checks; record actual outcomes in the results appendix. Source normal/offline, all 9 web scenarios, 10 focused history checks and 16 headed persistence/offline checks passed.
+- [x] Explicitly stage source/docs, commit conventionally and push the desktop follow-up branch; leave the local server available. Implementation `7de27df` is pushed, with the evidence update in the following documentation commit; the isolated browser and root HTTP server remain available.
+
+See [desktop evidence and limitations](../audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-RESULTS.md#desktop-browser-acceptance--2026-10-02). Remote authentication/sync/redemption, human audio listening and real desktop background suspension are not established. The physical Phase 0/E/F boxes above remain open.

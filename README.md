@@ -2,7 +2,7 @@
 
 Family summer-camp PWA-style app for Lucien, Lili, and Luis.
 
-> **Current runtime (v0.6.2-recovery, 2026-10-02):** `index.html` owns child navigation, state and content launches on web/PWA and Android. Classic and the **Miniature 3D World** share the root launch API and `SQContentRegistry`. The old `apps/kid/` URL redirects to root; its historical shell source is excluded from compilation, packaging and caching. Android packages the root runtime in a thin Capacitor container. See the [recovery plan](docs/plans/SUMMER-QUEST-ARCHITECTURE-RECOVERY-PLAN.md) and [validation results](docs/audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-RESULTS.md), including the pending physical tablet checks.
+> **Current runtime (v0.6.3-desktop, 2026-10-02):** `index.html` owns child navigation, state and content launches on web/PWA and Android. Classic and the **Miniature 3D World** share the root launch API and `SQContentRegistry`. The old `apps/kid/` URL redirects to root; its historical shell source is excluded from compilation, packaging and caching. Android packages the root runtime in a thin Capacitor container. See the [recovery plan](docs/plans/SUMMER-QUEST-ARCHITECTURE-RECOVERY-PLAN.md) and [validation results](docs/audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-RESULTS.md), including the pending physical tablet checks.
 
 ### Miniature 3D World (v0.6.1)
 
@@ -23,6 +23,8 @@ npm run build:mobile
 ```
 
 Then serve the repository over HTTP and open `/` or `/index.html`. Generated modules are local build output and are not committed.
+
+Desktop acceptance uses an isolated installed Edge profile and synthetic saves. The v0.6.3 desktop fixes cover browser Back/Forward, keyboard book/PIN/instrument input, recoverable game loading errors and offline book photos. See the [desktop results](docs/audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-RESULTS.md#desktop-browser-acceptance--2026-10-02) for actual UI coverage and remaining service/hardware limits. `scripts/check-desktop-history.py --browser <browser-executable> --target source` runs the focused visible-browser regression.
 
 For Supabase sync, copy `js/config.example.js` to `js/config.js` and fill in the project URL and anon key.
 

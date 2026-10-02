@@ -63,6 +63,76 @@ Web metadata release: `v0.6.2-recovery`. The generated native template remains v
 
 The clean export has the same payload file set. Compared with the working overlay, 43 source files differ only in Git-normalized LF/CRLF bytes; configuration becomes the intentional offline stub, and metadata follows those differences. The build hashes source bytes and does not promise identical hashes across different configuration/newline inputs. No unexpected source/content difference was found. APK signing/build metadata is outside the deterministic web-payload claim.
 
+## Desktop browser acceptance — 2026-10-02
+
+Follow-up branch: `fix/desktop-browser-acceptance`, based on `e00a2eb` (the documentation-only Android deferral after `eb2065b`). The starting workspace was clean. No reset, cleanup, normal-browser-profile change, Android sync, install or device test was performed.
+
+Implementation commit: `7de27df` (`fix(desktop): restore browser navigation and offline usability`), pushed to the follow-up branch. The local server and isolated visible browser remain available for handoff; automation command execution has been disabled.
+
+### Entry and test boundary
+
+The root `index.html` was served at **http://127.0.0.1:9000/index.html** using the repository's existing static regression HTTP handler after building shared modules. The handler supplies empty configuration, including service-worker requests. Installed **Microsoft Edge 154.0.4258.48** ran visibly with isolated synthetic profiles. Initial release was `v0.6.2-recovery`; the final source and web metadata identify **`v0.6.3-desktop`**, runtime `unified-root`, cache `summer-quest-v113-desktop-acceptance`.
+
+The main visible session rendered WebGL2 using **NVIDIA GeForce RTX 4080 Laptop GPU / ANGLE Direct3D11**. Screenshots confirmed the island, books, instruments and layouts. Playwright mouse and keyboard input drove the UI; JavaScript reads measured surfaces, camera, audio and saved state. Separate automated regression contexts use desktop SwiftShader. Neither establishes Android acceptance. Private configuration and live services were excluded; screenshots, browser profiles and detailed logs remain ignored under `.tmp/desktop-acceptance/`.
+
+### Observed interface coverage
+
+| Area | Actual evidence |
+| --- | --- |
+| Entry and child selection | Fresh hero selection, restored Classic/world sessions, child switching, wrong/right synthetic child and parent PINs, child PIN Enter and cancel/Escape focus return |
+| 3D world | Visible hardware-rendered island; mouse drag changed camera position; wheel reached bounded distances 8.2 and 15.2; mouse raycast selected Books, GO opened its real shelf; camera/selection retained on content return and reload |
+| Navigation | Classic/3D switching, repeated content/Back cycles, keyboard Escape, real browser Back/Forward and reload, single visible root, no application iframe; cross-child history cannot select a different protected child |
+| Books | Space, Animals and Minecraft reading; decoded photos, next/previous and keyboard navigation, page grid, zoom, single Escape dismissal and focus return; all 178 referenced images also checked separately as assets |
+| Games and Brain Gym | Calculations answered through its visible number pad and advanced; Balloon Pop accepted a displayed letter from the keyboard and increased its score; launch, exit and relaunch across the catalog. This is not full completion of every game or a complete daily Brain Gym trio |
+| Music | Piano, Synth and Drum Pads played through their controls. Piano/Synth also support held Enter/Space, key release and focus loss. WebAudio signal was measured during playback and returned to zero after exit; this is not a human listening assessment |
+| Activities and learning | Generated an activity mission, started its timer and verified it stopped on exit; inspected a Science plant clue, requested local help and completed both questions; Quick Placement and Smart Practice entry/resume exercised |
+| Quests and rewards | Visible energy/preference controls opened eligible quests; reward requests showed explicit offline-sync feedback. No live redemption or parent approval claimed |
+| Desktop layout | World at 1280×720, 1365×768, 1536×864 and 1920×1080; no horizontal world overflow. Classic scrolling and reachable controls inspected; Space/Minecraft reader/zoom and keyboard focus checked at 1280×720 |
+| Failure handling | Missing config and simulated HTTP 503 provider calls left local books, Brain Gym and quest recommendations usable. Parent admin opened its visible Config needed state. Forced game-module failure on reload displays a bilingual error with working Back and retry |
+| Persistence and offline | 16 headed checks passed: saved progress/PIN/selected child/Classic/world/camera, controlled offline reload and a new offline document, visible Space/Animals reading/zoom, Brain Gym keypad input, Drum Pads and activity completion. Repeated completion clicks and reload retained exactly 43 synthetic stars and the original one pending +3 operation. All 178 book images also decoded offline |
+
+**All 90 catalog IDs were accounted for through visible controls:** 81 launches (8 sections, 21 games, 3 instruments, 8 books, 11 activities, 3 guides, 18 lessons, 2 learning cards and 7 eligible quests); 5 quests unavailable under the current schedule (`morning_teeth`, `plant_patrol`, `laundry_helper`, `move_break`, `creative_build`); 4 reward requests reported sync offline. The visible sweep used Papa's Open games today action and kept test mode off. Six age-restricted geography/history lessons were correctly absent for the youngest profile. The sweep recorded zero page errors or HTTP failures. Catalog launch coverage is distinct from the representative interaction checks above.
+
+### Demonstrated defects fixed
+
+- Browser Back previously left the root document. Native browser history now records root destinations and replays through existing launch/access/lifecycle operations. Directed exercises return to their owning learning screen, preserving assessment and star rules. Native app restoration retains its previous behavior. A new document with no previous entry still has ordinary browser Back semantics.
+- Book grid/zoom Escape reached two handlers and closed the book as well. Shared Back now owns dismissal. Shelf/page/photo controls accept keyboard input; focus returns from zoom/grid and follows screen changes. Child PIN now submits with Enter.
+- Piano and Synth's shared keybed ignored keyboard activation. It now supports press/release, repeated keydown and focus loss, with a visible focus indicator.
+- Knowledge clue/answer feedback and an already-pending reward path called undefined `sTap`. They now use existing `sGood` feedback; gameplay and ledger policy are unchanged.
+- A cold failed game import could leave an empty stage because its error helper required a pre-existing message node. The shared launcher now renders its error node directly, and history restoration preserves it.
+- The worker omitted 99 images from five books. All 178 referenced book images now precache, and runtime cache writes extend the worker's lifetime. The focused worker test checks image coverage and delayed cache writes; offline browser checks now decode the images rather than merely opening the reader.
+- The required source gate implicitly checked stale workstation native output after every web edit. Its payload test now exercises native bridge exclusions in a temporary fixture; actual native-byte verification remains an explicit tool. Existing native output was preserved.
+
+### Final validation
+
+The required `node scripts/check.mjs` gate passed. Web rebuild and byte/import/asset verification passed: 444 files; SHA-256 `dd985825067c6f9adba26de71a2097b2843a594e95f517d6c02d6ba9e16978fa`.
+
+| Final affected gate | Result |
+| --- | --- |
+| Source normal runtime regression | Passed, including keyboard books/keybed audio, completed knowledge interaction, lifecycle/camera, 180 catalog API outcomes across World/Classic and all book images |
+| Generated web runtime regression | All 9 scenarios passed: normal, saved state, PIN, ages, WebGL/import/config/game failures and offline |
+| Source offline regression | Passed, including offline decode of all 178 book images |
+| Visible browser history | 10 focused checks passed against both source and generated web, including directed learning, cross-child access and recoverable loading failure |
+| Visible persistence/offline | 16 checks passed, including repeated completion without duplicate reward/queue mutation |
+| Focused service worker | Passed book-image coverage and delayed runtime-cache-write checks |
+
+The catalog API sweeps supplement the separate 90-ID visible-control sweep; they are not described as gameplay. Native assets/build/device checks were not repeated. The source normal test's initial failure was a newly added test selector typo (`scienceRestart` instead of the existing `scienceRepeat`); the corrected final run passed. No application change was needed for that assertion.
+
+Re-run the affected desktop checks without a native sync:
+
+```powershell
+npm run build:android-web
+node scripts/check.mjs
+node scripts/verify-android-web.mjs
+python scripts/audit-architecture-runtime.py --browser "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --target source --out .tmp/desktop-source.json
+python scripts/audit-architecture-runtime.py --browser "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --target web --out .tmp/desktop-web.json
+python scripts/check-desktop-history.py --browser "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --target web --out .tmp/desktop-history-web.json
+```
+
+### Limits
+
+Live Supabase login/sync, reward approval/redemption, remote provider quality, TTS speech and human audio listening were not tested. Provider failure was injected, not a live outage. Moving another automated browser page to the foreground did not change this session's reported `visibilityState`; desktop background suspension is therefore not established by that observation (the separate lifecycle regression is simulated). All Android package identity, compatibility, physical Back/touch/audio and offline process-restart checks remain deferred.
+
 ## Remaining hardware gate
 
 The implementation pass detected one unauthorized device. At the subsequent physical acceptance attempt on 2026-10-02, `adb devices -l` completed with an empty device list. The user confirmed that the tablet had been removed and explicitly deferred the physical pass until later.
