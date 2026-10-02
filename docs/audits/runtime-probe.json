@@ -1,0 +1,660 @@
+{
+  "browser": "154.0.4258.48",
+  "serviceWorkers": "blocked",
+  "remoteServices": "blocked",
+  "webgl": "desktop software renderer; not Android evidence",
+  "cases": [
+    {
+      "path": "/index.html",
+      "scenario": "normal",
+      "steps": [
+        {
+          "name": "game manifest ready",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "home"
+            ],
+            "heroes": 3,
+            "worlds": 0,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "home"
+          }
+        },
+        {
+          "name": "choose child -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        },
+        {
+          "name": "world -> book:space",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "book"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "book"
+          }
+        },
+        {
+          "name": "book:space -> Back -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        },
+        {
+          "name": "world -> book:animals",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "book"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "book"
+          }
+        },
+        {
+          "name": "book:animals -> Back -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        },
+        {
+          "name": "world -> game:calc",
+          "ok": false,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "world",
+              "game"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "game"
+          }
+        },
+        {
+          "name": "game:calc -> Back -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        },
+        {
+          "name": "world -> music:piano",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "music"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "music"
+          }
+        },
+        {
+          "name": "music:piano -> Back -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "httpFailures": [],
+      "requestFailures": [
+        {
+          "path": "/css2",
+          "error": "net::ERR_FAILED"
+        }
+      ],
+      "startup": {
+        "pathname": "/index.html",
+        "screens": [
+          "home"
+        ],
+        "heroes": 3,
+        "worlds": 0,
+        "worldError": false,
+        "iframes": 0,
+        "shells": 0,
+        "flatSelector": false,
+        "legacyBadge": false,
+        "registryCount": 51,
+        "manifestCount": 24,
+        "navigation": "home"
+      },
+      "ok": false
+    },
+    {
+      "path": "/dist/android-web/index.html",
+      "scenario": "normal",
+      "steps": [
+        {
+          "name": "game manifest ready",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "home"
+            ],
+            "heroes": 3,
+            "worlds": 0,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "home"
+          }
+        },
+        {
+          "name": "choose child -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        },
+        {
+          "name": "world -> book:space",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "book"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "book"
+          }
+        },
+        {
+          "name": "book:space -> Back -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        },
+        {
+          "name": "world -> book:animals",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "book"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "book"
+          }
+        },
+        {
+          "name": "book:animals -> Back -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        },
+        {
+          "name": "world -> game:calc",
+          "ok": false,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "world",
+              "game"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "game"
+          }
+        },
+        {
+          "name": "game:calc -> Back -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        },
+        {
+          "name": "world -> music:piano",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "music"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "music"
+          }
+        },
+        {
+          "name": "music:piano -> Back -> world",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 1,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: the server responded with a status of 404 (File not found)"
+      ],
+      "httpFailures": [
+        {
+          "path": "/dist/android-web/assets/books/animals/elephant.jpg",
+          "status": 404
+        }
+      ],
+      "requestFailures": [
+        {
+          "path": "/css2",
+          "error": "net::ERR_FAILED"
+        }
+      ],
+      "startup": {
+        "pathname": "/dist/android-web/index.html",
+        "screens": [
+          "home"
+        ],
+        "heroes": 3,
+        "worlds": 0,
+        "worldError": false,
+        "iframes": 0,
+        "shells": 0,
+        "flatSelector": false,
+        "legacyBadge": false,
+        "registryCount": 51,
+        "manifestCount": 24,
+        "navigation": "home"
+      },
+      "ok": false
+    },
+    {
+      "path": "/apps/kid/index.html",
+      "scenario": "normal",
+      "steps": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "httpFailures": [],
+      "requestFailures": [],
+      "startup": {
+        "pathname": "/apps/kid/index.html",
+        "screens": [],
+        "heroes": 0,
+        "worlds": 0,
+        "worldError": false,
+        "iframes": 0,
+        "shells": 1,
+        "flatSelector": true,
+        "legacyBadge": true,
+        "registryCount": null,
+        "manifestCount": 0,
+        "navigation": null
+      },
+      "ok": true
+    },
+    {
+      "path": "/index.html",
+      "scenario": "WebGL unavailable",
+      "steps": [
+        {
+          "name": "game manifest ready",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "home"
+            ],
+            "heroes": 3,
+            "worlds": 0,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "home"
+          }
+        },
+        {
+          "name": "WebGL failure stays in world with visible error",
+          "ok": true,
+          "state": {
+            "pathname": "/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 0,
+            "worldError": true,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_FAILED",
+        "THREE.WebGLRenderer: THREE.WebGLRenderer: Error creating WebGL context.",
+        "Summer Quest 3D world failed Error: THREE.WebGLRenderer: Error creating WebGL context.\n    at new Pa (http://127.0.0.1:64229/js/vendor/three.module.min.js:6:329831)\n    at createWorld (http://127.0.0.1:64229/js/world/world-explorer.js:201:16)\n    at Module.start (http://127.0.0.1:64229/js/world/world-explorer.js:337:16)\n    at openWorld (http://127.0.0.1:64229/index.html:1589:31)"
+      ],
+      "httpFailures": [],
+      "requestFailures": [
+        {
+          "path": "/css2",
+          "error": "net::ERR_FAILED"
+        }
+      ],
+      "startup": {
+        "pathname": "/index.html",
+        "screens": [
+          "home"
+        ],
+        "heroes": 3,
+        "worlds": 0,
+        "worldError": false,
+        "iframes": 0,
+        "shells": 0,
+        "flatSelector": false,
+        "legacyBadge": false,
+        "registryCount": 51,
+        "manifestCount": 24,
+        "navigation": "home"
+      },
+      "ok": true
+    },
+    {
+      "path": "/dist/android-web/index.html",
+      "scenario": "WebGL unavailable",
+      "steps": [
+        {
+          "name": "game manifest ready",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "home"
+            ],
+            "heroes": 3,
+            "worlds": 0,
+            "worldError": false,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "home"
+          }
+        },
+        {
+          "name": "WebGL failure stays in world with visible error",
+          "ok": true,
+          "state": {
+            "pathname": "/dist/android-web/index.html",
+            "screens": [
+              "world"
+            ],
+            "heroes": 3,
+            "worlds": 0,
+            "worldError": true,
+            "iframes": 0,
+            "shells": 0,
+            "flatSelector": false,
+            "legacyBadge": false,
+            "registryCount": 51,
+            "manifestCount": 24,
+            "navigation": "world"
+          }
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_FAILED",
+        "THREE.WebGLRenderer: THREE.WebGLRenderer: Error creating WebGL context.",
+        "Summer Quest 3D world failed Error: THREE.WebGLRenderer: Error creating WebGL context.\n    at new Pa (http://127.0.0.1:64229/dist/android-web/js/vendor/three.module.min.js:6:329831)\n    at createWorld (http://127.0.0.1:64229/dist/android-web/js/world/world-explorer.js:201:16)\n    at Module.start (http://127.0.0.1:64229/dist/android-web/js/world/world-explorer.js:337:16)\n    at openWorld (http://127.0.0.1:64229/dist/android-web/index.html:1589:31)"
+      ],
+      "httpFailures": [],
+      "requestFailures": [
+        {
+          "path": "/css2",
+          "error": "net::ERR_FAILED"
+        }
+      ],
+      "startup": {
+        "pathname": "/dist/android-web/index.html",
+        "screens": [
+          "home"
+        ],
+        "heroes": 3,
+        "worlds": 0,
+        "worldError": false,
+        "iframes": 0,
+        "shells": 0,
+        "flatSelector": false,
+        "legacyBadge": false,
+        "registryCount": 51,
+        "manifestCount": 24,
+        "navigation": "home"
+      },
+      "ok": true
+    }
+  ]
+}

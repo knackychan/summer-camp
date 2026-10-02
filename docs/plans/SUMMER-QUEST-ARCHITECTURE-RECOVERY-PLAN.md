@@ -1,0 +1,219 @@
+# Summer Quest architecture recovery plan
+
+Date: 2026-10-02. **Proposed for review; not approved or implemented.**
+
+Basis: [architecture audit](../audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-AUDIT.md) and its evidence appendices. This uses the explicit deliverable path requested by the audit brief. Existing plans are retained; this proposal supersedes their conflicting shell-in-iframe direction only after review.
+
+## Decision to review
+
+Choose **C: selective merge**, keeping the existing root runtime's product, navigation, and state authority. Adopt the useful Android bridge, typed learning services, registry projection, and world screen. Remove executable prototype routing from shipped assets. Do not restore the entire original revision or promote `apps/kid` into the product.
+
+The diagnosed selector is the `apps/kid` Planet route. The installed tablet's actual entry chain is still an evidence gap. Capture it before clearing cache, uninstalling, overwriting the APK, or migrating saved state.
+
+## Candidate strategies
+
+### A. Original root authority, minimal additions
+
+Keep root launchers/state and all working content; expose a public API and attach registry/world. This is viable and minimizes migration. It also leaves some useful newer platform, learning, and diagnostics work needing explicit reconciliation. “Original” means continuity of root ownership, not a Git reset that discards later content.
+
+### B. New root controller with adapted old content
+
+Technically possible only as a same-document extraction: move root state/transitions into a new controller and adapt existing game/book/music functions directly. Do not use `apps/kid` iframe adapters. This is **not ready for immediate implementation**: most launchers close over inline globals, and the audit does not demonstrate a safe drop-in controller. It requires compatibility tests and incremental extraction before changing ownership. A new state store/router now would multiply migration risk without improving content coverage.
+
+### C. Selective merge (recommended)
+
+Keep root as authority and preserve its catalog/SyncStore contracts. Reconcile the existing platform bridge, typed learning, quests, content projection, and 3D screen. Retire shell-specific routing/session/iframe behavior from product builds. Extract code only when an agreed slice needs it; do not make a large file split a prerequisite.
+
+| Criterion | A: root + minimal additions | B: new controller | C: selective merge |
+| --- | --- | --- | --- |
+| Existing game breakage | Low | High during extraction | Low; fix shared transitions |
+| Duplicate navigation | Low after entry retirement | High while owners overlap | Low with explicit root authority |
+| Rewrite amount | Small | Large | Small/medium, bounded slices |
+| Content coverage | Preserves catalogs; adapter gaps remain | Every launcher needs adaptation | Preserves catalogs, closes measured gaps |
+| Young children | Existing access plus world | No automatic benefit | World discovery after stable navigation |
+| Android offline | Packaging/bridge still need work | New deployment/runtime risks | Reuse local bridge and deterministic packaging |
+| Performance | Existing behavior | Extraction benefit unproven | Pause world and dispose content correctly |
+| Maintainability | Inline coordination remains | Better only after costly migration | One API without mandatory wholesale rewrite |
+| Future 3D support | Good through root API | Possible, unnecessary prerequisite | Good; world remains a view/controller |
+| Testability | Improve current launch checks | Must recreate broad contracts first | Tests target existing behavior and gaps |
+| Migration safety | High with key preservation | Lowest | High with staged key-compatible changes |
+| User state | Existing keys/store | Requires explicit ownership migration | Existing keys/store and ledger retained |
+
+## Target architecture and contract
+
+```mermaid
+flowchart TD
+  web[Web / PWA] --> runtime[Summer Quest root runtime]
+  android[Capacitor Android container] --> runtime
+  classic[Classic hub] --> api[One runtime API]
+  world[3D world view/controller] --> api
+  api --> runtime
+  runtime --> navigation[One screen / return / lifecycle owner]
+  runtime --> state[Existing child state / SyncStore / quest and learning stores]
+  runtime --> launches[Existing content launchers]
+  catalogs[Game manifest / books / BANK / learning / quests / rewards] --> registry[Normalized registry projection]
+  registry --> classic
+  registry --> world
+  launches --> content[Same games / books / instruments / learning / activities]
+```
+
+Extend the current root API instead of introducing another router. Names can remain compatible with `SQAppNavigation`:
+
+```js
+SummerQuest.navigate(destination)
+SummerQuest.back()
+SummerQuest.openGame(id)
+SummerQuest.openBook(id)
+SummerQuest.openActivity(id)
+SummerQuest.openMusic(id)
+SummerQuest.openLearning(id)
+SummerQuest.openQuest(id)
+SummerQuest.getContentRegistry()
+SummerQuest.getCurrentChild()
+```
+
+Contract requirements:
+
+- Runtime validates destination, child, category access, Brain Gym/Paint exceptions, and content availability once. Classic/world/agent actions share it.
+- Successful launch means the requested content has opened; return a failure reason for lock, invalid ID, missing module, or failed initialization. Await asynchronous launch work.
+- One screen is active at a time. Transitions pause world rendering, stop outgoing content/timers/audio as appropriate, update router context, and persist place consistently.
+- Runtime owns return destinations and native Back. The world owns camera/selection state only. Preserve camera while content is open; it never creates a parallel application back stack.
+- Learning's internal lesson progression and an instrument's internal controls remain content-local state; they are not additional global routers.
+- Registry is derived from real catalogs and readiness. Keep existing IDs, aliases, and storage identity. Do not create a parallel content database or hard-code showcase coverage.
+- Development errors remain visible. A WebGL failure must display its reason with an explicit Classic action; tests must fail it as world startup failure.
+
+## Files to keep, adapt, and retire
+
+| Disposition | Files/modules | Reason |
+| --- | --- | --- |
+| Keep | `index.html`, `js/sync.js`, `js/day.js`, real game modules, `js/games/index.js`, `js/brain/`, `js/books/`, `books/`, music services and assets | Authoritative accumulated content and state |
+| Keep | `js/learning-runtime.js`, `packages/learning/`, agent bridges/providers/server, quest/reward data/core/progress | Useful later product functionality; verify dependencies before pruning |
+| Keep | `admin.html`, admin JS/CSS, existing plans/design references | Separate parent application and project records |
+| Adapt | `index.html` launchers, `SQAppNavigation`, `js/activity-router.js`, agent navigation hooks | One public transition/launch contract and shared Back |
+| Adapt | `js/content-registry.js` and root binding | Complete projection; preserve catalog IDs and lock semantics |
+| Adapt | `js/world/world-explorer.js`, `css/world-explorer.css` | Registry-driven destinations, lifecycle/error/camera contracts; polish last |
+| Adapt | `js/platform.js`, native-overlay Java/manifest | Top-level native bridge and Back, remove obsolete parent forwarding |
+| Adapt | `package.json`, lockfiles, `scripts/build-mobile.mjs`, `scripts/build-android-web.mjs`, `tsconfig.mobile.json` | Reproducible compiler ownership and minimal runtime output |
+| Adapt | `apps/android/scripts/*.mjs`, `scripts/lib` helper under that directory, `capacitor.config.json` | Safe Windows processes, cwd, SDK/JDK gates, executable payload verification |
+| Adapt | `sw.js`, `manifest.webmanifest`, `.github/workflows/pages.yml`, Android/root README and acceptance scripts | One product entry and explicit distribution rules |
+| Retire from execution | `apps/kid/index.html`, `apps/kid/src/app/App.ts`, shell screens/bootstrap/runtime controller | Second application/session/navigation owner |
+| Retire after import audit | `packages/navigation/`, shell `AppSessionStore`, `packages/world/` Planet model, `packages/activities/src/legacy/` adapters | Prototype router/world/iframe plumbing; keep anything proven shared until detached |
+| Exclude from child shipping | `admin-prototype.html`, plan prototypes, `#devcube` dev entry | Preserve historical references without production child entry exposure |
+
+Retirement sequencing: first stop shipping/caching/linking executable shell entry and modules, then detach unused imports/tests, then remove deprecated executable files in reviewed commits. The requested cleanup authorizes retirement; it does not require deleting historical design documents or useful content. No removal is performed by this audit.
+
+Generated directories that can be regenerated **after preserving device/build evidence and confirming tool inputs**:
+
+- `dist/mobile`, `dist/agent-proxy`, `dist/android-web`: compiler/package output; never primary source. Review ignore/tracking policy and CI build together.
+- `apps/android/android`: generated Capacitor/native workstation project under current policy. Keep native edits in `native-overlay`; preserve local.properties, signing setup, and any unported native changes before regeneration.
+- Android `assets/public`: only regenerated by sync; do not hand-patch.
+- Android `.reports`, Gradle caches and build outputs: local diagnostics/build products, not product source. Keep the specific audit captures until diagnosis is resolved.
+
+## Compatibility and state plan
+
+- Preserve `sq:kid`, current progress, queue, best scores, vocab, Brain Gym, quest/learning records, and star ledger contracts. No localStorage.clear(), database reset, or star-counter reconstruction.
+- Preserve valid saved Classic sessions deliberately. Fresh selection may enter world. Document one migration rule for saved views instead of silently forcing every child into a new surface.
+- Preserve standalone `../index.html#books` links and known game/book IDs. If a deprecated entry needs a transition link, route once to the root document without embedding it or registering a competing router.
+- Keep `activity:<index>` aliases stable. Introduce durable IDs only with an explicit old-index mapping; never reorder BANK as incidental cleanup.
+- Keep platform storage origins in mind: browser/PWA and Capacitor origin data are separate. Back up/test real old profiles before changing app ID, scheme, host, database, or storage driver.
+- Compare old stored child/view snapshots and offline pending writes before/after every state-affecting slice. Store no private keys or family data in audit fixtures.
+
+## Implementation checklist and acceptance gates
+
+### Phase 0 — preserve evidence and confirm installed entry
+
+Dependencies: none. Required before claims about the physical tablet cause.
+
+- [x] Record overlaid source, generated payload identity, exact selector path, and browser behavior.
+- [x] Add a re-runnable probe that exposes the world/game coexistence failure.
+- [x] Check device availability: ADB sees one unauthorized device; authorize USB debugging on that device before inspecting its runtime.
+- [ ] Capture installed package ID/version, launch activity, WebView `location.href`, loaded root/module URLs, service-worker controller/scope/cache identity, bridge-native flag, current surface and saved view keys.
+- [ ] Compare actual native `assets/public` and installed APK payload against source/dist before rebuilding.
+- [ ] Record the exact device entry-selection cause; do not infer it from the badge or bundle metadata.
+- [ ] Review Strategy C and the file/state scope below.
+
+DONE WHEN: device diagnosis separates entry/cache/native bridge problems from world initialization, and the architecture decision is reviewed.
+
+### Phase A — one authoritative application entry
+
+Files: shell entry/bootstrap, root/Android manifests, service worker, build/deployment configuration and documentation.
+
+- [ ] Make root the only shipped child application entry; stop caching/distributing the Planet/ActivityHost shell.
+- [ ] Preserve the separate parent admin entry and useful content/modules.
+- [ ] Add an entry check against source, served output, and native output; fail any runtime import that bootstraps the child shell.
+- [ ] Prove existing child/state/PIN selection and saved Classic/world views work without resetting data.
+- [ ] Add hidden developer diagnostics: release, entry URL, runtime, current screen/child, return stack/context, world initialized, WebGL, registry count, native bridge. No default debug label in child UI.
+
+DONE WHEN: web/PWA/Android all enter root; deprecated executable shell is unreachable from the shipped product; no app-root iframe.
+
+### Phase B — consolidate navigation and lifecycle
+
+Files: root launchers/Back/Escape, activity router, agent actions, platform bridge, content openers.
+
+- [ ] Expose the shared API over existing launchers; migrate Classic and world callers to it.
+- [ ] Route `startGame` through shared surface transition/pause behavior, retaining gates and initialization order.
+- [ ] Unify Back button, native Back, Escape, overlays, book zoom/grid, game exit, activity exit, instrument exit, and standalone return semantics.
+- [ ] Preserve world camera during content visits and clear stale return state when choosing another child.
+- [ ] Remove obsolete iframe/parent navigation adapters after remaining callers are gone.
+- [ ] Make the audit's source and generated game-launch invariant pass.
+
+DONE WHEN: one visible application screen, one global navigation shell, consistent return destination, no accumulating headers or active hidden renderer/audio.
+
+### Phase C — complete the normalized catalog
+
+Files: registry/root binding, existing learning/quest/reward catalog readers and availability functions; no copied content data.
+
+- [ ] Assert source catalog coverage for all 21 games, 3 instruments, 8 books and 11 activities.
+- [ ] Add learning/knowledge/quest discovery through existing catalog/store projections; document intentional exclusions for internal practice steps or dynamically generated assignments.
+- [ ] Preserve IDs/aliases and await manifest readiness; reflect new content without editing a second catalog.
+- [ ] Use authoritative availability checks, including Brain Gym/Paint exceptions and missing-module failures.
+- [ ] Return truthful launch completion/failure; test invalid IDs and blocked/failed opens.
+
+DONE WHEN: every playable item is discoverable or explicitly excluded with a reason; Classic/world expose the same permissions and launch targets.
+
+### Phase D — deterministic web/Android tooling
+
+Files: package/locks, mobile/web builders, Android helper/bootstrap/sync/build/doctor, CI, package verification tests.
+
+- [ ] Declare/pin root-owned TypeScript and tested Node/tool versions; include appropriate root/Android locks.
+- [ ] Invoke installed Node CLI entry points directly where possible. Use explicitly quoted, controlled `cmd.exe /d /s /c` only for unavoidable batch commands; reject unsafe shell arguments.
+- [ ] Fix helper call sites to pass `{cwd: ...}`; cover paths with spaces and process error propagation.
+- [ ] Check prerequisites before removing build output. Resolve absolute deletion targets within intended generated directories.
+- [ ] Keep JSON Capacitor configuration; check pinned Gradle/AGP/Capacitor and accepted JDK range, and test doctor failures on unsupported majors.
+- [ ] Verify SDK discovery/local.properties setup from a clean native project.
+- [ ] Build a minimal root payload with local world/Three.js/core/OrbitControls/registry/learning assets; exclude shell boot modules and prototypes.
+- [ ] Compare source and payload file coverage in both directions with explicit exclusions; require every referenced book image to exist. A matching self-reported hash does not detect omitted assets.
+- [ ] Sync and test **native** `apps/android/android/app/src/main/assets/public`, traversing actual HTML/module imports and executing startup there.
+- [ ] Make CI build required generated modules from a clean install; do not publish the whole mixed repository as the child bundle.
+
+DONE WHEN: fresh checkout -> install -> build -> sync -> Gradle is repeatable on Windows, correct native executable startup is demonstrated, and two clean builds have equal intended payloads.
+
+### Phase E — content and state regression
+
+Files: existing browser scripts, registry/Android tests, content inventory/asset checks.
+
+- [ ] Automate Hero -> child -> world/hub -> Games -> real game -> Back -> Books -> Space -> Back -> Books -> another book -> Back -> Music -> instrument -> Back -> Learning -> real activity -> Back.
+- [ ] Repeat through Classic clicks and world launches; test both button and native shared Back. Assert exactly one global shell/header and no nested root/legacy iframe after each step.
+- [ ] Exercise every catalog item from both entry surfaces where applicable; account explicitly for locked/age-limited items.
+- [ ] Verify all integrated book-data assets as well as standalone book assets; check all three instruments and game module loading.
+- [ ] Test existing saves, pending offline writes, lock exceptions, PINs, fresh start, restored views, missing config, and offline warm/cold startup.
+- [ ] Run the same suite on source, generated web, synchronized native payload and the physical tablet; label software WebGL results separately.
+
+DONE WHEN: full content click-through has explicit outcomes with no unexplained failures; all navigation/state/asset regression gates pass.
+
+### Phase F — refine world only after A–E
+
+Files: world module/CSS, registry consumers, browser/device interaction checks.
+
+- [ ] Map normalized content to places and discovery affordances; retain real content/IDs and accessible Classic access.
+- [ ] Assert camera rotation changes numerically and pinch stays bounded; raycast real visible landmarks rather than only calling APIs in tests.
+- [ ] Verify camera/selection persistence, resize, context loss/recovery, background/resume, error visibility, and Android Back on hardware.
+- [ ] Force local module-import and WebGL initialization failures; assert a visible diagnostic and no PlanetScreen fallback.
+- [ ] Provide English and Traditional Chinese controls and non-reading discovery affordances, consistent with the existing child-facing language contract.
+- [ ] Evaluate child-friendly physical places, performance and touch targets before visual polish. Characters/decorations/day-night remain later product work.
+
+DONE WHEN: a child can explore, launch real content, and return to the same world on the tablet without reading-dependent navigation or a second application shell.
+
+## Review stop
+
+This delivery completes the audit/recommendation/proposed checklist and pushes those artifacts on their own branch. The browser regression intentionally remains red because runtime fixes are outside this audit's stop point. Review Strategy C, the entry-retirement scope, and saved-state compatibility before executing Phases A–F. Physical entry diagnosis is pending evidence, not an asserted root-cause fix.
