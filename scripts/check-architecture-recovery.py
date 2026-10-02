@@ -195,6 +195,127 @@ def clickthrough(page):
     return {"rounds": 2, "launches": 10, "back": "UI buttons and shared native handler"}
 
 
+def tab_to(page, selector):
+    for _ in range(100):
+        if page.evaluate("selector => document.activeElement.matches(selector)", selector):
+            return
+        page.keyboard.press("Tab")
+    raise AssertionError("Keyboard cannot reach " + selector)
+
+
+def keyboard_books(page):
+    previous_viewport = page.viewport_size
+    page.set_viewport_size({"width": 1280, "height": 720})
+    tab_to(page, "#worldClassic")
+    page.keyboard.press("Enter")
+    wait_screen(page, "hub")
+    tab_to(page, '#hubTabs [data-t="adventure"]')
+    page.keyboard.press("Enter")
+    tab_to(page, '[data-adventure="books"]')
+    page.keyboard.press("Enter")
+    for book, photo in (("space", "#bookPhotoPane"), ("minecraft", ".mcraft-page.photo")):
+        tab_to(page, '[data-book="' + book + '"]')
+        page.keyboard.press("Enter")
+        wait_screen(page, "book")
+        tab_to(page, "#bookViewToggle")
+        page.keyboard.press("Enter")
+        assert page.locator("#bookGridView").is_visible()
+        tab_to(page, '#bookGridView [data-page="2"]')
+        page.keyboard.press("Escape")
+        invariant(page, "book")
+        assert not page.locator("#bookGridView").is_visible()
+        assert page.evaluate("document.activeElement.id") == "bookViewToggle"
+        page.keyboard.press("Enter")
+        tab_to(page, '#bookGridView [data-page="2"]')
+        page.keyboard.press("Enter")
+        assert page.evaluate("bookState.idx") == 2
+        assert page.evaluate("document.activeElement.id") == "bookViewToggle"
+        tab_to(page, photo)
+        page.keyboard.press("Space")
+        assert page.locator(".book-zoom").is_visible()
+        for selector in (".book-zoom img", ".z-close", ".z-cap"):
+            bounds = page.locator(selector).bounding_box()
+            assert bounds and bounds["x"] >= 0 and bounds["y"] >= 0 and bounds["x"] + bounds["width"] <= 1280 and bounds["y"] + bounds["height"] <= 720, (selector, bounds)
+        page.keyboard.press("ArrowRight")
+        assert page.evaluate("bookState.idx") == 2
+        page.keyboard.press("Tab")
+        assert page.evaluate("document.activeElement.matches('.z-close')")
+        page.keyboard.press("Escape")
+        invariant(page, "book")
+        assert page.locator(".book-zoom").count() == 0
+        assert page.evaluate("selector => document.activeElement.matches(selector)", photo)
+        page.keyboard.press("Escape")
+        wait_screen(page, "hub")
+    page.keyboard.press("Escape")
+    wait_world(page)
+    page.set_viewport_size(previous_viewport)
+    return {"books": ["space", "minecraft"], "input": "Tab, Enter, Space, Escape and ArrowRight", "focus": "reachable cards, page selection and zoom return"}
+
+
+def keyboard_instruments(page):
+    page.locator("#worldClassic").click()
+    page.locator('#hubTabs [data-t="adventure"]').click()
+    page.locator('[data-adventure="music"]').click()
+    peaks = {}
+    for instrument in ("piano", "moog", "pads"):
+        page.locator('[data-inst="' + instrument + '"]').click()
+        wait_screen(page, "music")
+        page.wait_for_selector("#musicStage .sq-pad" if instrument == "pads" else "#musicStage .sq-key")
+        page.evaluate("""async () => {
+            const audio = (await import('./js/game-services/audio.js')).getSharedAudio();
+            const graph = audio.graph(), analyser = graph.ctx.createAnalyser();
+            graph.master.connect(analyser);
+            window.desktopAudioPeak = () => {
+                const data = new Float32Array(analyser.fftSize);
+                analyser.getFloatTimeDomainData(data);
+                return Math.max(...data.map(Math.abs));
+            };
+            window.disconnectDesktopAudio = () => graph.master.disconnect(analyser);
+        }""")
+        if instrument == "pads":
+            page.locator("#musicStage .sq-pad").first.click()
+        else:
+            tab_to(page, "#musicStage .sq-key-white")
+            page.keyboard.down("Enter")
+            page.keyboard.down("Enter")  # Holding/repeat must not retrigger.
+        page.wait_for_function("desktopAudioPeak() > 0.001")
+        peaks[instrument] = page.evaluate("desktopAudioPeak()")
+        if instrument != "pads":
+            page.keyboard.up("Enter")
+            page.wait_for_function("desktopAudioPeak() < 0.00001")
+            page.keyboard.down("Space")
+            page.wait_for_function("desktopAudioPeak() > 0.001")
+            page.keyboard.press("Tab")  # Losing focus releases a held note.
+            page.keyboard.up("Space")
+            page.wait_for_function("desktopAudioPeak() < 0.00001")
+        page.locator("#musicBack").click()
+        wait_screen(page, "hub")
+        page.wait_for_function("desktopAudioPeak() < 0.00001")
+        page.evaluate("disconnectDesktopAudio()")
+    page.keyboard.press("Escape")
+    wait_world(page)
+    return {"signalPeaks": peaks, "exitSilence": True, "keyboard": "Piano/Synth Enter, Space, keyup and blur", "audio": "WebAudio waveform; not a human listening check"}
+
+
+def knowledge_interaction(page):
+    page.locator("#worldClassic").click()
+    page.locator('#hubTabs [data-t="adventure"]').click()
+    page.locator('[data-adventure="learn"]').click()
+    page.locator('[data-knowledge-lesson="science-plants-parts"]').click()
+    page.locator('[data-knowledge-item="roots"]').click()
+    assert "Roots" in page.locator("#scienceObservation").inner_text()
+    page.locator("#scienceHelpOpen").click()
+    page.locator("#scienceStartQuestions").click()
+    for answer in ("roots", "leaves"):
+        page.locator('[data-knowledge-answer="' + answer + '"]').click()
+        page.locator("#scienceNext").click()
+    page.wait_for_selector("#scienceRepeat")
+    assert "2 / 2" in page.locator("#scienceLessonBody").inner_text()
+    page.keyboard.press("Escape")
+    wait_world(page)
+    return {"lesson": "science-plants-parts", "visualClue": True, "localHelp": True, "correctAnswers": 2}
+
+
 def catalog_sweep(page, origin):
     outcomes = []
     catalog = page.evaluate("SQContentRegistry.list()")
@@ -376,13 +497,22 @@ def locks(page):
 
 def pin_flow(page, base):
     boot(page, base, child=False)
-    page.locator(".hero").last.click()
+    tab_to(page, ".hero:last-child")
+    page.keyboard.press("Enter")
+    page.keyboard.press("Shift+Tab")
+    assert page.evaluate("document.activeElement.id") == "pinCancel"
+    page.keyboard.press("Enter")
+    assert page.evaluate("document.activeElement.matches('.hero:last-child')")
+    page.keyboard.press("Enter")
+    page.keyboard.press("Escape")
+    assert page.evaluate("document.activeElement.matches('.hero:last-child')")
+    page.keyboard.press("Enter")
     page.locator("#pinTry").fill("0000")
-    page.locator("#pinGo").click()
+    page.keyboard.press("Enter")
     invariant(page, "home")
     assert page.locator("#pinMsg").inner_text()
     page.locator("#pinTry").fill("4321")
-    page.locator("#pinGo").click()
+    page.keyboard.press("Enter")
     wait_world(page)
     page.reload(wait_until="domcontentloaded")
     ready(page)
@@ -444,6 +574,7 @@ def offline_flow(page, base):
     page.reload(wait_until="domcontentloaded")
     ready(page)
     wait_world(page)
+    images = book_assets(page)
     page.evaluate("sqTestMode.set(true)")
     for content in ("game:calc", "book:animals", "music:pads"):
         assert page.evaluate("id => SummerQuest.open(id)", content)["ok"], content
@@ -456,7 +587,7 @@ def offline_flow(page, base):
     assert cold.evaluate("SQHost.store.starsFor('luis')") == 43
     assert cold.evaluate("SQHost.store.queue.some(op => op.id === 'recovery-fixture-star')")
     cold.close()
-    return {"cacheNames": caches, "warmReload": True, "coldDocument": True, "offlineContent": ["game:calc", "book:animals", "music:pads"], "scope": "new document in isolated PWA context; physical cold process not tested"}
+    return {"cacheNames": caches, "warmReload": True, "coldDocument": True, "offlineBookImages": images, "offlineContent": ["game:calc", "book:animals", "music:pads"], "scope": "new document in isolated PWA context; physical cold process not tested"}
 
 
 def run_case(browser, base, name):
@@ -477,6 +608,9 @@ def run_case(browser, base, name):
             if step(result, "fresh Hero -> rendered world", lambda: boot(page, base)):
                 page.evaluate("sqTestMode.set(true)")
                 step(result, "Classic clicks and repeated UI/native Back", lambda: clickthrough(page))
+                step(result, "keyboard book cards, grid, zoom and single Escape", lambda: keyboard_books(page))
+                step(result, "instrument keyboard input and audio stops on exit", lambda: keyboard_instruments(page))
+                step(result, "knowledge visual clue, local help and two answers", lambda: knowledge_interaction(page))
                 step(result, "world camera/pinch/raycast/lifecycle/resize/context restore", lambda: world_interaction(page))
                 for origin in ("world", "classic"):
                     step(result, origin + " every catalog entry", lambda origin=origin: catalog_sweep(page, origin))

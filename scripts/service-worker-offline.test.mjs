@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import vm from "node:vm";
 
 const source = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
@@ -7,6 +7,7 @@ const origin = "http://summer.test";
 const listeners = new Map();
 const stores = new Map();
 let online = true;
+let delayWrites = false, finishWrite;
 
 function keyOf(input) {
   const raw = typeof input === "string" ? input : input.url;
@@ -16,7 +17,10 @@ function cacheFor(name) {
   let store = stores.get(name);
   if (!store) { store = new Map(); stores.set(name, store); }
   return {
-    async put(input, response) { store.set(keyOf(input), response.clone()); },
+    async put(input, response) {
+      if (delayWrites) await new Promise(resolve => { finishWrite = resolve; });
+      store.set(keyOf(input), response.clone());
+    },
   };
 }
 const caches = {
@@ -63,13 +67,34 @@ assert.equal(await caches.match("./js/config.js"), undefined, "missing optional 
 assert.ok((await caches.match("./index.html")), "authoritative root app is installed in the offline cache");
 assert.equal(await caches.match("./dist/mobile/apps/kid/src/runtime/TabletRuntimeController.js"), undefined, "retired child shell is not precached");
 assert.ok((await caches.match("./dist/mobile/packages/core/src/tablet-runtime.js")), "tablet viewport rules are precached");
+for (const name of readdirSync(new URL("../js/books/", import.meta.url)).filter(name => name.endsWith("-data.js"))) {
+  const file = "js/books/" + name;
+  const data = readFileSync(new URL("../" + file, import.meta.url), "utf8");
+  for (const [, path] of data.matchAll(/(?:\.\.\/)?(assets\/[^\s"'<>]+?\.(?:png|jpe?g|webp|svg))/g)) {
+    assert.ok(await caches.match("./" + path), file + " image must be available before its first offline visit: " + path);
+  }
+}
 
 let activatePromise;
 listeners.get("activate")({ waitUntil(value) { activatePromise = value; } });
 await activatePromise;
 
+let responsePromise, runtimeWrite;
+delayWrites = true;
+listeners.get("fetch")({
+  request: { method: "GET", url: origin + "/runtime-book-image.jpg", mode: "cors" },
+  respondWith(value) { responsePromise = value; },
+  waitUntil(value) { runtimeWrite = value; },
+});
+assert.ok(await responsePromise, "network response does not wait for its cache write");
+assert.ok(runtimeWrite instanceof Promise, "runtime cache writes keep the worker alive");
+assert.equal(await caches.match("./runtime-book-image.jpg"), undefined);
+finishWrite();
+await runtimeWrite;
+delayWrites = false;
+assert.ok(await caches.match("./runtime-book-image.jpg"), "runtime image is cached before the worker may stop");
+
 online = false;
-let responsePromise;
 listeners.get("fetch")({
   request: { method: "GET", url: origin + "/index.html?kid=offline&age=4", mode: "navigate" },
   respondWith(value) { responsePromise = value; },

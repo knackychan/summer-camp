@@ -48,6 +48,7 @@ export function createKeybed(opts) {
     styleEl.textContent =
       ".sq-key-white.sq-key-active{background:#5AD1C4!important;color:#14131A!important}" +
       ".sq-key-black.sq-key-active{background:#3AB0A3!important}" +
+      ".sq-key:focus-visible{outline:3px solid #FFB13C!important;outline-offset:-3px}" +
       ".sq-key-highlight{box-shadow:inset 0 0 14px #FFB13C!important}";
     document.head.appendChild(styleEl);
   }
@@ -132,7 +133,7 @@ export function createKeybed(opts) {
     if (destroyed) return;
     var midi = parseInt(el.dataset.midi, 10);
     keyMap.set(pointerId, midi);
-    if (el.setPointerCapture) {
+    if (typeof pointerId === "number" && el.setPointerCapture) {
       try { el.setPointerCapture(pointerId); } catch (e) {}
     }
     el.classList.add("sq-key-active");
@@ -169,6 +170,17 @@ export function createKeybed(opts) {
   }
 
   function attachPointerHandlers(key) {
+    key.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      if (!keyMap.has("keyboard")) activateKey(this, "keyboard");
+    });
+    key.addEventListener("keyup", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      releasePointer("keyboard");
+    });
+    key.addEventListener("blur", function () { releasePointer("keyboard"); });
     key.addEventListener("pointerdown", function (e) {
       activateKey(this, e.pointerId);
     });

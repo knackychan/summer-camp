@@ -59,7 +59,7 @@ body.game-mode .wrap{max-width:none;width:100%}
 .hero .mode{margin-top:12px;font-weight:800;font-size:15px}
 .hero .stats{margin-top:12px;display:flex;gap:14px;color:var(--muted);font-weight:800;font-size:13px}
 .hero .stats b{color:var(--ink)}
-.hero:focus-visible{outline:3px solid #fff;outline-offset:3px}
+:is(button,a,input,select,textarea):focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 
 /* ---------- GAME SHELL ---------- */
 .hidden{display:none!important}
@@ -397,6 +397,7 @@ body.game-mode .wrap{max-width:none;width:100%}
 .gamecard .gi{font-size:34px;display:block}
 .gamecard b{font-family:'Fredoka';font-weight:600;display:block;margin-top:4px}
 .gamecard small{color:var(--muted);font-weight:700;font-size:12px}
+#bookGrid .gamecard{font-size:inherit}
 .gamecard .favtag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);
   font-family:'Fredoka';font-weight:600;font-size:10px;letter-spacing:1px;background:var(--gold);
   color:#1c1436;border-radius:99px;padding:2px 10px}
@@ -451,7 +452,7 @@ body.music-mode{overflow:hidden}
 .book-fact .zh{color:var(--muted);font-size:1rem;font-weight:700}
 .book-page-num{font-family:'Fredoka';font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin-top:auto;padding-top:8px}
 .book-spine{width:3px;flex-shrink:0;background:linear-gradient(to right,rgba(0,0,0,.3),var(--line),rgba(0,0,0,.3))}
-.book-photo{flex:1 1 50%;display:flex;flex-direction:column;position:relative;overflow:hidden;min-width:0;background:var(--bg);cursor:pointer}
+.book-photo{flex:1 1 50%;display:flex;flex-direction:column;position:relative;overflow:hidden;min-width:0;background:var(--bg);cursor:pointer;border:0;padding:0;color:inherit;font:inherit;text-align:left}
 .book-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .book-emoji{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:8rem}
 .book-photo img.error+.book-emoji{display:flex}
@@ -469,7 +470,7 @@ body.music-mode{overflow:hidden}
 .book-gridview{width:100%;flex:1;overflow-y:auto;padding:8px 0;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start}
 .book-gridcard{width:calc(25% - 8px);min-width:90px;max-width:150px;aspect-ratio:1;border-radius:16px;background:var(--panel);
   border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;
-  overflow:hidden;position:relative;touch-action:manipulation}
+  overflow:hidden;position:relative;touch-action:manipulation;color:inherit;font:inherit;padding:0}
 .book-gridcard:active{transform:scale(.93);border-color:var(--accent,var(--luis))}
 .book-gridcard.current{border-color:var(--accent,var(--luis));box-shadow:0 0 12px rgba(124,111,247,.4)}
 .book-gridcard img{width:100%;height:50%;object-fit:cover}
@@ -517,7 +518,7 @@ body.music-mode{overflow:hidden}
   content:attr(data-page);position:absolute;right:12px;bottom:10px;z-index:7;
   color:rgba(244,242,223,.62);font:.76rem/1 Fredoka,system-ui;font-weight:800;
 }
-.mcraft-page.photo{padding:0;cursor:pointer;background:#0D100C}
+.mcraft-page.photo{padding:0;cursor:pointer;background:#0D100C;color:inherit;font:inherit;text-align:left}
 .mcraft-page.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.02)}
 .mcraft-page.photo::before{
   content:"";position:absolute;inset:0;z-index:1;
@@ -1551,6 +1552,7 @@ function renderHome(){
   });
 }
 function saveAppPlace(view){
+  queueBrowserPlace();
   try{
     localStorage.setItem("sq:view",view||"home");
     if(hubKid)localStorage.setItem("sq:kid",hubKid);
@@ -1609,25 +1611,32 @@ function selectKid(id){
   showPin(id,pin);
 }
 function showPin(id,pin){
+  const opener=document.activeElement;
   const o=document.createElement("div");
   o.className="overlay";
-  o.innerHTML=`<div class="card">
+  o.innerHTML=`<form class="card" role="dialog" aria-modal="true" aria-label="${KIDS[id].name} · Enter PIN 輸入密碼">
     <h3>${KIDS[id].name}</h3>
     <p>Enter PIN 輸入密碼</p>
-    <input class="qinput pininput" id="pinTry" inputmode="numeric" maxlength="4" autocomplete="off">
+    <input class="qinput pininput" id="pinTry" aria-label="PIN 密碼" inputmode="numeric" maxlength="4" autocomplete="off">
     <div class="vrow">
       <button class="btn" id="pinGo">Open 打開</button>
-      <button class="btn small" id="pinCancel">Cancel 取消</button>
+      <button class="btn small" id="pinCancel" type="button">Cancel 取消</button>
     </div>
     <div class="tipline" id="pinMsg"></div>
-  </div>`;
+  </form>`;
   document.body.appendChild(o);
   const input=o.querySelector("#pinTry"); input.focus();
-  o.querySelector("#pinGo").onclick=()=>{
+  o.querySelector("form").onsubmit=e=>{
+    e.preventDefault();
     if(input.value===pin){localStorage.setItem("sq:kid",id);hubTab="quests";resetQuestSession(id);o.remove();openWorld(id);return;}
     sBad(); o.querySelector("#pinMsg").textContent="Try again 再試一次"; input.value=""; input.focus();
   };
-  o.querySelector("#pinCancel").onclick=()=>o.remove();
+  const cancel=()=>{o.remove();if(opener&&opener.isConnected)opener.focus();};
+  const cancelButton=o.querySelector("#pinCancel");cancelButton.onclick=cancel;
+  o.onkeydown=e=>{
+    if(e.key==="Escape"){e.preventDefault();e.stopPropagation();cancel();}
+    if(e.key==="Tab"&&((e.shiftKey&&e.target===input)||(!e.shiftKey&&e.target===cancelButton))){e.preventDefault();(e.shiftKey?cancelButton:input).focus();}
+  };
 }
 
 /* ============ KEYBOARD ============ */
@@ -1806,7 +1815,7 @@ async function startGame(id,lvl,options){
     if(token!==gameLaunchToken)return {ok:false,reason:"cancelled"};
     stopArena();
     console.error("Summer Quest game launch failed",error);
-    wobbleMsg("Could not open this game. Try again. 無法開啟遊戲，請再試一次。");
+    document.getElementById("stage").innerHTML='<div class="msg" role="alert">Could not open this game. Try again. 無法開啟遊戲，請再試一次。</div>';
     return {ok:false,reason:"launch_failed"};
   }
 }
@@ -2445,6 +2454,7 @@ function actsToday(id){
 }
 let navigationRevision=0;
 function showOnly(id){
+  queueBrowserPlace();
   navigationRevision++;
   if(id!=="game"&&!document.getElementById("game").classList.contains("hidden"))stopArena();
   if(id!=="music"&&!document.getElementById("music").classList.contains("hidden"))closeInstrument(true);
@@ -2463,6 +2473,12 @@ function showOnly(id){
   /* music-mode is what gives .wrap a viewport height — without it the instrument
      stage has no height to fill and collapses (D13). */
   document.body.classList.toggle("music-mode",id==="music");
+  queueMicrotask(function(){
+    const screen=document.getElementById(id),active=document.activeElement;
+    if(screen.classList.contains("hidden")||(active!==document.body&&!active.closest(".hidden")))return;
+    const control=screen.querySelector("button:not(:disabled),a[href],input,select,textarea,[tabindex='0']");
+    if(control)control.focus();
+  });
 }
 function setGameMode(on){
   document.body.classList.toggle("game-mode",!!on);
@@ -3164,6 +3180,7 @@ function openSummerCompanion(){
   return {ok:true};
 }
 function renderHub(){
+  queueBrowserPlace();
   document.getElementById("hubBack").textContent=hubReturnSurface==="world"?"← World 世界":"← Heroes 小英雄";
   if(hubTab!=="learn")invalidateLearningSessionView();
   const k=KIDS[hubKid], done=actsToday(hubKid);
@@ -3663,7 +3680,7 @@ function bindKnowledgeVisual(domain,lesson){
     const item=items.find(function(row){return row.id===button.dataset.knowledgeItem;}),out=document.getElementById(cfg.prefix+"Observation");if(!item||!out)return;
     knowledgeLabState[domain].focusId="visual:"+item.id;
     if(knowledgeLabState[domain].snapshot&&knowledgeLabState[domain].snapshot.help){knowledgeLabState[domain].renderToken++;cancelKnowledgeHelpUi(domain);}
-    out.innerHTML='<b>'+escHtml(item.icon||cfg.icon)+' '+escHtml(item.note||"")+'</b><span class="zhs" style="display:block;margin-top:3px">'+escHtml(item.noteZh||"")+'</span>';sTap();
+    out.innerHTML='<b>'+escHtml(item.icon||cfg.icon)+' '+escHtml(item.note||"")+'</b><span class="zhs" style="display:block;margin-top:3px">'+escHtml(item.noteZh||"")+'</span>';sGood();
   };});
 }
 function cancelKnowledgeHelpUi(domain){
@@ -3798,7 +3815,7 @@ function answerKnowledgeLessonUi(domain,optionId){
   if(body)body.querySelectorAll('[data-knowledge-answer]').forEach(function(button){button.disabled=true;});
   Promise.resolve(fn(Object.assign({},input,{selectedOptionId:optionId,responseMs:responseMs}))).then(function(snapshot){
     if(hubKid!==expectedKid||hubTab!=="learn"||token!==state.renderToken)return;
-    if(snapshot){renderKnowledgeSnapshot(domain,snapshot);if(snapshot.session&&snapshot.session.flow==="director")renderLearningDirector();sTap();}else renderKnowledgeLab(domain);
+    if(snapshot){renderKnowledgeSnapshot(domain,snapshot);if(snapshot.session&&snapshot.session.flow==="director")renderLearningDirector();sGood();}else renderKnowledgeLab(domain);
   }).catch(function(){if(hubKid===expectedKid&&token===state.renderToken)renderKnowledgeLab(domain);});
 }
 function advanceKnowledgeLessonUi(domain){
@@ -3999,11 +4016,11 @@ function renderBooks(){
   var g=document.getElementById("bookGrid"),html="";
   BOOK_SHELF.forEach(function(b){
     var open = canOpenBook(b);
-    html+='<article class="gamecard'+(open?'':' locked')+'" style="'+(open?'cursor:pointer':'')+'" data-book="'+b.id+'">'+
+    html+='<button type="button" class="gamecard'+(open?'':' locked')+'" '+(open?'':'disabled ')+'data-book="'+b.id+'">'+
       '<span class="gi">'+b.icon+'</span><b>'+b.titleEN+'</b><small class="zhs">'+b.titleZH+'</small>'+
       '<small>'+b.blurbEN+'<span class="zhs">'+b.blurbZH+'</span></small>'+
       (open ? '<small style="color:var(--ok)">Read now · 開始閱讀</small>' : '<small style="color:var(--muted)">Coming soon · 即將推出</small>')+
-    '</article>';
+    '</button>';
   });
   g.innerHTML=html;
   g.querySelectorAll(".gamecard[data-book]").forEach(function(card){
@@ -4171,7 +4188,7 @@ function renderBookSpread(){
       '<div class="book-page-num">'+(bookState.idx+1)+'</div>'+
     '</div>'+
     '<div class="book-spine"></div>'+
-    '<div class="book-photo" id="bookPhotoPane">'+
+    '<button type="button" class="book-photo" id="bookPhotoPane">'+
       '<img src="'+bookEscape(photo)+'" alt="'+bookEscape(c.nameEN+' · '+c.nameZH)+'" loading="lazy" onerror="this.classList.add(\'error\')">'+
       '<div class="book-emoji">'+bookEscape(c.emoji)+'</div>'+
       '<div class="book-photo-overlay">'+
@@ -4179,7 +4196,7 @@ function renderBookSpread(){
         '<div class="book-photo-zh">'+bookEscape(c.nameZH)+'</div>'+
         '<div class="book-photo-tap">Tap photo to zoom · 點擊放大</div>'+
       '</div>'+
-    '</div>';
+    '</button>';
   document.getElementById("bookPhotoPane").onclick=function(){zoomBookImage(photo,c.nameEN+" · "+c.nameZH);};
   updateBookPager();
 }
@@ -4200,7 +4217,7 @@ function renderMinecraftSpread(){
   var pageBase=spreadIndex*4,html,mag=window.SQMcraftMag;
   if(within===0){
     html=
-      '<article class="mcraft-page photo" data-page="'+(pageBase+1)+'" data-photo="'+bookEscape(img)+'" data-caption="'+bookEscape(s.titleEN+" · "+s.titleZH)+'">'+
+      '<button type="button" class="mcraft-page photo" data-page="'+(pageBase+1)+'" data-photo="'+bookEscape(img)+'" data-caption="'+bookEscape(s.titleEN+" · "+s.titleZH)+'">'+
         '<img src="'+bookEscape(img)+'" alt="'+bookEscape(s.titleEN)+'" loading="lazy" onerror="this.style.display=\'none\'">'+
         '<span class="mcraft-meta">SPREAD '+String(spreadIndex+1).padStart(2,"0")+' · '+bookEscape(year)+'</span>'+
         (mag?mag.eraTag(s)+mag.statBadge(s):"")+
@@ -4212,7 +4229,7 @@ function renderMinecraftSpread(){
           '<p class="mcraft-body zh">'+bookEscape(blocks[0].zh)+'</p>'+
           '<div class="mcraft-photo-hint">Tap image to zoom · 點擊放大</div>'+
         '</div>'+
-      '</article>'+
+      '</button>'+
       mcraftTextPage(blocks[1],pageBase+2,"text",tone,mcraftKicker(year,pageBase+2),mag?mag.tipCard(s):"",mag?mag.runningHead(s,spreadIndex)+mag.imageBand(s,2,bookPhoto):"");
   }else{
     html=
@@ -4305,23 +4322,24 @@ function updateBookView(){
   document.getElementById("bookNav").classList.toggle("hidden",bookState.grid);
   document.getElementById("bookGridView").classList.toggle("hidden",!bookState.grid);
   if(bookState.grid)renderBookGrid();
+  else if(document.getElementById("bookGridView").contains(document.activeElement))document.getElementById("bookViewToggle").focus();
 }
 function renderBookGrid(){
   var html="", sp=bookState.layout==="spread";
   if(sp){
     bookState.spreads.forEach(function(s,i){
       var thumb=bookPhoto(mcraftSpreadImage(s,i));
-      html+='<div class="book-gridcard'+(i===Math.floor(bookState.idx/2)?' current':'')+'" data-page="'+(i*2)+'">'+
+      html+='<button type="button" class="book-gridcard'+(i===Math.floor(bookState.idx/2)?' current':'')+'" data-page="'+(i*2)+'">'+
         '<img src="'+bookEscape(thumb)+'" alt="'+bookEscape(s.titleEN)+'" class="gthumb" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
         '<div class="emoji" style="display:none">⬛</div>'+
-        '<div class="gname">'+bookEscape(s.titleEN)+'<span class="zh">'+bookEscape(s.titleZH)+'</span></div></div>';
+        '<div class="gname">'+bookEscape(s.titleEN)+'<span class="zh">'+bookEscape(s.titleZH)+'</span></div></button>';
     });
   }else{
     bookState.cards.forEach(function(c,i){
-      html+='<div class="book-gridcard'+(i===bookState.idx?' current':'')+'" data-page="'+i+'">'+
+      html+='<button type="button" class="book-gridcard'+(i===bookState.idx?' current':'')+'" data-page="'+i+'">'+
         '<img src="'+bookEscape(bookPhoto(c.photo))+'" alt="'+bookEscape(c.nameEN)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
         '<div class="emoji" style="display:none">'+bookEscape(c.emoji)+'</div>'+
-        '<div class="gname">'+bookEscape(c.nameEN)+'<span class="zh">'+bookEscape(c.nameZH)+'</span></div></div>';
+        '<div class="gname">'+bookEscape(c.nameEN)+'<span class="zh">'+bookEscape(c.nameZH)+'</span></div></button>';
     });
   }
   var grid=document.getElementById("bookGridView");
@@ -4335,23 +4353,22 @@ function renderBookGrid(){
   });
 }
 function zoomBookImage(src,caption){
+  var opener=document.activeElement;
   var ov=document.createElement("div"); ov.className="book-zoom";
+  ov.setAttribute("role","dialog");ov.setAttribute("aria-modal","true");ov.setAttribute("aria-label",caption);
   ov.innerHTML='<button class="z-close" aria-label="Close zoom 關閉放大">&times;</button>'+
     '<img src="'+bookEscape(src)+'" alt="'+bookEscape(caption)+'">'+
     '<div class="z-cap">'+bookEscape(caption)+'</div>'+
     '<div class="z-hint">Tap to close · 點擊關閉</div>';
-  ov.onclick=function(){ov.remove();};
+  ov.onclick=function(){ov.remove();if(opener&&opener.isConnected)opener.focus();};
+  ov.onkeydown=function(e){if(e.key==="Tab"){e.preventDefault();ov.querySelector(".z-close").focus();}};
   ov.querySelector("img").onclick=function(e){e.stopPropagation();};
   document.body.appendChild(ov);
   ov.querySelector(".z-close").focus();
 }
 function onBookKey(e){
   if(document.getElementById("book").classList.contains("hidden"))return;
-  if(e.key==="Escape"){
-    var z=document.querySelector(".book-zoom");
-    if(z){z.remove();return;}
-    if(bookState.grid){bookState.grid=false;updateBookView();return;}
-  }
+  if(document.querySelector(".book-zoom"))return;
   if(bookState.grid)return;
   if(e.key==="ArrowLeft")turnBook(-1);
   else if(e.key==="ArrowRight")turnBook(1);
@@ -4572,7 +4589,7 @@ async function requestReward(r){
   const coins=questCoins(hubKid);
   if(coins<r.cost){sBad();return;}
   const current=await fetchAsks(hubKid);
-  if(current.some(a=>a.kind===rewardAskKind(r)&&!a.answered_at)){sTap();return;}
+  if(current.some(a=>a.kind===rewardAskKind(r)&&!a.answered_at)){sGood();return;}
   const {error}=await store.createAsk(hubKid,rewardAskKind(r),`${r.icon||"🎁"} ${r.title[0]} / ${r.title[1]}`,null);
   if(error){sBad();return;}
   if(window.SQPlatform)SQPlatform.haptic("success");
@@ -5000,7 +5017,7 @@ function summerQuestBack(){
   /* App lock is not dismissible with Back: let Android leave the app instead. */
   if(document.getElementById("appLockOverlay"))return false;
   const zoom=document.querySelector(".book-zoom");
-  if(zoom){zoom.remove();return true;}
+  if(zoom){zoom.click();return true;}
   const overlays=Array.from(document.querySelectorAll("body > .overlay"));
   if(overlays.length){overlays[overlays.length-1].remove();if(typeof updateSummerNudge==="function")updateSummerNudge();return true;}
   const book=document.getElementById("book");
@@ -5018,6 +5035,69 @@ function summerQuestBack(){
   return false;
 }
 function runtimeSurface(){return window.SQActivityRouter?SQActivityRouter.context():{surface:"home"};}
+/* Native browser history remembers root destinations; the shared launch API
+   still owns their permissions, content and lifecycle. No family state is copied. */
+let browserPlaceReady=false,browserPlaceQueued=false,browserPlaceRestoring=false,browserPlaceUndo=false,browserPlaceToken=0;
+let browserPlaceIndex=0,browserPlaceCurrent=null;
+function browserPlace(){
+  const current=runtimeSurface(),surface=current.surface;
+  let destination=surface;
+  if(surface==="hub")destination=hubTab;
+  if(surface==="game")destination="game:"+level;
+  /* Resume the owning learning session, never a stale assessment as an arcade
+     game: that would lose its no-stars/attempt contract. */
+  if(surface==="game"&&learningDirectorLaunch)destination="learning:"+(learningDirectorLaunch.flow==="placement"?"placement":"practice");
+  if(surface==="music"&&current.activity)destination="music:"+current.activity.id;
+  if(surface==="book")destination="book:"+bookState.id;
+  if(surface==="act")destination=String(actIdx).charAt(0)==="L"?"guide:"+String(actIdx).slice(1):"activity:"+actIdx;
+  return {child:surface==="home"?null:hubKid,destination:destination,tab:hubTab,hubReturn:hubReturnSurface,contentReturn:contentReturnSurface};
+}
+function recordBrowserPlace(replace){
+  if(!browserPlaceReady||browserPlaceRestoring)return;
+  const place=browserPlace();
+  if(!replace&&JSON.stringify(place)===JSON.stringify(browserPlaceCurrent))return;
+  if(!replace)browserPlaceIndex++;
+  history[replace?"replaceState":"pushState"]({summerQuest:place,index:browserPlaceIndex},"",location.href);
+  browserPlaceCurrent=place;
+}
+function queueBrowserPlace(){
+  if(!browserPlaceReady||browserPlaceRestoring||browserPlaceQueued)return;
+  browserPlaceQueued=true;
+  queueMicrotask(function(){browserPlaceQueued=false;recordBrowserPlace(false);});
+}
+async function replayBrowserPlace(place){
+  /* History is not authentication. A previous child's entries cannot select
+     that child again; Heroes applies the existing PIN policy. */
+  if(!place||!place.child||!KIDS[place.child]||localStorage.getItem("sq:kid")!==place.child)return navigateRuntime("home");
+  hubKid=place.child;hubTab=place.tab||"quests";refreshOverrides();
+  hubReturnSurface=place.hubReturn;contentReturnSurface=place.contentReturn;
+  const result=await navigateRuntime(place.destination);
+  if(!result.ok&&!["cancelled","launch_cancelled","launch_failed","world_failed"].includes(result.reason))return navigateRuntime("classic");
+  return result;
+}
+async function restoreBrowserPlace(){
+  if(window.SQPlatform&&SQPlatform.capabilities().native){restoreAppPlace();return;}
+  const state=history.state;
+  if(state&&state.summerQuest){
+    browserPlaceIndex=state.index||0;
+    await replayBrowserPlace(state.summerQuest);
+  }else restoreAppPlace();
+  browserPlaceReady=true;recordBrowserPlace(true);
+}
+addEventListener("popstate",async function(event){
+  if(!browserPlaceReady)return;
+  if(browserPlaceUndo){browserPlaceUndo=false;return;}
+  const state=event.state;
+  if(!state||!state.summerQuest)return;
+  const transient=document.querySelector(".book-zoom,body > .overlay:not(#appLockOverlay)")||(runtimeSurface().surface==="book"&&bookState.grid);
+  if(transient&&browserPlaceIndex!==state.index){
+    summerQuestBack();browserPlaceUndo=true;history.go(browserPlaceIndex-state.index);return;
+  }
+  const token=++browserPlaceToken;
+  browserPlaceRestoring=true;browserPlaceIndex=state.index||0;
+  try{await replayBrowserPlace(state.summerQuest);}
+  finally{if(token===browserPlaceToken){browserPlaceRestoring=false;recordBrowserPlace(true);}}
+});
 function openContent(id,options){return SQContentRegistry.open(id,options);}
 function navigateRuntime(destination){
   if(destination==="home"){
@@ -5049,7 +5129,7 @@ window.SummerQuest={
   getContentRegistry:function(){return SQContentRegistry;},
   getCurrentChild:function(){return hubKid?Object.assign({id:hubKid},KIDS[hubKid]):null;},
   getDiagnostics:function(){return {runtime:"unified-root",entry:location.href,screen:runtimeSurface().surface,
-    release:"v0.6.2-recovery",child:hubKid,returnContext:{hub:hubReturnSurface,content:contentReturnSurface},
+    release:"v0.6.3-desktop",child:hubKid,returnContext:{hub:hubReturnSurface,content:contentReturnSurface},
     world:worldExplorerModule?worldExplorerModule.snapshot():null,
     registryCount:SQContentRegistry.list().length,native:!!(window.SQPlatform&&SQPlatform.capabilities().native)};}
 };
@@ -5139,7 +5219,7 @@ addEventListener("sqmanifestready",function(){
   if(kid&&level&&gameEl&&!gameEl.classList.contains("hidden"))renderGameSwitcher(kid,level);
 });
 
-(async()=>{ await loadProgress(); restoreAppPlace(); setupRealtime(); await refreshStarsFromServer(hubKid||kid); startTimelineWatcher(); refreshTestBanner(); })();
+(async()=>{ await loadProgress(); await restoreBrowserPlace(); setupRealtime(); await refreshStarsFromServer(hubKid||kid); startTimelineWatcher(); refreshTestBanner(); })();
 </script>
 </body>
 </html>

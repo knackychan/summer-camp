@@ -22,7 +22,7 @@ else writeFileSync(resolve(out, "js/config.js"), offlineConfig);
 const payload = [...files, "js/config.js"].sort();
 const metadata = {
   version: 2,
-  release: "v0.6.2-recovery",
+  release: "v0.6.3-desktop",
   runtime: "unified-root",
   entry: "index.html",
   localOnlyConfig: !existsSync(privateConfig),

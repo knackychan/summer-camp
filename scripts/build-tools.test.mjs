@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { run, batchCommandLine, ensureLocalProperties, supportedJavaMajor } from "../apps/android/scripts/lib/android-tools.mjs";
 import { root, verifyBundle } from "./verify-android-web.mjs";
@@ -47,6 +47,12 @@ test("payload verifier rejects missing, stale and extra files and checks native 
   const directory = mkdtempSync(resolve(tempRoot, "payload check "));
   try {
     cpSync(bundle, directory, { recursive: true });
+    // Exercise native-only bridge exclusions in a fixture, without requiring
+    // an unrelated workstation Android build to match current web source.
+    for (const file of ["cordova.js", "cordova_plugins.js"]) writeFileSync(resolve(directory, file), "");
+    verifyBundle(directory, { native: true });
+    assert.throws(() => verifyBundle(directory), /Source\/payload coverage differs/);
+    for (const file of ["cordova.js", "cordova_plugins.js"]) rmSync(resolve(directory, file));
     const asset = "assets/books/animals";
     renameSync(resolve(directory, asset), resolve(directory, "missing-animals"));
     assert.throws(() => verifyBundle(directory), /Source\/payload coverage differs/);
@@ -60,6 +66,4 @@ test("payload verifier rejects missing, stale and extra files and checks native 
     assert.equal(dirname(directory), tempRoot);
     rmSync(directory, { recursive: true, force: true });
   }
-  const native = resolve(root, "apps/android/android/app/src/main/assets/public");
-  if (existsSync(native)) verifyBundle(native, { native: true });
 });

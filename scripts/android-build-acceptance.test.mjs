@@ -101,7 +101,7 @@ test("generated Android workstation state stays out of authoritative source", ()
 test("Android web bundle metadata identifies root recovery and a versioned browser cache", () => {
   const build = read("scripts/build-android-web.mjs");
   const sw = read("sw.js");
-  assert.match(build, /release: "v0\.6\.2-recovery"/);
+  assert.match(build, /release: "v0\.6\.3-desktop"/);
   assert.match(build, /runtime: "unified-root"/);
   assert.match(sw, /summer-quest-v\d+/);
 });
