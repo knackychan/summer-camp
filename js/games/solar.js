@@ -7,6 +7,7 @@ import { SPEEDS, daysPerSec, advance, orbitCount } from "./solar-sim.js";
 import { buildMission, grade } from "./solar-quiz.js";
 
 var R = null;
+var initToken = 0;
 var STAR_TINTS = ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFE9C8", "#FFE9C8", "#C9D6FF"];
 var AVAILABLE_PHOTOS = {};
 AVAILABLE_PHOTOS[SOLAR.photo] = true;
@@ -362,8 +363,10 @@ export default {
   settings: _settings,
 
   init: async function (ctx) {
+    var token = ++initToken;
     var THREE = await import("../vendor/three.module.min.js");
     var OrbitControlsMod = await import("../vendor/OrbitControls.js");
+    if(token !== initToken)return;
     var OrbitControls = OrbitControlsMod.OrbitControls;
 
     R = {};
@@ -584,6 +587,7 @@ export default {
       new THREE.TextureLoader().load(
         "assets/solar/tex/" + p.id + ".png",
         function (tex) {
+          if(token !== initToken){tex.dispose();return;}
           tex.magFilter = THREE.NearestFilter;
           tex.minFilter = THREE.NearestFilter;
           tex.generateMipmaps = false;
@@ -719,20 +723,7 @@ export default {
     var plutoMesh = new THREE.Mesh(plutoGeo, plutoMat);
     plutoGroup.add(plutoMesh);
 
-    new THREE.TextureLoader().load(
-      "assets/solar/tex/pluto.png",
-      function (tex) {
-        tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestFilter;
-        tex.generateMipmaps = false;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        var litMat = plutoMesh.material;
-        plutoMesh.material = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 1 });
-        litMat.dispose();
-      },
-      undefined,
-      function () {}
-    );
+    /* No Pluto albedo is bundled; retain its existing flat colour. */
 
     var plutoHitGeo = new THREE.SphereGeometry(hitRadius(plutoSize), 12, 8);
     var plutoHitMesh = new THREE.Mesh(plutoHitGeo, new THREE.MeshBasicMaterial({ visible: false }));
@@ -1506,6 +1497,7 @@ export default {
   },
 
   stop: function () {
+    initToken++;
     if (!R) return;
     if (R.raf) { cancelAnimationFrame(R.raf); R.raf = null; }
     if (R.counterTimer) { clearInterval(R.counterTimer); R.counterTimer = null; }

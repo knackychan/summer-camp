@@ -1,6 +1,8 @@
-"""Inspect existing root, packaged root, and prototype in isolated browser contexts.
+"""Run architecture recovery checks in isolated browser contexts.
 
-Read-only audit: no builds, existing browser profiles, native state, or remote services.
+Default: current source/web/native checks in check-architecture-recovery.py.
+--historical: original audit reproduction (including its obsolete shell expectations).
+No builds, existing browser profiles, native state, or remote services are changed.
 Requires the workstation's existing Python Playwright and an installed browser.
 """
 import argparse
@@ -115,6 +117,8 @@ def main():
     parser.add_argument('--browser', required=True)
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
+    if args.out.resolve() == (ROOT / 'docs/audits/runtime-probe.json').resolve():
+        parser.error('Preserve the original audit capture; choose another --out path.')
     handler = functools.partial(Handler, directory=str(ROOT))
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), handler)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
@@ -142,4 +146,9 @@ def main():
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    import runpy
+    import sys
+    if '--historical' in sys.argv:
+        sys.argv.remove('--historical')
+        raise SystemExit(main())
+    runpy.run_path(str(ROOT / 'scripts/check-architecture-recovery.py'), run_name='__main__')

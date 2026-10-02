@@ -925,13 +925,15 @@ function init(ctx) {
   }
   document.addEventListener("visibilitychange", onVis);
   S._onVisibility = onVis;
+  S._clearPointers = clearPointers;
+  S._stopTrainer = stopTrainer;
 }
 
 function stop() {
   if (!S) return;
   document.removeEventListener("visibilitychange", S._onVisibility);
-  clearPointers();
-  if (trainState) stopTrainer();
+  if (S._clearPointers) S._clearPointers();
+  if (S._stopTrainer) S._stopTrainer();
   if (S.padElements) S.padElements.forEach(function (el) { el.classList.remove("sq-pad-active"); });
   S.sched.cancelAll();
   S.audio.stopAll();

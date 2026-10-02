@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="css/admin-tokens.css">
 <link rel="stylesheet" href="css/admin-shell.css">
 <link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/admin-quests.css">
 <script>var t=localStorage.getItem("sq-admin-theme");if(t)document.documentElement.setAttribute("data-admin-theme",t);</script>
 </head>
 <body>
@@ -59,6 +60,10 @@
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="5.6" cy="5.4" r="2.5"/><path d="M1.4 13.6c0-2.3 1.9-3.9 4.2-3.9s4.2 1.6 4.2 3.9"/><path d="M10.8 3.3a2.4 2.4 0 0 1 0 4.5M11.6 10.1c1.8.3 3 1.7 3 3.5"/></svg>
           <span>Kids</span>
         </a>
+        <a href="#quests" data-route="quests">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2.2 3.4h11.6v9.2H2.2z"/><path d="M5 1.7v3.2M11 1.7v3.2M4.6 7.4l1.5 1.5 3-3"/></svg>
+          <span>Quests</span>
+        </a>
         <a href="#content" data-route="content">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2.4 2.6h11.2v10.8H2.4z"/><path d="M5.1 5.6h5.8M5.1 8h5.8M5.1 10.4h3.4"/></svg>
           <span>Content</span>
@@ -71,6 +76,10 @@
 
       <div class="nav__group">
         <span class="lbl">System</span>
+        <a href="#ai" data-route="ai">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M5.2 2.2h5.6M8 2.2v3.1M4.1 6.1h7.8l1.2 6.5H2.9z"/><circle cx="5.6" cy="9.2" r=".7" fill="currentColor" stroke="none"/><circle cx="10.4" cy="9.2" r=".7" fill="currentColor" stroke="none"/><path d="M5.6 11.2h4.8"/></svg>
+          <span>AI Lab</span>
+        </a>
         <a href="#settings" data-route="settings">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="2.3"/><path d="M8 1.6v1.7M8 12.7v1.7M14.4 8h-1.7M3.3 8H1.6M12.5 3.5l-1.2 1.2M4.7 11.3l-1.2 1.2M12.5 12.5l-1.2-1.2M4.7 4.7 3.5 3.5"/></svg>
           <span>Settings</span>
@@ -226,6 +235,20 @@
         <section class="sheet" id="kidDetail" hidden></section>
       </section>
 
+      <!-- ============ QUESTS ============ -->
+      <section class="view" id="view-quests" hidden>
+        <section class="sheet quest-studio">
+          <div class="sheet__head quest-studio__head">
+            <div><h2>Quest Studio</h2><span class="lbl">rules, routines, rewards and Summer assistant behaviour</span></div>
+            <span class="tag tag--done">shared with kids</span>
+          </div>
+          <div class="sheet__pad">
+            <div class="quest-studio__tabs chips" id="questStudioTabs" role="tablist"></div>
+            <div id="questStudioBody"></div>
+          </div>
+        </section>
+      </section>
+
       <!-- ============ CONTENT ============ -->
       <section class="view" id="view-content" hidden>
         <section class="sheet">
@@ -253,6 +276,100 @@
           </div>
           <div class="tbl-wrap" id="history"></div>
           <div class="sheet__foot">Counts, not scores. Nothing here is shown to a kid.</div>
+        </section>
+        <section class="sheet" id="learningTelemetrySheet">
+          <div class="sheet__head">
+            <div><h2>Learning telemetry</h2><span class="lbl">Learning evidence · adult/developer view</span></div>
+            <div class="row"><span class="tag" id="learningTelemetrySource">loading</span><button class="btn btn--sm" id="learningTelemetryRefresh">Refresh</button><button class="btn btn--sm" id="learningTelemetryExport">Export JSON</button><button class="btn btn--sm btn--quiet" id="learningTelemetryClear">Clear</button></div>
+          </div>
+          <div class="sheet__pad">
+            <div class="learning-telemetry__summary" id="learningTelemetrySummary"><span class="tbl__note">Loading learning evidence…</span></div>
+          </div>
+          <div class="tbl-wrap" id="learningTelemetryTable"></div>
+          <div class="sheet__foot">Operational learning signals only. Raw typed child answers are not stored here, and these metrics do not change grading, level, tutor policy or model routing.</div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head"><div><h2>Explore tutor help</h2><span class="lbl">user-requested clue selection · no grading effects</span></div></div>
+          <div class="tbl-wrap" id="knowledgeHelpDiagnostics"></div>
+          <div class="sheet__foot">One optional selection per Explore lesson session. Another clue is local. Unavailable usage is not zero; estimates use the configured catalogue, not billing. Interrupted or discarded requests may still incur provider usage.</div>
+        </section>
+        <section class="sheet" id="tutorPolicyEvidenceSheet">
+          <div class="sheet__head">
+            <div><h2>Tutor policy evidence</h2><span class="lbl">descriptive comparison · no automatic policy changes</span></div>
+            <span class="tag">v0.3.7+</span>
+          </div>
+          <div class="tbl-wrap" id="tutorPolicyEvidence"></div>
+          <div class="sheet__foot">Small samples are explicitly labelled. Recovery and later independence are evidence to review, not proof that an intervention caused the result.</div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head">
+            <div><h2>Controlled tutor experiment</h2><span class="lbl">adult/developer opt-in · stable learner assignment</span></div>
+            <span class="tag" id="tutorExperimentStatus">off by default</span>
+          </div>
+          <div class="tbl-wrap" id="tutorExperimentEvidence"></div>
+          <div class="sheet__foot">v0.3.8 compares predefined support variants only after the normal local tutor policy marks a repeated Math near-miss as eligible. It does not change grading, level, curriculum access, or model tier, and it never declares a winning policy automatically.</div>
+        </section>
+      </section>
+
+      <!-- ============ AI LAB ============ -->
+      <section class="view" id="view-ai" hidden>
+        <section class="sheet">
+          <div class="sheet__head">
+            <div><h2>AI Lab</h2><span class="lbl">manual model evaluation · Math + Vocabulary lesson hints</span></div>
+            <span class="tag">developer</span>
+          </div>
+          <div class="sheet__pad" id="aiLabPanel">
+            <div class="ai-lab__status" id="aiLabStatus">Loading model catalog…</div>
+            <div class="ai-lab__layout">
+              <div class="ai-lab__controls">
+                <div class="ai-lab__section-title"><h3>Single case</h3><span class="tag">same task · different model</span></div>
+                <div class="grid-2">
+                  <label class="field"><span class="lbl">Domain</span><select class="inp" id="aiLabDomain"><option value="math">Math</option><option value="language">Vocabulary</option></select></label>
+                  <label class="field"><span class="lbl">Age</span><input class="inp" id="aiLabAge" type="number" min="3" max="17" value="7"></label>
+                  <label class="field"><span class="lbl">Reading</span><select class="inp" id="aiLabReading"><option value="pre_reader">Pre-reader</option><option value="early_reader" selected>Early reader</option><option value="reader">Reader</option></select></label>
+                  <label class="field"><span class="lbl">Language</span><input class="inp" id="aiLabLanguage" value="en" maxlength="12"></label>
+                  <label class="field"><span class="lbl">Learning level</span><input class="inp" id="aiLabLevel" type="number" min="1" max="10" value="2"></label>
+                </div>
+                <div id="aiLabMathFields" class="ai-lab__domain-fields">
+                  <div class="grid-2">
+                    <label class="field"><span class="lbl">Operation</span><select class="inp" id="aiLabOperation"><option value="addition">Addition</option><option value="subtraction">Subtraction</option><option value="multiplication">Multiplication</option></select></label>
+                    <label class="field"><span class="lbl">Child answer</span><input class="inp" id="aiLabAnswer" type="number" value="14"></label>
+                    <label class="field"><span class="lbl">Left</span><input class="inp" id="aiLabLeft" type="number" value="8"></label>
+                    <label class="field"><span class="lbl">Right</span><input class="inp" id="aiLabRight" type="number" value="7"></label>
+                  </div>
+                </div>
+                <div id="aiLabLanguageFields" class="ai-lab__domain-fields" hidden>
+                  <div class="grid-2">
+                    <label class="field"><span class="lbl">Target word</span><input class="inp" id="aiLabTarget" value="apple" maxlength="80"></label>
+                    <label class="field"><span class="lbl">Picture / emoji</span><input class="inp" id="aiLabEmoji" value="🍎" maxlength="12"></label>
+                    <label class="field"><span class="lbl">French cue</span><input class="inp" id="aiLabFrench" value="pomme" maxlength="80"></label>
+                    <label class="field"><span class="lbl">Chinese cue</span><input class="inp" id="aiLabChinese" value="蘋果" maxlength="80"></label>
+                  </div>
+                </div>
+                <div class="ai-lab__actions">
+                  <button class="btn btn--primary" id="aiLabRun" disabled>Run selected</button>
+                  <button class="btn" id="aiLabSuite" disabled>Run 5-case suite</button>
+                  <button class="btn" id="aiLabExample">Math example</button>
+                  <button class="btn" id="aiLabVocabExample">Vocabulary example</button>
+                  <button class="btn btn--quiet" id="aiLabClear">Clear view</button>
+                </div>
+                <p class="field__hint">Correctness, target reveals and strategy-domain rules are checked locally. The AI only returns constrained <code>lesson_hint</code> JSON. The suite runs three Math + two Vocabulary cases and saves the comparison locally.</p>
+              </div>
+              <div>
+                <div class="ai-lab__section-title"><h3>Profiles</h3><span class="tag">manual routing</span></div>
+                <div class="ai-lab__profiles" id="aiLabProfiles"><span class="tbl__note">Loading…</span></div>
+              </div>
+            </div>
+            <div class="ai-lab__summary" id="aiLabSummary"></div>
+            <div class="ai-lab__results" id="aiLabResults"></div>
+          </div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head">
+            <div><h2>Saved evaluation runs</h2><span class="lbl">local developer history · latest 20</span></div>
+            <div class="row"><button class="btn btn--sm" id="aiLabExport">Export JSON</button><button class="btn btn--sm btn--quiet" id="aiLabClearHistory">Clear history</button></div>
+          </div>
+          <div class="tbl-wrap" id="aiLabHistory"></div>
         </section>
       </section>
 
@@ -347,9 +464,14 @@
 <script src="js/learn-data.js"></script>
 <script src="js/time-core.js?v=63"></script>
 <script src="js/chat-core.js"></script>
+<script src="js/quest-data.js"></script>
+<script src="js/reward-data.js"></script>
+<script src="js/quest-config.js"></script>
 <script src="js/admin-nav.js"></script>
 <script src="js/vendor/supabase.js"></script>
-<script src="js/admin.js?v=65"></script>
+<script src="js/admin.js?v=66"></script>
+<script type="module" src="js/admin-ai-lab.js?v=3"></script>
+<script type="module" src="js/admin-learning-telemetry.js?v=1"></script>
 <script>
 if("serviceWorker" in navigator){
   addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));

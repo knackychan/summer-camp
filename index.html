@@ -3,7 +3,7 @@
 <head>
 <!-- SUMMER QUEST — games, missions & the daily plan for Lucien (4), Lili (7) & Luis (9). Self-contained, offline. -->
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#201A40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -228,6 +228,10 @@ body.game-mode .wrap{max-width:none;width:100%}
 .game-scene--vocab .game-scene__center{gap:8px}
 .game-scene--vocab .word{max-width:100%;overflow-wrap:anywhere;text-align:center}
 .game-scene--vocab .vshelf{max-width:min(92%,680px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v-ai-hint{display:inline-flex;align-items:center;justify-content:center;gap:10px;max-width:min(92%,680px);padding:8px 12px;border:1px solid rgba(255,201,60,.28);border-radius:14px;background:rgba(255,201,60,.08);text-align:left}
+.v-ai-hint>div{min-width:0}.v-ai-hint b{display:block;font-size:14px;line-height:1.2}.v-ai-hint div span{display:block;margin-top:2px;color:var(--muted);font-size:12px;line-height:1.2}
+.v-ai-hint__visual,.v-ai-hint__letter{font-size:30px;line-height:1}.v-ai-hint__letter{font-family:'Fredoka';font-weight:800;color:var(--gold);min-width:34px;text-align:center}
+.v-ai-hint__shape,.v-ai-hint__cue{font-family:'Fredoka';font-weight:700;color:var(--gold);font-size:18px;letter-spacing:2px;max-width:220px;overflow-wrap:anywhere}
 .pbar{width:min(70%,320px);height:14px;background:rgba(0,0,0,.3);border-radius:99px;margin:10px auto 6px;
   overflow:hidden;border:2px solid var(--line)}
 .pfill{height:100%;background:var(--ok);border-radius:99px}
@@ -350,6 +354,32 @@ body.game-mode .wrap{max-width:none;width:100%}
 .bankcard .bt{font-family:'Fredoka';font-weight:600;font-size:17px;margin-bottom:6px}
 .bankcard p{color:var(--muted);font-weight:700;font-size:14px;line-height:1.45}
 .tipline{color:var(--muted);font-weight:700;font-size:13px;text-align:center;margin:14px 0 4px}
+
+/* ---------- SMART LEARNING DIRECTOR ---------- */
+.learning-director{position:relative;overflow:hidden;text-align:left}
+.learning-director:before{content:"";position:absolute;right:-36px;top:-42px;width:150px;height:150px;border-radius:50%;background:rgba(78,168,255,.08);pointer-events:none}
+.learning-director__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.learning-director__head h3{margin:0}.learning-director__status{font-size:12px;font-weight:900;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--line);padding:6px 9px;border-radius:999px}
+.learning-director__skills{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.learning-director__skill{padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:12px;font-weight:900}.learning-director__skill b{display:block;font-size:14px;color:var(--ink)}.learning-director__skill.is-locked{opacity:.52;filter:saturate(.65)}.learning-director__skill.is-secure{border-color:rgba(52,211,153,.28)}.learning-director__skill.is-review-due{border-color:rgba(255,201,60,.55);background:rgba(255,201,60,.07)}
+.learning-director__track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:12px 0}.learning-director__step{min-width:0;border:1px solid var(--line);border-radius:14px;padding:8px;background:rgba(255,255,255,.025);font-size:11px;color:var(--muted);font-weight:900}.learning-director__step b{display:block;color:var(--ink);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.learning-director__step.is-current{border-color:var(--accent);background:rgba(255,255,255,.07)}.learning-director__step.is-review{border-color:rgba(255,201,60,.45)}.learning-director__step.is-done{opacity:.7}.learning-director__step.is-done b:before{content:"✓ ";color:var(--ok)}
+.learning-director__current{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;border-radius:18px;padding:13px;background:rgba(255,255,255,.045);border:1px solid var(--line)}.learning-director__icon{font-size:38px}.learning-director__current h4{font:600 18px 'Fredoka',system-ui;margin:0}.learning-director__current p{color:var(--muted);font-size:13px;font-weight:800;margin:4px 0 0}.learning-director__progress{margin-top:8px;font-size:12px;font-weight:900;color:var(--gold)}
+.learning-session-map{margin-top:14px}.learning-session-map summary{cursor:pointer;min-height:44px;padding:12px 0;color:var(--muted);font-weight:800}.learning-director__actions button{min-height:44px}.learning-director__actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.learning-director__done{text-align:center;padding:12px}.learning-director__done .em{font-size:52px}.learning-director__done h4{font:600 21px 'Fredoka',system-ui;margin:4px 0}
+.learning-director__step.is-teach{border-color:rgba(78,168,255,.5);background:rgba(78,168,255,.06)}
+.science-lab__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.science-lab__status{font-size:12px;font-weight:900;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--line);padding:6px 9px;border-radius:999px}.science-lab__topics{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.science-lab__topic{border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--ink);border-radius:14px;padding:9px 11px;font:900 12px 'Nunito',system-ui;text-align:left}.science-lab__topic b{display:block;font:600 14px 'Fredoka',system-ui}.science-lab__topic.is-active{border-color:var(--accent);background:rgba(255,255,255,.08)}.science-lab__scene{border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:20px;padding:14px}.science-lab__scene-head{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.science-lab__scene-icon{font-size:40px}.science-lab__scene h4{margin:0;font:600 19px 'Fredoka',system-ui}.science-lab__source{font-size:10px;font-weight:1000;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.science-lab__intro{font-weight:900;line-height:1.4;margin:11px 0}.science-lab__intro .zhs{display:block;margin-top:4px;color:var(--muted);font-size:13px}.science-lab__visual{display:flex;align-items:stretch;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0}.science-lab__visual.is-cycle .science-lab__visual-item:after,.science-lab__visual.is-sequence .science-lab__visual-item:after,.science-lab__visual.is-orbit .science-lab__visual-item:after{content:"→";position:absolute;right:-10px;top:50%;transform:translateY(-50%);color:var(--gold);font-weight:1000}.science-lab__visual-item{position:relative;min-width:100px;flex:1 1 100px;max-width:150px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.045);color:var(--ink);padding:12px 9px;text-align:center}.science-lab__visual-item:last-child:after{display:none}.science-lab__visual-item .em{font-size:34px;display:block}.science-lab__visual-item b{display:block;margin-top:4px;font:600 14px 'Fredoka',system-ui}.science-lab__visual-item small{display:block;color:var(--muted);font-weight:900}.science-lab__observation{min-height:46px;border-radius:14px;background:rgba(78,168,255,.07);border:1px solid rgba(78,168,255,.18);padding:9px 11px;font-size:12px;font-weight:900;line-height:1.35}.science-lab__facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}.science-lab__fact{border:1px solid var(--line);border-radius:14px;padding:9px;background:rgba(255,255,255,.025);font-size:12px;font-weight:900;line-height:1.3}.science-lab__fact .em{font-size:22px}.science-lab__fact .zhs{display:block;color:var(--muted);margin-top:3px}.science-lab__question{text-align:center;padding:6px 0}.science-lab__question .qicon{font-size:46px}.science-lab__question h4{font-size:21px;margin:4px 0}.science-lab__options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.science-lab__option{min-height:78px;border:1px solid var(--line);border-radius:17px;background:rgba(255,255,255,.045);color:var(--ink);font-weight:1000;padding:10px}.science-lab__option .em{display:block;font-size:27px}.science-lab__option.is-correct{border-color:var(--ok);background:rgba(74,222,128,.08)}.science-lab__option.is-wrong{border-color:var(--bad);background:rgba(255,107,107,.08)}.science-lab__feedback{padding:10px;border-radius:14px;text-align:center;font-weight:1000}.science-lab__feedback.good{background:rgba(74,222,128,.08)}.science-lab__feedback.retry{background:rgba(255,201,60,.08)}.science-lab__actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px}.science-lab__complete{text-align:center;padding:12px}.science-lab__complete .em{font-size:58px}.science-lab__complete h4{font-size:22px}.science-lab__safety{font-size:10px;color:var(--muted);font-weight:800;margin-top:8px;text-align:center}@media(max-width:620px){.science-lab__facts,.science-lab__options{grid-template-columns:1fr}.science-lab__scene-head{grid-template-columns:auto 1fr}.science-lab__source{grid-column:1/-1}.science-lab__visual-item{max-width:none}}
+
+.learning-teach{margin-top:12px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.035);padding:14px}.learning-teach__head{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.learning-teach__head h4{font:600 18px 'Fredoka',system-ui;margin:0}.learning-teach__source{font-size:10px;font-weight:1000;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.learning-teach__visual{margin:12px 0;padding:14px;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid var(--line);min-height:112px;display:flex;align-items:center;justify-content:center}.learning-teach__copy{text-align:center;font-size:14px;font-weight:900;line-height:1.35}.learning-teach__copy .zhs{display:block;margin-top:4px;color:var(--muted);font-size:12px}.learning-teach__example{text-align:center;font:700 24px 'Fredoka',system-ui;margin:4px 0 10px}.learning-teach__groups{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}.learning-teach__group{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;align-items:center;min-width:42px;padding:8px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04)}.learning-teach__dot{width:12px;height:12px;border-radius:50%;background:var(--accent);display:inline-block}.learning-teach__op{font:700 26px 'Fredoka',system-ui}.learning-teach__line{width:min(100%,430px);display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font:700 20px 'Fredoka',system-ui}.learning-teach__rail{height:8px;border-radius:999px;background:var(--line);position:relative}.learning-teach__rail:after{content:"";position:absolute;right:0;top:50%;width:14px;height:14px;border-top:3px solid var(--accent);border-right:3px solid var(--accent);transform:translateY(-50%) rotate(45deg)}.learning-teach__line.is-back .learning-teach__rail:after{right:auto;left:0;transform:translateY(-50%) rotate(-135deg)}.learning-teach__jump{position:absolute;left:50%;top:-28px;transform:translateX(-50%);font:700 13px 'Nunito',system-ui;color:var(--gold)}.learning-teach__bars{width:min(100%,420px);display:grid;gap:12px}.learning-teach__bar-row{display:grid;grid-template-columns:42px 1fr;gap:8px;align-items:center;font-weight:1000}.learning-teach__bar{height:22px;border-radius:999px;background:var(--accent);min-width:16px}.learning-teach__bond{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:center}.learning-teach__bond span{min-width:58px;padding:12px;border-radius:50%;border:2px solid var(--line);text-align:center;font:700 22px 'Fredoka',system-ui;background:rgba(255,255,255,.04)}.learning-teach__array{display:grid;gap:5px;justify-content:center}.learning-teach__array .learning-teach__dot{width:11px;height:11px}.learning-teach__picture-word{display:grid;gap:10px;justify-items:center}.learning-teach__emoji{font-size:58px;line-height:1}.learning-teach__letters,.learning-teach__sentence,.learning-teach__symbols{display:flex;gap:7px;align-items:center;justify-content:center;flex-wrap:wrap}.learning-teach__letter,.learning-teach__word-chip,.learning-teach__symbol{min-width:36px;padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);font:700 21px 'Fredoka',system-ui;text-align:center}.learning-teach__build{display:grid;gap:8px;justify-items:center}.learning-teach__build-step{display:flex;align-items:center;gap:8px;font:700 20px 'Fredoka',system-ui}.learning-teach__build-step b{min-width:86px;padding:7px 11px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.05);text-align:center}.learning-teach__translation{display:grid;grid-template-columns:minmax(90px,1fr) auto minmax(90px,1fr);gap:10px;align-items:center;width:min(100%,430px)}.learning-teach__translation-card{padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04);text-align:center}.learning-teach__translation-card b{display:block;font:700 19px 'Fredoka',system-ui}.learning-teach__translation-card span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.learning-teach__translation-arrow{font-size:24px;color:var(--gold)}.learning-teach__symbol{font-size:27px;min-width:45px}.learning-teach__han{font:700 34px 'Fredoka',system-ui}.learning-teach__target{font:700 25px 'Fredoka',system-ui;letter-spacing:.04em}.learning-teach__loading{text-align:center;color:var(--muted);font-weight:900;padding:20px}
+@media(max-width:600px){.learning-director__track{grid-template-columns:repeat(2,minmax(0,1fr))}.learning-director__current{grid-template-columns:1fr;text-align:center}.learning-director__icon{font-size:44px}.learning-teach__visual{padding:10px}.learning-teach__line{font-size:18px}}
+
+.placement-calibration{position:relative;overflow:hidden;text-align:left;border-color:rgba(255,201,60,.22)}
+.placement-calibration:before{content:"";position:absolute;right:-28px;top:-34px;width:130px;height:130px;border-radius:50%;background:rgba(255,201,60,.08);pointer-events:none}
+.placement-calibration__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.placement-calibration__head h3{margin:0}
+.placement-calibration__status{font-size:12px;font-weight:900;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--line);padding:6px 9px;border-radius:999px}
+.placement-calibration__intro{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.035)}
+.placement-calibration__icon{font-size:38px}.placement-calibration__intro h4{font:600 18px 'Fredoka',system-ui;margin:0}.placement-calibration__intro p{font-size:13px;color:var(--muted);font-weight:800;margin:4px 0 0}
+.placement-calibration__track{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.placement-calibration__step{padding:7px 9px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025);font-size:11px;color:var(--muted);font-weight:900}.placement-calibration__step.is-current{border-color:var(--gold);background:rgba(255,201,60,.08)}.placement-calibration__step.is-done{opacity:.7}.placement-calibration__step.is-done:before{content:"✓ ";color:var(--ok)}
+.placement-calibration__group{margin-top:12px}.placement-calibration__group-title{font-size:11px;font-weight:1000;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin:0 0 7px}.placement-calibration__results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.placement-calibration__result{padding:11px;border-radius:15px;border:1px solid var(--line);background:rgba(255,255,255,.035)}.placement-calibration__result small{display:block;color:var(--muted);font-weight:900}.placement-calibration__result b{display:block;font-size:15px;margin-top:3px}.placement-calibration__source{display:block;margin-top:5px;font-size:10px;color:var(--muted);font-weight:800}
+.placement-calibration__actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.placement-calibration__meta{font-size:11px;color:var(--muted);font-weight:800;margin-top:8px}
+@media(max-width:600px){.placement-calibration__intro{grid-template-columns:1fr;text-align:center}.placement-calibration__results{grid-template-columns:1fr}}
 
 /* ---------- KID HUB ---------- */
 .hubhead{display:flex;align-items:center;gap:14px;margin:6px 0 14px}
@@ -741,10 +771,15 @@ body.music-mode{overflow:hidden}
 .metrow{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
 .metbpm.on{background:var(--ok);color:#1c1436}
 .bclockface{width:150px;height:150px;margin:.4em auto;display:block}
+.knowledge-help{margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow-wrap:anywhere}
+.knowledge-help__clue p{margin:8px 0;color:var(--ink)}.knowledge-help__clue .zhs{display:block;margin-top:6px}
+.knowledge-help .btn{min-height:44px;white-space:normal}.is-help-focus{outline:3px solid var(--accent,var(--gold));outline-offset:3px}
 </style>
 <link rel="stylesheet" href="css/brain-shell.css">
 <link rel="stylesheet" href="css/brain-sprites.css">
 <link rel="stylesheet" href="css/brain-scenes.css">
+<link rel="stylesheet" href="css/quest-shell.css">
+<link rel="stylesheet" href="css/world-explorer.css">
 </head>
 <body>
 
@@ -762,6 +797,28 @@ body.music-mode{overflow:hidden}
     </div>
   </section>
 
+  <!-- MINIATURE 3D WORLD — primary child exploration surface -->
+  <section id="world" class="hidden" aria-label="Summer Quest world">
+    <div class="world-shell">
+      <div class="world-canvas" id="worldMount" aria-label="Interactive 3D Summer Quest world"></div>
+      <div class="world-hud">
+        <button class="world-back" id="worldHeroes">← Heroes</button>
+        <div class="world-kid" id="worldKid">
+          <span class="world-kid__avatar" id="worldKidAvatar">☀️</span>
+          <span class="world-kid__copy"><b id="worldKidName">Summer Quest</b><small id="worldKidStats">⭐ 0</small></span>
+        </div>
+        <button class="world-menu" id="worldClassic">☰ Classic menu</button>
+      </div>
+      <div class="world-hint" id="worldHint">☝️ Tap a place · ↔️ drag to look around · 🤏 pinch to zoom</div>
+      <div class="world-selection hidden" id="worldSelection" aria-live="polite">
+        <div class="world-selection__icon" id="worldSelectionIcon">✨</div>
+        <div class="world-selection__copy"><b id="worldSelectionTitle">Adventure</b><span id="worldSelectionSubtitle"></span></div>
+        <button class="world-go" id="worldGo">GO →</button>
+      </div>
+      <div class="world-status hidden" id="worldStatus"><b>3D world unavailable</b><span>You can still use the Classic menu. · 仍可使用傳統選單。</span></div>
+    </div>
+  </section>
+
   <!-- KID HUB -->
   <section id="hub" class="hidden">
     <div class="topbar">
@@ -771,18 +828,50 @@ body.music-mode{overflow:hidden}
       <div class="hubstars" id="hubStars"></div>
     </div>
     <div class="hubhead" id="hubHead"></div>
-    <div class="kidtabs" id="hubTabs">
-      <button class="chip" data-t="day">📅 My Day 我的一天</button>
-      <button class="chip" data-t="games">🎮 Games 遊戲</button>
-      <button class="chip" data-t="acts">🏕️ Activities 活動</button>
-      <button class="chip" data-t="learn">🧭 Learn 學習</button>
-      <button class="chip" data-t="books">📚 Books 書籍</button>
-      <button class="chip" data-t="music">🎵 Music 音樂</button>
-      <button class="chip" data-t="ask">💬 Ask 求助<span class="badge hidden" id="askBadge">0</span></button>
-      <button class="chip" data-t="rewards">🏆 Rewards 獎勵<span class="badge hidden" id="rewardBadge">0</span></button>
-      <button class="chip hidden" id="captainTab" data-t="captain">👑 Captain 隊長</button>
+    <div class="kidtabs" id="hubTabs" aria-label="Summer Quest navigation">
+      <button class="chip" data-t="quests"><span class="nav-ico">🧭</span><span>Quests</span><span class="nav-zh">任務</span></button>
+      <button class="chip" data-t="adventure"><span class="nav-ico">🎮</span><span>Adventure</span><span class="nav-zh">冒險</span></button>
+      <button class="chip" data-t="rewards"><span class="nav-ico">🏆</span><span>Rewards</span><span class="nav-zh">獎勵</span><span class="badge hidden" id="rewardBadge">0</span></button>
+      <button class="chip" data-t="ask"><span class="nav-ico">💬</span><span>Ask</span><span class="nav-zh">求助</span><span class="badge hidden" id="askBadge">0</span></button>
+      <button class="chip" data-t="day"><span class="nav-ico">☀️</span><span>Today</span><span class="nav-zh">今天</span></button>
+      <button class="chip hidden" id="captainTab" data-t="captain"><span class="nav-ico">👑</span><span>Captain</span><span class="nav-zh">隊長</span></button>
     </div>
-    <div id="tab-day">
+    <div id="tab-quests">
+      <div class="quest-home">
+        <div class="summer-panel" id="summerPanel" aria-live="polite">
+          <div class="summer-scene" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="summer-face" id="summerFace" data-emotion="happy" data-mood="•ᴗ•" role="img" aria-label="Summer assistant">☀️</div>
+          <div class="summer-copy">
+            <div class="eyebrow">SUMMER <span class="summer-ready-dot" aria-hidden="true"></span></div>
+            <h3 id="summerSpeech">What sounds good right now?</h3>
+            <span class="zhs" id="summerSpeechZh">你現在想做什麼？</span>
+            <div class="quest-context" id="questContext"></div>
+          </div>
+        </div>
+        <div class="quest-dialogue" id="questDialogue">
+          <div class="quest-dialogue-meter" id="questDialogueMeter" aria-hidden="true"><i></i><i></i><span>Pick what fits now · 選現在適合的</span></div>
+          <div class="quest-question" id="questQuestion">How much energy do you have? <span class="zhs">你現在有多少精神？</span></div>
+          <div class="quest-filters" id="questChoices"></div>
+          <div class="quest-dialogue-foot">
+            <button class="quest-skip" id="questSkip">Show me something now <span>直接給我任務</span></button>
+            <button class="quest-skip hidden" id="questReset">Change my answers <span>重新選擇</span></button>
+          </div>
+        </div>
+        <div class="quest-active hidden" id="questActive"></div>
+        <div id="questResults">
+          <div class="quest-section-head"><h3>Ready now <span class="zhs">現在可以做</span></h3><small id="questReadyMeta"></small></div>
+          <div class="quest-grid" id="questGrid"></div>
+        </div>
+        <div class="quest-upcoming hidden" id="questUpcoming"></div>
+      </div>
+    </div>
+    <div id="tab-adventure" class="hidden">
+      <div class="bigcard">
+        <h3>🎒 Adventure <span class="zhs" style="font-size:14px">選一個世界開始</span></h3>
+        <div class="adventure-grid" id="adventureGrid"></div>
+      </div>
+    </div>
+    <div id="tab-day" class="hidden">
       <div class="dayclock" id="dayClock">
         <div class="dc-time"><span id="clockTime">--:--</span><span class="dc-sec" id="clockSec">--</span></div>
         <button class="dc-now" id="clockNow"></button>
@@ -798,6 +887,45 @@ body.music-mode{overflow:hidden}
       <div class="tipline">✓ Pick something fun — once per day. Stars come from My Day! · 挑一件好玩的事——每天每項一次。星星要在「我的一天」拿喔！</div>
     </div>
     <div id="tab-learn" class="hidden">
+      <div class="bigcard placement-calibration" id="placementCalibrationCard">
+        <div class="placement-calibration__head">
+          <div><h3>🧭 Quick skill check <span class="zhs" style="font-size:14px">快速能力定位</span></h3><div class="sub">A short optional check to find a better starting point. · 用幾題快速找到更合適的起點。</div></div>
+          <span class="placement-calibration__status" id="placementCalibrationStatus">loading</span>
+        </div>
+        <div id="placementCalibrationBody"><div class="tipline">Checking recent practice… 正在查看最近的練習…</div></div>
+      </div>
+      <div class="bigcard learning-director" id="learningDirectorCard">
+        <div class="learning-director__head">
+          <div><h3>🎯 Smart Practice <span class="zhs" style="font-size:14px">聰明練習</span></h3><div class="sub">A short skill-based session chosen from your recent practice. · 根據最近練習，挑出真正要練的能力。</div></div>
+          <span class="learning-director__status" id="learningDirectorStatus">loading</span>
+        </div>
+        <div id="learningDirectorBody"><div class="tipline">Building today’s practice… 正在安排今天的練習…</div></div>
+      </div>
+
+      <div class="bigcard science-lab" id="scienceLabCard">
+        <div class="science-lab__head">
+          <div><h3>🔬 Science Lab <span class="zhs" style="font-size:14px">科學實驗室</span></h3><div class="sub">Tiny visual lessons + two real questions. · 小小圖像課程，再回答兩個真正的問題。</div></div>
+          <span class="science-lab__status" id="scienceLabStatus">loading</span>
+        </div>
+        <div class="science-lab__topics" id="scienceLessonTopics"></div>
+        <div id="scienceLessonBody"><div class="tipline">Loading science lessons… 正在準備科學課程…</div></div>
+      </div>
+      <div class="bigcard science-lab geography-lab" id="geographyLabCard">
+        <div class="science-lab__head">
+          <div><h3>🗺️ Map Explorer <span class="zhs" style="font-size:14px">地圖探險家</span></h3><div class="sub">Explore maps, directions and places, then answer two real questions. · 探索地圖、方向與地理，再回答兩個真正的問題。</div></div>
+          <span class="science-lab__status" id="geographyLabStatus">loading</span>
+        </div>
+        <div class="science-lab__topics" id="geographyLessonTopics"></div>
+        <div id="geographyLessonBody"><div class="tipline">Loading geography lessons… 正在準備地理課程…</div></div>
+      </div>
+      <div class="bigcard science-lab history-lab" id="historyLabCard">
+        <div class="science-lab__head">
+          <div><h3>⏳ Time Traveler <span class="zhs" style="font-size:14px">時光旅行家</span></h3><div class="sub">Explore timelines, clues and change, then answer two real questions. · 探索時間線、歷史線索與變化，再回答兩個真正的問題。</div></div>
+          <span class="science-lab__status" id="historyLabStatus">loading</span>
+        </div>
+        <div class="science-lab__topics" id="historyLessonTopics"></div>
+        <div id="historyLessonBody"><div class="tipline">Loading history lessons… 正在準備歷史課程…</div></div>
+      </div>
       <div class="bigcard">
         <h3>🔍 Question Builder <span class="zhs" style="font-size:14px">問題產生器——學會怎麼搜尋</span></h3>
         <div class="kidtabs" id="qbStarters"></div>
@@ -937,6 +1065,22 @@ body.music-mode{overflow:hidden}
     </div>
   </section>
 </div>
+<div class="summer-nudge hidden" id="summerNudge" role="status" aria-live="polite">
+  <button class="summer-nudge__close" id="summerNudgeClose" aria-label="Later · 晚一點">×</button>
+  <div class="summer-nudge__icon" id="summerNudgeIcon">✨</div>
+  <div class="summer-nudge__copy">
+    <small id="summerNudgeEyebrow">SUMMER HAS AN IDEA</small>
+    <b id="summerNudgeTitle">Quest</b>
+    <span id="summerNudgeTitleZh">任務</span>
+    <p id="summerNudgeBody">Want to take a look?</p>
+    <em id="summerNudgeBodyZh">要不要看看？</em>
+  </div>
+  <button class="summer-nudge__action" id="summerNudgeAction">Show me <span>給我看看</span></button>
+</div>
+<button class="summer-companion hidden" id="summerCompanion" aria-label="Ask Summer · 問 Summer">
+  <span class="summer-companion__face" id="summerCompanionFace" data-emotion="happy" data-mood="•ᴗ•">☀️</span>
+  <span class="summer-companion__badge hidden" id="summerCompanionBadge"></span>
+</button>
 <canvas id="confetti"></canvas>
 
 <script src="js/config.js"></script>
@@ -947,6 +1091,25 @@ body.music-mode{overflow:hidden}
 <script src="js/notify.js"></script>
 <script src="js/day-data.js"></script>
 <script src="js/act-data.js"></script>
+<script src="js/quest-data.js"></script>
+<script src="js/reward-data.js"></script>
+<script src="js/quest-config.js"></script>
+<script src="js/quest-progress.js"></script>
+<script src="js/quest-core.js"></script>
+<script src="js/event-bus.js"></script>
+<script src="js/agent-memory.js"></script>
+<script src="js/agent-context.js"></script>
+<script src="js/agent-provider.js"></script>
+<script src="js/learning-runtime.js"></script>
+<script src="js/summer-agent.js"></script>
+<script src="js/summer-ui.js"></script>
+<script src="js/platform.js"></script>
+<script src="js/tool-registry.js"></script>
+<script src="js/agent-tools.js"></script>
+<script src="js/activity-router.js"></script>
+<script src="js/content-registry.js"></script>
+<script src="js/activity-adapters/brain.js"></script>
+<script src="js/agent-orchestrator.js"></script>
 <script src="js/learn-data.js"></script>
 <script src="js/time-core.js?v=63"></script>
 <script src="js/lock-core.js"></script>
@@ -969,6 +1132,12 @@ body.music-mode{overflow:hidden}
 <script src="js/books/minecraft-magazine.js"></script>
 <script type="module" src="js/main.js"></script>
 <script>
+/* Optional remote Summer provider. The configured URL is a protected backend
+   endpoint; no model/API secret is ever stored in the kid client. */
+if(window.SQSummerAgent&&window.SQAgentProvider){
+  const remoteSummer=SQAgentProvider.fromConfig();
+  if(remoteSummer)SQSummerAgent.setRemoteProvider(remoteSummer);
+}
 /* ============ DATA ============ */
 const KIDS = {
   lucien:{name:"Lucien", age:4, av:"🐨", color:"var(--lucien)", raw:"#3DDC97", level:"machines"},
@@ -1008,7 +1177,7 @@ function gameMeta(id){
   const L=LEVELS[id];
   if(L) return L;
   const M=(window.SQManifest||[]).find(e=>e.id===id);
-  if(M) return {icon:M.meta.icon, title:M.meta.title, tz:M.meta.tz, blurb:M.meta.blurb, brain:!!M.brain};
+  if(M) return {icon:M.meta.icon, title:M.meta.title, tz:M.meta.tz, blurb:M.meta.blurb, brain:!!M.brain,music:!!M.music};
   return null;
 }
 function allGameIds(){
@@ -1030,7 +1199,7 @@ function renderGameSwitcher(id,lvl){
       <span class="chip-ico">${m.icon}</span><span class="chip-title">${m.title}</span></button>`;
   }).join("");
   document.querySelectorAll("#levelChips .chip").forEach(c=>
-    c.onclick=()=>startGame(id,c.dataset.l));
+    c.onclick=()=>SummerQuest.openGame(c.dataset.l));
 }
 /* English / emoji / French word packs */
 const VOCAB={
@@ -1286,6 +1455,7 @@ const ROWS=["1234567890","qwertyuiop","asdfghjkl","zxcvbnm"];
 
 /* ============ STATE ============ */
 let sound=true, kid=null, level=null, kb={}, kbMode="", currentGame=null;
+let learningDirectorLaunch=null;
 /* best is filled lazily — bestOf() already treats a missing key as 0, and
    seeding names here was the fifth of the seven edit points a new game used
    to need (design.md Context). */
@@ -1384,13 +1554,58 @@ function saveAppPlace(view){
   try{
     localStorage.setItem("sq:view",view||"home");
     if(hubKid)localStorage.setItem("sq:kid",hubKid);
-    localStorage.setItem("sq:hubTab",hubTab||"day");
+    localStorage.setItem("sq:hubTab",hubTab||"quests");
     if(actIdx!=null)localStorage.setItem("sq:actIdx",String(actIdx));
   }catch(e){}
 }
+let worldExplorerModule=null, worldOpenToken=0, hubReturnSurface=null, contentReturnSurface=null;
+function worldVisible(){const el=document.getElementById("world");return !!el&&!el.classList.contains("hidden");}
+function rememberContentReturn(){if(contentReturnSurface)return;contentReturnSurface=worldVisible()?"world":"hub";}
+function returnAfterContent(fallbackTab){
+  const target=contentReturnSurface;contentReturnSurface=null;
+  if(target==="world"&&hubKid){openWorld(hubKid);return;}
+  hubTab=fallbackTab||hubTab||"quests";showOnly("hub");saveAppPlace("hub");renderHub();
+}
+function renderWorldHud(){
+  if(!hubKid||!KIDS[hubKid])return;
+  const k=KIDS[hubKid];
+  document.getElementById("worldKidAvatar").textContent=k.av;
+  document.getElementById("worldKidName").textContent=k.name;
+  document.getElementById("worldKidStats").textContent="⭐ "+starsOf(hubKid)+" · age "+k.age;
+  document.documentElement.style.setProperty("--accent",k.color);
+}
+async function openWorld(id){
+  if(!id||!KIDS[id])return {ok:false,reason:"no_kid_selected"};
+  if(appLockReason(id)){hubKid=id;refreshAppLock();return {ok:false,reason:"app_locked"};}
+  if(hubKid!==id){invalidateLearningSessionView();contentReturnSurface=null;}
+  stopArena();stopActTimer();hubKid=id;hubReturnSurface=null;refreshOverrides();showOnly("world");saveAppPlace("world");renderWorldHud();
+  refreshStarsFromServer(id);reconcileQuestVerifications(id);updateSummerCompanion();
+  if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("APP_OPENED",{surface:"world"});
+  const token=++worldOpenToken,status=document.getElementById("worldStatus");
+  const worldMessage="The world is resting. You can open Classic. 世界暫時休息中，可以打開經典模式。";
+  status.textContent=worldMessage;
+  status.classList.add("hidden");
+  try{
+    if(window.SQContentRegistry&&SQContentRegistry.ready)await SQContentRegistry.ready();
+    if(!worldExplorerModule)worldExplorerModule=await import("./js/world/world-explorer.js");
+    if(token!==worldOpenToken||!worldVisible()||hubKid!==id)return {ok:false,reason:"cancelled"};
+    await worldExplorerModule.start({
+      mount:document.getElementById("worldMount"),kidId:id,kid:KIDS[id],registry:window.SQContentRegistry,
+      selectionEl:document.getElementById("worldSelection"),iconEl:document.getElementById("worldSelectionIcon"),
+      titleEl:document.getElementById("worldSelectionTitle"),subtitleEl:document.getElementById("worldSelectionSubtitle"),goEl:document.getElementById("worldGo"),
+      haptic:function(kind){return window.SQPlatform&&SQPlatform.haptic?SQPlatform.haptic(kind):null;},
+      onStatus:function(state,error){status.textContent=worldMessage+(error?" ("+String(error.message||error)+")":"");status.classList.toggle("hidden",state!=="paused");}
+    });
+    return {ok:true,id:"world"};
+  }catch(error){
+    if(token!==worldOpenToken||!worldVisible()||hubKid!==id)return {ok:false,reason:"cancelled"};
+    console.error("Summer Quest 3D world failed",error);status.textContent=worldMessage+" ("+String(error.message||error)+")";status.classList.remove("hidden");
+    return {ok:false,reason:"world_failed"};
+  }
+}
 function selectKid(id){
   const pin=(store&&store.kidPins&&store.kidPins[id])||((JSON.parse(localStorage.getItem("sq:kidPins")||"{}"))[id]);
-  if(!pin||localStorage.getItem("sq:kid")===id){localStorage.setItem("sq:kid",id);openHub(id);return;}
+  if(!pin||localStorage.getItem("sq:kid")===id){localStorage.setItem("sq:kid",id);hubTab="quests";resetQuestSession(id);openWorld(id);return;}
   showPin(id,pin);
 }
 function showPin(id,pin){
@@ -1409,7 +1624,7 @@ function showPin(id,pin){
   document.body.appendChild(o);
   const input=o.querySelector("#pinTry"); input.focus();
   o.querySelector("#pinGo").onclick=()=>{
-    if(input.value===pin){localStorage.setItem("sq:kid",id);o.remove();openHub(id);return;}
+    if(input.value===pin){localStorage.setItem("sq:kid",id);hubTab="quests";resetQuestSession(id);o.remove();openWorld(id);return;}
     sBad(); o.querySelector("#pinMsg").textContent="Try again 再試一次"; input.value=""; input.focus();
   };
   o.querySelector("#pinCancel").onclick=()=>o.remove();
@@ -1504,8 +1719,8 @@ function renderSetbar(){
   if(currentGame && (currentGame.settings||wordInput)){
     bar.classList.remove("hidden");
     var ctx={
-      kid:kid, kids:KIDS, settings:settings,
-      saveProgress:saveProgress, saveSettings:saveProgress, restart:function(){ startGame(kid,level); }
+      kid:kid, kids:KIDS, settings:settings, director:learningDirectorLaunch,
+      saveProgress:saveProgress, saveSettings:saveProgress, restart:function(){ SummerQuest.openGame(level,learningDirectorLaunch?{learningDirector:learningDirectorLaunch}:undefined); }
     };
     bar.innerHTML="";
     /* A game owns only its own slot, never the whole bar. Word Wizard's Voice chip
@@ -1523,26 +1738,44 @@ function renderSetbar(){
 }
 
 /* ============ GAME FLOW ============ */
-function startGame(id,lvl){
-  if(hubKid&&appLockReason(hubKid)){refreshAppLock();return;}
+function gameLaunchAccess(id,lvl,options){
+  if(!id||!KIDS[id])return {ok:false,reason:"no_kid_selected"};
+  const meta=gameMeta(lvl);
+  if(!meta||meta.music)return {ok:false,reason:"content_not_found"};
+  if(appLockReason(id))return {ok:false,reason:"app_locked"};
   /* Brain Gym is the daily routine, not a game reward: it passes both the games
      category lock and the games lock, or the door could never be opened.
      Only a full Papa app-pause stops it. */
-  const isBrain=!!(gameMeta(lvl)&&gameMeta(lvl).brain);
+  const isBrain=!!meta.brain;
+  const isDirectedLearning=!!(options&&options.learningDirector);
   /* Paint is a creative tool, not screen time — same open door as Brain Gym, so
      it is usable during Project time before the block is ticked. */
-  if(!isBrain&&lvl!=="paint"){
-    if(catLockReason(id,"games")){hubKid=id; hubTab="day"; saveAppPlace("hub"); renderHub(); bigFloat("🔒"); return;}
-    const ls=gameLockState();
-    if(ls.locked){showLockOverlay(ls);return;}
+  if(!isBrain&&!isDirectedLearning&&lvl!=="paint"){
+    if(catLockReason(id,"games"))return {ok:false,reason:"category_locked"};
+    const ls=gameLockState(id);
+    if(ls.locked)return {ok:false,reason:ls.reason||"games_locked",lock:ls};
   }
+  return {ok:true};
+}
+let gameLaunchToken=0;
+async function startGame(id,lvl,options){
+  const access=gameLaunchAccess(id,lvl,options);
+  if(!access.ok){
+    if(access.reason==="app_locked")refreshAppLock();
+    else if(access.lock)showLockOverlay(access.lock);
+    else if(access.reason==="category_locked")bigFloat("🔒");
+    return access;
+  }
+  rememberContentReturn();
   stopArena();
+  learningDirectorLaunch=options&&options.learningDirector?Object.assign({},options.learningDirector):null;
+  const token=gameLaunchToken;
   document.getElementById("setbar").classList.add("hidden");
   kid=id; level=lvl;
   hubKid=id; hubTab="games"; saveAppPlace("hub");
-  ["home","hub","act"].forEach(x=>document.getElementById(x).classList.add("hidden"));
-  document.getElementById("game").classList.remove("hidden");
-  setGameMode(true);
+  showOnly("game");
+  if(window.SQActivityRouter){const gm=gameMeta(lvl)||{};SQActivityRouter.setCurrent("game",lvl,{title:gm.title||lvl,icon:gm.icon||"🎮"});}
+  if(typeof updateSummerCompanion==="function")updateSummerCompanion();
   document.getElementById("back").textContent="← "+KIDS[id].name;
   document.documentElement.style.setProperty("--accent",KIDS[id].color);
   /* Hide the on-screen keyboard when the game doesn't read keys. The manifest
@@ -1558,15 +1791,24 @@ function startGame(id,lvl){
      a solar chip mid-arcade launches the registry module via the same SQLoadGame
      path — same gap as the grid: Object.entries(LEVELS) alone misses solar. */
   renderGameSwitcher(id,lvl);
-  if(gameMeta(lvl)&&gameMeta(lvl).brain){ startBrain(lvl); return; }
-  if(window.SQLoadGame){
-    var pending=window.SQLoadGame(lvl);
-    if(pending){
-      pending.then(function(game){ if(game) startRegistered(game); else startLegacy(lvl); });
-      return;
+  try{
+    if(gameMeta(lvl).brain){
+      const round=await startBrain(lvl);
+      if(!round)return {ok:false,reason:"cancelled"};
+    }else{
+      const game=window.SQLoadGame&&await window.SQLoadGame(lvl);
+      if(token!==gameLaunchToken)return {ok:false,reason:"cancelled"};
+      if(!game)throw new Error("Game module unavailable: "+lvl);
+      await startRegistered(game);
     }
+    return token===gameLaunchToken?{ok:true,id:lvl}:{ok:false,reason:"cancelled"};
+  }catch(error){
+    if(token!==gameLaunchToken)return {ok:false,reason:"cancelled"};
+    stopArena();
+    console.error("Summer Quest game launch failed",error);
+    wobbleMsg("Could not open this game. Try again. 無法開啟遊戲，請再試一次。");
+    return {ok:false,reason:"launch_failed"};
   }
-  startLegacy(lvl);
 }
 
 /* The ctx every registry-native game receives (design.md §3). Built in one place
@@ -1583,38 +1825,51 @@ function gameCtx(mountEl,game,kidId){
     words:{easy:WORDS_EASY, hard:ALL_WORDS, all:ALL_WORDS, sentences:SENT, letters:LETTERS,
       bopomofo:window.SQBopomofo?SQBopomofo.WORDS:[]},
     inputScript:activeInputScript(),
+    director:learningDirectorLaunch?Object.assign({},learningDirectorLaunch):null,
     bopomofo:window.SQBopomofo||null,
     finish:function(res){ finishRegistered(game,res,kidId); },
     sayZh:function(txt){say(txt,"zh-TW");},
     saveSettings:saveProgress,
     saveProgress:saveProgress,
-    vocab:p.vocab||{}
+    vocab:p.vocab||{},
+    learning:window.SQLearningRuntime?{
+      canSupportVocabulary:function(input){
+        return SQLearningRuntime.canSupportVocabulary(Object.assign({kidId:kidId,age:KIDS[kidId].age,language:"en-zh-TW",gameId:"vocab"},input||{}));
+      },
+      getVocabularyHint:function(input){
+        return SQLearningRuntime.getVocabularyHint(Object.assign({kidId:kidId,age:KIDS[kidId].age,language:"en-zh-TW",gameId:"vocab"},input||{}));
+      },
+      getVocabularyIntervention:function(input){
+        if(!SQLearningRuntime.getVocabularyIntervention)return Promise.resolve(null);
+        return SQLearningRuntime.getVocabularyIntervention(Object.assign({kidId:kidId,age:KIDS[kidId].age,language:"en-zh-TW",gameId:"vocab"},input||{}));
+      },
+      recordVocabularyAttempt:function(input){
+        return SQLearningRuntime.recordVocabularyAttempt(Object.assign({kidId:kidId,age:KIDS[kidId].age,language:"en-zh-TW",gameId:"vocab"},input||{}));
+      },
+      vocabularySnapshot:function(input){
+        return SQLearningRuntime.vocabularySnapshot(Object.assign({kidId:kidId,age:KIDS[kidId].age,language:"en-zh-TW",gameId:"vocab"},input||{}));
+      }
+    }:null
   };
 }
 
 /* Run a game module into a mount, managing the loading message. The host owns
    that message, so the host also takes it down — a game that appends its own DOM
    without clearing the mount used to leave "Loading…" on screen for good. */
-function runRegistered(game,mountEl,kidId){
+async function runRegistered(game,mountEl,kidId){
   var msg=document.createElement("div");
   msg.className="msg";
   msg.textContent="Loading... 載入中";
   mountEl.innerHTML="";
   mountEl.appendChild(msg);
   var clear=function(){ if(msg.parentNode)msg.parentNode.removeChild(msg); };
-  var result;
-  try{ result=game.init(gameCtx(mountEl,game,kidId)); }
+  try{ await game.init(gameCtx(mountEl,game,kidId)); }
   catch(err){
     console.error("game init failed: "+game.id,err);
-    msg.textContent="Still loading... 還在載入中";
-    return;
+    msg.textContent="Could not open this activity. Try again. 無法開啟活動，請再試一次。";
+    throw err;
   }
-  if(result&&result.then){
-    result.then(clear,function(err){
-      console.error("game init failed: "+game.id,err);
-      msg.textContent="Still loading... 還在載入中";
-    });
-  }else clear();
+  clear();
 }
 
 /* Hand off to a migrated game module (design.md §3). */
@@ -1624,7 +1879,7 @@ function startRegistered(game){
   var H=window.SQHost;
   var st=H.stage();
   st.classList.add("arena");
-  runRegistered(game,H.mount(),kid);
+  return runRegistered(game,H.mount(),kid);
 }
 
 function finishRegistered(game,res,kidId){
@@ -1647,21 +1902,72 @@ function startBrain(gameId){
   const k=kid, familySettings=(store&&store.familySettings)||{};
   if(window.SQBrainData&&SQBrainData.setInputScript)SQBrainData.setInputScript(preferredInputScript());
   const tier=SQBrainCore.tierFor(k,familySettings);
+  const directedRun=learningDirectorLaunch?Object.assign({},learningDirectorLaunch):null;
+  const directedMathSkill=directedRun&&directedRun.mathSkill?directedRun.mathSkill:null;
+  const directedTarget=learningDirectorLaunch?Math.max(1,Math.round(Number(learningDirectorLaunch.targetAttempts)||2)):0;
+  const isPlacementCalibration=!!(learningDirectorLaunch&&learningDirectorLaunch.flow==="placement");
   const p=progress[k];
   brainToday(k); /* rolls p.brain (and any stale resume) over to today first */
   const inProgress=p.brain.inProgress;
   const bestKey="brain_"+gameId;
-  const resume=(inProgress&&inProgress.gameId===gameId&&inProgress.tier===tier)?inProgress:null;
+  const resume=!learningDirectorLaunch&&(inProgress&&inProgress.gameId===gameId&&inProgress.tier===tier)?inProgress:null;
+  if(window.SQActivityRouter&&window.SQBrainActivityAdapter){
+    SQActivityRouter.register(gameId,SQBrainActivityAdapter.create({
+      getGame:function(){return window.SQBrainData&&SQBrainData.GAMES?SQBrainData.GAMES[gameId]:null;},
+      getState:function(){
+        const bp=progress[k]&&progress[k].brain||{},ip=bp.inProgress;
+        if(ip&&ip.gameId===gameId)return ip;
+        const g=window.SQBrainData&&SQBrainData.GAMES&&SQBrainData.GAMES[gameId],t=g&&g.tiers&&g.tiers[tier];
+        return {idx:0,total:t&&t.items||0,items:new Array(t&&t.items||0),completed:!!(bp.done&&bp.done[gameId])};
+      }
+    }));
+  }
   /* Same canvas area as every arcade game (startRegistered's H.stage()), not a
      separate full-screen overlay — the games list stays visible on the left. */
-  SQBrain.openRound({
+  return SQBrain.openRound({
     gameId:gameId, tier:tier, kid:k, kidColor:KIDS[k].color, resume:resume,
     mount:document.getElementById("stage"),
     best:(p.best&&p.best[bestKey])||0,
+    mathSkill:directedMathSkill||undefined,
+    itemLimit:directedTarget||undefined,
     onHud:hud,
-    onProgress:function(state){ p.brain.inProgress=state; saveProgress(); },
+    onProgress:function(state){ if(learningDirectorLaunch)return; p.brain.inProgress=state; saveProgress(); },
     say:function(pair){say(pair[0],"en-US");setTimeout(function(){say(pair[1],"zh-TW",true);},1200);},
     sayPair:function(pair){sayPair(pair[0],pair[1]);},
+    canLearningSupport:function(meta){
+      if(isPlacementCalibration||gameId!=="calc"||!window.SQLearningRuntime)return Promise.resolve(false);
+      return SQLearningRuntime.canSupportBrainMath({
+        kidId:k,age:KIDS[k].age,language:"en-zh-TW",gameId:gameId,tier:tier,index:meta.index,item:meta.item,skill:directedMathSkill||undefined
+      });
+    },
+    getLearningIntervention:function(meta){
+      if(isPlacementCalibration||gameId!=="calc"||!window.SQLearningRuntime||!SQLearningRuntime.getBrainMathIntervention)return Promise.resolve(null);
+      return SQLearningRuntime.getBrainMathIntervention({
+        kidId:k,age:KIDS[k].age,language:"en-zh-TW",gameId:gameId,tier:tier,index:meta.index,item:meta.item,skill:directedMathSkill||undefined,childAnswer:meta.childAnswer
+      });
+    },
+    getLearningHint:function(meta){
+      if(isPlacementCalibration||!window.SQLearningRuntime)return Promise.resolve(null);
+      return SQLearningRuntime.getBrainMathHint({
+        kidId:k,age:KIDS[k].age,language:"en-zh-TW",gameId:gameId,tier:tier,index:meta.index,item:meta.item,skill:directedMathSkill||undefined,childAnswer:meta.childAnswer,
+        intervention:meta.intervention||undefined
+      });
+    },
+    onLearningAttempt:function(meta){
+      if(gameId!=="calc"||!window.SQLearningRuntime)return Promise.resolve(null);
+      return SQLearningRuntime.recordBrainMathAttempt({
+        kidId:k,age:KIDS[k].age,language:"en-zh-TW",gameId:gameId,tier:tier,index:meta.index,item:meta.item,skill:directedMathSkill||undefined,
+        childAnswer:meta.childAnswer,responseMs:meta.responseMs,hintsUsed:meta.hintsUsed,
+        directorRunId:directedRun&&directedRun.directorRunId||undefined,attemptId:directedRun&&directedRun.directorRunId?directedRun.directorRunId+":item-"+((directedRun.completedAttempts||0)+meta.index):undefined
+      });
+    },
+    onLearningSupportOutcome:function(meta){
+      if(gameId!=="calc"||!window.SQLearningRuntime||!SQLearningRuntime.recordBrainMathSupportOutcome)return Promise.resolve(null);
+      return SQLearningRuntime.recordBrainMathSupportOutcome({
+        kidId:k,age:KIDS[k].age,language:"en-zh-TW",gameId:gameId,tier:tier,index:meta.index,item:meta.item,skill:directedMathSkill||undefined,
+        outcome:meta.outcome,intervention:meta.intervention
+      });
+    },
     inputScript:preferredInputScript(),
     onInputModeChange:function(mode){
       if(mode!=="bpmf")mode="abc";
@@ -1677,6 +1983,10 @@ function startBrain(gameId){
   });
 }
 function finishBrain(k,res){
+  if(learningDirectorLaunch){
+    showDirectedBrainResult(res);
+    return;
+  }
   const p=progress[k];
   const bestKey="brain_"+res.gameId, msKey=bestKey+"_ms";
   const prev=p.best[bestKey]||0;
@@ -1710,6 +2020,20 @@ function finishBrain(k,res){
   if(earned){sWin();burst(60);star();}
   showBrainResult(res,better,earned);
 }
+function showDirectedBrainResult(res){
+  const placement=!!(learningDirectorLaunch&&learningDirectorLaunch.flow==="placement");
+  const o=document.createElement("div");
+  o.className="overlay"; o.id="brainResult";
+  o.innerHTML=`<div class="card">
+    <div style="font-size:2.4em">${placement?"🧭":"🎯"}</div>
+    <h3>${placement?"Quick check step complete!":"Smart Practice step complete!"}</h3>
+    <p>${res.score} / ${res.total} · ${placement?"定位小測完成":"練習步驟完成"}</p>
+    <div class="vrow"><button class="btn" id="brDone">${placement?"Back to quick check 回到能力定位":"Back to Smart Practice 回到聰明練習"}</button></div>
+  </div>`;
+  document.body.appendChild(o);
+  o.querySelector("#brDone").onclick=function(){o.remove();goHome();};
+  burst(16);
+}
 function showBrainResult(res,better,earned){
   const o=document.createElement("div");
   o.className="overlay"; o.id="brainResult";
@@ -1728,18 +2052,28 @@ function showBrainResult(res,better,earned){
   if(better)burst(24);
 }
 function stopArena(){
+  gameLaunchToken++;
+  if(learningDirectorLaunch&&learningDirectorLaunch.directorRunId&&window.SQLearningRuntime&&kid&&KIDS[kid]){
+    SQLearningRuntime.pauseLearningDirectorSession({kidId:kid,age:KIDS[kid].age,guided:true,expectedPlanId:learningDirectorLaunch.sessionId,expectedStepId:learningDirectorLaunch.stepId});
+  }
+  learningDirectorLaunch=null;
   if(currentGame&&currentGame.stop){ try{currentGame.stop();}catch(e){console.error(e);} }
   currentGame=null;
+  if(window.SQActivityRouter)SQActivityRouter.clearCurrent("game");
   try{speechSynthesis.cancel();}catch(e){}
   if(window.SQBrain&&SQBrain.closeActive)SQBrain.closeActive();
   document.getElementById("stage").classList.remove("arena");
 }
 function goHome(){
+  const returnToLearning=!!learningDirectorLaunch;
   stopArena();
-  if(kid){ openHub(kid); return; }   /* back from a game goes to the kid's hub */
-  setGameMode(false);
-  document.getElementById("game").classList.add("hidden");
-  document.getElementById("home").classList.remove("hidden");
+  if(kid){
+    if(returnToLearning){hubTab="learn";contentReturnSurface="hub";}
+    learningDirectorLaunch=null;
+    if(contentReturnSurface==="world"){const id=kid;contentReturnSurface=null;openWorld(id);return;}
+    contentReturnSurface=null;openHub(kid); return;
+  }   /* back from a game goes to the kid's world/hub origin */
+  showOnly("home");saveAppPlace("home");
   renderHome();
 }
 /* WebGL context-loss safety net (design.md §6). Tablets drop GL contexts on
@@ -1808,7 +2142,7 @@ function showLockOverlay(st){
   const gym=o.querySelector("#lockGoGym");
   if(gym)gym.onclick=function(){
     const id=activeKid(), next=brainGate(id).remaining[0];
-    o.remove(); if(next)startGame(id,next);
+    o.remove(); if(next)SummerQuest.openGame(next);
   };
   const papa=o.querySelector("#lockPapa");
   if(papa)papa.onclick=function(){
@@ -1909,7 +2243,7 @@ function tabLocked(cat){
   /* Books and Music are never category-locked: reading and practising an
      instrument are not screen time. Papa can still pause the whole app (slice 08).
      To gate music like games, delete it from this line. */
-  if(cat==="books"||cat==="music")return false;
+  if(cat==="quests"||cat==="adventure"||cat==="day"||cat==="books"||cat==="music")return false;
   return !!(hubKid&&cat!=="day"&&catLockReason(hubKid,cat));
 }
 function lockedCategoryMessage(cat){
@@ -1921,12 +2255,13 @@ function leaveLockedCategory(){
   /* Brain Gym passes the games category lock (see startGame), so it must not be
      evicted by it either */
   const inBrain=level==="paint"||!!(level&&LEVELS[level]&&LEVELS[level].brain);
-  if(!inBrain&&!document.getElementById("game").classList.contains("hidden")&&catLockReason(hubKid,"games")){
-    stopArena(); showOnly("hub"); hubTab="day"; saveAppPlace("hub"); renderHub(); return;
+  const inDirectedLearning=!!learningDirectorLaunch;
+  if(!inBrain&&!inDirectedLearning&&!document.getElementById("game").classList.contains("hidden")&&catLockReason(hubKid,"games")){
+    stopArena(); showOnly("hub"); hubTab="quests"; saveAppPlace("hub"); renderHub(); return;
   }
   if(!document.getElementById("act").classList.contains("hidden")){
     const cat=String(actIdx||"").charAt(0)==="L"?"learn":"acts";
-    if(catLockReason(hubKid,cat)){stopActTimer(); showOnly("hub"); hubTab="day"; saveAppPlace("hub"); renderHub();}
+    if(catLockReason(hubKid,cat)){stopActTimer(); showOnly("hub"); hubTab="quests"; saveAppPlace("hub"); renderHub();}
   }
 }
 function refreshAppLock(){
@@ -1948,7 +2283,7 @@ function refreshAppLock(){
     </div>
   </div>`;
   document.body.appendChild(o);
-  o.querySelector("#appLockHome").onclick=()=>{o.remove();goHome();};
+  o.querySelector("#appLockHome").onclick=()=>{o.remove();SummerQuest.navigate("home");};
   o.querySelector("#appLockPapa").onclick=()=>{
     SQPin.show({title:"Resume app 恢復使用",onOk:async()=>{
       await store.setFamilySetting("applock_"+hubKid,"");
@@ -1984,8 +2319,8 @@ function loopFx(){
 
 /* ============ EVENTS ============ */
 addEventListener("keydown",e=>{
+  if(e.key==="Escape"){if(summerQuestBack())e.preventDefault();return;}
   if(document.getElementById("game").classList.contains("hidden"))return;
-  if(e.key==="Escape"){goHome();return;}
   let ch=e.key;
   if(ch===" ")e.preventDefault();
   if(ch.length===1 && /[a-zA-Z0-9 ;'/\u3105-\u312f\u02ca\u02c7\u02cb\u02d9]/.test(ch)) { handleInput(ch.toLowerCase()); }
@@ -1993,7 +2328,7 @@ addEventListener("keydown",e=>{
 addEventListener("keyup",e=>{
   /* city drive module handles its own keyup — nothing inline to do */
 });
-document.getElementById("back").onclick=goHome;
+document.getElementById("back").onclick=summerQuestBack;
 function toggleMute(){sound=!sound;
   document.getElementById("mute").textContent=sound?"🔊":"🔇";
   document.getElementById("musicMute").textContent=sound?"🔊":"🔇";
@@ -2063,9 +2398,9 @@ function brainBypass(id){
 function brainGate(id){
   return SQBrainCore.gateState({trio:brainTrio(id),done:brainToday(id),bypass:brainBypass(id)});
 }
-function gameLockState(){
+function gameLockState(kidId){
   if(isTestMode())return {locked:false,blockIdx:null,reason:null};
-  const id=activeKid();
+  const id=kidId||activeKid();
   const done=id?dayState(id).done:{};
   const st=SQLock.computeLock({
     done:done,passOk:function(i){return passOkFor(id,i);},
@@ -2108,10 +2443,23 @@ function actsToday(id){
   if(!P.actsDay||P.actsDay.d!==todayStr()) P.actsDay={d:todayStr(),done:{}};
   return P.actsDay.done;
 }
+let navigationRevision=0;
 function showOnly(id){
-  ["home","game","hub","act","book","music"].forEach(x=>
+  navigationRevision++;
+  if(id!=="game"&&!document.getElementById("game").classList.contains("hidden"))stopArena();
+  if(id!=="music"&&!document.getElementById("music").classList.contains("hidden"))closeInstrument(true);
+  if(id!=="act")stopActTimer();
+  if(id!=="world")worldOpenToken++;
+  if(id!=="hub"&&calibRun){calibRun.cancel();calibRun=null;}
+  document.querySelectorAll(".book-zoom").forEach(function(el){el.remove();});
+  if(id!=="hub")invalidateLearningSessionView();
+  ["home","world","game","hub","act","book","music"].forEach(x=>
     document.getElementById(x).classList.toggle("hidden",x!==id));
   setGameMode(id==="game");
+  document.body.classList.toggle("world-mode",id==="world");
+  if(worldExplorerModule&&id!=="world"&&worldExplorerModule.pause)worldExplorerModule.pause();
+  if(window.SQActivityRouter&&(id==="home"||id==="world"||id==="hub"))SQActivityRouter.clearCurrent();
+  if(typeof updateSummerCompanion==="function")updateSummerCompanion();
   /* music-mode is what gives .wrap a viewport height — without it the instrument
      stage has no height to fill and collapses (D13). */
   document.body.classList.toggle("music-mode",id==="music");
@@ -2119,12 +2467,28 @@ function showOnly(id){
 function setGameMode(on){
   document.body.classList.toggle("game-mode",!!on);
 }
-let hubTab="day", openDayRow=null;
+let hubTab="quests", openDayRow=null;
+let questSession={energy:null,preference:null};
+let summerAttention=null;
+let summerNudgeDismissedKey="";
+function resetQuestSession(kidId,clearMemory){
+  const id=kidId||hubKid;
+  if(clearMemory&&id&&window.SQAgentMemory)SQAgentMemory.clear(id);
+  const mem=id&&window.SQAgentMemory?SQAgentMemory.load(id):null;
+  questSession={energy:mem&&mem.energy||null,preference:mem&&mem.preference||null};
+}
 function openHub(id){
+  if(!id||!KIDS[id])return {ok:false,reason:"no_kid_selected"};
+  if(appLockReason(id)){hubKid=id;refreshAppLock();return {ok:false,reason:"app_locked"};}
+  if(hubKid!==id){invalidateLearningSessionView();contentReturnSurface=null;hubReturnSurface=null;}
   stopArena(); stopActTimer();
   if(hubKid!==id)openDayRow=null;
   hubKid=id; refreshOverrides(); showOnly("hub"); saveAppPlace("hub"); renderHub();
   refreshStarsFromServer(id);
+  reconcileQuestVerifications(id);
+  updateSummerCompanion();
+  if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("APP_OPENED",{surface:"hub"});
+  return {ok:true,id:"classic"};
 }
 function dseed(str){let h=7;for(const c of str)h=(h*31+c.charCodeAt(0))>>>0;return h;}
 function dayState(id){
@@ -2329,7 +2693,7 @@ function renderMyDay(skipScroll){
   const nudge=document.getElementById("brainNudge");
   if(nudge)nudge.onclick=function(){
     const next=brainGate(hubKid).remaining[0];
-    if(next)startGame(hubKid,next);
+    if(next)SummerQuest.openGame(next);
   };
 }
 /* The daily routine has to be visible the moment a kid opens the app — the day
@@ -2441,29 +2805,385 @@ function startTimelineWatcher(){
 }
 function renderHubHead(){
   const k=KIDS[hubKid];
-  const sub=hubTab==="day"?"Here is your day 📅":hubTab==="captain"?"Captain board 隊長看板 👑":"What do you want to do?";
-  document.getElementById("hubStars").innerHTML=`<span class="starpill">⭐ ${starsOf(hubKid)}</span>`;
+  const sub=hubTab==="quests"?"What fits right now? · 現在適合做什麼？":
+    hubTab==="adventure"||["games","acts","learn","books","music"].includes(hubTab)?"Pick an adventure · 選一個冒險":
+    hubTab==="day"?"Today's routines · 今天的日常":hubTab==="captain"?"Captain board 隊長看板 👑":"What do you want to do?";
+  document.getElementById("hubStars").innerHTML=`<span class="starpill">⭐ ${starsOf(hubKid)}</span><span class="starpill coinpill">🪙 ${questCoins(hubKid)}</span>`;
   document.getElementById("hubHead").innerHTML=
     `<span class="av">${k.av}</span><div><h2 style="color:${k.color}">Hi ${k.name}!</h2>
      <p>${sub}</p></div>`;
 }
+
+function questMinutesNow(){
+  const c=SQ_DAY.clock(); return Number(c.h)*60+Number(c.m);
+}
+function questCatalog(){
+  return window.SQQuestConfig?SQQuestConfig.catalog(store&&store.familySettings):SQQuestData.all();
+}
+function rewardCatalog(){
+  return window.SQQuestConfig?SQQuestConfig.rewards(store&&store.familySettings):(window.SQRewardData?SQRewardData.all():[]);
+}
+function questAssistantSettings(){
+  return window.SQQuestConfig?SQQuestConfig.assistant(store&&store.familySettings):{askEnergy:true,maxSuggestions:3,showUpcoming:true};
+}
+function questCoins(id){
+  return window.SQQuestConfig?SQQuestConfig.wallet(starsOf(id),store&&store.familySettings,id):starsOf(id);
+}
+function questById(id){return questCatalog().find(function(q){return q.id===id;})||null;}
+function questActionLocked(q){
+  if(!q||!q.action)return false;
+  if(q.action.type==="brain")return false;
+  const t=q.action.tab;
+  return !!(t&&tabLocked(t));
+}
+function questRewardLabel(q){return q.rewardStars?`🪙 +${q.rewardStars}`:"↗ activity";}
+function questClock(mins){
+  mins=Math.max(0,Math.min(1439,Number(mins)||0));
+  return String(Math.floor(mins/60)).padStart(2,"0")+":"+String(mins%60).padStart(2,"0");
+}
+function questContextFor(pref,energy){
+  const k=KIDS[hubKid],day=todayStr(),minutes=questMinutesNow();
+  const states=SQQuestProgress.states(hubKid,day),ids=Object.keys(states);
+  return {kid:hubKid,age:k.age,day:day,minutes:minutes,preference:pref||"surprise",energy:energy||"any",
+    completed:SQQuestProgress.list(hubKid,day),recent:SQQuestProgress.recent(hubKid,3),
+    inProgress:ids.filter(function(id){return states[id]==="in_progress"||states[id]==="paused";}),
+    waiting:ids.filter(function(id){return states[id]==="awaiting_verification";}),
+    redo:ids.filter(function(id){return states[id]==="redo";})};
+}
+function questAvailable(pref,energy){
+  const ctx=questContextFor(pref,energy);
+  return SQQuestCore.listAvailable(questCatalog(),ctx).filter(function(q){return !questActionLocked(q);});
+}
+function buildSummerAgentContext(available){
+  if(!hubKid||!window.SQAgentContext)return null;
+  const pref=questSession.preference||"surprise",energy=questSession.energy||"any",ctx=questContextFor(pref,energy);
+  const all=questCatalog(),required=SQQuestCore.dailyRequired(all,ctx),active=SQQuestProgress.active(hubKid,ctx.day);
+  const activeRecord=active.find(function(x){return x.state==="redo"||x.state==="in_progress"||x.state==="paused";})||active[0]||null;
+  const activeQuest=activeRecord?questById(activeRecord.id):null;
+  const activityCtx=window.SQActivityRouter?SQActivityRouter.context():null;
+  const mem=window.SQAgentMemory?SQAgentMemory.load(hubKid):null;
+  const helpId=activityCtx&&activityCtx.activity&&activityCtx.activity.id;
+  return SQAgentContext.build({
+    kid:{id:hubKid,age:KIDS[hubKid].age},day:ctx.day,minutes:ctx.minutes,timeBucket:SQQuestCore.timeBucket(ctx.minutes),
+    energy:energy,preference:pref,coins:questCoins(hubKid),
+    requiredDone:required.filter(function(q){return SQQuestProgress.done(hubKid,ctx.day,q.id);}).length,requiredTotal:required.length,
+    activeQuest:activeQuest,availableQuests:available||questAvailable(pref,energy),
+    activity:activityCtx&&activityCtx.activity,memory:mem,helpCount:helpId&&mem&&mem.helpCounts?mem.helpCounts[helpId]:0,
+    events:window.SQEvents?SQEvents.history(6):[]
+  });
+}
+function summerInteract(input,available){
+  input=Object.assign({},input||{});
+  input.agentContext=buildSummerAgentContext(available);
+  return SQSummerAgent.interact(input);
+}
+function questStateLabel(state){
+  if(state==="in_progress")return ["▶ Continue","▶ 繼續"];
+  if(state==="paused")return ["⏸ Paused","⏸ 已暫停"];
+  if(state==="awaiting_verification")return ["⏳ Papa check","⏳ 等爸爸確認"];
+  if(state==="redo")return ["↻ Try again","↻ 再試一次"];
+  return null;
+}
+function presentSummerResponse(response,opts){
+  opts=opts||{};
+  const face=opts.face||document.getElementById("summerFace"),panel=opts.panel||document.getElementById("summerPanel");
+  const speech=opts.speech||document.getElementById("summerSpeech"),speechZh=opts.speechZh||document.getElementById("summerSpeechZh");
+  const dialogue=opts.dialogue===false?null:(opts.dialogue||document.getElementById("questDialogue"));
+  if(window.SQSummerUI)return SQSummerUI.present({face:face,panel:panel,speech:speech,speechZh:speechZh,dialogue:dialogue},response);
+  if(speech)speech.textContent=response&&response.speech||"";if(speechZh)speechZh.textContent=response&&response.speechZh||"";return response||{};
+}
+function setQuestDialogueStage(stage){
+  const meter=document.getElementById("questDialogueMeter"),dialogue=document.getElementById("questDialogue");if(!meter||!dialogue)return;
+  dialogue.dataset.stage=stage;const dots=meter.querySelectorAll("i");
+  dots.forEach(function(dot,i){dot.classList.toggle("done",stage==="recommend"||(stage==="intent"&&i===0));dot.classList.toggle("on",(stage==="energy"&&i===0)||(stage==="intent"&&i===1));});
+  const label=meter.querySelector("span");if(label)label.textContent=stage==="energy"?"1 · Energy 精神":stage==="intent"?"2 · Mood 想做什麼":"Ready · 準備好了";
+}
+function setQuestAnswer(kind,value){
+  if(kind==="energy")questSession.energy=value;
+  if(kind==="intent")questSession.preference=value;
+  if(hubKid&&window.SQAgentMemory)SQAgentMemory.setPreference(hubKid,kind==="intent"?"preference":kind,value);
+  if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("CHILD_PREFERENCE",{kind:kind,value:value});
+  SQPlatform.haptic("tap");
+  renderQuestHome();
+}
+function renderQuestChoices(response){
+  const box=document.getElementById("questChoices"),q=document.getElementById("questQuestion");
+  if(!box||!q)return;
+  q.innerHTML=`${escHtml(response.speech||"")}<span class="zhs">${escHtml(response.speechZh||"")}</span>`;
+  box.innerHTML=(response.choices||[]).map(function(c,i){return `<button class="quest-filter" style="--q-order:${i}" data-qanswer="${escHtml(c.id||"")}" data-qkind="${escHtml(response.questionId||"")}"><span class="qi">${escHtml(c.icon||"✨")}</span><span>${escHtml((c.label&&c.label[0])||"")}</span><span class="qz">${escHtml((c.label&&c.label[1])||"")}</span></button>`;}).join("");
+  box.querySelectorAll("[data-qanswer]").forEach(function(b){b.onclick=function(){setQuestAnswer(b.dataset.qkind,b.dataset.qanswer);};});
+}
+function renderQuestActive(){
+  const el=document.getElementById("questActive");if(!el||!hubKid)return;
+  const day=todayStr(),active=SQQuestProgress.active(hubKid,day).map(function(x){return Object.assign({},x,{quest:questById(x.id)});}).filter(function(x){return !!x.quest;});
+  if(!active.length){el.classList.add("hidden");el.innerHTML="";return;}
+  const a=active.find(function(x){return x.state==="redo"||x.state==="in_progress"||x.state==="paused";})||active[0],q=a.quest,label=questStateLabel(a.state)||["Quest","任務"];
+  el.classList.remove("hidden");
+  el.innerHTML=`<button class="quest-active__card state-${a.state}" data-active-quest="${q.id}"><span class="quest-active__icon">${q.icon}</span><span class="quest-active__copy"><small>${label[0]} · ${label[1]}</small><b>${q.title[0]}</b><span>${q.title[1]}</span></span><span class="quest-active__go">›</span></button>`;
+  el.querySelector("[data-active-quest]").onclick=function(){SummerQuest.openQuest(q.id);};
+}
+function renderQuestCards(available,ids){
+  const settings=questAssistantSettings();
+  const wanted=Array.isArray(ids)&&ids.length?ids.map(function(id){return available.find(function(q){return q.id===id;});}).filter(Boolean):available;
+  const cards=wanted.slice(0,settings.maxSuggestions||3);
+  document.getElementById("questReadyMeta").textContent=`${cards.length} suggestions · ${cards.length} 個建議`;
+  document.getElementById("questGrid").innerHTML=cards.length?cards.map(function(q,index){
+    const state=SQQuestProgress.status(hubKid,todayStr(),q.id),stateLabel=questStateLabel(state),cat=String(q.category||"play").replace(/[^a-z0-9_-]/gi,"");
+    return `<button class="quest-card cat-${cat}${index===0?" is-primary":""}${q.required?" is-essential":""}${stateLabel?" has-state":""}" data-qid="${q.id}">
+      ${q.required?'<span class="quest-essential">DAILY · 每日</span>':''}
+      ${stateLabel?`<span class="quest-state-chip">${stateLabel[0]}<small>${stateLabel[1]}</small></span>`:""}
+      <span class="qicon">${q.icon}</span><h4>${q.title[0]}</h4><span class="qzh">${q.title[1]}</span>
+      <p>${q.blurb[0]}<span class="zhs">${q.blurb[1]}</span></p>
+      <span class="quest-meta"><span>⏱ ${q.duration} min${q.verification==="parent"?" · 👀 Papa":""}</span><span>${questRewardLabel(q)}</span></span>
+    </button>`;
+  }).join(""):`<div class="quest-empty">✨ Nothing you need to do right now.<span class="zhs">現在沒有需要做的任務。</span></div>`;
+  document.querySelectorAll("#questGrid [data-qid]").forEach(function(b){b.onclick=function(){SummerQuest.openQuest(b.dataset.qid);};});
+}
+function renderQuestUpcoming(ctx){
+  const el=document.getElementById("questUpcoming"),settings=questAssistantSettings();if(!el)return;
+  if(!settings.showUpcoming){el.classList.add("hidden");return;}
+  const up=SQQuestCore.listUpcoming(questCatalog(),ctx,360).slice(0,3);
+  if(!up.length){el.classList.add("hidden");return;}
+  el.classList.remove("hidden");
+  el.innerHTML=`<b>Coming up <span>今天晚一點</span></b><div>${up.map(function(q){return `<span class="quest-upcoming__item"><i>${q.icon}</i><strong>${q.title[0]}<small>${q.title[1]}</small></strong><em>${questClock(q.after)}</em></span>`;}).join("")}</div>`;
+}
+function renderQuestHome(){
+  if(!hubKid||!window.SQQuestCore||!window.SQQuestConfig)return;
+  const k=KIDS[hubKid],settings=questAssistantSettings();
+  const pref=questSession.preference||"surprise",energy=questSession.energy||"any",ctx=questContextFor(pref,energy);
+  const available=questAvailable(pref,energy),required=SQQuestCore.dailyRequired(questCatalog(),ctx);
+  const completedRequired=required.filter(function(q){return SQQuestProgress.done(hubKid,ctx.day,q.id);}).length;
+  const clock=SQ_DAY.clock();
+  document.getElementById("questContext").innerHTML=`<span>🕐 ${clock.h}:${clock.m}</span><span>🪙 ${questCoins(hubKid)} coins 點數</span><span>✓ ${completedRequired}/${required.length} daily 每日</span>`;
+  renderQuestActive();
+  const direct=settings.questionMode==="direct";
+  const needEnergy=!direct&&settings.askEnergy&&!questSession.energy;
+  const needIntent=!direct&&!questSession.preference;
+  const stage=needEnergy?"energy":needIntent?"intent":"recommend";
+  setQuestDialogueStage(stage);
+  const results=document.getElementById("questResults");
+  const skip=document.getElementById("questSkip"),reset=document.getElementById("questReset");
+  results.classList.toggle("hidden",stage!=="recommend");
+  skip.classList.toggle("hidden",stage==="recommend");
+  reset.classList.toggle("hidden",stage!=="recommend");
+  skip.onclick=function(){questSession.energy="any";questSession.preference="surprise";if(window.SQAgentMemory){SQAgentMemory.setPreference(hubKid,"energy","any");SQAgentMemory.setPreference(hubKid,"preference","surprise");}SQPlatform.haptic("tap");renderQuestHome();};
+  reset.onclick=function(){resetQuestSession(hubKid,true);SQPlatform.haptic("tap");renderQuestHome();};
+  if(stage!=="recommend"){
+    document.getElementById("questUpcoming").classList.add("hidden");
+    summerInteract({stage:stage,kid:{id:hubKid,name:k.name,age:k.age},timeBucket:SQQuestCore.timeBucket(ctx.minutes),quests:available,maxSuggestions:settings.maxSuggestions},available).then(function(r){
+      if(!hubKid||hubTab!=="quests")return;
+      presentSummerResponse(r);
+      renderQuestChoices(r);
+    });
+    return;
+  }
+  const selected=[];
+  if(questSession.energy&&questSession.energy!=="any")selected.push(questSession.energy==="low"?"😴 Easy":questSession.energy==="high"?"🤩 Active":"🙂 Normal");
+  if(questSession.preference)selected.push({quick:"⚡ Quick",help:"🏠 Help",play:"🎮 Play & learn",move:"🤸 Move",care:"🌱 Care",surprise:"🎲 Surprise"}[questSession.preference]||questSession.preference);
+  document.getElementById("questQuestion").innerHTML=`<span class="quest-answer-summary">${selected.join(" · ")||"✨ You choose"}</span>`;
+  document.getElementById("questChoices").innerHTML="";
+  renderQuestCards(available);
+  renderQuestUpcoming(ctx);
+  summerInteract({stage:"recommend",kid:{id:hubKid,name:k.name,age:k.age},preference:pref,energy:energy,timeBucket:SQQuestCore.timeBucket(ctx.minutes),quests:available,maxSuggestions:settings.maxSuggestions},available).then(function(r){
+    if(!hubKid||hubTab!=="quests")return;
+    presentSummerResponse(r);
+    renderQuestCards(available,r.questIds);
+  });
+}
+function renderAdventure(){
+  const items=[
+    ["games","🎮","Games","遊戲","Arcade, Brain Gym and game worlds"],
+    ["acts","🏕️","Activities","活動","Creative, movement and house activities"],
+    ["learn","🧭","Learn","學習","Questions, guides and practice"],
+    ["books","📚","Books","書籍","Quiet reading and picture books"],
+    ["music","🎵","Music","音樂","Piano, pads and instruments"]
+  ];
+  const grid=document.getElementById("adventureGrid"); if(!grid)return;
+  grid.innerHTML=items.map(x=>{const locked=x[0]!=="games"&&tabLocked(x[0]);return `<button class="adventure-card" data-adventure="${x[0]}" ${locked?"disabled":""}><span class="ai">${x[1]}</span><strong>${x[2]}</strong><span class="zhs">${x[3]}</span><small>${locked?"🔒 Papa locked this for now · 爸爸暫時鎖定":x[4]}</small></button>`;}).join("");
+  grid.querySelectorAll("[data-adventure]").forEach(b=>b.onclick=()=>{SQPlatform.haptic("tap");SummerQuest.navigate(b.dataset.adventure);});
+}
+function routeQuestAction(q){
+  if(!q||!q.action)return Promise.resolve({ok:false,reason:"no_action"});
+  if(window.SQActivityRouter)return SQActivityRouter.open(q.action).then(function(r){if(r&&r.ok&&window.SQAgentOrchestrator)SQAgentOrchestrator.signal("ACTIVITY_OPENED",{questId:q.id,action:q.action});return r;});
+  if(q.action.type==="tab"){hubTab=q.action.tab;saveAppPlace("hub");renderHub();return Promise.resolve({ok:true});}
+  if(q.action.type==="brain"){
+    const g=brainGate(hubKid),next=(g.remaining&&g.remaining[0])||brainTrio(hubKid)[0];
+    if(next)return SummerQuest.openGame(next);
+  }
+  return Promise.resolve({ok:false,reason:"unsupported"});
+}
+function openQuestCard(id){
+  const q=questById(id); if(!q)return;
+  if(window.SQSummerUI&&summerAttention&&summerAttention.questId===id)summerNudgeDismissedKey=SQSummerUI.attentionKey(summerAttention);
+  hideSummerNudge(false);
+  SQPlatform.haptic("tap");
+  const day=todayStr(),initial=SQQuestProgress.status(hubKid,day,q.id);
+  if(initial!=="awaiting_verification")SQQuestProgress.start(hubKid,day,q.id);
+  if(initial==="not_started"&&window.SQAgentOrchestrator)SQAgentOrchestrator.signal("QUEST_STARTED",{questId:q.id});
+  const o=document.createElement("div");o.className="overlay";o.id="questOverlay";
+  document.body.appendChild(o);
+  renderQuestOverlay(q,o);
+  updateSummerCompanion();
+  if(initial==="not_started")summerInteract({stage:"quest_started",quest:{id:q.id,title:q.title}},[q]).then(function(r){if(!o.isConnected)return;const n=o.querySelector(".quest-agent-note");if(n)n.innerHTML=`${escHtml(r.speech||"")}<span>${escHtml(r.speechZh||"")}</span>`;});
+}
+function renderQuestOverlay(q,o){
+  const day=todayStr(),state=SQQuestProgress.status(hubKid,day,q.id),rec=SQQuestProgress.get(hubKid,day,q.id)||{};
+  if(state==="awaiting_verification"){
+    o.innerHTML=`<div class="card quest-overlay-card"><div class="qo-hero"><div class="qo-icon">${q.icon}</div><div><h2>${q.title[0]}</h2><div class="qo-zh">${q.title[1]}</div></div></div><div class="quest-waiting"><b>⏳ Waiting for Papa</b><span>等爸爸確認</span><p>You finished this quest. Papa can approve it from the parent app.</p><small>你已完成任務，爸爸可以在家長介面確認。</small></div><div class="vrow"><button class="btn" id="questClose">Okay 好</button><button class="btn small" id="questBoard">Quest board 任務板</button></div></div>`;
+    o.querySelector("#questClose").onclick=()=>o.remove();
+    o.querySelector("#questBoard").onclick=()=>{o.remove();SummerQuest.navigate("quests");};
+    return;
+  }
+  if(state==="redo"){
+    o.innerHTML=`<div class="card quest-overlay-card"><div class="qo-hero"><div class="qo-icon">${q.icon}</div><div><h2>${q.title[0]}</h2><div class="qo-zh">${q.title[1]}</div></div></div><div class="quest-redo"><b>↻ One more try</b><span>再試一次</span><p>${escHtml((rec.verification&&rec.verification.answer)||"Papa wants you to give this quest another try.")}</p></div><div class="vrow"><button class="btn quest-done" id="questRetry">Try again 再試一次</button><button class="btn small" id="questClose">Later 晚一點</button></div></div>`;
+    o.querySelector("#questClose").onclick=()=>o.remove();
+    o.querySelector("#questRetry").onclick=()=>{SQQuestProgress.start(hubKid,day,q.id);if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("QUEST_STARTED",{questId:q.id,redo:true});SQPlatform.haptic("tap");renderQuestOverlay(q,o);updateSummerCompanion();};
+    return;
+  }
+  const steps=q.steps||[],step=Math.max(0,Math.min(Math.max(0,steps.length-1),rec.currentStep||0));
+  const stepHtml=steps.length?`<div class="quest-step-focus"><div class="quest-step-focus__count">STEP ${step+1}/${steps.length}</div><b>${steps[step][0]}</b><span>${steps[step][1]}</span></div><div class="quest-step-dots">${steps.map(function(_,i){return `<i class="${i<step?"done":i===step?"on":""}"></i>`;}).join("")}</div>`:"";
+  const finalStep=!steps.length||step>=steps.length-1;
+  const doneLabel=q.verification==="parent"?"👀 Ask Papa to check 請爸爸確認":"✓ Done 完成";
+  o.innerHTML=`<div class="card quest-overlay-card"><div class="qo-hero"><div class="qo-icon">${q.icon}</div><div><h2>${q.title[0]}</h2><div class="qo-zh">${q.title[1]}</div></div></div><p style="margin-top:10px">${q.blurb[0]}<span class="zhs">${q.blurb[1]}</span></p><div class="quest-agent-note">☀️ Summer is here if you need help.<span>需要幫忙時，Summer 就在這裡。</span></div>${stepHtml}<div class="quest-overlay-actions">${q.action?'<button class="btn" id="questOpenActivity">↗ Open activity 開始活動</button>':""}${!finalStep?'<button class="btn quest-done" id="questNextStep">Next step 下一步</button>':`<button class="btn quest-done" id="questComplete">${doneLabel}</button>`}<button class="btn small" id="questPause">Pause 暫停</button></div></div>`;
+  const pause=o.querySelector("#questPause"); if(pause)pause.onclick=()=>{SQQuestProgress.pause(hubKid,day,q.id);if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("QUEST_PAUSED",{questId:q.id});o.remove();updateSummerCompanion();if(hubTab==="quests")renderQuestHome();};
+  const next=o.querySelector("#questNextStep"); if(next)next.onclick=()=>{SQQuestProgress.setStep(hubKid,day,q.id,step+1,steps.length);SQPlatform.haptic("tap");renderQuestOverlay(q,o);};
+  const open=o.querySelector("#questOpenActivity"); if(open)open.onclick=()=>{SQQuestProgress.resume(hubKid,day,q.id);o.remove();routeQuestAction(q).then(updateSummerCompanion);};
+  const done=o.querySelector("#questComplete"); if(done)done.onclick=()=>completeQuest(q,o);
+}
+async function requestQuestVerification(q,overlay){
+  const day=todayStr(),kind=SQQuestConfig.questVerificationKind(q.id,day);
+  const current=SQQuestProgress.get(hubKid,day,q.id);
+  if(current&&current.verification&&current.verification.status==="pending"){renderQuestOverlay(q,overlay);return;}
+  const body=`${q.icon||"✨"} ${q.title[0]} / ${q.title[1]} · ready for Papa to check`;
+  let result={data:{id:"local-"+Date.now(),kind:kind},error:null,localOnly:true};
+  if(store&&store.requestQuestVerification)result=await store.requestQuestVerification(hubKid,q.id,day,body);
+  if(result&&result.error){sBad();return;}
+  const id=result&&result.data&&result.data.id?result.data.id:"local-"+Date.now();
+  SQQuestProgress.requestVerification(hubKid,day,q.id,id);
+  if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("QUEST_VERIFICATION_REQUESTED",{questId:q.id,requestId:id});
+  SQPlatform.haptic("success");sGood();
+  summerInteract({stage:"verification_requested",quest:{id:q.id,title:q.title}},[q]).then(function(r){SQNotify.push(hubKid,hubKid,{kind:"quest",icon:"⏳",tone:"msg",en:r.speech,zh:r.speechZh,sub:q.title[0]});});
+  renderQuestOverlay(q,overlay);updateSummerCompanion();
+}
+async function completeQuest(q,overlay){
+  const day=todayStr();
+  if(SQQuestProgress.done(hubKid,day,q.id)){overlay.remove();renderQuestHome();return;}
+  if(q.verification==="parent"){await requestQuestVerification(q,overlay);return;}
+  SQQuestProgress.complete(hubKid,day,q.id);
+  if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("QUEST_COMPLETED",{questId:q.id,reward:q.rewardStars||0});
+  if(q.rewardStars&&store){
+    const reason=`Quest 任務 · ${q.title[0]} ${q.title[1]} · ${day}`;
+    await store.addStars(hubKid,q.rewardStars,reason,SQStarId.quest(hubKid,day,q.id));
+  }
+  SQPlatform.haptic("success"); sWin(); bigFloat(q.rewardStars?`⭐ +${q.rewardStars}`:"✓");
+  summerInteract({stage:"quest_completed",quest:{id:q.id,title:q.title}},[q]).then(function(r){SQNotify.push(hubKid,hubKid,{kind:"quest",icon:"✅",tone:"ok",en:r.speech,zh:r.speechZh,sub:q.title[0]});});
+  overlay.remove(); renderHub();updateSummerCompanion();
+}
+async function reconcileQuestVerifications(kidId){
+  if(!kidId||!store||!store.fetchQuestVerifications)return;
+  try{
+    const rows=await store.fetchQuestVerifications(kidId,todayStr());let changed=false;
+    rows.forEach(function(row){if(SQQuestProgress.applyVerificationRow(row))changed=true;});
+    if(changed&&kidId===hubKid){if(hubTab==="quests")renderQuestHome();updateSummerCompanion();}
+  }catch(e){}
+}
+function companionContext(){
+  if(!hubKid)return {state:"general"};
+  const active=SQQuestProgress.active(hubKid,todayStr()),a=active.find(function(x){return x.state==="redo"||x.state==="in_progress"||x.state==="paused";})||active[0]||null;
+  if(a){const q=questById(a.id);if(q)return {state:a.state,quest:{id:q.id,title:q.title,icon:q.icon},record:a.record,activity:window.SQActivityRouter?SQActivityRouter.context():null};}
+  const ac=window.SQActivityRouter?SQActivityRouter.context():null;
+  return {state:"general",activity:ac&&ac.activity?ac.activity:null};
+}
+function hideSummerNudge(dismiss){
+  const n=document.getElementById("summerNudge");if(!n)return;
+  if(dismiss&&window.SQSummerUI&&summerAttention)summerNudgeDismissedKey=SQSummerUI.attentionKey(summerAttention);
+  n.classList.add("hidden");n.classList.remove("is-arriving");
+}
+function updateSummerNudge(){
+  const n=document.getElementById("summerNudge");if(!n||!window.SQSummerUI){return;}
+  const surface=window.SQActivityRouter?SQActivityRouter.context():{surface:"hub"};
+  const hub=document.getElementById("hub"),hubVisible=!!(hub&&!hub.classList.contains("hidden"));
+  const overlayOpen=!!document.getElementById("questOverlay")||!!document.getElementById("summerCompanionOverlay");
+  if(!SQSummerUI.shouldShowNudge({attention:summerAttention,hubVisible:hubVisible,surface:surface&&surface.surface,overlayOpen:overlayOpen,dismissedKey:summerNudgeDismissedKey})){hideSummerNudge(false);return;}
+  const q=questById(summerAttention.questId),copy=SQSummerUI.attentionCopy(summerAttention,q);if(!copy){hideSummerNudge(false);return;}
+  document.getElementById("summerNudgeIcon").textContent=copy.icon;
+  document.getElementById("summerNudgeEyebrow").textContent=copy.eyebrow[0]+" · "+copy.eyebrow[1];
+  document.getElementById("summerNudgeTitle").textContent=copy.title[0];document.getElementById("summerNudgeTitleZh").textContent=copy.title[1];
+  document.getElementById("summerNudgeBody").textContent=copy.body[0];document.getElementById("summerNudgeBodyZh").textContent=copy.body[1];
+  const action=document.getElementById("summerNudgeAction");action.innerHTML=escHtml(copy.action[0])+`<span>${escHtml(copy.action[1])}</span>`;
+  action.onclick=function(){summerNudgeDismissedKey=SQSummerUI.attentionKey(summerAttention);hideSummerNudge(false);if(q)SummerQuest.openQuest(q.id);};
+  document.getElementById("summerNudgeClose").onclick=function(){hideSummerNudge(true);SQPlatform.haptic("tap");};
+  n.classList.remove("hidden");n.classList.remove("is-arriving");void n.offsetWidth;n.classList.add("is-arriving");
+}
+function updateSummerCompanion(){
+  const btn=document.getElementById("summerCompanion");if(!btn)return;
+  const settings=questAssistantSettings();
+  const inApp=hubKid&&document.getElementById("home").classList.contains("hidden");
+  btn.classList.toggle("hidden",!inApp||settings.companionEnabled===false);
+  if(!inApp)return;
+  const c=companionContext(),badge=document.getElementById("summerCompanionBadge");
+  const mark=c.state==="awaiting_verification"?"⏳":c.state==="redo"?"↻":(c.state==="in_progress"||c.state==="paused")?"▶":(summerAttention&&summerAttention.label)||"";
+  badge.textContent=mark;badge.classList.toggle("hidden",!mark);
+  const face=document.getElementById("summerCompanionFace");if(face){face.dataset.emotion=summerAttention?"attention":"happy";face.dataset.mood=summerAttention?"•!•":"•ᴗ•";}
+  btn.classList.toggle("has-attention",!!mark);
+  updateSummerNudge();
+}
+function companionActionLabel(id){
+  return {resume_quest:["▶ Resume quest","▶ 繼續任務"],quest_board:["🧭 Quest board","🧭 任務板"],activity_help:["💡 Help me","💡 幫幫我"],today:["☀️ Today","☀️ 今天"],close:["Close","關閉"]}[id]||[id,id];
+}
+function openSummerCompanion(){
+  if(!hubKid)return {ok:false};
+  hideSummerNudge(false);
+  const ctx=companionContext(),o=document.createElement("div");o.className="overlay summer-companion-overlay";o.id="summerCompanionOverlay";
+  o.innerHTML='<div class="card summer-companion-sheet"><div class="summer-companion-sheet__head"><div class="summer-face" data-emotion="thinking" data-mood="•﹏•">☀️</div><div><small>SUMMER</small><h3>Thinking…</h3><span>想一下…</span></div></div></div>';
+  document.body.appendChild(o);SQPlatform.haptic("tap");
+  summerInteract({stage:"companion",context:ctx,kid:{id:hubKid,name:KIDS[hubKid].name,age:KIDS[hubKid].age}},questAvailable(questSession.preference||"surprise",questSession.energy||"any")).then(function(r){
+    if(!o.isConnected)return;
+    const sheet=o.querySelector(".summer-companion-sheet");
+    sheet.innerHTML=`<div class="summer-companion-sheet__head"><div class="summer-face" data-emotion="happy" data-mood="•ᴗ•">☀️</div><div><small>SUMMER</small><h3>${escHtml(r.speech||"")}</h3><span>${escHtml(r.speechZh||"")}</span></div></div><div class="summer-companion-actions">${(r.actions||["quest_board","close"]).map(function(id){const l=companionActionLabel(id);return `<button class="btn${id==="close"?" small":""}" data-summer-action="${escHtml(id)}">${escHtml(l[0])}<span>${escHtml(l[1])}</span></button>`;}).join("")}</div><div class="summer-companion-help hidden" id="summerCompanionHelp"></div>`;
+    if(window.SQSummerUI)SQSummerUI.present({face:sheet.querySelector(".summer-face"),panel:sheet,speech:sheet.querySelector("h3"),speechZh:sheet.querySelector(".summer-companion-sheet__head span"),dialogue:null},r);
+    sheet.querySelectorAll("[data-summer-action]").forEach(function(b){b.onclick=function(){
+      const action=b.dataset.summerAction;
+      if(action==="close"){o.remove();return;}
+      if(action==="resume_quest"&&ctx.quest){o.remove();SummerQuest.openQuest(ctx.quest.id);return;}
+      if(action==="quest_board"){o.remove();SummerQuest.navigate("quests");return;}
+      if(action==="today"){o.remove();SummerQuest.navigate("day");return;}
+      if(action==="activity_help"){
+        const ac=window.SQActivityRouter?SQActivityRouter.context():null,activityId=ac&&ac.activity&&ac.activity.id;
+        if(window.SQAgentMemory)SQAgentMemory.bumpHelp(hubKid,activityId||"general");
+        if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("CHILD_REQUESTED_HELP",{activityId:activityId||"general"});
+        const h=window.SQActivityRouter?SQActivityRouter.help():null,box=sheet.querySelector("#summerCompanionHelp");
+        box.classList.remove("hidden");box.innerHTML='Thinking…<span>想一下…</span>';
+        summerInteract({stage:"activity_help",context:ctx,localHelp:h,kid:{id:hubKid,name:KIDS[hubKid].name,age:KIDS[hubKid].age}},questAvailable(questSession.preference||"surprise",questSession.energy||"any")).then(function(help){
+          if(!box.isConnected)return;box.innerHTML=`${escHtml(help.speech)}<span>${escHtml(help.speechZh||"")}</span>`;
+        });
+      }
+    };});
+  });
+  o.onclick=function(e){if(e.target===o){o.remove();updateSummerNudge();}};
+  return {ok:true};
+}
 function renderHub(){
+  document.getElementById("hubBack").textContent=hubReturnSurface==="world"?"← World 世界":"← Heroes 小英雄";
+  if(hubTab!=="learn")invalidateLearningSessionView();
   const k=KIDS[hubKid], done=actsToday(hubKid);
-  if(hubKid!=="luis"&&hubTab==="captain") hubTab="day";
-  if(tabLocked(hubTab)) hubTab="day";
+  if(hubKid!=="luis"&&hubTab==="captain") hubTab="quests";
+  if(hubTab!=="games"&&tabLocked(hubTab)) hubTab="quests";
   document.getElementById("captainTab").classList.toggle("hidden",hubKid!=="luis");
   renderHubHead();
   /* tabs */
   document.querySelectorAll("#hubTabs .chip").forEach(c=>{
-    const on=c.dataset.t===hubTab;
-    const locked=tabLocked(c.dataset.t);
+    const on=c.dataset.t===hubTab||(c.dataset.t==="adventure"&&["games","acts","learn","books","music"].includes(hubTab));
+    const locked=c.dataset.t!=="games"&&tabLocked(c.dataset.t);
     c.classList.toggle("on",on);
     c.classList.toggle("locked",locked);
     c.disabled=locked;
     c.title=locked?lockedCategoryMessage(c.dataset.t):"";
     c.style.background=on?k.raw:"";
-    c.onclick=()=>{if(locked){bigFloat("🔒");return;} hubTab=c.dataset.t; saveAppPlace("hub"); renderHub();};
+    c.onclick=()=>{if(locked){bigFloat("🔒");return;} SummerQuest.navigate(c.dataset.t);};
   });
+  document.getElementById("tab-quests").classList.toggle("hidden",hubTab!=="quests");
+  document.getElementById("tab-adventure").classList.toggle("hidden",hubTab!=="adventure");
   document.getElementById("tab-day").classList.toggle("hidden",hubTab!=="day");
   document.getElementById("tab-games").classList.toggle("hidden",hubTab!=="games");
   document.getElementById("tab-acts").classList.toggle("hidden",hubTab!=="acts");
@@ -2478,6 +3198,8 @@ function renderHub(){
      already in the grid when the Rewards tab renders it */
   checkAchievements(hubKid);
   updateRewardBadge();
+  if(hubTab==="quests") renderQuestHome();
+  if(hubTab==="adventure") renderAdventure();
   if(hubTab==="learn") renderLearn();
   if(hubTab==="day") renderMyDay();
   if(hubTab==="ask") renderAsk();
@@ -2503,8 +3225,11 @@ function renderHub(){
       <small>${m.blurb}<span class="zhs">${m.tz}</span></small>${l===k.level?'<span class="favtag">MY GAME</span>':''}${
       trio.indexOf(l)>=0?`<span class="todaytag${bdone[l]?" done":""}">${bdone[l]?"✓ done 完成":"today 今天"}</span>`:""}</button>`;
   }).join("");
-  document.querySelectorAll("#gameRow .gamecard").forEach(c=>
-    c.onclick=()=>startGame(hubKid,c.dataset.l));
+  document.querySelectorAll("#gameRow .gamecard").forEach(c=>{
+    const access=gameLaunchAccess(hubKid,c.dataset.l);
+    c.disabled=!access.ok;c.classList.toggle("locked",!access.ok);
+    c.onclick=()=>SummerQuest.openGame(c.dataset.l);
+  });
   /* activities */
   document.getElementById("actGrid").innerHTML=BANK.map((b,i)=>
     `<button class="bankcard actcard ${done[i]?'donetoday':''}" data-i="${i}">
@@ -2512,9 +3237,10 @@ function renderHub(){
         <span class="zhs">${b.catz}</span></div>
       <p>${b[hubKid]}<span class="zhs">${b.z[hubKid]}</span></p></button>`).join("");
   document.querySelectorAll("#actGrid .actcard").forEach(c=>
-    c.onclick=()=>openAct(+c.dataset.i));
+    c.onclick=()=>SummerQuest.openActivity(+c.dataset.i));
   updateAskBadge();
   refreshAppLock();
+  updateSummerCompanion();
 }
 function refreshLockUI(){
   const tab=document.getElementById("tab-games");
@@ -2545,8 +3271,15 @@ function refreshLockUI(){
   }
 }
 function openAct(i){
-  if(catLockReason(hubKid,"acts")){hubTab="day"; showOnly("hub"); saveAppPlace("hub"); renderHub(); bigFloat("🔒"); return;}
-  actIdx=i; showOnly("act"); saveAppPlace("act"); renderAct();
+  if(!hubKid||!KIDS[hubKid])return {ok:false,reason:"no_kid_selected"};
+  if(!Number.isInteger(i)||!BANK[i])return {ok:false,reason:"content_not_found"};
+  if(appLockReason(hubKid)||catLockReason(hubKid,"acts"))return {ok:false,reason:"not_available"};
+  rememberContentReturn();
+  stopActTimer();
+  actIdx=i;
+  if(window.SQActivityRouter&&BANK[i])SQActivityRouter.setCurrent("activity","act:"+i,{title:BANK[i].cat||"Activity",icon:BANK[i].icon||"🏕️"});
+  showOnly("act"); saveAppPlace("act"); renderAct();
+  return {ok:true,id:i};
 }
 function renderAct(){
   const b=BANK[actIdx], g=ACT_GUIDE[actIdx], k=KIDS[hubKid];
@@ -2628,13 +3361,489 @@ function toggleActTimer(){
   },1000);
 }
 function stopActTimer(){ if(actTimerInt){clearInterval(actTimerInt);actTimerInt=null;} }
-document.getElementById("hubBack").onclick=()=>{stopActTimer();hubKid=null;saveAppPlace("home");showOnly("home");renderHome();};
-document.getElementById("actBack").onclick=()=>{stopActTimer();showOnly("hub");saveAppPlace("hub");renderHub();};
+document.getElementById("hubBack").onclick=summerQuestBack;
+document.getElementById("actBack").onclick=summerQuestBack;
 
 /* ============ LEARN TAB ============ */
 let qbStarter=null, qbTopic=null;
+let learningDirectorRenderToken=0;
+let learningDirectorActionToken=0,learningDirectorBusy=false,learningDirectorView=null;
+function invalidateLearningSessionView(){
+  learningDirectorRenderToken++;learningDirectorActionToken++;learningDirectorBusy=false;learningDirectorView=null;
+  Object.keys(knowledgeLabState).forEach(function(domain){cancelKnowledgeHelpUi(domain);knowledgeLabState[domain].renderToken++;});
+}
+function learningSessionViewMatches(expectedKid,token){
+  return hubKid===expectedKid&&hubTab==="learn"&&token===learningDirectorActionToken&&!document.getElementById("hub").classList.contains("hidden");
+}
+function learningDirectorActionInput(){
+  const input=learningDirectorInput(),view=learningDirectorView;if(!input||!view)return input;
+  input.expectedPlanId=view.plan.id;
+  if(view.currentStep)input.expectedStepId=view.currentStep.id;
+  if(view.plan.coordination)input.expectedRevision=view.plan.coordination.revision;
+  return input;
+}
+function scrollToLearningSession(){
+  const card=document.getElementById("learningDirectorCard");if(card&&card.scrollIntoView)card.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function learningDirectorInput(){
+  if(!hubKid||!KIDS[hubKid])return null;
+  return {kidId:hubKid,age:KIDS[hubKid].age,language:"en-zh-TW",guided:true,availableGameIds:["calc","vocab"].concat(["science","geography","history"].filter(function(domain){const runtime=window.SQLearningRuntime,cfg=KNOWLEDGE_LABS[domain];return runtime&&cfg&&typeof runtime[cfg.methods.start]==="function";})),preferredVocabularyMode:preferredInputScript()==="bpmf"?"bopomofo":((settings.vocab.levels&&settings.vocab.levels[hubKid])||"copy")};
+}
+let placementCalibrationRenderToken=0;
+function placementResultCard(result,label){
+  if(!result)return '';
+  const source=result.source==="history"?"Recent independent practice · 最近獨立練習":"Quick check · 快速小測";
+  return '<div class="placement-calibration__result"><small>'+escHtml(label)+'</small><b>'+escHtml(result.icon||"🎯")+' '+escHtml(result.label||result.recommendedSkill||"")+'</b><span class="zhs">'+escHtml(result.labelZh||"")+'</span><span class="placement-calibration__source">'+escHtml(source)+'</span></div>';
+}
+function placementCompletedResults(state,domain){
+  if(!state||!state.tracks)return [];
+  const keys=Array.isArray(state.trackOrder)?state.trackOrder:Object.keys(state.tracks);
+  return keys.map(function(key){return state.tracks[key]&&state.tracks[key].result;}).filter(function(result){return result&&(!domain||result.domain===domain);});
+}
+function renderPlacementCalibration(){
+  const body=document.getElementById("placementCalibrationBody"),status=document.getElementById("placementCalibrationStatus");
+  if(!body||!status)return;
+  const input=learningDirectorInput();
+  if(!input||!window.SQLearningRuntime||!SQLearningRuntime.placementCalibrationSession){status.textContent="offline";body.innerHTML='<div class="tipline">Quick check is unavailable. Smart Practice still works from age + recent practice. · 快速能力定位暫時不能用，聰明練習仍會依年齡和最近練習安排。</div>';return;}
+  const token=++placementCalibrationRenderToken,expectedKid=hubKid;
+  status.textContent="checking";
+  Promise.resolve(SQLearningRuntime.placementCalibrationSession(input)).then(function(snapshot){
+    if(token!==placementCalibrationRenderToken||hubKid!==expectedKid||hubTab!=="learn")return;
+    if(!snapshot){status.textContent="offline";body.innerHTML='<div class="tipline">Quick check could not load. · 快速能力定位暫時無法載入。</div>';return;}
+    const state=snapshot.state,current=snapshot.currentStep,evidence=snapshot.evidence||{};
+    if(!state){
+      if(snapshot.recommended){
+        status.textContent="recommended";
+        body.innerHTML='<div class="placement-calibration__intro"><div class="placement-calibration__icon">🧭</div><div><h4>Find a starting point <span class="zhs">找出合適起點</span></h4><p>Usually 8–15 quick items across the Math strands and Words; recent practice can skip areas we already understand. No stars, ranking or AI hints. · 通常是數學各分支＋文字共 8–15 個小題；已有足夠練習紀錄的區域會自動略過。不給星星、不排名，也不用 AI 提示。</p></div></div><div class="placement-calibration__actions"><button class="btn" id="placementStart">▶ Start quick check 開始</button><button class="btn small" id="placementSkip">Later 稍後</button></div>';
+      }else{
+        status.textContent="optional";
+        body.innerHTML='<div class="placement-calibration__intro"><div class="placement-calibration__icon">✓</div><div><h4>Enough practice history <span class="zhs">已有足夠練習紀錄</span></h4><p>Smart Practice already has useful evidence. You can still run a quick check whenever you want. · 聰明練習已經有足夠資料；想重新定位時仍可做快速小測。</p></div></div><div class="placement-calibration__meta">Math '+(evidence.mathIndependentAttempts||0)+' · Words '+(evidence.languageIndependentAttempts||0)+' independent attempts · '+(evidence.resolvedTrackCount||0)+' / '+(evidence.requiredTrackCount||0)+' placement areas already evidenced</div><div class="placement-calibration__actions"><button class="btn small" id="placementReset">🧭 Run quick check 做一次定位</button></div>';
+      }
+    }else if(state.status==="skipped"){
+      status.textContent="later";
+      body.innerHTML='<div class="placement-calibration__intro"><div class="placement-calibration__icon">🧭</div><div><h4>Quick check saved for later <span class="zhs">之後再做</span></h4><p>Nothing is blocked. Smart Practice keeps using the evidence it already has. · 不會鎖住任何功能；聰明練習會繼續使用現有資料。</p></div></div><div class="placement-calibration__actions"><button class="btn small" id="placementReset">▶ Do it now 現在做</button></div>';
+    }else if(state.status==="complete"){
+      status.textContent="map ready";
+      const mathResults=placementCompletedResults(state,"math"),languageResults=placementCompletedResults(state,"language");
+      const mathCards=mathResults.map(function(result){const label=(result.strandLabel||"Math")+(result.strandLabelZh?" · "+result.strandLabelZh:"");return placementResultCard(result,label);}).join("");
+      const languageCards=languageResults.map(function(result){return placementResultCard(result,"Words · 文字");}).join("");
+      body.innerHTML='<div class="placement-calibration__intro"><div class="placement-calibration__icon">🎯</div><div><h4>Starting map found <span class="zhs">找到能力起點地圖了</span></h4><p>Math now has a separate starting point for each sampled strand. These are only provisional estimates; real independent practice keeps taking over. · 數學各分支現在都有自己的暫定起點；之後仍會由真正的獨立練習持續更新。</p></div></div>'+(mathCards?'<div class="placement-calibration__group"><div class="placement-calibration__group-title">Math starting map · 數學起點地圖</div><div class="placement-calibration__results">'+mathCards+'</div></div>':'')+(languageCards?'<div class="placement-calibration__group"><div class="placement-calibration__group-title">Words · 文字</div><div class="placement-calibration__results">'+languageCards+'</div></div>':'')+'<div class="placement-calibration__actions"><button class="btn small" id="placementReset">↺ Re-check 重新定位</button></div>';
+    }else{
+      const totalAreas=(state.trackOrder&&state.trackOrder.length)||0,currentArea=Math.min(totalAreas,(state.currentTrackIndex||0)+1);
+      status.textContent=currentArea+" / "+totalAreas+" areas";
+      const track=(state.steps||[]).map(function(step,i){const cls=step.completedAt?" is-done":i===state.activeStepIndex?" is-current":"";return '<span class="placement-calibration__step'+cls+'">'+escHtml(step.title)+'</span>';}).join("");
+      const progress=current?Math.min(current.targetAttempts,current.progressAttempts||0):0;
+      body.innerHTML='<div class="placement-calibration__track">'+track+'</div><div class="placement-calibration__intro"><div class="placement-calibration__icon">'+(current&&current.domain==="math"?"🔢":"🔤")+'</div><div><h4>'+escHtml(current?current.title:"Quick check")+' <span class="zhs">'+escHtml(current?current.titleZh:"")+'</span></h4><p>'+escHtml(current?current.note:"")+' <span class="zhs">'+escHtml(current?current.noteZh:"")+'</span></p><div class="learning-director__progress">'+progress+' / '+(current?current.targetAttempts:0)+' items</div></div></div><div class="placement-calibration__actions"><button class="btn" id="placementStart">'+(current&&current.startedAt?'▶ Continue check 繼續':'▶ Start this check 開始這段')+'</button><button class="btn small" id="placementSkip">Stop for now 先停一下</button></div>';
+    }
+    const start=document.getElementById("placementStart"),reset=document.getElementById("placementReset"),skip=document.getElementById("placementSkip");
+    if(start)start.onclick=startPlacementCalibrationStep;
+    if(reset)reset.onclick=resetPlacementCalibration;
+    if(skip)skip.onclick=skipPlacementCalibration;
+  }).catch(function(){if(token===placementCalibrationRenderToken){status.textContent="offline";body.innerHTML='<div class="tipline">Quick check could not load. · 快速能力定位暫時無法載入。</div>';}});
+}
+function startPlacementCalibrationStep(){
+  const input=learningDirectorInput();if(!input||!window.SQLearningRuntime||!SQLearningRuntime.startPlacementCalibrationStep)return;
+  if(catLockReason(hubKid,"learn")){bigFloat("🔒");return;}
+  const button=document.getElementById("placementStart");if(button){button.disabled=true;button.textContent="Starting…";}
+  Promise.resolve(SQLearningRuntime.startPlacementCalibrationStep(input)).then(function(snapshot){
+    const step=snapshot&&snapshot.currentStep,state=snapshot&&snapshot.state;if(!step||!step.launch||!state){renderPlacementCalibration();return;}
+    const launch=Object.assign({},step.launch,{flow:"placement",sessionId:state.id,stepId:step.id,domain:step.domain,skill:step.skill});
+    return SummerQuest.openGame(launch.gameId,{learningDirector:launch});
+  }).catch(function(){sBad();renderPlacementCalibration();});
+}
+function resetPlacementCalibration(){
+  const input=learningDirectorInput();if(!input||!window.SQLearningRuntime||!SQLearningRuntime.resetPlacementCalibration)return;
+  Promise.resolve(SQLearningRuntime.resetPlacementCalibration(input)).then(function(){renderPlacementCalibration();renderLearningDirector();}).catch(function(){sBad();});
+}
+function skipPlacementCalibration(){
+  const input=learningDirectorInput();if(!input||!window.SQLearningRuntime||!SQLearningRuntime.skipPlacementCalibration)return;
+  Promise.resolve(SQLearningRuntime.skipPlacementCalibration(input)).then(function(){renderPlacementCalibration();}).catch(function(){sBad();});
+}
+function learningBandLabel(band){
+  return {new:"New · 新",needs_practice:"Practice · 多練一點",building:"Growing · 進步中",steady:"Steady · 穩定",strong:"Strong · 很熟"}[band]||"Learning · 學習中";
+}
+function learningMasteryLabel(state){
+  return {starting:"Starting · 起步",building:"Building · 建立中",secure:"Secure · 已掌握",review_due:"↻ Review due · 該複習"}[state]||"Learning · 學習中";
+}
+function learningDirectorIcon(step){if(!step)return "🎯";if(step.kind==="teach")return "🧑‍🏫";if(step.domain==="science")return "🔬";if(step.domain==="geography")return "🗺️";if(step.domain==="history")return "⏳";if(step.domain==="language")return step.skill&&step.skill.indexOf("sentence")>=0?"💬":"🧙";if(step.skill&&step.skill.indexOf("multiplication")>=0)return "✖️";if(step.skill&&step.skill.indexOf("number_comparison")>=0)return "⚖️";if(step.skill&&step.skill.indexOf("number_bonds")>=0)return "🧩";return step.skill&&step.skill.indexOf("subtraction")>=0?"➖":"➕";}
+function learningTeachDots(count){
+  count=Math.max(0,Math.min(12,Number(count)||0));
+  return Array.from({length:count},function(){return '<i class="learning-teach__dot"></i>';}).join('');
+}
+function learningTeachVisual(scene){
+  const v=scene&&scene.visual;if(!v)return '<div class="learning-teach__loading">Look at the example · 看看例子</div>';
+  if(v.kind==="objects")return '<div class="learning-teach__groups"><div class="learning-teach__group">'+learningTeachDots(v.left)+'</div><span class="learning-teach__op">'+escHtml(v.operator||'+')+'</span><div class="learning-teach__group">'+learningTeachDots(v.right)+'</div></div>';
+  if(v.kind==="number_line")return '<div class="learning-teach__line '+(v.direction<0?'is-back':'')+'"><b>'+escHtml(String(v.start))+'</b><div class="learning-teach__rail"><span class="learning-teach__jump">'+(v.direction>0?'+':'−')+escHtml(String(v.jump))+'</span></div><b>'+escHtml(String(v.end))+'</b></div>';
+  if(v.kind==="comparison"){
+    const max=Math.max(1,Number(v.left)||0,Number(v.right)||0);return '<div class="learning-teach__bars"><div class="learning-teach__bar-row"><b>'+escHtml(String(v.left))+'</b><div class="learning-teach__bar" style="width:'+Math.max(12,Math.round(v.left/max*100))+'%"></div></div><div class="learning-teach__bar-row"><b>'+escHtml(String(v.right))+'</b><div class="learning-teach__bar" style="width:'+Math.max(12,Math.round(v.right/max*100))+'%"></div></div></div>';
+  }
+  if(v.kind==="number_bond")return '<div class="learning-teach__bond"><span>'+escHtml(String(v.known))+'</span><b>+</b><span>'+escHtml(String(v.missing))+'</span><b>=</b><span>'+escHtml(String(v.total))+'</span></div>';
+  if(v.kind==="equal_groups")return '<div class="learning-teach__groups">'+Array.from({length:Math.min(10,Number(v.groups)||0)},function(){return '<div class="learning-teach__group">'+learningTeachDots(v.each)+'</div>';}).join('')+'</div>';
+  if(v.kind==="array")return '<div class="learning-teach__array" style="grid-template-columns:repeat('+Math.max(1,Math.min(10,Number(v.columns)||1))+',12px)">'+Array.from({length:Math.min(80,(Number(v.rows)||0)*(Number(v.columns)||0))},function(){return '<i class="learning-teach__dot"></i>';}).join('')+'</div>';
+  if(v.kind==="letter_build")return '<div class="learning-teach__build"><div class="learning-teach__emoji">'+escHtml(v.emoji||'🔤')+'</div>'+((v.steps||[]).map(function(part,i){return '<div class="learning-teach__build-step"><span>'+(i?'→':'')+'</span><b>'+escHtml(part)+'</b></div>';}).join(''))+'</div>';
+  if(v.kind==="picture_word")return '<div class="learning-teach__picture-word"><div class="learning-teach__emoji">'+escHtml(v.emoji||'🖼️')+'</div><div class="learning-teach__letters">'+((v.letters||[]).map(function(ch){return '<span class="learning-teach__letter">'+escHtml(ch)+'</span>';}).join(''))+'</div><div class="learning-teach__target">'+escHtml(v.target||'')+'</div></div>';
+  if(v.kind==="translation_pair")return '<div class="learning-teach__translation"><div class="learning-teach__translation-card"><b>'+escHtml(v.sourceFrench||'')+'</b><span>'+escHtml(v.sourceChinese||'')+'</span></div><div class="learning-teach__translation-arrow">→</div><div class="learning-teach__translation-card"><div class="learning-teach__emoji">'+escHtml(v.emoji||'🌐')+'</div><b>'+escHtml(v.target||'')+'</b></div></div>';
+  if(v.kind==="sentence_chunks")return '<div class="learning-teach__picture-word"><div class="learning-teach__emoji">'+escHtml(v.emoji||'💬')+'</div><div class="learning-teach__sentence">'+((v.words||[]).map(function(word){return '<span class="learning-teach__word-chip">'+escHtml(word)+'</span>';}).join('<span class="learning-teach__op">→</span>'))+'</div></div>';
+  if(v.kind==="sound_symbols")return '<div class="learning-teach__picture-word"><div class="learning-teach__emoji">'+escHtml(v.emoji||'🔊')+'</div><div class="learning-teach__han">'+escHtml(v.chinese||'')+'</div><div class="learning-teach__symbols">'+((v.symbols||[]).map(function(symbol){return '<span class="learning-teach__symbol">'+escHtml(symbol)+'</span>';}).join(''))+'</div></div>';
+  return '';
+}
+function paintLearningTeachResult(step,result){
+  const currentBox=document.getElementById("learningTeachScene");if(!currentBox||!result||!result.scene)return false;
+  const scene=result.scene, explanation=result.explanation||{};
+  const msg=escHtml(explanation.message||scene.message||''),msgZh=escHtml(explanation.messageZh||scene.messageZh||'');
+  currentBox.innerHTML='<div class="learning-teach__head"><h4>'+escHtml(scene.title||step.title)+' <span class="zhs">'+escHtml(scene.titleZh||step.titleZh||'')+'</span></h4><span class="learning-teach__source">'+(result.source==="remote"?'AI wording · local visual · AI 文字／本機圖像':'Local visual · offline safe · 本機圖像／可離線')+'</span></div><div class="learning-teach__example">'+escHtml(scene.exampleLabel||'')+'</div><div class="learning-teach__visual">'+learningTeachVisual(scene)+'</div><div class="learning-teach__copy">'+msg+'<span class="zhs">'+msgZh+'</span></div><div class="learning-director__actions" style="justify-content:center"><button class="btn small" id="learningTeachListen">🔊 Listen 聽一聽</button><button class="btn" id="learningTeachDone">✓ Got it — practice 開始練習</button></div>';
+  const listen=document.getElementById("learningTeachListen"),done=document.getElementById("learningTeachDone");
+  if(listen)listen.onclick=function(){if(scene.audioCue&&scene.audioCue.text){say(scene.audioCue.text,scene.audioCue.locale||"en-US");return;}say(explanation.message||scene.message||'',"en-US");setTimeout(function(){say(explanation.messageZh||scene.messageZh||'',"zh-TW",true);},350);};
+  if(done)done.onclick=completeLearningTeachStep;
+  return true;
+}
+function renderLearningTeachScene(step){
+  const box=document.getElementById("learningTeachScene");if(!box||!step)return;
+  const input=learningDirectorInput(),runtime=window.SQLearningRuntime;
+  const localMethod=step.domain==="language"?"languageTeachLocalScene":"mathTeachLocalScene";
+  const remoteMethod=step.domain==="language"?"languageTeachScene":"mathTeachScene";
+  if(!input||!runtime||typeof runtime[localMethod]!=="function"){box.innerHTML='<div class="learning-teach__loading">Visual lesson unavailable · 圖像說明暫時無法載入</div>';return;}
+  const expectedKid=hubKid,renderToken=learningDirectorRenderToken,request=Object.assign({},input,{skill:step.skill});
+  const stillCurrent=function(){return hubKid===expectedKid&&hubTab==="learn"&&renderToken===learningDirectorRenderToken&&learningDirectorView&&learningDirectorView.currentStep&&learningDirectorView.currentStep.id===step.id&&document.getElementById("learningTeachScene");};
+  Promise.resolve(runtime[localMethod](request)).then(function(localResult){
+    if(!stillCurrent())return;
+    if(!paintLearningTeachResult(step,localResult)){
+      const currentBox=document.getElementById("learningTeachScene");if(currentBox)currentBox.innerHTML='<div class="learning-teach__loading">This lesson could not load. You can continue to practice. · 這個說明暫時無法載入，可以直接繼續練習。</div><div class="learning-director__actions" style="justify-content:center"><button class="btn" id="learningTeachDone">Continue 繼續</button></div>';
+      const d=document.getElementById("learningTeachDone");if(d)d.onclick=completeLearningTeachStep;
+      return;
+    }
+    if(typeof runtime[remoteMethod]!=="function")return;
+    Promise.resolve(runtime[remoteMethod](request)).then(function(remoteResult){
+      if(!stillCurrent()||!remoteResult||remoteResult.source!=="remote")return;
+      paintLearningTeachResult(step,remoteResult);
+    }).catch(function(){});
+  }).catch(function(){
+    if(!stillCurrent())return;
+    const currentBox=document.getElementById("learningTeachScene");if(currentBox)currentBox.innerHTML='<div class="learning-teach__loading">Visual lesson unavailable · 圖像說明暫時無法載入</div><div class="learning-director__actions" style="justify-content:center"><button class="btn" id="learningTeachDone">Continue 繼續</button></div>';
+    const d=document.getElementById("learningTeachDone");if(d)d.onclick=completeLearningTeachStep;
+  });
+}
+function completeLearningTeachStep(){learningDirectorAction("completeLearningDirectorStep");}
+function learningDirectorAction(method){
+  const input=learningDirectorActionInput(),runtime=window.SQLearningRuntime;
+  if(learningDirectorBusy||!input||!runtime||!runtime[method])return;
+  const expectedKid=hubKid,token=++learningDirectorActionToken;learningDirectorBusy=true;
+  document.querySelectorAll("#learningDirectorBody button").forEach(function(button){button.disabled=true;});
+  Promise.resolve(runtime[method](input)).then(function(state){
+    if(!learningSessionViewMatches(expectedKid,token))return;
+    learningDirectorView=state;renderLearningDirector();
+    ["science","geography","history"].forEach(renderKnowledgeLab);
+  }).catch(function(){if(learningSessionViewMatches(expectedKid,token))renderLearningDirector();})
+    .finally(function(){if(token===learningDirectorActionToken)learningDirectorBusy=false;});
+}
+function renderLearningDirector(){
+  const body=document.getElementById("learningDirectorBody"),status=document.getElementById("learningDirectorStatus");
+  if(!body||!status)return;
+  const input=learningDirectorInput();
+  if(!input||!window.SQLearningRuntime||!SQLearningRuntime.learningDirectorSession){status.textContent="Local · 本機";body.innerHTML='<div class="tipline">Smart Practice is unavailable, but normal learning activities still work. · 聰明練習暫時無法使用，一般學習活動仍可使用。</div>';return;}
+  const token=++learningDirectorRenderToken,expectedKid=hubKid;
+  status.textContent="Planning · 安排中";
+  Promise.resolve(SQLearningRuntime.learningDirectorSession(input)).then(function(state){
+    if(token!==learningDirectorRenderToken||hubKid!==expectedKid||hubTab!=="learn")return;
+    if(!state||!state.plan){status.textContent="Try again · 再試一次";body.innerHTML='<div class="tipline">Could not load this session. Your normal activities are still available. · 暫時無法載入這次練習，一般活動仍可使用。</div>';return;}
+    learningDirectorView=state;
+    ["science","geography","history"].forEach(renderKnowledgeLab);
+    const plan=state.plan,current=state.currentStep,coord=plan.coordination||{},paused=coord.status==="paused",finished=coord.status==="finished";
+    status.textContent=plan.completedAt?"Complete · 完成":finished?"Finished · 已結束":paused?"Paused · 已暫停":((plan.activeStepIndex+1)+" / "+plan.steps.length+" · 步驟");
+    const skills=(plan.skills||[]).map(function(skill){const locked=skill.readiness==="locked",mastery=skill.mastery||null;return '<span class="learning-director__skill'+(locked?' is-locked':mastery==="review_due"?' is-review-due':'')+'"><b>'+escHtml(skill.icon||"🎯")+' '+escHtml(skill.label)+'</b><span class="zhs">'+escHtml(skill.labelZh||"")+'</span><br>'+(locked?'Next · 下一步':escHtml(learningMasteryLabel(mastery)))+'</span>';}).join("");
+    const map='<details class="learning-session-map"><summary>Skill map · 能力地圖</summary><div class="learning-director__skills">'+skills+'</div></details>';
+    const track=plan.steps.map(function(step,i){const cls=(step.completedAt?" is-done":i===plan.activeStepIndex&&!finished?" is-current":"")+(step.kind==="teach"?" is-teach":"");return '<div class="learning-director__step'+cls+'"><b>'+escHtml(step.title)+'</b><span>'+escHtml(step.titleZh)+'</span></div>';}).join("");
+    const prefix='<div class="learning-director__track">'+track+'</div>';
+    if(plan.completedAt||finished){
+      const complete=!!plan.completedAt,empty=coord.finishReason==="no_candidates";
+      body.innerHTML=prefix+'<div class="learning-director__done"><div class="em">'+(complete?'🎉':'☀️')+'</div><h4>'+(complete?'Session complete! · 這次練習完成了！':empty?'Choose a different activity · 選個其他活動':'Finished for now · 先到這裡')+'</h4><div class="sub">'+(complete?'Your practice is saved. · 你的練習已儲存。':empty?'No suitable activity is available for this session. Free exploration is still open. · 這次沒有合適的練習，可以自由探索其他活動。':'Your completed practice is saved. Unfinished steps are not marked complete. · 已做的練習會保留，未做完的步驟不會算完成。')+'</div><div class="learning-director__actions" style="justify-content:center"><button class="btn" id="learningDirectorReset">↺ New session 新的練習</button></div></div>'+map;
+      document.getElementById("learningDirectorReset").onclick=resetLearningDirector;return;
+    }
+    const started=current&&current.startedAt,isTeach=current&&current.kind==="teach",progress=current?Math.min(current.targetAttempts,current.progressAttempts||0):0;
+    const teachActive=isTeach&&started&&!paused;
+    body.innerHTML=prefix+'<div class="learning-director__current"><div class="learning-director__icon">'+learningDirectorIcon(current)+'</div><div><h4>'+escHtml(current?current.title:"Ready")+' <span class="zhs">'+escHtml(current?current.titleZh:"準備好了")+'</span></h4><p>'+escHtml(current?current.note:"")+' <span class="zhs">'+escHtml(current?current.noteZh:"")+'</span></p>'+(isTeach?'':'<div class="learning-director__progress">'+progress+' / '+(current?current.targetAttempts:0)+' practice items · 練習題</div>')+'</div></div>'+
+      (paused?'<p class="tipline">Saved here. Continue whenever you are ready. · 已保留進度，準備好再繼續。</p>':'')+
+      (teachActive?'<div class="learning-teach" id="learningTeachScene"><div class="learning-teach__loading">Preparing a visual lesson… 正在準備圖像說明…</div></div>':'')+
+      '<div class="learning-director__actions"><button class="btn" id="learningDirectorStart" '+(teachActive?'hidden':'')+'>'+(paused?'▶ Resume session 繼續練習':isTeach?'🧑‍🏫 Show lesson 看說明':started?'▶ Continue activity 繼續活動':plan.activeStepIndex?'▶ Next activity 下一個活動':'▶ Start session 開始練習')+'</button><button class="btn small" id="learningDirectorAlternative">↔ Another choice 換一個</button>'+(!paused?'<button class="btn small" id="learningDirectorPause">Ⅱ Pause 暫停</button>':'')+'<button class="btn small" id="learningDirectorFinish">✓ Finish for now 先到這裡</button></div>'+map;
+    document.getElementById("learningDirectorStart").onclick=startLearningDirectorStep;
+    document.getElementById("learningDirectorAlternative").onclick=function(){learningDirectorAction("alternativeLearningDirectorStep");};
+    document.getElementById("learningDirectorFinish").onclick=function(){learningDirectorAction("finishLearningDirectorSession");};
+    const pause=document.getElementById("learningDirectorPause");if(pause)pause.onclick=function(){learningDirectorAction("pauseLearningDirectorSession");};
+    if(teachActive)renderLearningTeachScene(current);
+  }).catch(function(){if(token===learningDirectorRenderToken&&hubKid===expectedKid){status.textContent="Try again · 再試一次";body.innerHTML='<div class="tipline">The session could not load. Normal activities remain available. · 暫時無法載入這次練習，一般活動仍可使用。</div>';}});
+}
+function startLearningDirectorStep(){
+  const input=learningDirectorActionInput(),runtime=window.SQLearningRuntime;
+  if(learningDirectorBusy||!input||!runtime||!runtime.startLearningDirectorStep)return;
+  if(catLockReason(hubKid,"learn")){bigFloat("🔒");return;}
+  const expectedKid=hubKid,token=++learningDirectorActionToken;learningDirectorBusy=true;
+  const button=document.getElementById("learningDirectorStart");if(button){button.disabled=true;button.textContent="Starting… 開始中…";}
+  Promise.resolve(runtime.startLearningDirectorStep(input)).then(function(state){
+    if(!learningSessionViewMatches(expectedKid,token)){
+      if(state&&state.currentStep&&state.plan.coordination)runtime.pauseLearningDirectorSession(Object.assign({},input,{expectedPlanId:state.plan.id,expectedStepId:state.currentStep.id,expectedRevision:state.plan.coordination.revision}));
+      return;
+    }
+    learningDirectorView=state;
+    const step=state&&state.currentStep;if(!step||state.actionApplied===false){renderLearningDirector();return;}
+    if(step.kind==="teach"||!step.launch){renderLearningDirector();return;}
+    const launch=Object.assign({},step.launch,{flow:"director",sessionId:state.plan.id,stepId:step.id,domain:step.domain,skill:step.skill,directorRunId:step.runId,completedAttempts:step.progressAttempts||0,targetAttempts:Math.max(1,step.targetAttempts-(step.progressAttempts||0))});
+    if(launch.gameId==="science"||launch.gameId==="geography"||launch.gameId==="history"){
+      const domain=launch.gameId,cfg=KNOWLEDGE_LABS[domain],knowledgeInput=knowledgeLessonInput(domain),startFn=cfg&&runtime[cfg.methods.start];
+      if(!cfg||!startFn||!knowledgeInput||!launch.lessonId){renderLearningDirector();return;}
+      return Promise.resolve(startFn(Object.assign({},knowledgeInput,{lessonId:launch.lessonId,mode:launch.knowledgeMode||launch.scienceMode||"explore",flow:"director",directorSessionId:state.plan.id,directorStepId:step.id,directorRunId:step.runId,resume:true}))).then(function(snapshot){
+        if(!learningSessionViewMatches(expectedKid,token))return;
+        if(!snapshot){runtime.pauseLearningDirectorSession(Object.assign({},input,{expectedPlanId:state.plan.id,expectedStepId:step.id,expectedRevision:state.plan.coordination.revision}));renderLearningDirector();return;}
+        knowledgeLabState[domain].questionId="";renderKnowledgeLab(domain);renderLearningDirector();
+        const card=document.getElementById(cfg.cardId);if(card&&card.scrollIntoView)card.scrollIntoView({behavior:"smooth",block:"start"});
+      });
+    }
+    return SummerQuest.openGame(launch.gameId,{learningDirector:launch});
+  }).catch(function(){if(learningSessionViewMatches(expectedKid,token))renderLearningDirector();})
+    .finally(function(){if(token===learningDirectorActionToken)learningDirectorBusy=false;});
+}
+function resetLearningDirector(){learningDirectorAction("resetLearningDirectorSession");}
+const KNOWLEDGE_LABS={
+  science:{
+    domain:"science",prefix:"science",cardId:"scienceLabCard",statusId:"scienceLabStatus",topicsId:"scienceLessonTopics",bodyId:"scienceLessonBody",icon:"🔬",questionIcon:"🧪",
+    methods:{catalog:"scienceLessonCatalog",snapshot:"scienceLessonSnapshot",start:"startScienceLesson",adapt:"adaptScienceLesson",answer:"answerScienceLesson",advance:"advanceScienceLesson",reset:"resetScienceLesson"},
+    exploreStatus:"explore",pickTitle:"Pick something to investigate",pickTitleZh:"選一個想研究的主題",
+    pickBody:"Animals, plants, the body, matter, weather or space. Each lesson is short and works offline.",pickBodyZh:"動物、植物、人體、物質、天氣或太空；每一課都很短，也可以離線使用。",
+    observe:"Tap a part to inspect it.",observeZh:"點一個部分看看它的工作。",
+    safety:"Science facts and correct answers come from Summer Quest’s fixed lesson bank. AI may choose approved clues and lesson order.",safetyZh:"科學事實與正確答案由固定課程資料控制；AI 只能選擇已核准的線索與課程順序。",
+    unavailable:"Science Lab is unavailable right now.",unavailableZh:"科學實驗室暫時無法使用。",loadError:"Science Lab could not load.",loadErrorZh:"科學實驗室暫時無法載入。"
+  },
+  geography:{
+    domain:"geography",prefix:"geography",cardId:"geographyLabCard",statusId:"geographyLabStatus",topicsId:"geographyLessonTopics",bodyId:"geographyLessonBody",icon:"🗺️",questionIcon:"🗺️",
+    methods:{catalog:"geographyLessonCatalog",snapshot:"geographyLessonSnapshot",start:"startGeographyLesson",adapt:"adaptGeographyLesson",answer:"answerGeographyLesson",advance:"advanceGeographyLesson",reset:"resetGeographyLesson"},
+    exploreStatus:"explore",pickTitle:"Pick a map adventure",pickTitleZh:"選一個地圖探險",
+    pickBody:"Directions, map symbols, land and water, the world, hemispheres or environments. Every lesson works offline.",pickBodyZh:"方向、地圖符號、陸地與水域、世界、半球或環境；每一課都可以離線使用。",
+    observe:"Tap a map clue to inspect it.",observeZh:"點一個地圖線索看看。",
+    safety:"Geography facts and correct answers come from Summer Quest’s fixed lesson bank. AI may choose approved clues and lesson order.",safetyZh:"地理事實與正確答案由固定課程資料控制；AI 只能選擇已核准的線索與課程順序。",
+    unavailable:"Map Explorer is unavailable right now.",unavailableZh:"地圖探險家暫時無法使用。",loadError:"Map Explorer could not load.",loadErrorZh:"地圖探險家暫時無法載入。"
+  },
+  history:{
+    domain:"history",prefix:"history",cardId:"historyLabCard",statusId:"historyLabStatus",topicsId:"historyLessonTopics",bodyId:"historyLessonBody",icon:"⏳",questionIcon:"⏳",
+    methods:{catalog:"historyLessonCatalog",snapshot:"historyLessonSnapshot",start:"startHistoryLesson",adapt:"adaptHistoryLesson",answer:"answerHistoryLesson",advance:"advanceHistoryLesson",reset:"resetHistoryLesson"},
+    exploreStatus:"explore",pickTitle:"Pick a time-travel clue",pickTitleZh:"選一個時光旅行線索",
+    pickBody:"Past and present, event order, historical sources, ancient Egypt, ancient China or communication over time. Every lesson works offline.",pickBodyZh:"過去與現在、事件順序、歷史史料、古埃及、古代中國或通訊變化；每一課都可以離線使用。",
+    observe:"Tap a history clue to inspect it.",observeZh:"點一個歷史線索看看。",
+    safety:"History facts and correct answers come from Summer Quest’s fixed lesson bank. AI may choose approved clues and lesson order.",safetyZh:"歷史事實與正確答案由固定課程資料控制；AI 只能選擇已核准的線索與課程順序。",
+    unavailable:"Time Traveler is unavailable right now.",unavailableZh:"時光旅行家暫時無法使用。",loadError:"Time Traveler could not load.",loadErrorZh:"時光旅行家暫時無法載入。"
+  }
+};
+const knowledgeLabState={science:{renderToken:0,questionStartedAt:0,questionId:""},geography:{renderToken:0,questionStartedAt:0,questionId:""},history:{renderToken:0,questionStartedAt:0,questionId:""}};
+function knowledgeLessonInput(domain){
+  if(!hubKid||!KIDS[hubKid]||!KNOWLEDGE_LABS[domain])return null;
+  return {kidId:hubKid,age:KIDS[hubKid].age,language:"en-zh-TW",domain:domain};
+}
+function knowledgeMutationInput(domain){
+  const input=knowledgeLessonInput(domain),snapshot=knowledgeLabState[domain].snapshot;if(!input||!snapshot)return input;
+  input.expectedSessionId=snapshot.session.id;input.expectedPhase=snapshot.session.phase;
+  if(snapshot.currentQuestion)input.expectedQuestionId=snapshot.currentQuestion.id;
+  return input;
+}
+function scienceLessonInput(){return knowledgeLessonInput("science");}
+function geographyLessonInput(){return knowledgeLessonInput("geography");}
+function historyLessonInput(){return knowledgeLessonInput("history");}
+function knowledgeRunIsActive(snapshot){
+  if(!snapshot||!snapshot.session||snapshot.session.flow!=="director")return false;
+  const session=snapshot.session,view=learningDirectorView,step=view&&view.currentStep,coord=view&&view.plan.coordination;
+  return !!(view&&view.plan.learnerId===hubKid&&view.plan.id===session.directorSessionId&&step&&step.id===session.directorStepId&&coord&&coord.status==="running"&&step.runId===session.directorRunId);
+}
+function knowledgePlanSource(plan){return plan&&plan.source==="remote"?"AI-sequenced · facts locked · AI 排序／固定內容":"Local lesson · offline-ready · 本機課程／可離線";}
+function knowledgeVisualHtml(domain,lesson){
+  const cfg=KNOWLEDGE_LABS[domain];if(!cfg||!lesson||!lesson.visual||!Array.isArray(lesson.visual.items))return '';
+  const kind=lesson.visual.kind||"classify";
+  return '<div class="science-lab__visual is-'+escHtml(kind)+'">'+lesson.visual.items.map(function(item){return '<button class="science-lab__visual-item" type="button" data-knowledge-item="'+escHtml(item.id)+'"><span class="em">'+escHtml(item.icon||cfg.icon)+'</span><b>'+escHtml(item.label||"")+'</b><small>'+escHtml(item.labelZh||"")+'</small></button>';}).join("")+'</div><div class="science-lab__observation" id="'+cfg.prefix+'Observation">👆 '+escHtml(cfg.observe)+' · '+escHtml(cfg.observeZh)+'</div>';
+}
+function bindKnowledgeVisual(domain,lesson){
+  const cfg=KNOWLEDGE_LABS[domain],body=cfg&&document.getElementById(cfg.bodyId);if(!cfg||!body||!lesson||!lesson.visual)return;
+  const items=lesson.visual.items||[];
+  body.querySelectorAll('[data-knowledge-item]').forEach(function(button){button.onclick=function(){
+    const item=items.find(function(row){return row.id===button.dataset.knowledgeItem;}),out=document.getElementById(cfg.prefix+"Observation");if(!item||!out)return;
+    knowledgeLabState[domain].focusId="visual:"+item.id;
+    if(knowledgeLabState[domain].snapshot&&knowledgeLabState[domain].snapshot.help){knowledgeLabState[domain].renderToken++;cancelKnowledgeHelpUi(domain);}
+    out.innerHTML='<b>'+escHtml(item.icon||cfg.icon)+' '+escHtml(item.note||"")+'</b><span class="zhs" style="display:block;margin-top:3px">'+escHtml(item.noteZh||"")+'</span>';sTap();
+  };});
+}
+function cancelKnowledgeHelpUi(domain){
+  const state=knowledgeLabState[domain],snapshot=state&&state.snapshot,runtime=window.SQLearningRuntime;
+  if(!snapshot||!runtime||!runtime.cancelKnowledgeHelp)return;
+  const input={kidId:snapshot.session.learnerId,age:0,domain:domain,expectedSessionId:snapshot.session.id};
+  Promise.resolve(runtime.cancelKnowledgeHelp(input)).catch(function(){});
+}
+function knowledgeHelpHtml(domain,snapshot){
+  const cfg=KNOWLEDGE_LABS[domain],session=snapshot&&snapshot.session;
+  if(!cfg||!session)return '';
+  const explore=session.mode==="explore"&&session.phase==="intro",check=session.mode==="check"&&session.phase==="question"&&snapshot.currentQuestion&&!snapshot.currentAnswer;
+  if(!explore&&!check)return '';
+  const help=snapshot.help,label=check?"Hint from Summer · Summer 的提示":"Explore with Summer · 跟 Summer 探索",openLabel=check?"💡 Need a hint? 提示":"☀️ Explore with Summer 跟 Summer 探索",nextLabel=check?"↺ Another hint 換個提示":"↺ Another clue 換個線索";
+  const content=help&&help.cue?'<div class="knowledge-help__clue" role="status" aria-live="polite"><b>'+escHtml(help.cue.icon||"🔎")+' '+escHtml(help.cue.title)+' · '+escHtml(help.cue.titleZh)+'</b><p>'+escHtml(help.cue.text)+'<span class="zhs">'+escHtml(help.cue.textZh)+'</span></p></div><div class="science-lab__actions"><button type="button" class="btn small" id="'+cfg.prefix+'HelpListen">🔊 Listen 聽一聽</button><button type="button" class="btn small" id="'+cfg.prefix+'HelpNext">'+nextLabel+'</button></div>':'<p class="sub">'+(check?'A small strategy hint — never the answer. · 只給小提示，不會直接說答案。':'One small clue at a time. · 一次看一個小線索。')+'</p><button type="button" class="btn small" id="'+cfg.prefix+'HelpOpen">'+openLabel+'</button>';
+  return '<section class="knowledge-help" id="'+cfg.prefix+'HelpPanel" aria-label="'+label+'">'+content+'</section>';
+}
+function bindKnowledgeHelp(domain,snapshot){
+  const cfg=KNOWLEDGE_LABS[domain],body=document.getElementById(cfg.bodyId),help=snapshot.help;
+  if(!body)return;
+  body.querySelectorAll('[data-knowledge-item],[data-knowledge-fact]').forEach(function(el){
+    const selected=!!(help&&help.cue&&((help.cue.kind==="visual"&&el.dataset.knowledgeItem===help.cue.targetId)||(help.cue.kind==="fact"&&el.dataset.knowledgeFact===help.cue.targetId)));
+    el.classList.toggle("is-help-focus",selected);
+  });
+  const open=document.getElementById(cfg.prefix+"HelpOpen"),next=document.getElementById(cfg.prefix+"HelpNext"),listen=document.getElementById(cfg.prefix+"HelpListen");
+  if(open)open.onclick=function(){openKnowledgeHelpUi(domain,false);};
+  if(next)next.onclick=function(){openKnowledgeHelpUi(domain,true);};
+  if(listen&&help&&help.cue)listen.onclick=function(){knowledgeLabState[domain].renderToken++;cancelKnowledgeHelpUi(domain);say(help.cue.text,"en-US");say(help.cue.textZh,"zh-TW",true);};
+}
+function openKnowledgeHelpUi(domain,another){
+  const state=knowledgeLabState[domain],input=knowledgeMutationInput(domain),snapshot=state&&state.snapshot,runtime=window.SQLearningRuntime;
+  if(!input||!snapshot||!runtime)return;
+  const session=snapshot.session,eligible=(session.mode==="explore"&&session.phase==="intro")||(session.mode==="check"&&session.phase==="question"&&snapshot.currentQuestion&&!snapshot.currentAnswer);
+  if(!eligible||(session.flow==="director"&&!knowledgeRunIsActive(snapshot)))return;
+  const method=another?runtime.nextKnowledgeHelp:runtime.openKnowledgeHelp;if(!method)return;
+  if(session.mode==="explore"&&state.focusId)input.focusId=state.focusId;
+  const expectedKid=hubKid,sessionId=session.id,phase=session.phase,questionId=snapshot.currentQuestion&&snapshot.currentQuestion.id,token=++state.renderToken;
+  function fresh(){const current=state.snapshot;return hubKid===expectedKid&&hubTab==="learn"&&token===state.renderToken&&current&&current.session.id===sessionId&&current.session.phase===phase&&(!questionId||(current.currentQuestion&&current.currentQuestion.id===questionId&&!current.currentAnswer))&&(current.session.flow!=="director"||knowledgeRunIsActive(current));}
+  Promise.resolve(method(input)).then(function(local){
+    if(!fresh()||!local||local.session.id!==sessionId)return;
+    renderKnowledgeSnapshot(domain,local);
+    // This is the only UI entry that may request optional help. Rendering/reload
+    // and Another clue/hint never make a model request.
+    if(!another&&runtime.adaptKnowledgeHelp)Promise.resolve(runtime.adaptKnowledgeHelp(input)).then(function(updated){
+      if(!fresh()||!updated||updated.session.id!==sessionId||updated.session.phase!==phase)return;
+      state.snapshot=updated;
+      const cfg=KNOWLEDGE_LABS[domain],panel=document.getElementById(cfg.prefix+"HelpPanel");
+      if(panel){panel.outerHTML=knowledgeHelpHtml(domain,updated);bindKnowledgeHelp(domain,updated);}
+    }).catch(function(){});
+  }).catch(function(){});
+}
+function renderKnowledgeSnapshot(domain,snapshot){
+  const cfg=KNOWLEDGE_LABS[domain],state=knowledgeLabState[domain],body=cfg&&document.getElementById(cfg.bodyId),status=cfg&&document.getElementById(cfg.statusId);
+  if(!cfg||!state||!body||!status||!snapshot||!snapshot.session||!snapshot.lesson)return;
+  if(snapshot.session.learnerId!==hubKid||hubTab!=="learn")return;
+  if(!state.snapshot||state.snapshot.session.id!==snapshot.session.id)state.focusId="";
+  state.snapshot=snapshot;
+  const session=snapshot.session,lesson=snapshot.lesson,plan=session.plan||{};
+  if(session.directorRunId&&session.phase!=="complete"&&session.answers.length<snapshot.totalQuestions&&!knowledgeRunIsActive(snapshot)){
+    status.textContent="Paused · 已暫停";
+    body.innerHTML='<div class="science-lab__scene science-lab__complete"><div class="em">'+cfg.icon+'</div><h4>Activity saved · 活動已儲存</h4><p>Return to your session to continue or choose something else. · 回到練習繼續，或選個其他活動。</p><button class="btn" id="'+cfg.prefix+'ResumeSession">🎯 Back to session 回到練習</button></div>';
+    document.getElementById(cfg.prefix+"ResumeSession").onclick=scrollToLearningSession;return;
+  }
+  status.textContent=session.phase==="complete"?"complete":session.phase==="question"?((session.questionIndex+1)+" / "+snapshot.totalQuestions):cfg.exploreStatus;
+  if(session.phase==="intro"){
+    const pre=session.readingLevel==="pre_reader",intro=pre?lesson.preReaderIntro:lesson.intro,introZh=pre?lesson.preReaderIntroZh:lesson.introZh;
+    const facts=(snapshot.facts||[]).map(function(fact){return '<div class="science-lab__fact" data-knowledge-fact="'+escHtml(fact.id)+'"><span class="em">'+escHtml(fact.icon||"🔎")+'</span><div>'+escHtml(fact.text||"")+'</div><span class="zhs">'+escHtml(fact.textZh||"")+'</span></div>';}).join("");
+    const directed=session.flow==="director";
+    body.innerHTML='<div class="science-lab__scene"><div class="science-lab__scene-head"><div class="science-lab__scene-icon">'+escHtml(lesson.icon||cfg.icon)+'</div><div><h4>'+escHtml(lesson.title||"")+' <span class="zhs">'+escHtml(lesson.titleZh||"")+'</span></h4><div class="sub">'+escHtml(lesson.subtitle||"")+' · '+escHtml(lesson.subtitleZh||"")+'</div></div><span class="science-lab__source">'+escHtml(knowledgePlanSource(plan))+'</span></div><div class="science-lab__intro">'+escHtml(intro||"")+'<span class="zhs">'+escHtml(introZh||"")+'</span></div>'+knowledgeVisualHtml(domain,lesson)+'<div class="science-lab__facts">'+facts+'</div>'+knowledgeHelpHtml(domain,snapshot)+'<div class="science-lab__actions"><button class="btn small" id="'+cfg.prefix+'Listen">🔊 Listen 聽一聽</button><button class="btn" id="'+cfg.prefix+'StartQuestions">'+escHtml(cfg.questionIcon||cfg.icon)+' Try 2 questions 回答兩題</button>'+(directed?'<button class="btn small" id="'+cfg.prefix+'PauseSession">Ⅱ Pause · 暫停</button>':'<button class="btn small" id="'+cfg.prefix+'ChooseAnother">↺ Another topic 換主題</button>')+'</div><div class="science-lab__safety">'+escHtml(cfg.safety)+' · '+escHtml(cfg.safetyZh)+'</div></div>';
+    bindKnowledgeVisual(domain,lesson);bindKnowledgeHelp(domain,snapshot);
+    const listen=document.getElementById(cfg.prefix+"Listen"),start=document.getElementById(cfg.prefix+"StartQuestions"),another=document.getElementById(cfg.prefix+"ChooseAnother");
+    if(listen)listen.onclick=function(){say(intro||"","en-US");setTimeout(function(){say(introZh||"","zh-TW",true);},300);};
+    if(start)start.onclick=function(){advanceKnowledgeLessonUi(domain);};
+    const pause=document.getElementById(cfg.prefix+"PauseSession");if(pause)pause.onclick=function(){returnKnowledgeToSmartPractice(domain);};
+    if(another)another.onclick=function(){resetKnowledgeLessonUi(domain);};
+    return;
+  }
+  if(session.phase==="question"){
+    const q=snapshot.currentQuestion,answer=snapshot.currentAnswer;if(!q){body.innerHTML='<div class="tipline">Question unavailable · 題目暫時無法載入</div>';return;}
+    if(!answer&&state.questionId!==q.id){state.questionId=q.id;state.questionStartedAt=Date.now();}
+    const options=(q.options||[]).map(function(option){let cls="";if(answer){if(option.id===q.correctOptionId)cls=" is-correct";else if(option.id===answer.selectedOptionId)cls=" is-wrong";}return '<button class="science-lab__option'+cls+'" type="button" data-knowledge-answer="'+escHtml(option.id)+'" '+(answer?'disabled':'')+'><span class="em">'+escHtml(option.icon||"🔎")+'</span>'+escHtml(option.label||"")+'<span class="zhs" style="display:block;color:var(--muted);margin-top:3px">'+escHtml(option.labelZh||"")+'</span></button>';}).join("");
+    const feedback=answer?'<div class="science-lab__feedback '+(answer.correct?'good':'retry')+'">'+(answer.correct?'✓ Nice observation! · 答對了！':'↺ Good try — check the clue. · 很好的嘗試，再看一次線索。')+'<div style="margin-top:4px">'+escHtml(q.explain||"")+' <span class="zhs">'+escHtml(q.explainZh||"")+'</span></div></div>':'';
+    body.innerHTML='<div class="science-lab__scene"><div class="science-lab__question"><div class="qicon">'+escHtml(lesson.icon||cfg.icon)+'</div><div class="sub">Question '+(session.questionIndex+1)+' / '+snapshot.totalQuestions+' · 第 '+(session.questionIndex+1)+' 題</div><h4>'+escHtml(q.prompt||"")+'</h4><div class="zhs">'+escHtml(q.promptZh||"")+'</div></div>'+knowledgeHelpHtml(domain,snapshot)+'<div class="science-lab__options">'+options+'</div>'+feedback+(answer?'<div class="science-lab__actions"><button class="btn" id="'+cfg.prefix+'Next">'+(session.questionIndex+1>=snapshot.totalQuestions?'✓ Finish 完成':'Next → 下一題')+'</button></div>':'')+(session.flow==="director"?'<div class="science-lab__actions"><button class="btn small" id="'+cfg.prefix+'PauseSession">Ⅱ Pause · 暫停</button></div>':'')+'</div>';
+    bindKnowledgeHelp(domain,snapshot);
+    if(!answer)body.querySelectorAll('[data-knowledge-answer]').forEach(function(button){button.onclick=function(){answerKnowledgeLessonUi(domain,button.dataset.knowledgeAnswer||"");};});
+    const next=document.getElementById(cfg.prefix+"Next");if(next)next.onclick=function(){advanceKnowledgeLessonUi(domain);};
+    const pause=document.getElementById(cfg.prefix+"PauseSession");if(pause)pause.onclick=function(){returnKnowledgeToSmartPractice(domain);};return;
+  }
+  const total=snapshot.totalQuestions||0,score=snapshot.score||0,directed=session.flow==="director";
+  body.innerHTML='<div class="science-lab__scene science-lab__complete"><div class="em">'+(score===total?'🎉':cfg.icon)+'</div><h4>'+escHtml(lesson.title||"")+' complete! <span class="zhs">完成！</span></h4><div class="sub">'+score+' / '+total+' questions · '+score+' / '+total+' 題</div><div class="science-lab__actions">'+(directed?'<button class="btn" id="'+cfg.prefix+'BackToPractice">🎯 Back to Smart Practice 回到聰明練習</button><button class="btn small" id="'+cfg.prefix+'Repeat">↺ Review again 再看一次</button>':'<button class="btn" id="'+cfg.prefix+'Repeat">↺ Do it again 再做一次</button><button class="btn small" id="'+cfg.prefix+'ChooseAnother">🧭 Choose another topic 換主題</button>')+'</div></div>';
+  const repeat=document.getElementById(cfg.prefix+"Repeat"),another=document.getElementById(cfg.prefix+"ChooseAnother"),back=document.getElementById(cfg.prefix+"BackToPractice");
+  if(repeat)repeat.onclick=function(){startKnowledgeLessonUi(domain,lesson.id);};if(another)another.onclick=function(){resetKnowledgeLessonUi(domain);};if(back)back.onclick=function(){returnKnowledgeToSmartPractice(domain);};
+}
+function renderKnowledgeLab(domain){
+  const cfg=KNOWLEDGE_LABS[domain],state=knowledgeLabState[domain],body=cfg&&document.getElementById(cfg.bodyId),topics=cfg&&document.getElementById(cfg.topicsId),status=cfg&&document.getElementById(cfg.statusId),runtime=window.SQLearningRuntime,input=knowledgeLessonInput(domain);
+  if(!cfg||!state||!body||!topics||!status)return;
+  /* Director refreshes must not invalidate a lesson that is still opening. */
+  if(state.startingToken===state.renderToken)return;
+  const catalogFn=runtime&&runtime[cfg.methods.catalog],snapshotFn=runtime&&runtime[cfg.methods.snapshot];
+  if(!input||!catalogFn||!snapshotFn){status.textContent="offline";body.innerHTML='<div class="tipline">'+escHtml(cfg.unavailable)+' · '+escHtml(cfg.unavailableZh)+'</div>';return;}
+  const token=++state.renderToken,expectedKid=hubKid;status.textContent="loading";
+  Promise.all([Promise.resolve(catalogFn(input)),Promise.resolve(snapshotFn(input))]).then(function(values){
+    if(token!==state.renderToken||hubKid!==expectedKid||hubTab!=="learn")return;
+    const catalog=Array.isArray(values[0])?values[0]:[],snapshot=values[1],active=snapshot&&snapshot.lesson?snapshot.lesson.id:"",directed=!!(knowledgeRunIsActive(snapshot)&&snapshot.session.phase!=="complete");
+    topics.innerHTML=catalog.map(function(lesson){const disabled=directed?' disabled':'';return '<button type="button" class="science-lab__topic'+(lesson.id===active?' is-active':'')+'" data-knowledge-lesson="'+escHtml(lesson.id)+'"'+disabled+'><b>'+escHtml(lesson.icon||cfg.icon)+' '+escHtml(lesson.title||"")+'</b><span class="zhs">'+escHtml(lesson.titleZh||"")+'</span></button>';}).join("");
+    topics.querySelectorAll('[data-knowledge-lesson]').forEach(function(button){button.onclick=function(){startKnowledgeLessonUi(domain,button.dataset.knowledgeLesson||"");};});
+    if(!snapshot){status.textContent="pick one";body.innerHTML='<div class="science-lab__scene"><div class="science-lab__complete"><div class="em">'+cfg.icon+'</div><h4>'+escHtml(cfg.pickTitle)+' <span class="zhs">'+escHtml(cfg.pickTitleZh)+'</span></h4><div class="sub">'+escHtml(cfg.pickBody)+' · '+escHtml(cfg.pickBodyZh)+'</div></div></div>';return;}
+    renderKnowledgeSnapshot(domain,snapshot);
+    const adaptFn=runtime&&runtime[cfg.methods.adapt];if(snapshot.session.phase==="intro"&&!snapshot.session.adaptationAttempted&&adaptFn&&(snapshot.session.flow!=="director"||knowledgeRunIsActive(snapshot)))Promise.resolve(adaptFn(input)).then(function(updated){if(token!==state.renderToken||hubKid!==expectedKid||hubTab!=="learn"||!updated)return;renderKnowledgeSnapshot(domain,updated);}).catch(function(){});
+  }).catch(function(){if(token===state.renderToken){status.textContent="offline";body.innerHTML='<div class="tipline">'+escHtml(cfg.loadError)+' · '+escHtml(cfg.loadErrorZh)+'</div>';}});
+}
+function startKnowledgeLessonUi(domain,lessonId){
+  const cfg=KNOWLEDGE_LABS[domain],input=knowledgeLessonInput(domain),runtime=window.SQLearningRuntime,fn=cfg&&runtime&&runtime[cfg.methods.start];if(!cfg||!input||!fn||!lessonId)return Promise.resolve({ok:false,reason:"content_not_found"});
+  if(appLockReason(hubKid))return Promise.resolve({ok:false,reason:"app_locked"});
+  if(catLockReason(hubKid,"learn")){bigFloat("🔒");return Promise.resolve({ok:false,reason:"category_locked"});}
+  if(knowledgeRunIsActive(knowledgeLabState[domain].snapshot)&&knowledgeLabState[domain].snapshot.session.phase!=="complete")return Promise.resolve({ok:false,reason:"learning_session_active"});
+  const expectedKid=hubKid,expectedRevision=navigationRevision,state=knowledgeLabState[domain],token=++state.renderToken;
+  state.startingToken=token;
+  return Promise.resolve(fn(Object.assign({},input,{lessonId:lessonId}))).then(function(snapshot){
+    if(hubKid!==expectedKid||navigationRevision!==expectedRevision||hubTab!=="learn"||document.getElementById("hub").classList.contains("hidden")||token!==state.renderToken)return {ok:false,reason:"launch_cancelled"};
+    if(!snapshot||!snapshot.lesson||snapshot.lesson.id!==lessonId)return {ok:false,reason:"launch_failed"};
+    state.questionId="";renderKnowledgeSnapshot(domain,snapshot);
+    return {ok:true,id:lessonId};
+  }).catch(function(){if(hubKid===expectedKid)sBad();return {ok:false,reason:"launch_failed"};}).finally(function(){
+    if(state.startingToken===token)delete state.startingToken;
+    if(token===state.renderToken&&hubKid===expectedKid&&navigationRevision===expectedRevision&&hubTab==="learn")renderKnowledgeLab(domain);
+  });
+}
+function answerKnowledgeLessonUi(domain,optionId){
+  const cfg=KNOWLEDGE_LABS[domain],state=knowledgeLabState[domain],input=knowledgeMutationInput(domain),runtime=window.SQLearningRuntime,fn=cfg&&runtime&&runtime[cfg.methods.answer],body=cfg&&document.getElementById(cfg.bodyId);if(!cfg||!state||!input||!fn||!optionId)return;
+  const responseMs=Math.max(0,Date.now()-state.questionStartedAt),expectedKid=hubKid,token=++state.renderToken;
+  if(body)body.querySelectorAll('[data-knowledge-answer]').forEach(function(button){button.disabled=true;});
+  Promise.resolve(fn(Object.assign({},input,{selectedOptionId:optionId,responseMs:responseMs}))).then(function(snapshot){
+    if(hubKid!==expectedKid||hubTab!=="learn"||token!==state.renderToken)return;
+    if(snapshot){renderKnowledgeSnapshot(domain,snapshot);if(snapshot.session&&snapshot.session.flow==="director")renderLearningDirector();sTap();}else renderKnowledgeLab(domain);
+  }).catch(function(){if(hubKid===expectedKid&&token===state.renderToken)renderKnowledgeLab(domain);});
+}
+function advanceKnowledgeLessonUi(domain){
+  const cfg=KNOWLEDGE_LABS[domain],input=knowledgeMutationInput(domain),runtime=window.SQLearningRuntime,fn=cfg&&runtime&&runtime[cfg.methods.advance];if(!cfg||!input||!fn)return;
+  const expectedKid=hubKid,state=knowledgeLabState[domain],token=++state.renderToken;
+  Promise.resolve(fn(input)).then(function(snapshot){if(hubKid!==expectedKid||hubTab!=="learn"||token!==state.renderToken)return;state.questionId="";if(snapshot)renderKnowledgeSnapshot(domain,snapshot);else renderKnowledgeLab(domain);}).catch(function(){if(hubKid===expectedKid&&token===state.renderToken)renderKnowledgeLab(domain);});
+}
+function returnKnowledgeToSmartPractice(domain){
+  cancelKnowledgeHelpUi(domain);
+  const cfg=KNOWLEDGE_LABS[domain],input=knowledgeMutationInput(domain),runtime=window.SQLearningRuntime,state=knowledgeLabState[domain],snapshot=state.snapshot;
+  if(!cfg||!input||!runtime)return;
+  const expectedKid=hubKid,token=++state.renderToken;
+  const pause=snapshot&&snapshot.session.flow==="director"&&runtime.pauseLearningDirectorSession?runtime.pauseLearningDirectorSession({kidId:input.kidId,age:input.age,guided:true,expectedPlanId:snapshot.session.directorSessionId,expectedStepId:snapshot.session.directorStepId}):Promise.resolve();
+  Promise.resolve(pause).then(function(){
+    if(snapshot&&snapshot.session.phase==="complete"&&runtime[cfg.methods.reset])return runtime[cfg.methods.reset](input);
+  }).then(function(){if(hubKid!==expectedKid||hubTab!=="learn"||token!==state.renderToken)return;state.questionId="";renderLearningDirector();renderKnowledgeLab(domain);scrollToLearningSession();}).catch(function(){if(hubKid===expectedKid)renderLearningDirector();});
+}
+function resetKnowledgeLessonUi(domain){
+  const cfg=KNOWLEDGE_LABS[domain],input=knowledgeMutationInput(domain),runtime=window.SQLearningRuntime,fn=cfg&&runtime&&runtime[cfg.methods.reset];if(!cfg||!input||!fn)return;
+  const expectedKid=hubKid,token=++knowledgeLabState[domain].renderToken;
+  Promise.resolve(fn(input)).then(function(){if(hubKid!==expectedKid||hubTab!=="learn"||token!==knowledgeLabState[domain].renderToken)return;knowledgeLabState[domain].questionId="";renderKnowledgeLab(domain);}).catch(function(){if(hubKid===expectedKid)sBad();});
+}
+function renderScienceLab(){renderKnowledgeLab("science");}
+function startScienceLesson(lessonId){startKnowledgeLessonUi("science",lessonId);}
+function answerScienceLesson(optionId){answerKnowledgeLessonUi("science",optionId);}
+function advanceScienceLesson(){advanceKnowledgeLessonUi("science");}
+function returnScienceToSmartPractice(){returnKnowledgeToSmartPractice("science");}
+function resetScienceLesson(){resetKnowledgeLessonUi("science");}
+function renderGeographyLab(){renderKnowledgeLab("geography");}
+function startGeographyLesson(lessonId){startKnowledgeLessonUi("geography",lessonId);}
+function answerGeographyLesson(optionId){answerKnowledgeLessonUi("geography",optionId);}
+function advanceGeographyLesson(){advanceKnowledgeLessonUi("geography");}
+function resetGeographyLesson(){resetKnowledgeLessonUi("geography");}
+function renderHistoryLab(){renderKnowledgeLab("history");}
+function startHistoryLesson(lessonId){startKnowledgeLessonUi("history",lessonId);}
+function answerHistoryLesson(optionId){answerKnowledgeLessonUi("history",optionId);}
+function advanceHistoryLesson(){advanceKnowledgeLessonUi("history");}
+function resetHistoryLesson(){resetKnowledgeLessonUi("history");}
 function renderLearn(){
   const k=KIDS[hubKid], done=actsToday(hubKid);
+  renderPlacementCalibration();
+  renderLearningDirector();
+  renderScienceLab();
+  renderGeographyLab();
+  renderHistoryLab();
   /* question builder chips */
   document.getElementById("qbStarters").innerHTML=QB_STARTERS.map(([en,zh],i)=>
     `<button class="chip ${qbStarter===i?'on':''}" data-s="${i}"
@@ -2659,7 +3868,7 @@ function renderLearn(){
       <div class="bt">${g.icon} ${g.title} ${done[learnActIdx(key)]?'<span class="donetag">✓ today 今天完成</span>':''}
         <span class="zhs">${g.tz}</span></div>
       <p>${g[hubKid].length} steps · step-by-step guide<span class="zhs">${g[hubKid].length}個步驟——一步一步教你</span></p></button>`).join("");
-  document.querySelectorAll("#learnGrid [data-lg]").forEach(c=>c.onclick=()=>openLearn(c.dataset.lg));
+  document.querySelectorAll("#learnGrid [data-lg]").forEach(c=>c.onclick=()=>SummerQuest.openLearning("guide:"+c.dataset.lg));
   /* magic words */
   document.getElementById("magicWords").innerHTML=MAGIC_WORDS.map(([en,zh])=>
     `<span class="chip" style="cursor:default">${en} <span class="zhs" style="display:inline">${zh}</span></span>`).join("");
@@ -2682,7 +3891,12 @@ function qbGo(base){
   sGood(); window.open(base+encodeURIComponent(q),"_blank");
 }
 function openLearn(key){
-  if(catLockReason(hubKid,"learn")){hubTab="day"; showOnly("hub"); saveAppPlace("hub"); renderHub(); bigFloat("🔒"); return;}
+  if(!hubKid||!KIDS[hubKid])return {ok:false,reason:"no_kid_selected"};
+  if(!LEARN_GUIDES[key])return {ok:false,reason:"content_not_found"};
+  if(appLockReason(hubKid)||catLockReason(hubKid,"learn"))return {ok:false,reason:"not_available"};
+  rememberContentReturn();
+  stopActTimer();
+  if(window.SQActivityRouter)SQActivityRouter.setCurrent("learning","guide:"+key);
   actIdx="L"+key; showOnly("act"); saveAppPlace("act");
   const g=LEARN_GUIDES[key], k=KIDS[hubKid];
   /* actIdx stays the string route for the UI; the *synced* key must be the int
@@ -2710,6 +3924,7 @@ function openLearn(key){
     saveProgress(); sWin(); burst(30); bigFloat("🎉");
     openLearn(key);
   };
+  return {ok:true,id:key};
 }
 
 /* ============ CAPTAIN TAB ============ */
@@ -2794,7 +4009,7 @@ function renderBooks(){
   g.querySelectorAll(".gamecard[data-book]").forEach(function(card){
     card.onclick=function(){
       var b=bookById(card.dataset.book);
-      if(canOpenBook(b)) openBook(b.id);
+      if(canOpenBook(b)) SummerQuest.openBook(b.id);
     };
   });
 }
@@ -2802,7 +4017,7 @@ function renderBooks(){
    Instruments are still registry games loaded through SQLoadGame; only the shell
    differs. The arcade stage cannot satisfy D13 — it spends 229px on the game
    switcher and caps the stage height — so the Music Room hosts them full-bleed. */
-let currentInstrument=null;
+let currentInstrument=null,instrumentLaunchToken=0;
 function renderMusic(){
   var g=document.getElementById("musicGrid");
   g.innerHTML=musicIds().map(function(id){
@@ -2812,36 +4027,49 @@ function renderMusic(){
       '<small>'+m.blurb+'<span class="zhs">'+m.tz+'</span></small></button>';
   }).join("")||'<div class="tipline">No instruments yet · 還沒有樂器</div>';
   g.querySelectorAll(".gamecard[data-inst]").forEach(function(c){
-    c.onclick=function(){ openInstrument(c.dataset.inst); };
+    c.onclick=function(){ SummerQuest.openMusic(c.dataset.inst); };
   });
   renderCalib();
 }
-function openInstrument(id){
-  var m=gameMeta(id); if(!m)return;
+async function openInstrument(id){
+  if(!hubKid||!KIDS[hubKid])return {ok:false,reason:"no_kid_selected"};
+  if(appLockReason(hubKid))return {ok:false,reason:"app_locked"};
+  var m=gameMeta(id); if(!m||!m.music)return {ok:false,reason:"content_not_found"};
+  rememberContentReturn();
   stopArena(); stopActTimer(); closeInstrument(true);
+  const token=instrumentLaunchToken,expectedKid=hubKid;
   hubTab="music";
   document.getElementById("musicTitle").textContent=m.icon+" "+m.title+" · "+m.tz;
   document.documentElement.style.setProperty("--accent",hubKid&&KIDS[hubKid]?KIDS[hubKid].color:"var(--luis)");
+  if(window.SQActivityRouter)SQActivityRouter.setCurrent("music",id,{title:m.title||id,icon:m.icon||"🎵"});
   showOnly("music"); saveAppPlace("music");
   var stage=document.getElementById("musicStage");
-  if(!window.SQLoadGame){ stage.innerHTML='<div class="msg">Still loading... 還在載入中</div>'; return; }
-  var pending=window.SQLoadGame(id);
-  if(!pending){ stage.innerHTML='<div class="msg">Still loading... 還在載入中</div>'; return; }
-  pending.then(function(game){
-    if(!game){ stage.innerHTML='<div class="msg">Still loading... 還在載入中</div>'; return; }
+  try{
+    const game=window.SQLoadGame&&await window.SQLoadGame(id);
+    if(token!==instrumentLaunchToken||hubKid!==expectedKid)return {ok:false,reason:"cancelled"};
+    if(!game)throw new Error("Instrument module unavailable: "+id);
     currentInstrument=game;
-    runRegistered(game,stage,hubKid);
-  });
+    await runRegistered(game,stage,expectedKid);
+    return token===instrumentLaunchToken?{ok:true,id:id}:{ok:false,reason:"cancelled"};
+  }catch(error){
+    if(token!==instrumentLaunchToken)return {ok:false,reason:"cancelled"};
+    closeInstrument(true);
+    console.error("Summer Quest instrument launch failed",error);
+    stage.innerHTML='<div class="msg">Could not open this instrument. Try again. 無法開啟樂器，請再試一次。</div>';
+    return {ok:false,reason:"launch_failed"};
+  }
 }
 function closeInstrument(quiet){
+  instrumentLaunchToken++;
   if(currentInstrument&&currentInstrument.stop){
     try{currentInstrument.stop();}catch(e){console.error(e);}
   }
   currentInstrument=null;
+  if(window.SQActivityRouter)SQActivityRouter.clearCurrent("music");
   document.getElementById("musicStage").innerHTML="";
   if(quiet)return;
   hubTab="music";
-  showOnly("hub"); saveAppPlace("hub"); renderHub();
+  returnAfterContent("music");
 }
 
 /* Slice 38's tap test — the gate the plan says must be measured before the
@@ -2892,7 +4120,10 @@ function renderCalib(){
 
 function openBook(id){
   var b=bookById(id), cards=b&&window[b.data];
-  if(!canOpenBook(b)){bigFloat("Soon 即將推出");return;}
+  if(!hubKid||!KIDS[hubKid])return {ok:false,reason:"no_kid_selected"};
+  if(appLockReason(hubKid))return {ok:false,reason:"app_locked"};
+  if(!canOpenBook(b))return {ok:false,reason:"content_not_found"};
+  rememberContentReturn();
   stopArena(); stopActTimer();
   hubTab="books";
   var lyt=b.layout||null;
@@ -2903,12 +4134,14 @@ function openBook(id){
   document.getElementById("bookCount").textContent=total+" "+(lyt==="spread"?"spreads · ":"pages · ")+total+" "+(lyt==="spread"?"跨頁":"頁");
   document.getElementById("bookViewToggle").textContent=lyt==="spread"?"All Spreads 全部跨頁":"All Pages 全部頁面";
   document.documentElement.style.setProperty("--accent",hubKid&&KIDS[hubKid]?KIDS[hubKid].color:"var(--luis)");
+  if(window.SQActivityRouter)SQActivityRouter.setCurrent("book",id,{title:b.titleEN||id,icon:b.icon||"📚"});
   showOnly("book"); saveAppPlace("book");
   var langBtn=document.getElementById("bookLangToggle");
   langBtn.classList.toggle("hidden",lyt!=="spread");
   if(lyt==="spread")setBookLang(localStorage.getItem("sq:bookLang")||"en");
   else document.getElementById("book").removeAttribute("data-lang");
   renderBookSpread(); renderBookGrid(); updateBookView();
+  return {ok:true,id:id};
 }
 function setBookLang(lang){
   document.getElementById("book").setAttribute("data-lang",lang);
@@ -2919,7 +4152,7 @@ function toggleBookLang(){setBookLang(document.getElementById("book").getAttribu
 function closeBook(){
   bookState.grid=false;
   hubTab="books";
-  showOnly("hub"); saveAppPlace("hub"); renderHub();
+  returnAfterContent("books");
 }
 function renderBookSpread(){
   document.getElementById("bookSpread").className="book";
@@ -3125,8 +4358,8 @@ function onBookKey(e){
   else if(e.key==="Home"){bookState.idx=0;renderBookSpread();renderBookGrid();}
   else if(e.key==="End"){bookState.idx=bookTotal()-1;renderBookSpread();renderBookGrid();}
 }
-document.getElementById("musicBack").onclick=function(){closeInstrument(false);};
-document.getElementById("bookBack").onclick=closeBook;
+document.getElementById("musicBack").onclick=summerQuestBack;
+document.getElementById("bookBack").onclick=summerQuestBack;
 document.getElementById("bookPrev").onclick=function(){turnBook(-1);};
 document.getElementById("bookNext").onclick=function(){turnBook(1);};
 document.getElementById("bookViewToggle").onclick=toggleBookView;
@@ -3192,7 +4425,7 @@ async function renderAsk(){
   document.getElementById("askList").innerHTML=askRows.map(a=>`
     <article class="askcard ${a.answered_at?'answered':'open'}">
       <div class="askmeta">
-        <span>${a.kind==="urgent"?"Urgent 緊急":a.kind==="canned"?"Quick ask 快速求助":"Question 問題"}</span>
+        <span>${String(a.kind||"").indexOf("reward:")===0?"Reward request 獎勵申請":a.kind==="urgent"?"Urgent 緊急":a.kind==="canned"?"Quick ask 快速求助":"Question 問題"}</span>
         <span>${new Date(a.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>
         <span>${a.answered_at?"Answered 已回覆":"Waiting 等爸爸"}</span>
       </div>
@@ -3244,8 +4477,8 @@ function stopAskRecord(){
   document.getElementById("askStatus").textContent="Voice ready 語音準備好了";
 }
 /* ============ REWARDS TAB — badges · stars · news · Papa ============ */
-const RW_SEGS=[["badges","🏆 Badges 徽章"],["stars","⭐ Stars 星星"],["news","🔔 News 通知"],["msgs","💬 Papa 爸爸"]];
-let rwSeg="badges";
+const RW_SEGS=[["shop","🎁 Shop 獎勵商店"],["badges","🏆 Badges 徽章"],["stars","⭐ Stars 星星"],["news","🔔 News 通知"],["msgs","💬 Papa 爸爸"]];
+let rwSeg="shop";
 
 /* Everything an achievement can test, read straight off data the app already
    keeps — no counters to maintain and nothing new to sync. */
@@ -3327,6 +4560,53 @@ async function papaMessages(id){
     zh:a.kind==="papa"?"爸爸的訊息":"爸爸回覆了你",
     sub:a.answer||a.body||""}));
 }
+function rewardAskKind(r){return "reward:"+r.id+":"+r.cost;}
+async function requestReward(r){
+  if(!r||!hubKid)return;
+  if(!store||!store.supabase){
+    sBad();
+    const body=document.getElementById("rwBody");
+    if(body)body.insertAdjacentHTML("afterbegin",`<div class="reward-note">Papa sync is offline · 爸爸同步目前離線</div>`);
+    return;
+  }
+  const coins=questCoins(hubKid);
+  if(coins<r.cost){sBad();return;}
+  const current=await fetchAsks(hubKid);
+  if(current.some(a=>a.kind===rewardAskKind(r)&&!a.answered_at)){sTap();return;}
+  const {error}=await store.createAsk(hubKid,rewardAskKind(r),`${r.icon||"🎁"} ${r.title[0]} / ${r.title[1]}`,null);
+  if(error){sBad();return;}
+  if(window.SQPlatform)SQPlatform.haptic("success");
+  sGood();
+  await renderRewards();
+}
+async function renderRewardShop(){
+  const body=document.getElementById("rwBody");
+  if(!body||!hubKid)return;
+  const catalog=rewardCatalog().filter(r=>r.enabled!==false);
+  const coins=questCoins(hubKid);
+  let pending=[];
+  if(store&&store.supabase){
+    try{pending=(await fetchAsks(hubKid)).filter(a=>String(a.kind||"").indexOf("reward:")===0&&!a.answered_at);}catch(e){}
+  }
+  const pendingKinds=new Set(pending.map(a=>a.kind));
+  body.innerHTML=`
+    <div class="reward-wallet"><span class="reward-wallet__icon">🪙</span><div><small>QUEST COINS · 任務金幣</small><b>${coins}</b></div><p>Ask Papa before spending · 兌換前請爸爸確認</p></div>
+    <div class="reward-shop-grid">${catalog.map(r=>{
+      const wait=pendingKinds.has(rewardAskKind(r));
+      const enough=coins>=r.cost;
+      return `<article class="reward-shop-card${enough?"":" is-locked"}">
+        <div class="reward-shop-card__icon">${escHtml(r.icon||"🎁")}</div>
+        <div class="reward-shop-card__body"><h4>${escHtml(r.title[0])}<span>${escHtml(r.title[1])}</span></h4>
+          <p>${escHtml(r.blurb[0])}<span>${escHtml(r.blurb[1])}</span></p></div>
+        <div class="reward-shop-card__foot"><strong>🪙 ${r.cost}</strong>
+          <button class="btn small" data-reward-request="${escHtml(r.id)}" ${wait||!enough?"disabled":""}>${wait?"Waiting 等爸爸":enough?"Ask Papa 問爸爸":"Need more 還不夠"}</button></div>
+      </article>`;
+    }).join("")}</div>
+    <div class="reward-note">Coins come from earned stars. Spending coins never removes your XP or achievements. · 金幣來自已獲得的星星；兌換不會移除你的成就。</div>`;
+  body.querySelectorAll("[data-reward-request]").forEach(btn=>{
+    btn.onclick=()=>{const r=catalog.find(x=>x.id===btn.dataset.rewardRequest);if(r)requestReward(r);};
+  });
+}
 async function renderRewards(){
   const seg=document.getElementById("rwSeg"), body=document.getElementById("rwBody");
   if(!seg||!body||!hubKid)return;
@@ -3340,6 +4620,7 @@ async function renderRewards(){
   });
   SQNotify.markSeen(hubKid);
   updateRewardBadge();
+  if(rwSeg==="shop"){await renderRewardShop();return;}
   if(rwSeg==="badges"){body.innerHTML=badgesHtml(hubKid);return;}
   if(rwSeg==="news"){body.innerHTML=feedHtml(SQNotify.feed(hubKid),"Nothing yet — go earn a star! 還沒有通知——去拿星星吧！");return;}
   body.innerHTML=`<div class="tipline">Loading… 讀取中…</div>`;
@@ -3393,13 +4674,32 @@ function setupRealtime(){
     if(hubKid)renderHubHead(); else renderHome();
     if(hubKid===row.kid_id&&hubTab==="rewards")renderRewards();
   });
-  const refreshAllStars=()=>refreshStarsFromServer();
+  const refreshAllStars=()=>{refreshStarsFromServer();if(hubKid)reconcileQuestVerifications(hubKid);};
   addEventListener("focus",refreshAllStars);
   addEventListener("online",refreshAllStars);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshAllStars();});
   setInterval(()=>{if(!document.hidden)refreshAllStars();},15000);
   store.onAsks(row=>{
     if(!row)return;
+    const verification=window.SQQuestConfig?SQQuestConfig.parseQuestVerificationKind(row.kind):null;
+    if(verification){
+      const result=SQQuestProgress.applyVerificationRow(row);
+      if(result&&row.answered_at&&window.SQAgentOrchestrator)SQAgentOrchestrator.signal("QUEST_VERIFICATION_RESOLVED",{questId:result.questId,state:result.state});
+      if(result&&row.answered_at){
+        const q=questById(result.questId),approved=result.state==="completed";
+        SQNotify.push(row.kid_id,hubKid,{kind:"quest",tone:approved?"ok":"msg",icon:approved?"✅":"↻",
+          ref:"quest-verify:"+row.id+":"+row.answered_at,
+          en:approved?"Papa approved your quest!":"Papa wants one more try",
+          zh:approved?"爸爸確認你的任務了！":"爸爸請你再試一次",
+          sub:q?q.title[0]:(row.answer||row.body||"")});
+      }
+      if(row.kid_id===hubKid){
+        if(hubTab==="quests")renderQuestHome();
+        updateSummerCompanion();
+      }
+      updateAskBadge();
+      return;
+    }
     /* notify before the hubKid guard: a message for a sibling still belongs in
        that sibling's history on this tablet, it just does not toast now */
     if(row.answered_at||row.kind==="papa"){
@@ -3497,19 +4797,15 @@ function restoreAppPlace(){
   renderHome();
   const savedKid=localStorage.getItem("sq:kid");
   const savedView=localStorage.getItem("sq:view")||"home";
-  const savedTab=localStorage.getItem("sq:hubTab")||"day";
-  const tabs={day:1,games:1,acts:1,learn:1,ask:1,rewards:1,books:1,music:1,captain:1};
+  const savedTab=localStorage.getItem("sq:hubTab")||"quests";
+  const tabs={quests:1,adventure:1,day:1,games:1,acts:1,learn:1,ask:1,rewards:1,books:1,music:1,captain:1};
   const hashTab=location.hash?location.hash.slice(1):"";
   if(!savedKid||!KIDS[savedKid]||(savedView==="home"&&!tabs[hashTab])){
     showOnly("home");
     return;
   }
-  hubTab=tabs[hashTab]?hashTab:(tabs[savedTab]?savedTab:"day");
-  if(!brainGate(savedKid).open){
-    hubTab="day";
-    openHub(savedKid);
-    return;
-  }
+  hubTab=tabs[hashTab]?hashTab:(tabs[savedTab]?savedTab:"quests");
+  if(tabs[hashTab]){openHub(savedKid);return;}
   if(savedView==="act"){
     hubKid=savedKid; refreshOverrides();
     const raw=localStorage.getItem("sq:actIdx");
@@ -3528,6 +4824,10 @@ function restoreAppPlace(){
     openBook(localStorage.getItem("sq:bookId")||"space");
     return;
   }
+  if(savedView==="world"){
+    openWorld(savedKid);
+    return;
+  }
   if(savedView==="music"){
     /* Land on the Music tab, not back inside the instrument: SQLoadGame only
        exists once the deferred module has run, so re-opening one here would race
@@ -3538,13 +4838,282 @@ function restoreAppPlace(){
   }
   openHub(savedKid);
 }
-if("serviceWorker" in navigator){
+if(!(window.SummerQuestNative&&window.SummerQuestNative.native)&&"serviceWorker" in navigator){
   addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").then(reg=>reg.update()).catch(()=>{}));
 }
 /* ---- Bridge to the ESM host (design.md §3) ----
    Everything a migrated game is allowed to touch, handed over explicitly.
    A game module reads this and nothing else from the old world. As games move
    out in slices 17-19 this object shrinks; at slice 20 it disappears. */
+/* Activity router: one stable seam between the global assistant and existing
+   game/book/activity implementations. Individual games can register richer
+   adapters later without changing the assistant or Quest Engine. */
+if(window.SQActivityRouter){
+  SQActivityRouter.bindHost({
+    getSurface:function(){
+      const surface=["game","act","book","music","hub","world"].find(function(id){const el=document.getElementById(id);return el&&!el.classList.contains("hidden");})||"home";
+      return {surface:surface,tab:hubTab,kid:hubKid};
+    },
+    openAction:function(action){
+      action=action||{};
+      if(action.type==="tab"){
+        const tab=action.tab;
+        return SummerQuest.navigate(tab);
+      }
+      if(action.type==="brain"){
+        const g=brainGate(hubKid),next=(g.remaining&&g.remaining[0])||brainTrio(hubKid)[0];
+        if(next)return SummerQuest.openGame(next);
+        return {ok:false,reason:"none_available"};
+      }
+      if(action.type==="game"&&action.id)return SummerQuest.openGame(action.id);
+      if(action.type==="activity")return SummerQuest.openActivity(action.id);
+      return {ok:false,reason:"unsupported"};
+    },
+    getHelpContext:function(){
+      const c=SQActivityRouter.context(),surface=c.surface;
+      if(surface==="game")return {speech:"Look for the next goal on screen. Try once, then ask me again if you want a smaller hint.",speechZh:"先找畫面上的下一個目標。試一次，需要更小的提示再來問我。"};
+      if(surface==="book")return {speech:"Take it one page at a time. Tell me what part feels confusing and we can work from there.",speechZh:"一頁一頁慢慢來。哪一段不懂，再來問我。"};
+      if(surface==="act")return {speech:"Do only the next step first. You do not need to finish everything at once.",speechZh:"先完成下一步就好，不用一次把全部做完。"};
+      if(surface==="music")return {speech:"Try one small pattern, listen, then change just one thing.",speechZh:"先試一個小節奏，聽一聽，再只改一樣東西。"};
+      return {speech:"I can help you choose a quest or get back to what you were doing.",speechZh:"我可以幫你挑任務，或回到剛才做的事情。"};
+    },
+    backToQuests:function(){return SummerQuest.navigate("quests");}
+  });
+}
+/* One catalog over the REAL runtime. The future 3D world reads this registry;
+   it must never own a second set of game/book routes or wrap this app in an iframe. */
+let knowledgeContent=[],contentCatalogReady=null;
+const LEARNING_DESTINATIONS={practice:"learningDirectorCard",placement:"placementCalibrationCard"};
+function readyContentCatalog(){
+  if(!contentCatalogReady)contentCatalogReady=Promise.all([
+    window.SQManifest?Promise.resolve():import("./js/main.js"),
+    window.SQLearningRuntime?SQLearningRuntime.knowledgeCatalog().then(function(lessons){knowledgeContent=lessons;}).catch(function(error){console.warn("Knowledge catalog unavailable",error);}):Promise.resolve()
+  ]).catch(function(error){contentCatalogReady=null;throw error;});
+  return contentCatalogReady;
+}
+function contentEntryAccess(entry,options){
+  if(!hubKid||!KIDS[hubKid])return {ok:false,reason:"no_kid_selected"};
+  if(appLockReason(hubKid))return {ok:false,reason:"app_locked"};
+  const value=entry.id.slice(entry.id.indexOf(":")+1),meta=entry.meta||{};
+  if(entry.kind==="game")return gameLaunchAccess(hubKid,value,options);
+  const category=entry.kind==="section"?value:({activity:"acts",guide:"learn",lesson:"learn",learning:"learn",music:"music",book:"books",reward:"rewards"})[entry.kind];
+  if(category&&!(entry.kind==="section"&&value==="games")&&tabLocked(category))return {ok:false,reason:"category_locked"};
+  if(entry.kind==="book"&&!canOpenBook(BOOK_SHELF.find(function(book){return book.id===value;})))return {ok:false,reason:"missing_content"};
+  if(entry.kind==="lesson"&&KIDS[hubKid].age<meta.minAge)return {ok:false,reason:"age_restricted"};
+  if((entry.kind==="lesson"||entry.kind==="learning")&&!window.SQLearningRuntime)return {ok:false,reason:"missing_module"};
+  if(entry.kind==="quest"){
+    const quest=questById(value),active=SQQuestProgress.active(hubKid,todayStr()).some(function(row){return row.id===value;});
+    if(!quest||quest.enabled===false||questActionLocked(quest)||(!active&&!questAvailable("surprise","any").some(function(row){return row.id===value;})))return {ok:false,reason:"not_available"};
+  }
+  if(entry.kind==="reward"&&meta.enabled===false)return {ok:false,reason:"not_available"};
+  return {ok:true};
+}
+function openContentSection(value){
+  if(!["quests","day","rewards","games","acts","learn","books","music"].includes(value))return {ok:false,reason:"content_not_found"};
+  if(worldVisible()||contentReturnSurface==="world")hubReturnSurface="world";
+  contentReturnSurface=null;
+  hubTab=value;showOnly("hub");saveAppPlace("hub");renderHub();
+  return hubTab===value?{ok:true,id:value}:{ok:false,reason:"not_available"};
+}
+async function launchContentEntry(entry,options){
+  const value=entry.id.slice(entry.id.indexOf(":")+1),meta=entry.meta||{},expectedKid=hubKid,expectedRevision=navigationRevision;
+  if(entry.kind==="section")return openContentSection(value);
+  if(entry.kind==="game")return startGame(hubKid,value,options);
+  if(entry.kind==="music")return openInstrument(value);
+  if(entry.kind==="book")return openBook(value);
+  if(entry.kind==="activity")return openAct(meta.activityIndex);
+  if(entry.kind==="guide")return openLearn(value);
+  if(entry.kind==="lesson"||entry.kind==="learning"){
+    const status=await SQLearningRuntime.status();
+    if(hubKid!==expectedKid||navigationRevision!==expectedRevision)return {ok:false,reason:"launch_cancelled"};
+    if(!status.ready)return {ok:false,reason:"missing_module"};
+    const access=contentEntryAccess(entry,options);if(!access.ok)return access;
+    const opened=openContentSection("learn");if(!opened.ok)return opened;
+    const openedRevision=navigationRevision;
+    let result={ok:true,id:value};
+    if(entry.kind==="lesson")result=await startKnowledgeLessonUi(meta.domain,value);
+    else{
+      const snapshot=await SQLearningRuntime[value==="practice"?"learningDirectorSession":"placementCalibrationSession"](learningDirectorInput());
+      if(!snapshot)result={ok:false,reason:"launch_failed"};
+    }
+    if(hubKid!==expectedKid||navigationRevision!==openedRevision||hubTab!=="learn"||document.getElementById("hub").classList.contains("hidden"))return {ok:false,reason:"launch_cancelled"};
+    const card=document.getElementById(entry.kind==="lesson"?KNOWLEDGE_LABS[meta.domain].cardId:LEARNING_DESTINATIONS[value]);
+    if(result.ok&&card)card.scrollIntoView({block:"start"});
+    return result;
+  }
+  if(entry.kind==="quest"){
+    const previous=document.getElementById("questOverlay");if(previous)previous.remove();
+    openQuestCard(value);return {ok:!!document.getElementById("questOverlay"),id:value};
+  }
+  if(entry.kind==="reward"){
+    rwSeg="shop";const opened=openContentSection("rewards");if(!opened.ok)return opened;
+    const openedRevision=navigationRevision;
+    await renderRewards();
+    if(hubKid!==expectedKid||navigationRevision!==openedRevision||hubTab!=="rewards"||rwSeg!=="shop"||document.getElementById("hub").classList.contains("hidden"))return {ok:false,reason:"launch_cancelled"};
+    const button=Array.from(document.querySelectorAll("[data-reward-request]")).find(function(node){return node.dataset.rewardRequest===value;});
+    if(!button)return {ok:false,reason:"missing_content"};
+    button.closest("article").scrollIntoView({block:"center"});return {ok:true,id:value};
+  }
+  return {ok:false,reason:"unsupported"};
+}
+if(window.SQContentRegistry){
+  SQContentRegistry.bind({
+    ready:readyContentCatalog,
+    context:function(){return hubKid+":"+navigationRevision;},
+    access:contentEntryAccess,
+    list:function(){
+      const entries=[
+        {id:"section:quests",kind:"section",zone:"plaza",icon:"🧭",title:["Quests","任務"],blurb:["What fits right now?","現在適合做什麼？"],available:true,capabilities:["quests"]},
+        {id:"section:day",kind:"section",zone:"plaza",icon:"☀️",title:["Today","今天"],blurb:["Daily routines","今天的日常"],available:true,capabilities:["routine"]},
+        {id:"section:rewards",kind:"section",zone:"plaza",icon:"🏆",title:["Rewards","獎勵"],blurb:["Stars and progress","星星與紀錄"],available:true,capabilities:["rewards"]},
+        {id:"section:games",kind:"section",zone:"arcade",icon:"🎮",title:["Games","遊戲"],blurb:["Arcade and Brain Gym","遊戲與頭腦體操"],available:!tabLocked("games"),capabilities:["play"]},
+        {id:"section:acts",kind:"section",zone:"explore",icon:"🛠️",title:["Activities","活動"],blurb:["Hands-on missions","動手做任務"],available:!tabLocked("acts"),capabilities:["creative","play"]},
+        {id:"section:learn",kind:"section",zone:"learn",icon:"🧠",title:["Learning","學習"],blurb:["Math, language and knowledge","數學、語言與知識"],available:!tabLocked("learn"),capabilities:["learning"]},
+        {id:"section:books",kind:"section",zone:"library",icon:"📚",title:["Books","書籍"],blurb:["Reading world","閱讀世界"],available:!tabLocked("books"),capabilities:["books","learning"]},
+        {id:"section:music",kind:"section",zone:"music",icon:"🎵",title:["Music","音樂"],blurb:["Instruments and rhythm","樂器與節奏"],available:!tabLocked("music"),capabilities:["music","creative"]}
+      ];
+      allGameIds().forEach(function(id){
+        const m=gameMeta(id);if(!m)return;
+        entries.push({id:"game:"+id,kind:"game",zone:"arcade",icon:m.icon||"🎮",title:[m.title||id,m.tz||""],blurb:[m.blurb||"",m.blurbZh||""],capabilities:["play"].concat(m.brain?["learning","brain"]:[]),meta:{gameId:id,brain:!!m.brain}});
+      });
+      musicIds().forEach(function(id){
+        const m=gameMeta(id);if(!m)return;
+        entries.push({id:"music:"+id,kind:"music",zone:"music",icon:m.icon||"🎵",title:[m.title||id,m.tz||""],blurb:[m.blurb||"",m.blurbZh||""],available:!tabLocked("music"),capabilities:["music","creative"],meta:{gameId:id}});
+      });
+      BOOK_SHELF.forEach(function(b){entries.push({id:"book:"+b.id,kind:"book",zone:"library",icon:b.icon||"📚",title:[b.titleEN||b.id,b.titleZH||""],blurb:[b.blurbEN||"",b.blurbZH||""],available:canOpenBook(b)&&!tabLocked("books"),capabilities:["books","learning"],meta:{bookId:b.id}});});
+      BANK.forEach(function(a,index){entries.push({id:"activity:"+index,kind:"activity",zone:"explore",icon:a.icon||"🏕️",title:[a.cat||"Activity",a.catz||""],blurb:[a[hubKid]||"",a.z&&hubKid?a.z[hubKid]||"":""],available:!tabLocked("acts"),capabilities:["creative","play"],meta:{activityIndex:index}});});
+      LEARN_KEYS.forEach(function(key){const guide=LEARN_GUIDES[key];entries.push({id:"guide:"+key,kind:"guide",zone:"learn",icon:guide.icon,title:[guide.title,guide.tz],capabilities:["learning"],meta:{guideKey:key,activityIndex:learnActIdx(key)}});});
+      knowledgeContent.forEach(function(lesson){entries.push({id:"lesson:"+lesson.id,kind:"lesson",zone:"learn",icon:lesson.icon,title:[lesson.title,lesson.titleZh],blurb:[lesson.subtitle,lesson.subtitleZh],capabilities:["learning","knowledge"],meta:{lessonId:lesson.id,domain:lesson.domain,minAge:lesson.minAge}});});
+      Object.keys(LEARNING_DESTINATIONS).forEach(function(mode){
+        const heading=document.getElementById(LEARNING_DESTINATIONS[mode]).querySelector("h3"),zh=heading.querySelector(".zhs"),title=heading.textContent.replace(zh.textContent,"").trim();
+        entries.push({id:"learning:"+mode,kind:"learning",zone:"learn",icon:mode==="practice"?"🎯":"🧭",title:[title,zh.textContent],capabilities:["learning"],meta:{mode:mode}});
+      });
+      questCatalog().forEach(function(quest){entries.push({id:"quest:"+quest.id,kind:"quest",zone:"plaza",icon:quest.icon,title:quest.title,blurb:quest.blurb,capabilities:["quests"],meta:{questId:quest.id}});});
+      rewardCatalog().forEach(function(reward){entries.push({id:"reward:"+reward.id,kind:"reward",zone:"plaza",icon:reward.icon,title:reward.title,blurb:reward.blurb,capabilities:["rewards"],meta:{rewardId:reward.id,cost:reward.cost,enabled:reward.enabled}});});
+      return entries.map(function(entry){const access=contentEntryAccess(entry,{});entry.available=access.ok;entry.reason=access.reason||null;return entry;});
+    },
+    open:launchContentEntry
+  });
+}
+
+function summerQuestBack(){
+  /* App lock is not dismissible with Back: let Android leave the app instead. */
+  if(document.getElementById("appLockOverlay"))return false;
+  const zoom=document.querySelector(".book-zoom");
+  if(zoom){zoom.remove();return true;}
+  const overlays=Array.from(document.querySelectorAll("body > .overlay"));
+  if(overlays.length){overlays[overlays.length-1].remove();if(typeof updateSummerNudge==="function")updateSummerNudge();return true;}
+  const book=document.getElementById("book");
+  if(book&&!book.classList.contains("hidden")){if(bookState.grid){bookState.grid=false;updateBookView();return true;}closeBook();return true;}
+  const music=document.getElementById("music");
+  if(music&&!music.classList.contains("hidden")){closeInstrument(false);return true;}
+  const act=document.getElementById("act");
+  if(act&&!act.classList.contains("hidden")){stopActTimer();returnAfterContent(String(actIdx).charAt(0)==="L"?"learn":"acts");return true;}
+  const game=document.getElementById("game");
+  if(game&&!game.classList.contains("hidden")){goHome();return true;}
+  const hub=document.getElementById("hub");
+  if(hub&&!hub.classList.contains("hidden")){stopActTimer();if(hubReturnSurface==="world"&&hubKid){const id=hubKid;hubReturnSurface=null;openWorld(id);return true;}hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;}
+  const world=document.getElementById("world");
+  if(world&&!world.classList.contains("hidden")){hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;}
+  return false;
+}
+function runtimeSurface(){return window.SQActivityRouter?SQActivityRouter.context():{surface:"home"};}
+function openContent(id,options){return SQContentRegistry.open(id,options);}
+function navigateRuntime(destination){
+  if(destination==="home"){
+    hubReturnSurface=null;contentReturnSurface=null;learningDirectorLaunch=null;
+    hubKid=null;kid=null;saveAppPlace("home");showOnly("home");renderHome();
+    return Promise.resolve({ok:true,id:"home"});
+  }
+  if(destination==="world"){contentReturnSurface=null;return openWorld(hubKid);}
+  if(destination==="classic"||destination==="hub"){
+    if(worldVisible())hubReturnSurface="world";
+    contentReturnSurface=null;return Promise.resolve(openHub(hubKid));
+  }
+  if(["adventure","ask","captain"].includes(destination)){
+    if(!hubKid||appLockReason(hubKid)||tabLocked(destination)||(destination==="captain"&&hubKid!=="luis"))return Promise.resolve({ok:false,reason:"not_available"});
+    if(worldVisible())hubReturnSurface="world";
+    hubTab=destination;showOnly("hub");saveAppPlace("hub");renderHub();return Promise.resolve({ok:true,id:destination});
+  }
+  return openContent(String(destination).includes(":")?destination:"section:"+destination);
+}
+window.SummerQuest={
+  open:openContent,navigate:navigateRuntime,back:summerQuestBack,getSurface:runtimeSurface,
+  openGame:function(id,options){return openContent("game:"+id,options);},
+  openBook:function(id){return openContent("book:"+id);},
+  openActivity:function(id){return openContent("activity:"+id);},
+  openMusic:function(id){return openContent("music:"+id);},
+  openLearning:function(id){return openContent(/^(guide|lesson|learning):/.test(id)?id:"learning:"+id);},
+  openQuest:function(id){return openContent("quest:"+id);},
+  openReward:function(id){return openContent("reward:"+id);},
+  getContentRegistry:function(){return SQContentRegistry;},
+  getCurrentChild:function(){return hubKid?Object.assign({id:hubKid},KIDS[hubKid]):null;},
+  getDiagnostics:function(){return {runtime:"unified-root",entry:location.href,screen:runtimeSurface().surface,
+    release:"v0.6.2-recovery",child:hubKid,returnContext:{hub:hubReturnSurface,content:contentReturnSurface},
+    world:worldExplorerModule?worldExplorerModule.snapshot():null,
+    registryCount:SQContentRegistry.list().length,native:!!(window.SQPlatform&&SQPlatform.capabilities().native)};}
+};
+window.SQAppNavigation=window.SummerQuest;
+
+document.getElementById("worldHeroes").onclick=function(){SummerQuest.navigate("home");};
+document.getElementById("worldClassic").onclick=function(){SummerQuest.navigate("classic");};
+
+const summerCompanionButton=document.getElementById("summerCompanion");
+if(summerCompanionButton)summerCompanionButton.onclick=openSummerCompanion;
+if(window.SQPlatform&&SQPlatform.registerBackHandler)SQPlatform.registerBackHandler(summerQuestBack);
+
+if(window.SQAgentOrchestrator){
+  SQAgentOrchestrator.bind({
+    kid:function(){return hubKid;},
+    state:function(){
+      if(!hubKid)return null;
+      const ctx=questContextFor(questSession.preference||"surprise",questSession.energy||"any"),catalog=questCatalog();
+      return {kid:hubKid,day:ctx.day,minutes:ctx.minutes,required:SQQuestCore.dailyRequired(catalog,ctx),completed:ctx.completed,waiting:ctx.waiting,active:SQQuestProgress.active(hubKid,ctx.day)};
+    },
+    onAttention:function(attention){summerAttention=attention||null;if(typeof updateSummerCompanion==="function")updateSummerCompanion();}
+  });
+}
+
+/* Safe internal tool surface for the current/future Summer agent. This is the
+   MCP-like seam: providers can ask the app to navigate or inspect valid options,
+   but they are not given a tool that marks chores done or awards stars. */
+if(window.SQAgentTools){
+  SQAgentTools.bind({
+    context:function(){
+      if(!hubKid)return {kid:null};
+      const c=SQ_DAY.clock(), day=todayStr();
+      return {kid:{id:hubKid,name:KIDS[hubKid].name,age:KIDS[hubKid].age},day:day,time:c.h+":"+c.m,
+        tab:hubTab,stars:starsOf(hubKid),coins:questCoins(hubKid),energy:questSession.energy,preference:questSession.preference,
+        completedQuests:SQQuestProgress.list(hubKid,day),activeQuest:companionContext(),activity:window.SQActivityRouter?SQActivityRouter.context():null};
+    },
+    listQuests:function(pref){
+      if(!hubKid)return [];
+      const ctx=questContextFor(pref||questSession.preference||"surprise",questSession.energy||"any");
+      return SQQuestCore.listAvailable(questCatalog(),ctx).filter(q=>!questActionLocked(q)).map(q=>({id:q.id,title:q.title,duration:q.duration,category:q.category,energy:q.energy,required:q.required}));
+    },
+    openQuest:function(id){
+      const valid=this.listQuests("surprise").some(q=>q.id===id);
+      if(!valid)return {ok:false,reason:"not_available"};
+      return SummerQuest.openQuest(id);
+    },
+    activeQuest:function(){return companionContext();},
+    resumeQuest:function(id){
+      const active=SQQuestProgress.active(hubKid,todayStr()).find(function(x){return !id||x.id===id;});
+      if(!active)return {ok:false,reason:"no_active_quest"};
+      return SummerQuest.openQuest(active.id);
+    },
+    activityContext:function(){return window.SQActivityRouter?SQActivityRouter.context():null;},
+    openAssistant:function(){return openSummerCompanion();},
+    openActivity:function(area){
+      if(!["games","acts","learn","books","music"].includes(area)||tabLocked(area))return {ok:false,reason:"not_available"};
+      if(window.SQActivityRouter)return SQActivityRouter.open({type:"tab",tab:area});
+      hubTab=area;saveAppPlace("hub");renderHub();return {ok:true};
+    },
+    openToday:function(){return SummerQuest.navigate("day");},
+    scheduleReminder:function(req){return SQPlatform.scheduleNotification(req||{});}
+  });
+}
+
 window.SQHost={
   KIDS:KIDS, LEVELS:LEVELS,
   get kid(){return kid;},

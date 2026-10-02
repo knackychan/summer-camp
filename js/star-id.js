@@ -25,6 +25,15 @@
      facts, which is exactly what an id buys. */
   const BONUS_SLOT=999;
   const BRAIN_SLOT=998;
+  /* Quest ids live far away from schedule block slots. The stable FNV-1a slot
+     makes one named quest worth at most one ledger row per kid/day, even if two
+     tablets complete it before quest-history sync exists. */
+  const QUEST_BASE=1000000000;
+  function questSlot(questId){
+    let h=2166136261>>>0, s=String(questId||"");
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+    return QUEST_BASE+(h>>>0);
+  }
 
   function starId(kid,dayISO,slot){
     const k=KID_SLOT[kid];
@@ -53,6 +62,7 @@
     block:function(kid,dayISO,blockIdx){return starId(kid,dayISO,blockIdx);},
     bonus:function(kid,dayISO){return starId(kid,dayISO,BONUS_SLOT);},
     brain:function(kid,dayISO){return starId(kid,dayISO,BRAIN_SLOT);},
+    quest:function(kid,dayISO,questId){return questId?starId(kid,dayISO,questSlot(questId)):null;},
     /* Still gated on a known kind, not just truthiness: a `{}` reaching here is a
        bug upstream, and paying it a star would hide that. */
     blockDelta:function(block){return block&&(block.kind==="mission"||block.kind==="routine")?1:0;},
@@ -64,7 +74,7 @@
       if(!kid)return null;
       if(starId(kid,day,slot)!==id)return null;
       return {kid:kid,day:day,slot:slot,
-        kind:slot===BONUS_SLOT?"bonus":slot===BRAIN_SLOT?"brain":"block"};
+        kind:slot===BONUS_SLOT?"bonus":slot===BRAIN_SLOT?"brain":slot>=QUEST_BASE?"quest":"block"};
     }
   };
   if(typeof window!=="undefined")window.SQStarId=api;

@@ -234,7 +234,12 @@ function create(ctx) {
     var panel = root().querySelector(".brain-corrective");
     if (panel) {
       panel.hidden = false;
-      panel.innerHTML = '<span>Count</span> <b>' + feedback.answer + '</b><span class="zhs">數一數 ' + feedback.answer + '</span>';
+      var corrective = currentItem && currentItem.corrective;
+      if (Array.isArray(corrective) && corrective[0] && corrective[1]) {
+        panel.innerHTML = '<span>' + corrective[0] + '</span><span class="zhs">' + corrective[1] + '</span>';
+      } else {
+        panel.innerHTML = '<span>Count</span> <b>' + feedback.answer + '</b><span class="zhs">數一數 ' + feedback.answer + '</span>';
+      }
     }
     return new Promise(function (resolve) { ctx.scheduler.after(900, resolve); });
   }

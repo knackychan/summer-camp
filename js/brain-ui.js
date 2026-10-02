@@ -5,9 +5,9 @@
    seam index.html and js/main.js still know about; no game-specific DOM lives here
    any more, that all moved into js/brain/scenes/*.js. */
 (function(){
-  var hostPromise;
+  var hostPromise,hostModule,openToken=0;
   function host(){
-    if(!hostPromise) hostPromise=import("./brain/host.js");
+    if(!hostPromise) hostPromise=import("./brain/host.js").then(function(h){hostModule=h;return h;}).catch(function(error){hostPromise=null;throw error;});
     return hostPromise;
   }
 
@@ -17,12 +17,18 @@
   }
 
   function openRound(opts){
-    host().then(function(h){ h.openRound(opts); })
-      .catch(function(err){ console.error("brain host failed to load",err); });
+    var token=++openToken;
+    return host().then(async function(h){
+      if(token!==openToken)return null;
+      var round=h.openRound(opts);
+      await round.ready;
+      return token===openToken?round:null;
+    });
   }
 
   function closeActive(){
-    host().then(function(h){ h.closeActive(); }).catch(function(){});
+    openToken++;
+    if(hostModule)hostModule.closeActive();
   }
 
   var api={openRound:openRound,fmtMs:fmtMs,closeActive:closeActive};

@@ -1,12 +1,12 @@
 # Summer Quest architecture recovery plan
 
-Date: 2026-10-02. **Proposed for review; not approved or implemented.**
+Date: 2026-10-02. **Strategy C approved by the user; implementation and acceptance results recorded below. Physical tablet acceptance remains blocked on ADB authorization.**
 
-Basis: [architecture audit](../audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-AUDIT.md) and its evidence appendices. This uses the explicit deliverable path requested by the audit brief. Existing plans are retained; this proposal supersedes their conflicting shell-in-iframe direction only after review.
+Basis: [architecture audit](../audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-AUDIT.md) and its evidence appendices. The user's implementation instruction explicitly passed the audit review stop. Existing plans remain historical references; Strategy C supersedes their conflicting shell-in-iframe direction.
 
-## Decision to review
+## Approved decision
 
-Choose **C: selective merge**, keeping the existing root runtime's product, navigation, and state authority. Adopt the useful Android bridge, typed learning services, registry projection, and world screen. Remove executable prototype routing from shipped assets. Do not restore the entire original revision or promote `apps/kid` into the product.
+Implement **C: selective merge**, keeping the existing root runtime's product, navigation, and state authority. Adopt the useful Android bridge, typed learning services, registry projection, and world screen. Remove executable prototype routing from shipped assets. Do not restore the entire original revision or promote `apps/kid` into the product.
 
 The diagnosed selector is the `apps/kid` Planet route. The installed tablet's actual entry chain is still an evidence gap. Capture it before clearing cache, uninstalling, overwriting the APK, or migrating saved state.
 
@@ -130,7 +130,7 @@ Dependencies: none. Required before claims about the physical tablet cause.
 - [ ] Capture installed package ID/version, launch activity, WebView `location.href`, loaded root/module URLs, service-worker controller/scope/cache identity, bridge-native flag, current surface and saved view keys.
 - [ ] Compare actual native `assets/public` and installed APK payload against source/dist before rebuilding.
 - [ ] Record the exact device entry-selection cause; do not infer it from the badge or bundle metadata.
-- [ ] Review Strategy C and the file/state scope below.
+- [x] Review Strategy C and the file/state scope below (explicit user authorization, 2026-10-02).
 
 DONE WHEN: device diagnosis separates entry/cache/native bridge problems from world initialization, and the architecture decision is reviewed.
 
@@ -138,11 +138,11 @@ DONE WHEN: device diagnosis separates entry/cache/native bridge problems from wo
 
 Files: shell entry/bootstrap, root/Android manifests, service worker, build/deployment configuration and documentation.
 
-- [ ] Make root the only shipped child application entry; stop caching/distributing the Planet/ActivityHost shell.
-- [ ] Preserve the separate parent admin entry and useful content/modules.
-- [ ] Add an entry check against source, served output, and native output; fail any runtime import that bootstraps the child shell.
-- [ ] Prove existing child/state/PIN selection and saved Classic/world views work without resetting data.
-- [ ] Add hidden developer diagnostics: release, entry URL, runtime, current screen/child, return stack/context, world initialized, WebGL, registry count, native bridge. No default debug label in child UI.
+- [x] Make root the only shipped child application entry; stop caching/distributing the Planet/ActivityHost shell.
+- [x] Preserve the separate parent admin entry and useful content/modules.
+- [x] Add an entry check against source, served output, and native output; fail any runtime import that bootstraps the child shell.
+- [x] Prove existing child/state/PIN selection and saved Classic/world views work without resetting data (isolated synthetic saves).
+- [x] Add hidden developer diagnostics: release, entry URL, runtime, current screen/child, return stack/context, world initialized, WebGL, registry count, native bridge. No default debug label in child UI.
 
 DONE WHEN: web/PWA/Android all enter root; deprecated executable shell is unreachable from the shipped product; no app-root iframe.
 
@@ -150,12 +150,12 @@ DONE WHEN: web/PWA/Android all enter root; deprecated executable shell is unreac
 
 Files: root launchers/Back/Escape, activity router, agent actions, platform bridge, content openers.
 
-- [ ] Expose the shared API over existing launchers; migrate Classic and world callers to it.
-- [ ] Route `startGame` through shared surface transition/pause behavior, retaining gates and initialization order.
-- [ ] Unify Back button, native Back, Escape, overlays, book zoom/grid, game exit, activity exit, instrument exit, and standalone return semantics.
-- [ ] Preserve world camera during content visits and clear stale return state when choosing another child.
-- [ ] Remove obsolete iframe/parent navigation adapters after remaining callers are gone.
-- [ ] Make the audit's source and generated game-launch invariant pass.
+- [x] Expose the shared API over existing launchers; migrate Classic and world callers to it.
+- [x] Route `startGame` through shared surface transition/pause behavior, retaining gates and initialization order.
+- [x] Unify Back button, native Back, Escape, overlays, book zoom/grid, game exit, activity exit, instrument exit, and standalone return semantics.
+- [x] Preserve world camera during content visits and clear stale return state when choosing another child.
+- [x] Remove obsolete iframe/parent navigation adapters after remaining callers are gone (historical shell source retained outside execution).
+- [x] Make the audit's source and generated game-launch invariant pass.
 
 DONE WHEN: one visible application screen, one global navigation shell, consistent return destination, no accumulating headers or active hidden renderer/audio.
 
@@ -163,11 +163,11 @@ DONE WHEN: one visible application screen, one global navigation shell, consiste
 
 Files: registry/root binding, existing learning/quest/reward catalog readers and availability functions; no copied content data.
 
-- [ ] Assert source catalog coverage for all 21 games, 3 instruments, 8 books and 11 activities.
-- [ ] Add learning/knowledge/quest discovery through existing catalog/store projections; document intentional exclusions for internal practice steps or dynamically generated assignments.
-- [ ] Preserve IDs/aliases and await manifest readiness; reflect new content without editing a second catalog.
-- [ ] Use authoritative availability checks, including Brain Gym/Paint exceptions and missing-module failures.
-- [ ] Return truthful launch completion/failure; test invalid IDs and blocked/failed opens.
+- [x] Assert source catalog coverage for all 21 games, 3 instruments, 8 books and 11 activities.
+- [x] Add learning/knowledge/quest discovery through existing catalog/store projections; document intentional exclusions for internal practice steps or dynamically generated assignments.
+- [x] Preserve IDs/aliases and await manifest readiness; reflect new content without editing a second catalog.
+- [x] Use authoritative availability checks, including Brain Gym/Paint exceptions and missing-module failures.
+- [x] Return truthful launch completion/failure; test invalid IDs and blocked/failed opens.
 
 DONE WHEN: every playable item is discoverable or explicitly excluded with a reason; Classic/world expose the same permissions and launch targets.
 
@@ -175,16 +175,16 @@ DONE WHEN: every playable item is discoverable or explicitly excluded with a rea
 
 Files: package/locks, mobile/web builders, Android helper/bootstrap/sync/build/doctor, CI, package verification tests.
 
-- [ ] Declare/pin root-owned TypeScript and tested Node/tool versions; include appropriate root/Android locks.
-- [ ] Invoke installed Node CLI entry points directly where possible. Use explicitly quoted, controlled `cmd.exe /d /s /c` only for unavoidable batch commands; reject unsafe shell arguments.
-- [ ] Fix helper call sites to pass `{cwd: ...}`; cover paths with spaces and process error propagation.
-- [ ] Check prerequisites before removing build output. Resolve absolute deletion targets within intended generated directories.
-- [ ] Keep JSON Capacitor configuration; check pinned Gradle/AGP/Capacitor and accepted JDK range, and test doctor failures on unsupported majors.
-- [ ] Verify SDK discovery/local.properties setup from a clean native project.
-- [ ] Build a minimal root payload with local world/Three.js/core/OrbitControls/registry/learning assets; exclude shell boot modules and prototypes.
-- [ ] Compare source and payload file coverage in both directions with explicit exclusions; require every referenced book image to exist. A matching self-reported hash does not detect omitted assets.
-- [ ] Sync and test **native** `apps/android/android/app/src/main/assets/public`, traversing actual HTML/module imports and executing startup there.
-- [ ] Make CI build required generated modules from a clean install; do not publish the whole mixed repository as the child bundle.
+- [x] Declare/pin root-owned TypeScript and tested Node/tool versions; include appropriate root/Android locks.
+- [x] Invoke installed Node CLI entry points directly where possible. Use explicitly quoted, controlled `cmd.exe /d /s /c` only for unavoidable batch commands; reject unsafe shell arguments.
+- [x] Fix helper call sites to pass `{cwd: ...}`; cover paths with spaces and process error propagation.
+- [x] Check prerequisites before removing build output. Resolve absolute deletion targets within intended generated directories.
+- [x] Keep JSON Capacitor configuration; check pinned Gradle/AGP/Capacitor and accepted JDK range, and test doctor failures on unsupported majors.
+- [x] Verify SDK discovery/local.properties setup from a clean native project.
+- [x] Build a minimal root payload with local world/Three.js/core/OrbitControls/registry/learning assets; exclude shell boot modules and prototypes.
+- [x] Compare source and payload file coverage in both directions with explicit exclusions; require every referenced book image to exist. A matching self-reported hash does not detect omitted assets.
+- [x] Sync and test **native** `apps/android/android/app/src/main/assets/public`, traversing actual HTML/module imports and executing startup there (desktop browser serving the synchronized files).
+- [x] Make CI build required generated modules from a clean install; do not publish the whole mixed repository as the child bundle.
 
 DONE WHEN: fresh checkout -> install -> build -> sync -> Gradle is repeatable on Windows, correct native executable startup is demonstrated, and two clean builds have equal intended payloads.
 
@@ -192,11 +192,11 @@ DONE WHEN: fresh checkout -> install -> build -> sync -> Gradle is repeatable on
 
 Files: existing browser scripts, registry/Android tests, content inventory/asset checks.
 
-- [ ] Automate Hero -> child -> world/hub -> Games -> real game -> Back -> Books -> Space -> Back -> Books -> another book -> Back -> Music -> instrument -> Back -> Learning -> real activity -> Back.
-- [ ] Repeat through Classic clicks and world launches; test both button and native shared Back. Assert exactly one global shell/header and no nested root/legacy iframe after each step.
-- [ ] Exercise every catalog item from both entry surfaces where applicable; account explicitly for locked/age-limited items.
-- [ ] Verify all integrated book-data assets as well as standalone book assets; check all three instruments and game module loading.
-- [ ] Test existing saves, pending offline writes, lock exceptions, PINs, fresh start, restored views, missing config, and offline warm/cold startup.
+- [x] Automate Hero -> child -> world/hub -> Games -> real game -> Back -> Books -> Space -> Back -> Books -> another book -> Back -> Music -> instrument -> Back -> Learning -> real activity -> Back.
+- [x] Repeat through Classic clicks and world launches; test both button and native shared Back. Assert exactly one global shell/header and no nested root/legacy iframe after each step.
+- [x] Exercise every catalog item from both entry surfaces where applicable; account explicitly for locked/age-limited items.
+- [x] Verify all integrated book-data assets as well as standalone book assets; check all three instruments and game module loading.
+- [x] Test existing saves, pending offline writes, lock exceptions, PINs, fresh start, restored views, missing config, and offline warm/cold startup (synthetic saves, worker-controlled reload and new document; physical cold process pending).
 - [ ] Run the same suite on source, generated web, synchronized native payload and the physical tablet; label software WebGL results separately.
 
 DONE WHEN: full content click-through has explicit outcomes with no unexplained failures; all navigation/state/asset regression gates pass.
@@ -205,15 +205,40 @@ DONE WHEN: full content click-through has explicit outcomes with no unexplained 
 
 Files: world module/CSS, registry consumers, browser/device interaction checks.
 
-- [ ] Map normalized content to places and discovery affordances; retain real content/IDs and accessible Classic access.
-- [ ] Assert camera rotation changes numerically and pinch stays bounded; raycast real visible landmarks rather than only calling APIs in tests.
+- [x] Map normalized content to places and discovery affordances; retain real content/IDs and accessible Classic access (places open the existing complete section catalogs).
+- [x] Assert camera rotation changes numerically and pinch stays bounded; raycast real visible landmarks rather than only calling APIs in tests.
 - [ ] Verify camera/selection persistence, resize, context loss/recovery, background/resume, error visibility, and Android Back on hardware.
-- [ ] Force local module-import and WebGL initialization failures; assert a visible diagnostic and no PlanetScreen fallback.
-- [ ] Provide English and Traditional Chinese controls and non-reading discovery affordances, consistent with the existing child-facing language contract.
+- [x] Force local module-import and WebGL initialization failures; assert a visible diagnostic and no PlanetScreen fallback.
+- [x] Provide English and Traditional Chinese controls and non-reading discovery affordances, consistent with the existing child-facing language contract.
 - [ ] Evaluate child-friendly physical places, performance and touch targets before visual polish. Characters/decorations/day-night remain later product work.
 
 DONE WHEN: a child can explore, launch real content, and return to the same world on the tablet without reading-dependent navigation or a second application shell.
 
-## Review stop
+## Audit review stop — passed
 
-This delivery completes the audit/recommendation/proposed checklist and pushes those artifacts on their own branch. The browser regression intentionally remains red because runtime fixes are outside this audit's stop point. Review Strategy C, the entry-retirement scope, and saved-state compatibility before executing Phases A–F. Physical entry diagnosis is pending evidence, not an asserted root-cause fix.
+The audit-only delivery remains recorded at `29b1f0e`. The user authorized implementation beyond its review stop. The implementation branch preserves the overlaid application and fixes the recorded failures. Physical entry diagnosis still requires an authorized tablet; desktop and packaged-payload checks do not establish what the existing installed app runs.
+
+## Implementation record
+
+### Runtime and catalog
+
+- Root `index.html` owns navigation, child state and content lifecycle. `SummerQuest` and the compatible `SQAppNavigation` alias expose the shared launch/Back/diagnostic API; Classic, world and agent actions use it.
+- `apps/kid/index.html` redirects once to root without writing family state. Its historical TypeScript remains in source, excluded from compilation, precaching and shipped payloads. The parent interface remains separate.
+- Shared transitions pause the world, cancel pending game/Brain/instrument opens, stop outgoing timers/audio, and pause directed learning. Buttons, Escape and native Back use the same policy. Explicit book hashes override saved views; valid saved Classic sessions remain Classic.
+- The registry projects 90 default entries: 8 sections, 21 games, 3 instruments, 8 books, 11 activities, 3 guides, 18 lessons, 2 learning modes, 12 quests and 4 rewards. Configured quests/rewards continue to come from their existing catalogs. Activity indexes and guide completion IDs stay unchanged.
+- Brain Gym, directed learning and Paint keep their game-lock exceptions. The Games section remains reachable so its permitted activities can be found; individual game launches enforce access. Book/music category exemptions and whole-app pause remain intact. Lessons retain age limits.
+- Internal skill IDs, generated questions, Math/Language teaching steps, lesson Explore/Check phases and help cues are represented by their owning session/lesson. They are not separate global launch destinations. Opening a reward focuses its existing shop card; it does not redeem it.
+- The world retains per-child camera/selection in additive `sq:world-view:<child>` keys, refreshes availability on return, disposes GPU/listener resources, and guards hidden/native/context-loss resume. Failures stay visible with Classic access. No visual redesign was introduced.
+- Content sweeps found and fixed Drum Pads teardown closure errors, late Solar initialization after exit, a request for an absent optional Pluto texture (existing flat appearance retained), and lesson launches invalidated by passive rendering.
+
+### Build and distribution
+
+- Root owns pinned TypeScript 5.9.3 and Three.js 0.185.1; root and Android dependency locks are committed. Shared compiler entry points run through Node. Obsolete Node flags and Windows `.cmd` compiler fallbacks are removed.
+- Windows batch invocation is explicitly quoted and validates arguments. Gradle receives its real project working directory. Doctor validates JDK 21–24, SDK 36, Gradle 8.14.3 and AGP 8.13.0; SDK property repair retains unrelated settings.
+- Web builds compile dependencies before replacing output, include all source book assets and admin, and exclude shell bootstrap/prototypes. Verification compares source/output in both directions, validates imports and book image references, recomputes hashes, and checks synchronized native `assets/public` when present.
+- CI installs from the root lock, builds generated modules and publishes `dist/android-web`. Generated modules/native project, dependency directories, `.reports`, `.tmp`, provider credentials and family telemetry stay untracked. Original audit payload evidence is retained locally under `.tmp/architecture-recovery/preserved-android-web`; its identity remains in the audit.
+- The generated debug APK is build evidence. The native template currently has versionName `1.0` / versionCode `1`; the existing tablet version is unknown. No install, uninstall, app-data clear, app-ID change or storage-origin change was performed.
+
+### Validation and remaining acceptance
+
+Command results, artifact identities, clean-checkout comparison and evidence limits are recorded in the [recovery results appendix](../audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-RESULTS.md). The checklist's device-specific boxes stay open until hardware evidence is available. Visual polish remains deferred.

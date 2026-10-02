@@ -347,3 +347,125 @@ test("generic scene module exposes the required contract shape", () => {
   assert.equal(genericMod.default.id, "generic");
   assert.equal(typeof genericMod.default.create, "function");
 });
+
+test("learning support: wrong answer can request a hint, retry locally, and preserve original Brain score", async () => {
+  const calls = installFakeScene();
+  try {
+    const progressCalls = [];
+    const learningAttempts = [];
+    const supportOutcomes = [];
+    let hintCalls = 0;
+    const round = hostMod.openRound({
+      gameId: "change", tier: "tot", kid: "lili",
+      canLearningSupport: async () => true,
+      getLearningHint: async () => {
+        hintCalls += 1;
+        return {
+          hint: { message: "Count one step at a time.", messageZh: "一次數一步。", strategy: "number_line" },
+          presentation: { mode: "text_visual", strategy: "number_line", showText: true, numberLine: { start: 3, direction: 1, steps: 2 } },
+        };
+      },
+      onLearningAttempt: async (attempt) => { learningAttempts.push(attempt); },
+      onLearningSupportOutcome: async (outcome) => { supportOutcomes.push(outcome); },
+      onProgress: (state) => { if (state) progressCalls.push(state); },
+      onFinish: () => {},
+    });
+    await flush();
+    const firstAnswer = calls.lastItem.answer;
+    calls.ctx.submit("definitely-wrong");
+    await flush(30);
+    assert.equal(round.debugState(), "learning-support");
+    const hintButton = round.debugOverlay().querySelector('[data-learning-action="hint"]');
+    assert.ok(hintButton && typeof hintButton.onclick === "function", "support prompt exposes a Hint action");
+    hintButton.onclick();
+    await flush(30);
+    assert.equal(hintCalls, 1);
+    assert.equal(learningAttempts.length, 1);
+    assert.equal(learningAttempts[0].hintsUsed, 1, "hint usage is stored with the original wrong attempt");
+    const retryButton = round.debugOverlay().querySelector('[data-learning-action="retry"]');
+    assert.ok(retryButton && typeof retryButton.onclick === "function", "validated hint exposes a retry action");
+    retryButton.onclick();
+    await flush(30);
+    assert.equal(round.debugState(), "active");
+    assert.ok(calls.present >= 2, "same item is presented again for guided retry");
+    calls.ctx.submit(firstAnswer);
+    await flush(40);
+    assert.equal(round.debugItemIndex(), 1, "guided retry advances after local grading");
+    assert.equal(progressCalls.at(-1).answers[0].correct, false, "Brain Gym score keeps the first attempt instead of letting AI/hint overwrite it");
+    assert.equal(learningAttempts.length, 1, "guided retry does not double-count the learning attempt");
+    assert.equal(supportOutcomes.at(-1).outcome, "retry_recovered", "guided retry recovery is emitted for tutor telemetry");
+    round.destroy(true);
+  } finally { restoreFakeScene(); }
+});
+
+test("adaptive tutor: strong-context continue skips extra tutor UI but stores the wrong attempt", async () => {
+  const calls = installFakeScene();
+  try {
+    const learningAttempts = [];
+    let hintCalls = 0;
+    const round = hostMod.openRound({
+      gameId: "change", tier: "tot", kid: "lili",
+      canLearningSupport: async () => true,
+      getLearningIntervention: async () => ({
+        kind: "continue", mistake: "near_miss", reason: "near_miss_after_success", preferredStrategies: [],
+      }),
+      getLearningHint: async () => { hintCalls += 1; return null; },
+      onLearningAttempt: async (attempt) => { learningAttempts.push(attempt); },
+      onFinish: () => {},
+    });
+    await flush();
+    calls.ctx.submit("definitely-wrong");
+    await flush(40);
+    assert.equal(hintCalls, 0, "continue intervention does not spend an AI request");
+    assert.equal(learningAttempts.length, 1);
+    assert.equal(learningAttempts[0].hintsUsed, 0);
+    assert.equal(round.debugItemIndex(), 1, "the normal round continues after the game's own corrective feedback");
+    round.destroy(true);
+  } finally { restoreFakeScene(); }
+});
+
+test("adaptive tutor: repeated difficulty inserts an unscored easier step then retries the original", async () => {
+  const calls = installFakeScene();
+  try {
+    const progressCalls = [];
+    const learningAttempts = [];
+    const supportOutcomes = [];
+    const round = hostMod.openRound({
+      gameId: "change", tier: "tot", kid: "lili",
+      canLearningSupport: async () => true,
+      getLearningIntervention: async () => ({
+        kind: "easier_follow_up",
+        mistake: "unknown",
+        reason: "repeated_errors",
+        preferredStrategies: ["objects", "number_line"],
+        easierQuestion: { id: "scaffold", operation: "addition", left: 2, right: 1, answer: 3, difficulty: 1 },
+      }),
+      getLearningHint: async () => null,
+      onLearningAttempt: async (attempt) => { learningAttempts.push(attempt); },
+      onLearningSupportOutcome: async (outcome) => { supportOutcomes.push(outcome); },
+      onProgress: (state) => { if (state) progressCalls.push(state); },
+      onFinish: () => {},
+    });
+    await flush();
+    const originalAnswer = calls.lastItem.answer;
+    calls.ctx.submit("definitely-wrong");
+    await flush(40);
+    assert.equal(round.debugState(), "learning-scaffold");
+    assert.equal(learningAttempts.length, 1);
+    assert.equal(learningAttempts[0].hintsUsed, 1, "proactive scaffold counts as support on the original attempt");
+    const scaffoldAnswer = round.debugOverlay().querySelector('[data-scaffold-answer="3"]');
+    assert.ok(scaffoldAnswer && typeof scaffoldAnswer.onclick === "function", "smaller local question renders answer controls");
+    scaffoldAnswer.onclick();
+    await flush(700);
+    assert.equal(round.debugState(), "active", "correct scaffold returns to the original question");
+    assert.ok(calls.present >= 2, "the original item is presented again after the scaffold");
+    calls.ctx.submit(originalAnswer);
+    await flush(40);
+    assert.equal(round.debugItemIndex(), 1);
+    assert.equal(progressCalls.at(-1).answers[0].correct, false, "scaffold/retry never rewrites the Brain score");
+    assert.equal(learningAttempts.length, 1, "scaffold and guided retry do not double-count attempts");
+    assert.ok(supportOutcomes.some((outcome) => outcome.outcome === "scaffold_success"), "scaffold success is emitted for tutor telemetry");
+    assert.ok(supportOutcomes.some((outcome) => outcome.outcome === "retry_recovered"), "original-question recovery is emitted after scaffold support");
+    round.destroy(true);
+  } finally { restoreFakeScene(); }
+});

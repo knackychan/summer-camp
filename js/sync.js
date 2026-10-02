@@ -430,6 +430,11 @@
           id:op.id,kid_id:op.kid,delta:op.delta,reason:op.reason,source:"app"
         });
         if(error&&error.code!=="23505") throw error;
+      }else if(op.type==="questVerify"){
+        const {error}=await this.supabase.from("asks").insert({
+          id:op.id,kid_id:op.kid,kind:op.kind,body:op.body||null
+        });
+        if(error&&error.code!=="23505") throw error;
       }else if(op.type==="actDone"){
         const {error}=await this.supabase.from("act_done").upsert({
           kid_id:op.kid,day:op.day,act_idx:op.actIdx
@@ -566,6 +571,26 @@
         if(up.error) return up;
       }
       return this.supabase.from("asks").insert({kid_id:kid,kind,body:body||null,audio_path});
+    }
+    async requestQuestVerification(kid,questId,day,body){
+      const id=uuid();
+      const kind=`quest_verify:${questId}:${day}`;
+      /* Verification is an offline-safe intent. When Supabase is configured but
+         unreachable it sits in the same durable queue as stars/ticks and is sent
+         when connectivity returns. In a permanently local-only installation it
+         remains a local waiting state until sync is configured. */
+      if(this.configured){
+        this.enqueue({type:"questVerify",id:id,kid:kid,kind:kind,body:body||null});
+        await this.flush();
+      }
+      return {data:{id:id,kind:kind},error:null,queued:!!this.configured,localOnly:!this.configured};
+    }
+    async fetchQuestVerifications(kid,day){
+      if(!this.supabase)return [];
+      const pattern=`quest_verify:%:${day}`;
+      const {data,error}=await this.supabase.from("asks").select("id,kid_id,kind,body,answer,answered_at,created_at").eq("kid_id",kid).like("kind",pattern).order("created_at",{ascending:false});
+      if(error)throw error;
+      return data||[];
     }
     async requestPass(kid,kind,day,blockIdx,reason){
       if(!this.supabase) return {error:new Error("Sync is offline")};

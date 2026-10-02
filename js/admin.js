@@ -48,6 +48,7 @@
   const silentRealtime=new Map();
   let currentRoute="today";
   let activeKidDetail=null;
+  let questStudioTab="tasks", questEditId=null, rewardEditId=null;
 
   const CHAT_KEY="sq-admin-chat-filters";
   const CHAT_TYPES=[
@@ -168,6 +169,16 @@
     const row=rows.familySettings.find(r=>r.key==="archived_asks");
     try{return new Set(JSON.parse(row&&row.value||"[]"));}catch(e){return new Set();}
   }
+  function familySettingsMap(){return Object.fromEntries(rows.familySettings.map(function(r){return [r.key,r.value];}));}
+  async function saveFamilySetting(key,value){
+    suppressRealtime("family_settings",{key:key});
+    const stamp=new Date().toISOString();
+    const {error}=await client.from("family_settings").upsert({key:key,value:String(value),updated_at:stamp});
+    if(error){writeFailed(error);return false;}
+    var row=rows.familySettings.find(function(x){return x.key===key;});
+    if(row)row.value=String(value); else rows.familySettings.push({key:key,value:String(value)});
+    return true;
+  }
   const coveredSet=kid=>new Set([
     ...todayTicks(kid).map(t=>t.block_idx),
     ...rows.passes.filter(p=>p.kid_id===kid&&p.day===today&&["granted","spent"].includes(p.status)).map(p=>p.block_idx)
@@ -200,7 +211,9 @@
     var archived=archivedAskIds();
     rows.asks.forEach(function(a){
       if(a.created_at&&a.answer===null&&!archived.has(a.id)){
-        q.push({id:a.id,type:"ask",kidId:a.kid_id,at:a.created_at,body:a.body||"Voice memo",actions:["answer","archive"]});
+        var reward=String(a.kind||"").indexOf("reward:")===0;
+        var verification=String(a.kind||"").indexOf("quest_verify:")===0;
+        q.push({id:a.id,type:verification?"quest":reward?"reward":"ask",kind:a.kind||"question",kidId:a.kid_id,at:a.created_at,body:a.body||"Voice memo",actions:verification?["approve_quest","redo_quest"]:reward?["approve_reward","deny_reward"]:["answer","archive"]});
       }
     });
     rows.helpClaims.forEach(function(c){
@@ -332,7 +345,7 @@
     passes:["today"],
     photos:["inbox"],
     help_claims:["today","inbox"],
-    family_settings:["today","kids","settings","inbox"],
+    family_settings:["today","kids","quests","settings","inbox"],
     day_overrides:["today"],
     day_redos:["today"],
     act_done:["reports"],
@@ -371,6 +384,9 @@
     if(route==="kids"){
       renderKids();
     }
+    if(route==="quests"){
+      renderQuestStudio();
+    }
     if(route==="content"){
       renderNote();
       renderDayTemplate();
@@ -384,6 +400,180 @@
     /* Always render dock conversation and update counts */
     renderDockConversation();
     updateNavCounts();
+  }
+
+  /* ---- Quest Studio: task rules, rewards, assistant policy ---- */
+  function qsClock(mins){
+    mins=Math.max(0,Math.min(1439,Number(mins)||0));
+    return String(Math.floor(mins/60)).padStart(2,"0")+":"+String(mins%60).padStart(2,"0");
+  }
+  function qsMins(v,fallback){
+    var p=String(v||"").split(":").map(Number);
+    return p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1])?Math.max(0,Math.min(1439,p[0]*60+p[1])):fallback;
+  }
+  function qsSlug(v){
+    var s=String(v||"quest").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
+    return s||"quest";
+  }
+  function qsCatalog(){return window.SQQuestConfig?SQQuestConfig.catalog(familySettingsMap()):[];}
+  function qsRewards(){return window.SQQuestConfig?SQQuestConfig.rewards(familySettingsMap()):[];}
+  function qsAssistant(){return window.SQQuestConfig?SQQuestConfig.assistant(familySettingsMap()):{askEnergy:true,maxSuggestions:3,showUpcoming:true,questionMode:"guided",companionEnabled:true};}
+  function qsFreqLabel(q){
+    var f=q.frequency||{type:"daily"};
+    if(f.type==="weekdays")return "weekdays";
+    if(f.type==="weekends")return "weekends";
+    if(f.type==="interval_days")return "every "+Math.max(1,Number(f.every)||1)+" days";
+    if(f.type==="days")return "selected days";
+    return "daily";
+  }
+  function qsKidsLabel(q){
+    var ids=q.allowedKids||Object.keys(KIDS);
+    if(ids.length===Object.keys(KIDS).length)return "all kids";
+    return ids.map(kidName).join(" · ");
+  }
+  function qsTabs(){
+    var el=$("questStudioTabs"); if(!el)return;
+    var tabs=[["tasks","Tasks & routines"],["rewards","Rewards"],["assistant","Summer assistant"]];
+    el.innerHTML=tabs.map(function(t){var on=questStudioTab===t[0];return '<button class="chip'+(on?' on':'')+'" aria-pressed="'+(on?'true':'false')+'" data-qstab="'+t[0]+'">'+t[1]+'</button>';}).join("");
+    el.querySelectorAll("[data-qstab]").forEach(function(b){b.onclick=function(){questStudioTab=b.dataset.qstab;questEditId=null;rewardEditId=null;renderQuestStudio();};});
+  }
+  function renderQuestStudio(){
+    qsTabs();
+    var body=$("questStudioBody"); if(!body)return;
+    if(questStudioTab==="rewards")renderQuestRewards(body);
+    else if(questStudioTab==="assistant")renderQuestAssistant(body);
+    else renderQuestTasks(body);
+  }
+  function renderQuestTasks(body){
+    var list=qsCatalog();
+    var enabled=list.filter(function(q){return q.enabled!==false;}).length;
+    var required=list.filter(function(q){return q.enabled!==false&&q.required;}).length;
+    var routines=list.filter(function(q){return q.enabled!==false&&q.type==="routine";}).length;
+    body.innerHTML='<div class="qs-summary">'+
+      '<div class="qs-stat"><b>'+enabled+'</b><span>active tasks</span></div>'+
+      '<div class="qs-stat"><b>'+required+'</b><span>daily essentials</span></div>'+
+      '<div class="qs-stat"><b>'+routines+'</b><span>routines</span></div>'+
+      '<div class="qs-stat"><b>'+list.filter(function(q){return q.enabled===false;}).length+'</b><span>paused</span></div></div>'+
+      '<div class="qs-toolbar"><p>Kids receive only tasks that are valid for their time, rules and current context.</p><button class="btn btn--primary btn--sm" id="qsNewTask">+ New task</button></div>'+
+      '<div class="qs-list">'+list.map(function(q){return '<article class="qs-row'+(q.enabled===false?' is-off':'')+'">'+
+        '<div class="qs-icon">'+esc(q.icon||"✨")+'</div><div class="qs-title"><b>'+esc(q.title[0])+'</b><span>'+esc(q.title[1])+'</span></div>'+
+        '<div class="qs-meta"><span>'+esc(q.type)+'</span><span>'+esc(q.category)+'</span><span>'+q.duration+' min</span><span>'+qsClock(q.after)+'–'+qsClock(q.before)+'</span><span>'+esc(qsFreqLabel(q))+'</span><span>'+esc(qsKidsLabel(q))+'</span>'+(q.required?'<span>essential</span>':'')+(q.verification==="parent"?'<span>👀 Papa verifies</span>':'<span>self-check</span>')+'<span>+'+q.rewardStars+' coin'+(q.rewardStars===1?'':'s')+'</span></div>'+
+        '<div class="qs-actions"><button class="btn btn--sm" data-qsedit="'+esc(q.id)+'">Edit</button><button class="btn btn--sm btn--quiet" data-qstoggle="'+esc(q.id)+'">'+(q.enabled===false?'Enable':'Pause')+'</button></div></article>';}).join("")+'</div>'+
+      '<div id="qsEditor"></div>'+
+      '<div class="qs-callout" style="margin-top:16px"><b>The schedule is now a constraint, not the child interface.</b> Fixed-time exceptions can stay in Today; recurring life rules belong here.</div>';
+    $("qsNewTask").onclick=function(){questEditId="__new__";renderQuestTaskEditor();};
+    body.querySelectorAll("[data-qsedit]").forEach(function(b){b.onclick=function(){questEditId=b.dataset.qsedit;renderQuestTaskEditor();};});
+    body.querySelectorAll("[data-qstoggle]").forEach(function(b){b.onclick=function(){toggleQuestRule(b.dataset.qstoggle);};});
+    if(questEditId)renderQuestTaskEditor();
+  }
+  function renderQuestTaskEditor(){
+    var box=$("qsEditor"); if(!box)return;
+    var catalog=qsCatalog(), isNew=questEditId==="__new__";
+    var q=isNew?SQQuestConfig.normalizeQuest({id:"",title:["New quest","新任務"],blurb:["",""],steps:[],after:8*60,before:20*60,rewardStars:1},catalog.length):catalog.find(function(x){return x.id===questEditId;});
+    if(!q){box.innerHTML="";return;}
+    var freq=(q.frequency&&q.frequency.type)||"daily";
+    var every=(q.frequency&&q.frequency.every)||2;
+    var enSteps=(q.steps||[]).map(function(x){return x[0]||"";}).join("\n");
+    var zhSteps=(q.steps||[]).map(function(x){return x[1]||"";}).join("\n");
+    box.innerHTML='<div class="qs-editor"><div class="qs-editor__head"><h3>'+(isNew?'New task':'Edit '+esc(q.title[0]))+'</h3><button class="btn btn--sm btn--quiet" id="qsCloseEditor">Close</button></div><div class="qs-form">'+
+      '<div class="qs-field"><label>Icon</label><input id="qsIcon" value="'+esc(q.icon)+'" maxlength="6"></div>'+
+      '<div class="qs-field w6"><label>English title</label><input id="qsTitleEn" value="'+esc(q.title[0])+'" maxlength="60"></div>'+
+      '<div class="qs-field w6"><label>中文標題</label><input id="qsTitleZh" value="'+esc(q.title[1])+'" maxlength="60"></div>'+
+      '<div class="qs-field"><label>Kind</label><select id="qsType">'+["routine","quest","activity"].map(function(v){return '<option value="'+v+'"'+(q.type===v?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>'+
+      '<div class="qs-field"><label>Category</label><select id="qsCategory">'+["care","help","learn","move","play","family"].map(function(v){return '<option value="'+v+'"'+(q.category===v?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>'+
+      '<div class="qs-field"><label>Energy</label><select id="qsEnergy">'+["low","medium","high"].map(function(v){return '<option value="'+v+'"'+(q.energy===v?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>'+
+      '<div class="qs-field"><label>Duration (min)</label><input id="qsDuration" type="number" min="1" max="240" value="'+q.duration+'"></div>'+
+      '<div class="qs-field"><label>Available after</label><input id="qsAfter" type="time" value="'+qsClock(q.after)+'"></div>'+
+      '<div class="qs-field"><label>Available before</label><input id="qsBefore" type="time" value="'+qsClock(q.before)+'"></div>'+
+      '<div class="qs-field"><label>Repeat</label><select id="qsFrequency"><option value="daily"'+(freq==="daily"?' selected':'')+'>Daily</option><option value="weekdays"'+(freq==="weekdays"?' selected':'')+'>Weekdays</option><option value="weekends"'+(freq==="weekends"?' selected':'')+'>Weekends</option><option value="interval_days"'+(freq==="interval_days"?' selected':'')+'>Every N days</option></select></div>'+
+      '<div class="qs-field"><label>Every N days</label><input id="qsEvery" type="number" min="1" max="30" value="'+every+'"></div>'+
+      '<div class="qs-field"><label>Quest Coins</label><input id="qsReward" type="number" min="0" max="3" value="'+q.rewardStars+'"></div>'+
+      '<div class="qs-field"><label>Completion check</label><select id="qsVerification"><option value="self"'+(q.verification!=="parent"?' selected':'')+'>Child self-check</option><option value="parent"'+(q.verification==="parent"?' selected':'')+'>Papa verifies</option></select></div>'+
+      '<div class="qs-field w12"><label>Applies to</label><div class="qs-checks" id="qsKids">'+Object.keys(KIDS).map(function(id){return '<label><input type="checkbox" value="'+id+'"'+((q.allowedKids||[]).indexOf(id)>=0?' checked':'')+'> '+esc(kidName(id))+'</label>';}).join("")+'<label><input type="checkbox" id="qsRequired"'+(q.required?' checked':'')+'> Daily essential</label><label><input type="checkbox" id="qsEnabled"'+(q.enabled!==false?' checked':'')+'> Enabled</label></div></div>'+
+      '<div class="qs-field w6"><label>English description</label><textarea id="qsBlurbEn">'+esc(q.blurb[0])+'</textarea></div><div class="qs-field w6"><label>中文說明</label><textarea id="qsBlurbZh">'+esc(q.blurb[1])+'</textarea></div>'+
+      '<div class="qs-field w6"><label>Steps — English, one per line</label><textarea id="qsStepsEn">'+esc(enSteps)+'</textarea></div><div class="qs-field w6"><label>步驟 — 中文，每行一個</label><textarea id="qsStepsZh">'+esc(zhSteps)+'</textarea></div>'+
+      '</div><div class="qs-editor__foot"><button class="btn" id="qsCancelTask">Cancel</button><button class="btn btn--primary" id="qsSaveTask">Save task</button></div></div>';
+    $("qsCloseEditor").onclick=$("qsCancelTask").onclick=function(){questEditId=null;renderQuestStudio();};
+    $("qsSaveTask").onclick=function(){saveQuestRule(q,isNew);};
+  }
+  async function saveQuestRule(original,isNew){
+    var catalog=qsCatalog();
+    var titleEn=$("qsTitleEn").value.trim()||"Quest", titleZh=$("qsTitleZh").value.trim()||"任務";
+    var id=original.id;
+    if(isNew){
+      var base="custom_"+qsSlug(titleEn), candidate=base, n=2;
+      while(catalog.some(function(q){return q.id===candidate;})){candidate=base+"_"+n++;}
+      id=candidate;
+    }
+    var kids=[].slice.call($("qsKids").querySelectorAll('input[type="checkbox"][value]:checked')).map(function(x){return x.value;});
+    if(!kids.length)kids=Object.keys(KIDS);
+    var freq=$("qsFrequency").value;
+    var frequency=freq==="interval_days"?{type:"interval_days",every:Math.max(1,Number($("qsEvery").value)||2),anchor:today}:{type:freq};
+    var en=$("qsStepsEn").value.split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
+    var zh=$("qsStepsZh").value.split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
+    var len=Math.max(en.length,zh.length), steps=[];
+    for(var i=0;i<len;i++)steps.push([en[i]||zh[i]||"Do the next step.",zh[i]||en[i]||"完成下一個步驟。"]);
+    var next=Object.assign({},original,{id:id,icon:$("qsIcon").value.trim()||"✨",title:[titleEn,titleZh],blurb:[$("qsBlurbEn").value.trim(),$("qsBlurbZh").value.trim()],type:$("qsType").value,category:$("qsCategory").value,energy:$("qsEnergy").value,duration:Number($("qsDuration").value)||10,after:qsMins($("qsAfter").value,0),before:qsMins($("qsBefore").value,1439),frequency:frequency,rewardStars:Number($("qsReward").value)||0,verification:$("qsVerification").value,allowedKids:kids,required:$("qsRequired").checked,enabled:$("qsEnabled").checked,steps:steps});
+    next=SQQuestConfig.normalizeQuest(next,catalog.length);
+    if(next.before<next.after){toast("The end time must be after the start time");return;}
+    if(isNew)catalog.push(next); else catalog=catalog.map(function(q){return q.id===original.id?next:q;});
+    var ok=await saveFamilySetting(SQQuestConfig.KEYS.catalog,JSON.stringify(catalog)); if(!ok)return;
+    questEditId=null; toast("Quest rules saved",true); renderQuestStudio();
+  }
+  async function toggleQuestRule(id){
+    var catalog=qsCatalog(), q=catalog.find(function(x){return x.id===id;}); if(!q)return;
+    q.enabled=q.enabled===false;
+    var ok=await saveFamilySetting(SQQuestConfig.KEYS.catalog,JSON.stringify(catalog)); if(!ok)return;
+    toast(q.enabled?"Quest enabled":"Quest paused",true); renderQuestStudio();
+  }
+  function renderQuestRewards(body){
+    var rewards=qsRewards(),fs=familySettingsMap();
+    var walletCards=Object.keys(KIDS).map(function(id){var t=rows.totals.find(function(x){return x.kid_id===id;})||{};var total=Number(t.stars)||0;return '<div class="qs-stat"><b>🪙 '+SQQuestConfig.wallet(total,fs,id)+'</b><span>'+esc(kidName(id))+' available · '+total+' lifetime stars</span></div>';}).join("");
+    body.innerHTML='<div class="qs-summary qs-summary--kids">'+walletCards+'</div><div class="qs-toolbar"><p>Children request these from the reward shop. Papa approval spends Quest Coins.</p><button class="btn btn--primary btn--sm" id="qsNewReward">+ New reward</button></div><div class="qs-list">'+rewards.map(function(r){return '<article class="qs-row'+(r.enabled===false?' is-off':'')+'"><div class="qs-icon">'+esc(r.icon||"🎁")+'</div><div class="qs-title"><b>'+esc(r.title[0])+'</b><span>'+esc(r.title[1])+'</span></div><div class="qs-meta"><span>'+r.cost+' coins</span><span>'+esc(r.blurb[0])+'</span></div><div class="qs-actions"><button class="btn btn--sm" data-rwedit="'+esc(r.id)+'">Edit</button><button class="btn btn--sm btn--quiet" data-rwtoggle="'+esc(r.id)+'">'+(r.enabled===false?'Enable':'Pause')+'</button></div></article>';}).join("")+'</div><div id="qsRewardEditor"></div><div class="qs-callout" style="margin-top:16px"><b>Approval is authoritative.</b> The kid app can only request a reward; it cannot spend its own coins.</div>';
+    $("qsNewReward").onclick=function(){rewardEditId="__new__";renderQuestRewardEditor();};
+    body.querySelectorAll("[data-rwedit]").forEach(function(b){b.onclick=function(){rewardEditId=b.dataset.rwedit;renderQuestRewardEditor();};});
+    body.querySelectorAll("[data-rwtoggle]").forEach(function(b){b.onclick=function(){toggleQuestReward(b.dataset.rwtoggle);};});
+    if(rewardEditId)renderQuestRewardEditor();
+  }
+  function renderQuestRewardEditor(){
+    var box=$("qsRewardEditor"); if(!box)return;
+    var rewards=qsRewards(), isNew=rewardEditId==="__new__";
+    var r=isNew?SQQuestConfig.normalizeReward({id:"",icon:"🎁",cost:10,title:["New reward","新獎勵"],blurb:["",""]},rewards.length):rewards.find(function(x){return x.id===rewardEditId;});
+    if(!r){box.innerHTML="";return;}
+    box.innerHTML='<div class="qs-editor"><div class="qs-editor__head"><h3>'+(isNew?'New reward':'Edit '+esc(r.title[0]))+'</h3><button class="btn btn--sm btn--quiet" id="qsCloseReward">Close</button></div><div class="qs-form">'+
+      '<div class="qs-field"><label>Icon</label><input id="rwIcon" value="'+esc(r.icon)+'" maxlength="6"></div><div class="qs-field"><label>Cost (Quest Coins)</label><input id="rwCost" type="number" min="1" max="9999" value="'+r.cost+'"></div><div class="qs-field"><label>Status</label><div class="qs-checks"><label><input type="checkbox" id="rwEnabled"'+(r.enabled!==false?' checked':'')+'> Available</label></div></div>'+
+      '<div class="qs-field w6"><label>English title</label><input id="rwTitleEn" value="'+esc(r.title[0])+'"></div><div class="qs-field w6"><label>中文標題</label><input id="rwTitleZh" value="'+esc(r.title[1])+'"></div><div class="qs-field w6"><label>English description</label><textarea id="rwBlurbEn">'+esc(r.blurb[0])+'</textarea></div><div class="qs-field w6"><label>中文說明</label><textarea id="rwBlurbZh">'+esc(r.blurb[1])+'</textarea></div></div><div class="qs-editor__foot"><button class="btn" id="qsCancelReward">Cancel</button><button class="btn btn--primary" id="qsSaveReward">Save reward</button></div></div>';
+    $("qsCloseReward").onclick=$("qsCancelReward").onclick=function(){rewardEditId=null;renderQuestStudio();};
+    $("qsSaveReward").onclick=function(){saveQuestReward(r,isNew);};
+  }
+  async function saveQuestReward(original,isNew){
+    var rewards=qsRewards(), titleEn=$("rwTitleEn").value.trim()||"Reward", titleZh=$("rwTitleZh").value.trim()||"獎勵", id=original.id;
+    if(isNew){var base="custom_"+qsSlug(titleEn),candidate=base,n=2;while(rewards.some(function(r){return r.id===candidate;})){candidate=base+"_"+n++;}id=candidate;}
+    var next=SQQuestConfig.normalizeReward(Object.assign({},original,{id:id,icon:$("rwIcon").value.trim()||"🎁",cost:Number($("rwCost").value)||10,title:[titleEn,titleZh],blurb:[$("rwBlurbEn").value.trim(),$("rwBlurbZh").value.trim()],enabled:$("rwEnabled").checked}),rewards.length);
+    if(isNew)rewards.push(next); else rewards=rewards.map(function(r){return r.id===original.id?next:r;});
+    var ok=await saveFamilySetting(SQQuestConfig.KEYS.rewards,JSON.stringify(rewards)); if(!ok)return;
+    rewardEditId=null; toast("Reward shop saved",true); renderQuestStudio();
+  }
+  async function toggleQuestReward(id){
+    var rewards=qsRewards(), r=rewards.find(function(x){return x.id===id;}); if(!r)return;
+    r.enabled=r.enabled===false;
+    var ok=await saveFamilySetting(SQQuestConfig.KEYS.rewards,JSON.stringify(rewards)); if(!ok)return;
+    toast(r.enabled?"Reward enabled":"Reward paused",true); renderQuestStudio();
+  }
+  function renderQuestAssistant(body){
+    var a=qsAssistant();
+    body.innerHTML='<div class="qs-callout"><b>Summer is a presentation and guidance layer.</b> Quest eligibility, time windows, rewards and parent controls stay deterministic. A remote LLM provider can be added later without changing this contract.</div><div style="margin-top:14px">'+
+      '<div class="qs-switchline"><div><b>Ask about energy</b><span>Use one short “how much energy?” question when it helps narrow the list.</span></div><input id="qaAskEnergy" type="checkbox"'+(a.askEnergy?' checked':'')+'></div>'+
+      '<div class="qs-switchline"><div><b>Show upcoming routines</b><span>Let kids see useful things that unlock later today, without turning the screen back into a schedule.</span></div><input id="qaUpcoming" type="checkbox"'+(a.showUpcoming?' checked':'')+'></div>'+
+      '<div class="qs-switchline"><div><b>Persistent Summer companion</b><span>Keep Summer available as a floating helper while the child moves between quests, games, books and activities.</span></div><input id="qaCompanion" type="checkbox"'+(a.companionEnabled!==false?' checked':'')+'></div>'+
+      '<div class="qs-switchline"><div><b>Recommendations per turn</b><span>Keep choice manageable on a tablet.</span></div><div class="qs-number"><input id="qaMax" type="number" min="1" max="6" value="'+a.maxSuggestions+'"></div></div>'+
+      '<div class="qs-switchline"><div><b>Question style</b><span>Guided asks a short question first; direct goes straight to suitable quests.</span></div><select class="inp" id="qaMode" style="width:auto"><option value="guided"'+(a.questionMode==="guided"?' selected':'')+'>Guided</option><option value="direct"'+(a.questionMode==="direct"?' selected':'')+'>Direct</option></select></div></div><div class="qs-editor__foot"><button class="btn btn--primary" id="qaSave">Save assistant settings</button></div>';
+    $("qaSave").onclick=saveQuestAssistant;
+  }
+  async function saveQuestAssistant(){
+    var value={askEnergy:$("qaAskEnergy").checked,showUpcoming:$("qaUpcoming").checked,companionEnabled:$("qaCompanion").checked,maxSuggestions:Math.max(1,Math.min(6,Number($("qaMax").value)||3)),questionMode:$("qaMode").value};
+    var ok=await saveFamilySetting(SQQuestConfig.KEYS.assistant,JSON.stringify(value)); if(!ok)return;
+    toast("Summer assistant settings saved",true); renderQuestStudio();
   }
 
   /* ---- Band ---- */
@@ -433,7 +623,7 @@
       '<div class="tbl-wrap"><table class="tbl"><thead><tr><th style="width:130px">Kid</th><th style="width:96px">Type</th><th>What</th><th style="width:74px">Waiting</th><th style="width:190px"><span style="display:block;text-align:right">Action</span></th></tr></thead><tbody>'+
       q.map(function(r){return '<tr>'+
         '<td data-l="Kid"><span class="who k-'+r.kidId+'"><span class="who__m">'+esc(kidName(r.kidId)[0])+'</span><b>'+esc(kidName(r.kidId))+'</b></span></td>'+
-        '<td data-l="Type"><span class="tag '+({ask:"tag--open",claim:"tag--redo",pass:"tag--open"}[r.type]||"tag--open")+'">'+r.type+'</span></td>'+
+        '<td data-l="Type"><span class="tag '+({ask:"tag--open",reward:"tag--done",quest:"tag--now",claim:"tag--redo",pass:"tag--open"}[r.type]||"tag--open")+'">'+r.type+'</span></td>'+
         '<td data-l="What">'+esc(r.body)+'</td>'+
         '<td data-l="Waiting" class="num">'+waitingTime(r.at)+'</td>'+
         '<td data-l="" style="text-align:right">'+queueActions(r)+'</td>'+
@@ -457,6 +647,8 @@
   }
 
   function queueActions(r){
+    if(r.type==="quest")return '<div class="acts"><button class="btn btn--sm btn--danger" data-redoquest="'+r.id+'">Redo</button><button class="btn btn--sm btn--primary" data-approvequest="'+r.id+'">Approve + coins</button></div>';
+    if(r.type==="reward")return '<div class="acts"><button class="btn btn--sm btn--danger" data-denyreward="'+r.id+'">Decline</button><button class="btn btn--sm btn--primary" data-approvereward="'+r.id+'">Approve</button></div>';
     if(r.type==="ask")return '<div class="acts"><button class="btn btn--sm" data-answerask="'+r.id+'">Answer</button></div>';
     if(r.type==="claim")return '<div class="acts"><button class="btn btn--sm btn--danger" data-denyclaim="'+r.id+'">Decline</button><button class="btn btn--sm btn--primary" data-approveclaim="'+r.id+'">Approve +1</button></div>';
     if(r.type==="pass")return '<div class="acts"><button class="btn btn--sm btn--danger" data-denypass="'+r.id+'">Deny</button><button class="btn btn--sm btn--primary" data-grantpass="'+r.id+'">Grant</button></div>';
@@ -464,6 +656,10 @@
   }
 
   function bindQueueActions(){
+    document.querySelectorAll("[data-approvequest]").forEach(function(b){b.onclick=function(){approveQuestVerification(b.dataset.approvequest);};});
+    document.querySelectorAll("[data-redoquest]").forEach(function(b){b.onclick=function(){redoQuestVerification(b.dataset.redoquest);};});
+    document.querySelectorAll("[data-approvereward]").forEach(function(b){b.onclick=function(){approveRewardRequest(b.dataset.approvereward);};});
+    document.querySelectorAll("[data-denyreward]").forEach(function(b){b.onclick=function(){denyRewardRequest(b.dataset.denyreward);};});
     document.querySelectorAll("[data-answerask]").forEach(function(b){b.onclick=function(){goToInbox();};});
     document.querySelectorAll("[data-approveclaim]").forEach(function(b){b.onclick=function(){setHelpClaim(b.dataset.approveclaim,"approved");};});
     document.querySelectorAll("[data-denyclaim]").forEach(function(b){b.onclick=function(){setHelpClaim(b.dataset.denyclaim,"denied");};});
@@ -473,6 +669,84 @@
 
   function goToInbox(){
     if(window.sqGo)window.sqGo("inbox");
+  }
+
+  function questVerificationInfo(kind){
+    return window.SQQuestConfig?SQQuestConfig.parseQuestVerificationKind(kind):null;
+  }
+  async function approveQuestVerification(id){
+    var ask=rows.asks.find(function(a){return a.id===id;});
+    if(!ask||ask.answered_at)return;
+    var info=questVerificationInfo(ask.kind); if(!info)return;
+    var quest=qsCatalog().find(function(q){return q.id===info.questId;});
+    if(!quest){toast("That quest rule no longer exists");return;}
+    if(quest.rewardStars>0){
+      var starId=window.SQStarId?SQStarId.quest(ask.kid_id,info.day,quest.id):null;
+      var err=await grantStarRows([{id:starId,kid_id:ask.kid_id,delta:quest.rewardStars,
+        reason:"Quest verified · "+quest.title[0]+" "+quest.title[1]+" · "+info.day,
+        source:"admin",granted_by:session.user.id}]);
+      if(err){writeFailed(err);return;}
+    }
+    suppressRealtime("asks",{id:id});
+    var answer="Approved · Quest verified · "+quest.title[0];
+    const {error}=await client.from("asks").update({answer:answer,answered_at:new Date().toISOString()}).eq("id",id);
+    if(error){writeFailed(error);return;}
+    toast("Quest approved for "+kidName(ask.kid_id),true);
+    await loadAll();
+  }
+  async function redoQuestVerification(id){
+    var ask=rows.asks.find(function(a){return a.id===id;});
+    if(!ask||ask.answered_at)return;
+    var info=questVerificationInfo(ask.kind); if(!info)return;
+    var quest=qsCatalog().find(function(q){return q.id===info.questId;});
+    suppressRealtime("asks",{id:id});
+    var answer="Redo · Papa asked you to try this quest again"+(quest?" · "+quest.title[0]:"");
+    const {error}=await client.from("asks").update({answer:answer,answered_at:new Date().toISOString()}).eq("id",id);
+    if(error){writeFailed(error);return;}
+    toast("Quest sent back for another try",true);
+    await loadAll();
+  }
+
+  function rewardRequestInfo(kind){
+    var parts=String(kind||"").split(":");
+    if(parts[0]!=="reward"||!parts[1])return null;
+    return {rewardId:parts[1]};
+  }
+  async function approveRewardRequest(id){
+    var ask=rows.asks.find(function(a){return a.id===id;});
+    if(!ask||ask.answered_at)return;
+    var info=rewardRequestInfo(ask.kind); if(!info)return;
+    var fs=familySettingsMap();
+    var catalog=window.SQQuestConfig?SQQuestConfig.rewards(fs):[];
+    var reward=catalog.find(function(r){return r.id===info.rewardId&&r.enabled!==false;});
+    if(!reward){toast("That reward is no longer available");return;}
+    var totalRow=rows.totals.find(function(t){return t.kid_id===ask.kid_id;})||{};
+    var total=Math.max(0,Number(totalRow.stars)||0);
+    var state=SQQuestConfig.spendState(fs,ask.kid_id);
+    var already=state.requests.indexOf(String(id))>=0;
+    var available=Math.max(0,total-state.total);
+    if(!already&&available<reward.cost){toast(kidName(ask.kid_id)+" needs more Quest Coins");return;}
+    if(!already){
+      state.total+=reward.cost;
+      state.requests.push(String(id));
+      var saved=await saveFamilySetting(SQQuestConfig.KEYS.spendPrefix+ask.kid_id,JSON.stringify(state));
+      if(!saved)return;
+    }
+    suppressRealtime("asks",{id:id});
+    var answer="Approved · "+reward.title[0]+" · "+reward.cost+" Quest Coins";
+    const {error}=await client.from("asks").update({answer:answer,answered_at:new Date().toISOString()}).eq("id",id);
+    if(error){writeFailed(error);return;}
+    toast("Reward approved for "+kidName(ask.kid_id),true);
+    await loadAll();
+  }
+  async function denyRewardRequest(id){
+    var ask=rows.asks.find(function(a){return a.id===id;});
+    if(!ask||ask.answered_at)return;
+    suppressRealtime("asks",{id:id});
+    const {error}=await client.from("asks").update({answer:"Not this time · Ask Papa again later",answered_at:new Date().toISOString()}).eq("id",id);
+    if(error){writeFailed(error);return;}
+    toast("Reward request declined",true);
+    await loadAll();
   }
 
   /* ---- Overview / Day board ---- */
@@ -1804,6 +2078,7 @@
     el.innerHTML='<table class="tbl"><thead><tr>'+
       '<th style="width:150px">Kid</th><th class="r">Blocks</th><th class="r">Stars</th><th class="r">Photos</th><th class="r">Asks</th><th class="r">Best day</th><th class="r">Streak</th>'+
     '</tr></thead><tbody>'+kidRows+'</tbody></table>';
+    if(window.SQLearningTelemetryAdmin&&window.SQLearningTelemetryAdmin.render)window.SQLearningTelemetryAdmin.render();
   }
 
   /* ---- Kids route ---- */
@@ -2257,7 +2532,11 @@
   function notificationFor(table,payload){
     var row=payload.new||{};
     if(payload.eventType!=="INSERT"||shouldSuppressRealtime(table,row))return null;
-    if(table==="asks")return {kind:row.kind==="urgent"?"urgent":"ask",title:kidName(row.kid_id)+" asked for help",body:row.body||"Voice memo"};
+    if(table==="asks"){
+      if(String(row.kind||"").indexOf("quest_verify:")===0)return {kind:"quest",title:kidName(row.kid_id)+" finished a quest",body:row.body||"Ready for review"};
+      if(String(row.kind||"").indexOf("reward:")===0)return {kind:"reward",title:kidName(row.kid_id)+" requested a reward",body:row.body||"Reward request"};
+      return {kind:row.kind==="urgent"?"urgent":"ask",title:kidName(row.kid_id)+" asked for help",body:row.body||"Voice memo"};
+    }
     if(table==="passes"&&row.status==="requested")return {kind:"pass",title:kidName(row.kid_id)+" requested a "+row.kind+" pass",body:blockTitle(row.block_idx)+" "+blockTz(row.block_idx)};
     if(table==="photos")return {kind:"photo",title:kidName(row.kid_id)+" uploaded proof",body:blockTitle(row.block_idx)+" "+blockTz(row.block_idx)};
     if(table==="help_claims"&&row.status==="requested")return {kind:"claim",title:kidName(row.captain_id)+" sent a captain claim",body:"Helped "+kidName(row.helped_kid_id)};

@@ -1,3 +1,4 @@
+import { directedVocabularyTarget, languageEntryMatchesSkill, languageSkillDisplayName, vocabularyModeForLanguageSkill } from "../../dist/mobile/packages/learning/src/curriculum/LanguageSkillRules.js";
 /* Word Wizard 🧙 文字巫師 — migrated from index.html:1595-1821 (slice 19).
    Two modes: study (copy/recall/translate/sentences) and shop (timed potion shop).
    Word mastery persists in C.vocab and is saved via C.saveProgress. */
@@ -57,18 +58,46 @@ var SENT = [
 ];
 
 /* ---- shared helpers ---- */
+function directedLanguageSkill() {
+  return C && C.director && typeof C.director.skill === "string" && C.director.skill.indexOf("language.") === 0 ? C.director.skill : "";
+}
+
 function isBopomofo() {
-  return C && C.inputScript === "bpmf" && C.bopomofo;
+  return !!(C && C.bopomofo && ((C.director && C.director.vocabularyMode === "bopomofo") || C.inputScript === "bpmf"));
+}
+
+function vGameMode() {
+  return C && C.director && C.director.forceStudy ? "study" : C.settings.vocab.mode;
+}
+
+function isPlacementFlow() {
+  return !!(C && C.director && C.director.flow === "placement");
 }
 
 function vLevel() {
+  if (C && C.director && C.director.vocabularyMode) return C.director.vocabularyMode;
   if (isBopomofo()) return "bopomofo";
   return (C.settings.vocab.levels[C.kid] || "copy");
 }
 
+function baseVocabPool() {
+  if (vLevel() === "bopomofo") return C.words.bopomofo || [];
+  if (vLevel() === "sentences") return SENT;
+  if (directedLanguageSkill() === "language.initial_sound" || directedLanguageSkill() === "language.word_build.simple") return C.words.easy || C.words.all;
+  return C.words.all;
+}
+
 function vPool() {
-  if (isBopomofo()) return C.words.bopomofo || [];
-  return vLevel() === "sentences" ? SENT : C.words.all;
+  var base = baseVocabPool() || [];
+  var skill = directedLanguageSkill();
+  if (!skill) return base;
+  var mode = vocabularyModeForLanguageSkill(skill) || vLevel();
+  var filtered = base.filter(function (entry) {
+    return languageEntryMatchesSkill(skill, {
+      mode: mode, target: entry[0], emoji: entry[1], sourceFrench: entry[2], sourceChinese: entry[3]
+    });
+  });
+  return filtered.length ? filtered : base;
 }
 
 function vKey(w) {
@@ -86,11 +115,13 @@ function vMastered(w) {
 
 function packStats() {
   var P = vPool();
+  if (C && C.director) return { done: S ? (S.directorDone || 0) : 0, total: S ? (S.directorTarget || P.length) : P.length };
   return { done: P.filter(function (w) { return vMastered(w[0]); }).length, total: P.length };
 }
 
 function buildVocabQueue() {
   var P = vPool();
+  if (C && C.director) return C.shuffle(P.slice());
   var fresh = C.shuffle(P.filter(function (w) { return !vMastered(w[0]); }));
   var review = C.shuffle(P.filter(function (w) { return vMastered(w[0]); }));
   return fresh.concat(review);
@@ -134,6 +165,180 @@ function vocabHud() {
   ]);
 }
 
+
+function escHint(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+
+function vocabularyLearningInput() {
+  return {
+    directorRunId: C.director && C.director.directorRunId || undefined,
+    attemptId: C.director && C.director.directorRunId ? C.director.directorRunId + ":item-" + ((C.director.completedAttempts || 0) + (S.directorDone || 0)) : undefined,
+    mode: vLevel(),
+    target: S.word,
+    emoji: S.em,
+    sourceFrench: S.fr,
+    sourceChinese: S.zh,
+    promptMode: S.prompt,
+    position: S.pos,
+    revealed: S.revealed,
+    skill: directedLanguageSkill() || ("vocabulary_" + vLevel())
+  };
+}
+
+function revealNextLocalLetter() {
+  var r = Math.max(S.revealed, S.pos);
+  do { r++; } while (r < S.word.length && S.word[r - 1] === " ");
+  S.revealed = Math.min(r, S.word.length);
+  redrawVocabWord();
+}
+
+function speakVocabularyTarget() {
+  if (vLevel() === "bopomofo" && C.sayZh) C.sayZh(S.fr || S.zh || S.sourceWord || S.word);
+  else C.say(S.sourceWord || S.word);
+}
+
+function renderVocabularyLearningHint(result) {
+  var msg = document.getElementById("msg");
+  var presentation = result && result.presentation || {};
+  var hint = result && result.hint || {};
+  var visual = "";
+
+  if (Number.isFinite(Number(presentation.revealThrough))) {
+    S.revealed = Math.max(S.revealed, Math.min(S.word.length, Number(presentation.revealThrough)));
+    redrawVocabWord();
+  }
+  if (presentation.emoji) visual = '<span class="v-ai-hint__visual">' + escHint(presentation.emoji) + '</span>';
+  else if (presentation.wordShape) visual = '<span class="v-ai-hint__shape">' + escHint(presentation.wordShape) + '</span>';
+  else if (presentation.letter) visual = '<span class="v-ai-hint__letter">' + escHint(presentation.letter) + '</span>';
+  else if (presentation.promptCue) visual = '<span class="v-ai-hint__cue">' + escHint(presentation.promptCue) + '</span>';
+  else visual = '<span class="v-ai-hint__visual">💡</span>';
+
+  if (presentation.speakTarget) speakVocabularyTarget();
+  if (msg) {
+    var showText = presentation.showText !== false;
+    msg.innerHTML = '<div class="v-ai-hint">' + visual + (showText ? '<div><b>' + escHint(hint.message || "Try one smaller clue.") + '</b><span>' + escHint(hint.messageZh || "先看一個小提示。") + '</span></div>' : '') + '</div>';
+  }
+}
+
+function requestVocabularyHint(button, intervention) {
+  if (!S || S.aiHintBusy) return;
+  S.hintUsed = true;
+  S.aiHintBusy = true;
+  if (button) { button.disabled = true; button.textContent = "💡 Finding clue…"; }
+  var input = vocabularyLearningInput(), expectedState = S, expectedContext = C, revision = S.learningRevision;
+  function live() { return S === expectedState && C === expectedContext && S.learningRevision === revision && S.running; }
+  if (intervention) input.intervention = intervention;
+
+  function fallback() {
+    if (!live()) return;
+    var msg = document.getElementById("msg");
+    if (intervention && intervention.kind === "picture_audio") {
+      speakVocabularyTarget();
+      if (msg) msg.innerHTML = '<div class="v-ai-hint"><span class="v-ai-hint__visual">' + escHint(S.em || "🔊") + '</span><div><b>Look and listen once more.</b><span>再看一次、再聽一次。</span></div></div>';
+      return;
+    }
+    revealNextLocalLetter();
+    speakVocabularyTarget();
+    if (msg) msg.innerHTML = '<div class="v-ai-hint"><span class="v-ai-hint__visual">💡</span><div><b>One letter at a time.</b><span>一次看一個字母。</span></div></div>';
+  }
+  function done() {
+    if (!live()) return;
+    S.aiHintBusy = false;
+    if (button && document.body.contains(button)) { button.disabled = false; button.textContent = "💡 Hint"; }
+  }
+
+  if (!C.learning || typeof C.learning.canSupportVocabulary !== "function" || typeof C.learning.getVocabularyHint !== "function") {
+    fallback(); done(); return;
+  }
+  Promise.resolve(C.learning.canSupportVocabulary(input)).then(function (supported) {
+    if (!live()) return null;
+    if (!supported) { fallback(); return null; }
+    return C.learning.getVocabularyHint(input);
+  }).then(function (result) {
+    if (live() && result) renderVocabularyLearningHint(result);
+  }).catch(function () { fallback(); }).finally(done);
+}
+
+function rememberVocabularyMistake(kind) {
+  if (!S || !kind || kind === "unknown") return;
+  var rank = {single_letter_slip:1, repeated_letter_confusion:2, recall_stall:3};
+  if (!S.learningMistake || (rank[kind] || 0) >= (rank[S.learningMistake] || 0)) S.learningMistake = kind;
+}
+
+function showVocabularyTutorNote(icon, en, zh) {
+  var msg = document.getElementById("msg");
+  if (!msg) return;
+  msg.innerHTML = '<div class="v-ai-hint v-ai-hint--tutor"><span class="v-ai-hint__visual">' + escHint(icon) + '</span><div><b>' + escHint(en) + '</b><span>' + escHint(zh) + '</span></div></div>';
+}
+
+function applyVocabularyTutorIntervention(intervention) {
+  if (!S || !intervention || !intervention.kind) return;
+  rememberVocabularyMistake(intervention.mistake);
+  if (intervention.kind === "continue") return;
+  if (intervention.kind === "tiny_clue") {
+    showVocabularyTutorNote("💡", "Want a tiny clue?", "要一個小提示嗎？");
+    var hb = document.getElementById("hintBtn");
+    if (hb && hb.animate) hb.animate([{transform:"scale(1)"},{transform:"scale(1.08)"},{transform:"scale(1)"}], {duration:360});
+    return;
+  }
+  S.hintUsed = true;
+  if (intervention.kind === "reveal_letter") {
+    if (Number.isFinite(Number(intervention.revealThrough))) {
+      S.revealed = Math.max(S.revealed, Math.min(S.word.length, Number(intervention.revealThrough)));
+      redrawVocabWord();
+    } else revealNextLocalLetter();
+    showVocabularyTutorNote("🔤", "Let’s lock in this letter, then keep going.", "先記住這個字母，再繼續。");
+    return;
+  }
+  if (intervention.kind === "easier_recall") {
+    if (Number.isFinite(Number(intervention.revealThrough))) {
+      S.revealed = Math.max(S.revealed, Math.min(S.word.length, Number(intervention.revealThrough)));
+      redrawVocabWord();
+    }
+    if (intervention.speakTarget) speakVocabularyTarget();
+    showVocabularyTutorNote(intervention.showPicture && S.em ? S.em : "🪜", "One easier recall step first.", "先用簡單一點的方式回想。");
+    S.easyRecallActive = true;
+    return;
+  }
+  if (intervention.kind === "picture_audio") {
+    requestVocabularyHint(null, intervention);
+  }
+}
+
+function maybeApplyVocabularyTutor(typedCharacter, expectedCharacter) {
+  if (!S || isPlacementFlow() || vGameMode() === "shop" || vLevel() === "copy" || S.adaptiveBusy) return;
+  if (!C.learning || typeof C.learning.getVocabularyIntervention !== "function") return;
+  var pos = S.pos;
+  S.totalWrongCount = (S.totalWrongCount || 0) + 1;
+  S.wrongByPos = S.wrongByPos || {};
+  S.wrongByPos[pos] = (S.wrongByPos[pos] || 0) + 1;
+  var input = vocabularyLearningInput();
+  input.typedCharacter = typedCharacter;
+  input.expectedCharacter = expectedCharacter;
+  input.wrongCountAtPosition = S.wrongByPos[pos];
+  input.totalWrongCount = S.totalWrongCount;
+  S.adaptiveBusy = true;
+  var expectedState = S, expectedContext = C, revision = S.learningRevision;
+  function live() { return S === expectedState && C === expectedContext && S.learningRevision === revision && S.running; }
+  Promise.resolve(C.learning.getVocabularyIntervention(input)).then(function (intervention) {
+    if (!live()) return;
+    applyVocabularyTutorIntervention(intervention);
+  }).catch(function () {}).finally(function () { if (live()) S.adaptiveBusy = false; });
+}
+
+function recordVocabularyLearningAttempt(success) {
+  if (!C.learning || typeof C.learning.recordVocabularyAttempt !== "function") return Promise.resolve(null);
+  var input = vocabularyLearningInput();
+  input.correct = success === true;
+  input.responseMs = S.startedAt ? Math.max(0, Math.round(performance.now() - S.startedAt)) : 0;
+  input.hintsUsed = S.hintUsed ? 1 : 0;
+  if (S.learningMistake) input.mistake = S.learningMistake;
+  return Promise.resolve(C.learning.recordVocabularyAttempt(input)).catch(function () { return null; });
+}
+
 /* ---- Study mode ---- */
 function drawVocab() {
   var lvl = vLevel();
@@ -142,10 +347,16 @@ function drawVocab() {
   var wstyle = S.word.length > 14 ? 'style="font-size:clamp(22px,4.6vw,36px);letter-spacing:1px"' : "";
   var got = vPool().filter(function (w) { return vMastered(w[0]); }).map(function (w) { return w[1]; });
   var shelf = got.slice(0, 28).join("") + (got.length > 28 ? " +" + (got.length - 28) : "");
-  var cue = lvl === "copy" ? "Type the word you see!"
+  var skill = directedLanguageSkill();
+  var cue = skill === "language.initial_sound" ? "Listen, then type the first letter! 🔊"
+    : skill === "language.bopomofo.sound_symbol" ? "Listen, then type the first Zhuyin symbol! 🔊"
+    : skill === "language.spelling_patterns.basic" ? "Build the word and notice its spelling pattern!"
+    : skill === "language.high_frequency.recall" ? "Recall this everyday word!"
+    : skill === "language.sentence_patterns.questions" ? "Build the question pattern! 💬"
+    : lvl === "copy" ? "Type the word you see!"
     : lvl === "recall" ? "What is it in English?"
     : lvl === "bopomofo" ? "Type the Bopomofo! 打注音！"
-    : lvl === "sentences" ? "Say it in English! \ud83d\udcac"
+    : lvl === "sentences" ? "Say it in English! 💬"
     : "Type it in English!";
   C.stage.innerHTML =
     '<div class="game-scene game-scene--vocab">'
@@ -157,56 +368,82 @@ function drawVocab() {
     + '<div class="msg" id="msg"></div>'
     + '<div class="vrow">'
     + '<button class="btn small" id="sayBtn">\ud83d\udde3\ufe0f Say it</button>'
-    + (lvl !== "copy" ? '<button class="btn small" id="hintBtn">\ud83d\udca1 Hint</button>' : '')
+    + (lvl !== "copy" && !isPlacementFlow() ? '<button class="btn small" id="hintBtn">\ud83d\udca1 Hint</button>' : '')
     + '</div>'
-    + '<div class="vshelf"><span class="lbl">YOUR COLLECTION</span>' + (shelf || "\u2026") + '</div>'
+    + (C.director ? '' : '<div class="vshelf"><span class="lbl">YOUR COLLECTION</span>' + (shelf || "…") + '</div>')
     + '</div>'
     + '</div>';
-  document.getElementById("sayBtn").onclick = function () { if (isBopomofo() && C.sayZh) C.sayZh(S.fr); else C.say(S.word); };
+  document.getElementById("sayBtn").onclick = function () { speakVocabularyTarget(); };
   var hb = document.getElementById("hintBtn");
-  if (hb) hb.onclick = function () {
-    S.hintUsed = true;
-    var r = Math.max(S.revealed, S.pos);
-    do { r++; } while (r < S.word.length && S.word[r - 1] === " ");
-    S.revealed = Math.min(r, S.word.length);
-    if (isBopomofo() && C.sayZh) C.sayZh(S.fr); else C.say(S.word);
-    redrawVocabWord();
-  };
+  if (hb) hb.onclick = function () { requestVocabularyHint(hb); };
   highlightVocab();
 }
 
 function nextVocab() {
+  S.learningRevision = (S.learningRevision || 0) + 1;
   if (S.qi >= S.queue.length) { S.queue = buildVocabQueue(); S.qi = 0; }
   var entry = S.queue[S.qi];
   var en = entry[0], em = entry[1], fr = entry[2], zh = entry[3];
-  var lvl = vLevel();
-  S.word = en; S.em = em; S.fr = fr; S.zh = zh || ""; S.pos = 0; S.wrong = false;
-  S.firstTry = true; S.hintUsed = false;
-  S.revealed = (lvl === "copy") ? en.length : 0;
-  S.prompt = pickPrompt(lvl);
+  var lvl = vLevel(), skill = directedLanguageSkill();
+  S.sourceWord = en;
+  S.word = skill ? directedVocabularyTarget(skill, en) : en; S.em = em; S.fr = fr; S.zh = zh || ""; S.pos = 0; S.wrong = false;
+  S.firstTry = true; S.hintUsed = false; S.aiHintBusy = false; S.adaptiveBusy = false; S.startedAt = performance.now();
+  S.totalWrongCount = 0; S.wrongByPos = {}; S.learningMistake = null; S.easyRecallActive = false;
+  S.revealed = (lvl === "copy" && skill !== "language.initial_sound") ? S.word.length : 0;
+  S.prompt = (skill === "language.initial_sound" || skill === "language.bopomofo.sound_symbol") ? "pic" : pickPrompt(lvl);
   drawVocab(); vocabHud();
-  if (lvl === "copy") C.say(en);
+  if (lvl === "copy" || skill === "language.initial_sound") speakVocabularyTarget();
   if (lvl === "bopomofo" && C.sayZh) C.sayZh(fr);
 }
 
 function vocabComplete() {
   var success = S.firstTry && !S.hintUsed;
-  var k = vKey(S.word), was = vMastered(S.word);
-  C.vocab[k] = success ? Math.min(vBox(S.word) + 1, 3) : Math.max(vBox(S.word) - 1, 0);
-  var now = vMastered(S.word);
+  var directed = !!(C && C.director);
+  var k = vKey(S.word), was = vMastered(S.word), now = was;
+  if (!directed) {
+    C.vocab[k] = success ? Math.min(vBox(S.word) + 1, 3) : Math.max(vBox(S.word) - 1, 0);
+    now = vMastered(S.word);
+  }
   S.streak = success ? S.streak + 1 : 0;
-  if (isBopomofo() && C.sayZh) C.sayZh(S.fr); else C.say(S.word);
+  speakVocabularyTarget();
   C.sfx.win(); C.fx.burst(12); C.fx.flash("ok");
-  if (now && !was) {
+  if (!directed && now && !was) {
     S.sessionMastered++;
     C.fx.bigFloat(S.em);
   }
-  C.saveProgress();
-  if (!success) {
+  if (!directed) C.saveProgress();
+  var recordPromise = recordVocabularyLearningAttempt(success);
+  if (!directed && !success) {
     S.queue.splice(S.qi + 3, 0, [S.word, S.em, S.fr, S.zh]);
   }
   S.qi++;
+  if (C.director) {
+    S.directorDone = (S.directorDone || 0) + 1;
+    if (S.directorDone >= S.directorTarget) {
+      var expectedState = S, expectedContext = C;
+      Promise.resolve(recordPromise).finally(function () { if (S === expectedState && C === expectedContext) showDirectorStepComplete(); });
+      return;
+    }
+  }
   S.timeout = setTimeout(nextVocab, 650);
+}
+
+function showDirectorStepComplete() {
+  if (!S || !C || !C.director) return;
+  var placement = isPlacementFlow();
+  S.running = false;
+  C.stage.innerHTML = '<div class="game-scene game-scene--vocab"><div class="game-scene__center">'
+    + '<div class="word-em" style="font-size:64px">' + (placement ? '🧭' : '🎯') + '</div>'
+    + '<div class="cue">' + (placement ? 'Quick check step complete!' : 'Smart Practice step complete!') + '</div>'
+    + '<div class="vzh">' + (placement ? '這一段能力定位完成了！' : '這一段練習完成了！') + '</div>'
+    + '<div class="msg"><b>' + S.directorDone + ' / ' + S.directorTarget + '</b> ' + (placement ? 'check items' : 'practice items') + '</div>'
+    + '<button class="btn" id="directorBackToLearn">→ ' + (placement ? 'Back to quick check 回到能力定位' : 'Back to Smart Practice 回到聰明練習') + '</button>'
+    + '</div></div>';
+  var button = document.getElementById("directorBackToLearn");
+  if (button) button.onclick = function () {
+    var backBtn = document.getElementById("back");
+    if (backBtn) backBtn.click();
+  };
 }
 
 /* ---- Shop mode (timed potion shop) ---- */
@@ -331,25 +568,27 @@ function finishShop() {
 /* ---- input (both modes) ---- */
 function key(ch) {
   if (!S) return;
-  if (!S.running && C.settings.vocab.mode === "shop") return;
+  if (!S.running && vGameMode() === "shop") return;
   if (S.word == null || S.pos >= S.word.length) return;
   if (ch === S.word[S.pos]) {
     S.pos++; S.wrong = false; C.sfx.good();
     redrawVocabWord();
     if (S.pos >= S.word.length) {
-      if (C.settings.vocab.mode === "shop") shopComplete(); else vocabComplete();
+      if (vGameMode() === "shop") shopComplete(); else vocabComplete();
     }
   } else {
+    var expected = S.word[S.pos];
     S.wrong = true; S.firstTry = false; C.sfx.bad(); C.fx.flash("bad");
     redrawVocabWord();
-    C.fx.hint(C.settings.vocab.mode === "shop" ? "Oops, try again!" : "Not quite — \ud83d\udca1 Hint can help!");
+    C.fx.hint(vGameMode() === "shop" ? "Oops, try again!" : "Not quite — 💡 Hint can help!");
+    maybeApplyVocabularyTutor(ch, expected);
   }
 }
 
 function init(ctx) {
   C = ctx;
-  if (C.settings.vocab.mode === "shop") { initShop(); return; }
-  S = { queue: buildVocabQueue(), qi: 0, streak: 0, sessionMastered: 0, running: true, timeout: null };
+  if (vGameMode() === "shop") { initShop(); return; }
+  S = { queue: buildVocabQueue(), qi: 0, streak: 0, sessionMastered: 0, running: true, timeout: null, directorDone: 0, directorTarget: C.director ? Math.max(1, Number(C.director.targetAttempts) || 2) : 0 };
   nextVocab();
 }
 
@@ -363,7 +602,20 @@ function stop() {
 
 function settings(bar, ctx) {
   var s = ctx.settings.vocab;
-  var lvl = s.levels[ctx.kid] || "copy";
+  var lvl = (ctx.director && ctx.director.vocabularyMode) || s.levels[ctx.kid] || "copy";
+  if (ctx.director) {
+    bar.innerHTML = '';
+    var badge = document.createElement("span"); badge.className = "chip on";
+    badge.style.background = ctx.kids[ctx.kid].raw;
+    badge.textContent = (isPlacementFlow() ? "🧭 Quick check · " : "🎯 Smart Practice · ") + (directedLanguageSkill() ? languageSkillDisplayName(directedLanguageSkill()) : lvl);
+    bar.appendChild(badge);
+    var voice = document.createElement("button"); voice.className = "chip" + (s.tts ? " on" : "");
+    if (s.tts) voice.style.background = ctx.kids[ctx.kid].raw;
+    voice.textContent = "🗣️ Voice";
+    voice.onclick = function () { s.tts = !s.tts; ctx.saveSettings(); settings(bar, ctx); };
+    bar.appendChild(voice);
+    return;
+  }
   var M = [["study", "\ud83e\uddd8 Study"], ["shop", "\u2697\ufe0f Potion Shop"]];
   var L = [["copy", "\u270d\ufe0f Copy"], ["recall", "\ud83e\udde0 Recall"], ["translate", "\ud83c\uddeb\u2192\ud83c\uddec Translate"], ["sentences", "\ud83d\udcac Sentences"]];
   bar.innerHTML = '';

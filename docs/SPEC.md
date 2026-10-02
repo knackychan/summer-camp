@@ -56,6 +56,12 @@ Reuse the app's CSS variables/fonts (dark navy theme). Sections:
 6. **Settings** — set/clear kid PINs.
 
 ## Deploy
+
+### Architecture recovery update (approved 2026-10-02)
+
+The authoritative child application is root `index.html`. Classic and the 3D world are views of that runtime and share `SummerQuest` launch/Back operations; existing SyncStore keys and the star ledger remain authoritative. `apps/kid` is retained as historical source with a root redirect, excluded from production execution/distribution. See [the recovery plan](plans/SUMMER-QUEST-ARCHITECTURE-RECOVERY-PLAN.md).
+
+Deployments now require `npm ci` and `npm run build:android-web`; publish `dist/android-web`, which includes the child runtime, parent admin and compiled learning dependencies. Android syncs that same payload. The older no-build/root-directory instructions below describe the original static release and are superseded by this build requirement.
 - **GitHub Pages:** repo → Settings → Pages → deploy from `main` root. Done. (No build step.)
 - **Vercel:** import repo, framework = Other, no build command, output dir = `/`. Either is fine; Vercel gives nicer preview URLs for iterating.
 - Supabase: new project (region: Southeast Asia / Singapore for Taiwan latency) → run `schema.sql` → enable Realtime replication on `day_ticks` + `stars_ledger` → create Papa's auth user → copy URL + anon key into `js/config.js`.

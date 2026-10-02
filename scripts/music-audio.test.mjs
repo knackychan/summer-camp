@@ -58,7 +58,8 @@ function makeFakeContext() {
       return b;
     },
     decodeAudioData: decodeAudioData,
-    resume: function () { return Promise.resolve(); },
+    resume: function () { ctx.state = "running"; calls.push("resume"); return Promise.resolve(); },
+    suspend: function () { ctx.state = "suspended"; calls.push("suspend"); return Promise.resolve(); },
     close: function () { calls.push("close"); return Promise.resolve(); }
   };
 
@@ -74,9 +75,19 @@ function makeFakeContext() {
 
 function installFakeEnv() {
   var Ctor = makeFakeContext();
+  var listeners = new Map();
   globalThis.window = {
     AudioContext: Ctor,
     webkitAudioContext: Ctor,
+    addEventListener: function (name, handler) {
+      var values = listeners.get(name) || []; values.push(handler); listeners.set(name, values);
+    },
+    removeEventListener: function (name, handler) {
+      listeners.set(name, (listeners.get(name) || []).filter(function (value) { return value !== handler; }));
+    },
+    dispatchEvent: function (event) {
+      (listeners.get(event.type) || []).slice().forEach(function (handler) { handler(event); }); return true;
+    },
     SQBrainCues: {
       CUES: { "ui-tap": [{ t: "tone", wave: "triangle", f0: 520, f1: 330, at: 0, dur: 0.045, gain: 0.1 }] },
       CUE_NAMES: ["ui-tap"],
@@ -88,6 +99,7 @@ function installFakeEnv() {
       }
     }
   };
+  Ctor._windowListeners = listeners;
   return Ctor;
 }
 
@@ -300,6 +312,70 @@ test("stopAll stops live sample voices", async function () {
     assert.equal(aliveAfter, 0, "no sources should be alive after stopAll, got " + aliveAfter);
   } finally {
     globalThis.fetch = prevFetch;
+    uninstallFakeEnv();
+    resetSharedAudioForTest();
+  }
+});
+
+test("unlocked audio resumes when a tablet tab returns to the foreground", async function () {
+  var Ctor = installFakeEnv();
+  resetSharedAudioForTest();
+  var priorDocument = globalThis.document;
+  var handler = null;
+  var resumeCalls = 0;
+  Ctor._ctx.state = "suspended";
+  Ctor._ctx.resume = function () { resumeCalls += 1; Ctor._ctx.state = "running"; return Promise.resolve(); };
+  globalThis.document = {
+    hidden: false,
+    addEventListener: function (name, value) { if (name === "visibilitychange") handler = value; },
+    removeEventListener: function (name, value) { if (name === "visibilitychange" && handler === value) handler = null; },
+  };
+  try {
+    var audio = getSharedAudio();
+    audio.unlock();
+    await Promise.resolve();
+    assert.equal(resumeCalls, 1);
+    Ctor._ctx.state = "suspended";
+    handler();
+    await Promise.resolve();
+    assert.equal(resumeCalls, 2, "foreground lifecycle resumes a previously unlocked context");
+    audio.dispose();
+    assert.equal(handler, null, "dispose removes the lifecycle listener");
+  } finally {
+    if (priorDocument === undefined) delete globalThis.document;
+    else globalThis.document = priorDocument;
+    uninstallFakeEnv();
+    resetSharedAudioForTest();
+  }
+});
+
+
+test("native audio focus is requested and lifecycle focus events suspend/resume WebAudio", async function () {
+  var Ctor = installFakeEnv();
+  resetSharedAudioForTest();
+  var focusRequests = 0;
+  var focusReleases = 0;
+  window.SQPlatform = {
+    requestAudioFocus: function () { focusRequests += 1; return true; },
+    releaseAudioFocus: function () { focusReleases += 1; }
+  };
+  try {
+    var audio = getSharedAudio();
+    audio.unlock();
+    await Promise.resolve();
+    assert.equal(focusRequests, 1, "unlock requests Android audio focus through the platform seam");
+    Ctor._ctx.state = "running";
+    window.dispatchEvent({ type: "summerquest:native-audio-lost" });
+    await Promise.resolve();
+    assert.equal(Ctor._ctx.state, "suspended");
+    window.dispatchEvent({ type: "summerquest:native-audio-gained" });
+    await Promise.resolve();
+    assert.equal(Ctor._ctx.state, "running");
+    audio.dispose();
+    await Promise.resolve();
+    assert.equal(focusReleases, 1, "dispose releases Android audio focus");
+    assert.equal((Ctor._windowListeners.get("summerquest:native-audio-gained") || []).length, 0);
+  } finally {
     uninstallFakeEnv();
     resetSharedAudioForTest();
   }

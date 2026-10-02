@@ -85,7 +85,7 @@
     };
   }
 
-  function buildRound(gameId,tier,rnd,override){
+  function buildRound(gameId,tier,rnd,override,options){
     const data=cat(override);
     const g=data.GAMES[gameId];
     if(!g)throw new Error("unknown brain game: "+gameId);
@@ -96,7 +96,7 @@
       items=cfg.build(rnd,cfg);
     }else{
       items=[];
-      for(let i=0;i<cfg.items;i++)items.push(cfg.gen(rnd,{i:i,items:items}));
+      for(let i=0;i<cfg.items;i++)items.push(cfg.gen(rnd,Object.assign({i:i,items:items},options||{})));
     }
     return {gameId:gameId,tier:tier,pad:cfg.pad,clock:!!cfg.clock,items:items};
   }

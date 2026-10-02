@@ -24,6 +24,10 @@ function createAudioService(deps) {
   var active = [];
   var maxVoices = 4;  /* slice 35: was hardcoded in makeRoom() */
   var kits = new Map();  /* slice 35: kitName -> {samples:{name:AudioBuffer}} */
+  var visibilityHandler = null;
+  var nativeResumeHandler = null;
+  var nativeFocusGainedHandler = null;
+  var nativeFocusLostHandler = null;
 
   function ensureContext() {
     if (ctx) return ctx;
@@ -38,13 +42,52 @@ function createAudioService(deps) {
     }
     master.gain.value = 1;
     master.connect(ctx.destination);
+    if (!visibilityHandler && typeof document !== "undefined" && document.addEventListener) {
+      visibilityHandler = function () {
+        if (!document.hidden && unlocked && ctx && ctx.state !== "running" && ctx.resume) {
+          ctx.resume().catch(function () {});
+        }
+      };
+      document.addEventListener("visibilitychange", visibilityHandler);
+    }
+    if (!nativeResumeHandler && typeof window !== "undefined" && window.addEventListener) {
+      nativeResumeHandler = function () { resumeUnlockedContext(); };
+      nativeFocusGainedHandler = function () { resumeUnlockedContext(); };
+      nativeFocusLostHandler = function () {
+        if (ctx && ctx.state === "running" && ctx.suspend) ctx.suspend().catch(function () {});
+      };
+      window.addEventListener("summerquest:native-resume", nativeResumeHandler);
+      window.addEventListener("summerquest:native-audio-gained", nativeFocusGainedHandler);
+      window.addEventListener("summerquest:native-audio-lost", nativeFocusLostHandler);
+    }
     return ctx;
+  }
+
+  function nativePlatform() {
+    return (typeof window !== "undefined" && window.SQPlatform) || null;
+  }
+
+  function requestNativeAudioFocus() {
+    var platform = nativePlatform();
+    if (!platform || typeof platform.requestAudioFocus !== "function") return;
+    try { Promise.resolve(platform.requestAudioFocus()).catch(function () {}); } catch (e) {}
+  }
+
+  function releaseNativeAudioFocus() {
+    var platform = nativePlatform();
+    if (!platform || typeof platform.releaseAudioFocus !== "function") return;
+    try { Promise.resolve(platform.releaseAudioFocus()).catch(function () {}); } catch (e) {}
+  }
+
+  function resumeUnlockedContext() {
+    if (unlocked && ctx && ctx.state !== "running" && ctx.resume) ctx.resume().catch(function () {});
   }
 
   function unlock() {
     var c = ensureContext();
     if (!c) return;
-    if (c.state === "suspended" && c.resume) c.resume().catch(function () {});
+    requestNativeAudioFocus();
+    if (c.state !== "running" && c.resume) c.resume().catch(function () {});
     unlocked = true;
   }
 
@@ -85,12 +128,31 @@ function createAudioService(deps) {
   function setMuted(value) {
     muted = !!value;
     if (deps.setMuted) deps.setMuted(muted);
-    if (muted) stopAll();
+    if (muted) {
+      stopAll();
+      releaseNativeAudioFocus();
+    } else if (unlocked) {
+      requestNativeAudioFocus();
+      resumeUnlockedContext();
+    }
   }
 
   function dispose() {
     stopAll();
     if (ctx && ctx.close) { try { ctx.close(); } catch (e) {} }
+    if (visibilityHandler && typeof document !== "undefined" && document.removeEventListener) {
+      document.removeEventListener("visibilitychange", visibilityHandler);
+    }
+    if (typeof window !== "undefined" && window.removeEventListener) {
+      if (nativeResumeHandler) window.removeEventListener("summerquest:native-resume", nativeResumeHandler);
+      if (nativeFocusGainedHandler) window.removeEventListener("summerquest:native-audio-gained", nativeFocusGainedHandler);
+      if (nativeFocusLostHandler) window.removeEventListener("summerquest:native-audio-lost", nativeFocusLostHandler);
+    }
+    releaseNativeAudioFocus();
+    visibilityHandler = null;
+    nativeResumeHandler = null;
+    nativeFocusGainedHandler = null;
+    nativeFocusLostHandler = null;
     ctx = null; master = null; unlocked = false;
   }
 

@@ -16,6 +16,12 @@ function fmtClock(ms) {
   return m + ":" + (r < 10 ? "0" : "") + r;
 }
 
+function escapeHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) {
+    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character];
+  });
+}
+
 function loadScene(gameId) {
   var loader = SCENE_LOADERS[gameId];
   if (!loader) return Promise.resolve(genericScene);
@@ -42,7 +48,10 @@ function createRound(opts) {
   var reducedMotion = motionSvc.reduced;
 
   var questionRnd = C.mulberry32(Date.now() >>> 0);
-  var round = C.buildRound(gameId, tier, questionRnd);
+  var round = C.buildRound(gameId, tier, questionRnd, null, { mathSkill: opts.mathSkill || "" });
+  if (Number.isFinite(Number(opts.itemLimit)) && Number(opts.itemLimit) > 0) {
+    round.items = round.items.slice(0, Math.max(1, Math.round(Number(opts.itemLimit))));
+  }
   var visualRnd = C.mulberry32(C.dseed("brain-visual" + gameId + tier + Date.now()));
 
   var answers = [];
@@ -54,6 +63,7 @@ function createRound(opts) {
      different tier, different item count — falls back to starting fresh. */
   var resume = opts.resume;
   if (resume && resume.gameId === gameId && resume.tier === tier &&
+      (!opts.mathSkill || resume.mathSkill === opts.mathSkill) &&
       Array.isArray(resume.items) && resume.items.length === round.items.length &&
       Number.isInteger(resume.idx) && resume.idx > 0 && resume.idx < round.items.length) {
     round.items = resume.items;
@@ -70,6 +80,11 @@ function createRound(opts) {
   var activeStartedAt = 0;
   var clockCancel = null;
   var audioUnlockedOnce = false;
+  var attemptStartedAt = 0;
+  var guidedRetry = false;
+  var guidedRetryMeta = null;
+  var activeLearningIntervention = null;
+  var learningAttemptRecorded = false;
 
   /* Self-contained: renders into whatever mount the caller hands in (index.html
      passes the same #stage every arcade game uses, so the round sits in the
@@ -100,6 +115,7 @@ function createRound(opts) {
       '<output class="brain-clock"></output>' +
     '</div>' +
     '<main class="brain-scene" aria-live="off"></main>' +
+    '<section class="brain-learning-support" hidden aria-live="polite"></section>' +
     '<div class="brain-announcer sr-only" aria-live="polite"></div>';
   mountEl.innerHTML = "";
   mountEl.appendChild(overlay);
@@ -111,6 +127,7 @@ function createRound(opts) {
   var progressEl = overlay.querySelector(".brain-progress");
   var clockEl = overlay.querySelector(".brain-clock");
   var sceneMount = overlay.querySelector(".brain-scene");
+  var supportEl = overlay.querySelector(".brain-learning-support");
   var announcerEl = overlay.querySelector(".brain-announcer");
 
   identityEl.innerHTML = (game.icon || "") + " " + game.title[0] + '<span class="zht">' + game.title[1] + "</span>";
@@ -167,6 +184,301 @@ function createRound(opts) {
 
   function announce(pair) {
     announcerEl.textContent = (pair && pair[0]) ? pair[0] + " " + (pair[1] || "") : "";
+  }
+
+  function hideLearningSupport() {
+    if (!supportEl) return;
+    supportEl.hidden = true;
+    supportEl.innerHTML = "";
+  }
+
+  function learningMeta(given, responseMs) {
+    return {
+      gameId: gameId, tier: tier, kid: kid, index: idx, item: round.items[idx],
+      childAnswer: given, responseMs: Math.max(0, Math.round(responseMs || 0)),
+      skill: opts.mathSkill || (game && game.skill ? game.skill : "math")
+    };
+  }
+
+  function notifyLearningAttempt(meta, hintsUsed) {
+    if (!opts.onLearningAttempt || learningAttemptRecorded) return;
+    learningAttemptRecorded = true;
+    Promise.resolve(opts.onLearningAttempt(Object.assign({}, meta, { hintsUsed: hintsUsed || 0 })))
+      .catch(function (err) { console.warn("brain learning attempt was not stored", err); });
+  }
+
+  function notifyLearningSupportOutcome(meta, outcome, intervention) {
+    if (!opts.onLearningSupportOutcome || !meta || !outcome) return;
+    Promise.resolve(opts.onLearningSupportOutcome(Object.assign({}, meta, {
+      outcome: outcome,
+      intervention: intervention || activeLearningIntervention || undefined
+    }))).catch(function (err) { console.warn("brain learning support outcome was not stored", err); });
+  }
+
+  function hintVisualHtml(result) {
+    var presentation = result && result.presentation || {};
+    if (presentation.equalGroups) {
+      var groups = Math.max(1, Math.min(10, Math.round(Number(presentation.equalGroups.groups) || 1)));
+      var each = Math.max(1, Math.min(10, Math.round(Number(presentation.equalGroups.each) || 1)));
+      var layout = presentation.equalGroups.layout === "array" ? " is-array" : "";
+      return '<div class="brain-learning-support__groups' + layout + '" aria-hidden="true">' + Array.from({ length: groups }, function () {
+        return '<span>' + "●".repeat(each) + '</span>';
+      }).join('') + '</div>';
+    }
+    if (presentation.skipCount) {
+      var step = Math.max(1, Math.round(Number(presentation.skipCount.step) || 1));
+      var count = Math.max(1, Math.min(10, Math.round(Number(presentation.skipCount.count) || 1)));
+      var multiples = [0];
+      for (var sc = 1; sc <= count; sc++) multiples.push(step * sc);
+      return '<div class="brain-learning-support__numberline brain-learning-support__skipcount" aria-hidden="true">' + multiples.map(function (value, n) {
+        return '<span class="' + (n === multiples.length - 1 ? "is-end" : "") + '">' + value + '</span>';
+      }).join('<i>↗</i>') + '</div>';
+    }
+    if (presentation.comparison && presentation.comparison.length === 2) {
+      var cLeft = Math.max(0, Math.round(Number(presentation.comparison[0]) || 0));
+      var cRight = Math.max(0, Math.round(Number(presentation.comparison[1]) || 0));
+      return '<div class="brain-learning-support__comparison" aria-hidden="true"><span><b>' + cLeft + '</b><i style="--q:' + Math.min(100, cLeft) + '"></i></span><em>?</em><span><b>' + cRight + '</b><i style="--q:' + Math.min(100, cRight) + '"></i></span></div>';
+    }
+    if (presentation.numberBond) {
+      var known = Math.max(0, Math.round(Number(presentation.numberBond.known) || 0));
+      var target = Math.max(0, Math.round(Number(presentation.numberBond.target) || 0));
+      return '<div class="brain-learning-support__bond" aria-hidden="true"><span>' + known + '</span><b>+</b><span class="is-missing">?</span><b>=</b><span class="is-total">' + target + '</span></div>';
+    }
+    if (presentation.objectGroups && presentation.objectGroups.length === 2) {
+      var left = Math.max(0, Math.min(20, Number(presentation.objectGroups[0]) || 0));
+      var right = Math.max(0, Math.min(20, Number(presentation.objectGroups[1]) || 0));
+      var operator = presentation.operator === "−" ? "−" : presentation.operator === "×" ? "×" : "+";
+      return '<div class="brain-learning-support__objects" aria-hidden="true"><span>' + "●".repeat(left) + '</span><b>' + operator + '</b><span>' + "●".repeat(right) + '</span></div>';
+    }
+    if (presentation.numberLine) {
+      var line = presentation.numberLine;
+      var start = Number(line.start) || 0, direction = Number(line.direction) < 0 ? -1 : 1;
+      var steps = Math.max(0, Math.round(Number(line.steps) || 0));
+      var cells = [start];
+      if (steps <= 10) {
+        for (var i = 1; i <= steps; i++) cells.push(start + direction * i);
+      } else {
+        for (var j = 1; j <= 4; j++) cells.push(start + direction * j);
+        cells.push("…");
+        cells.push(start + direction * steps);
+      }
+      return '<div class="brain-learning-support__numberline" aria-hidden="true">' + cells.map(function (value, n) {
+        return '<span class="' + (n === cells.length - 1 ? "is-end" : "") + '">' + escapeHtml(value) + '</span>';
+      }).join('<i>→</i>') + '</div>';
+    }
+    return '<div class="brain-learning-support__retry" aria-hidden="true">👆 · 🧠 · ✨</div>';
+  }
+
+  function renderLearningHint(meta, result) {
+    if (!supportEl) { transition(); return; }
+    var hint = result && result.hint || {};
+    var presentation = result && result.presentation || {};
+    var showText = presentation.showText !== false;
+    supportEl.hidden = false;
+    supportEl.innerHTML =
+      '<div class="brain-learning-support__hint">' +
+        '<div class="brain-learning-support__visual">' + hintVisualHtml(result) + '</div>' +
+        (showText ? '<div class="brain-learning-support__copy"><b>' + escapeHtml(hint.message || "Try one smaller step.") + '</b><span>' + escapeHtml(hint.messageZh || "先試一個小步驟。") + '</span></div>' : '') +
+      '</div>' +
+      '<div class="brain-learning-support__actions">' +
+        '<button type="button" data-learning-action="retry">↻ <b>Try again</b><span>再試一次</span></button>' +
+        '<button type="button" data-learning-action="next">→ <b>Next</b><span>下一題</span></button>' +
+      '</div>';
+    if (presentation.mode === "visual_audio" && opts.say && hint.message && hint.messageZh) opts.say([hint.message, hint.messageZh]);
+    var retry = supportEl.querySelector('[data-learning-action="retry"]');
+    var next = supportEl.querySelector('[data-learning-action="next"]');
+    if (retry) retry.onclick = function () { beginGuidedRetry(meta); };
+    if (next) next.onclick = function () { notifyLearningSupportOutcome(meta, "support_skipped", activeLearningIntervention); transition(); };
+  }
+
+  function beginGuidedRetry(meta) {
+    if (destroyed || !sceneInstance) { transition(); return; }
+    hideLearningSupport();
+    guidedRetry = true;
+    guidedRetryMeta = meta;
+    pendingSubmitAccepted = false;
+    state = "presenting-guided-retry";
+    var item = round.items[idx];
+    var result;
+    try {
+      result = sceneInstance.present(item, { index: idx, count: round.items.length, isFirst: idx === 0, clocked: !!round.clock, guidedRetry: true });
+    } catch (err) {
+      console.error("brain guided retry present() failed: " + gameId, err);
+      transition();
+      return;
+    }
+    var wait = (result && typeof result.then === "function") ? result : Promise.resolve();
+    wait.then(function () {
+      if (destroyed) return;
+      state = "active";
+      attemptStartedAt = now();
+      if (sceneInstance.setInputEnabled) sceneInstance.setInputEnabled(true);
+      announce(["Try that one again.", "再試一次這一題。"]);
+    }).catch(function () { transition(); });
+    void meta;
+  }
+
+  function requestLearningHint(meta, intervention) {
+    if (!supportEl) { notifyLearningAttempt(meta, 1); transition(); return; }
+    state = "learning-hint";
+    supportEl.hidden = false;
+    supportEl.innerHTML = '<div class="brain-learning-support__loading"><span>💡</span><b>Finding the right clue…</b><em>正在找適合的小提示…</em></div>';
+    var requestMeta = Object.assign({}, meta, intervention ? { intervention: intervention } : {});
+    Promise.resolve(opts.getLearningHint ? opts.getLearningHint(requestMeta) : null).then(function (result) {
+      if (destroyed) return;
+      notifyLearningAttempt(meta, 1);
+      if (!result) {
+        result = {
+          hint: { message: "Try one smaller step.", messageZh: "先試一個小步驟。" },
+          presentation: { showText: true, mode: "text_visual", strategy: "retry" }
+        };
+      }
+      renderLearningHint(meta, result);
+    }).catch(function () {
+      if (destroyed) return;
+      notifyLearningAttempt(meta, 1);
+      renderLearningHint(meta, {
+        hint: { message: "Try one smaller step.", messageZh: "先試一個小步驟。" },
+        presentation: { showText: true, mode: "text_visual", strategy: "retry" }
+      });
+    });
+  }
+
+  function showLearningChoice(meta, intervention) {
+    if (!supportEl) { notifyLearningAttempt(meta, 0); transition(); return; }
+    state = "learning-support";
+    supportEl.hidden = false;
+    var promptEn = intervention && intervention.reason === "needs_support" ? "Want a small clue?" : "Want a hint?";
+    var promptZh = intervention && intervention.reason === "needs_support" ? "要一個小提示嗎？" : "要提示嗎？";
+    supportEl.innerHTML =
+      '<div class="brain-learning-support__prompt"><span class="brain-learning-support__bulb">💡</span><div><b>' + promptEn + '</b><span>' + promptZh + '</span></div></div>' +
+      '<div class="brain-learning-support__actions">' +
+        '<button type="button" data-learning-action="hint">💡 <b>Small clue</b><span>小提示</span></button>' +
+        '<button type="button" data-learning-action="next">→ <b>Next</b><span>下一題</span></button>' +
+      '</div>';
+    var hintBtn = supportEl.querySelector('[data-learning-action="hint"]');
+    var nextBtn = supportEl.querySelector('[data-learning-action="next"]');
+    if (nextBtn) nextBtn.onclick = function () { notifyLearningAttempt(meta, 0); notifyLearningSupportOutcome(meta, "support_skipped", intervention && intervention.kind); transition(); };
+    if (hintBtn) hintBtn.onclick = function () {
+      hintBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      requestLearningHint(meta, intervention);
+    };
+  }
+
+  function showVisualExplanation(meta, intervention) {
+    if (!supportEl) { notifyLearningAttempt(meta, 1); transition(); return; }
+    supportEl.hidden = false;
+    supportEl.innerHTML =
+      '<div class="brain-learning-support__loading"><span>🧩</span><b>Let\'s look at it another way.</b><em>我們換一個方法看看。</em></div>';
+    requestLearningHint(meta, intervention);
+  }
+
+  function scaffoldChoices(answer) {
+    var a = Math.max(0, Math.round(Number(answer) || 0));
+    var values = [Math.max(0, a - 1), a, a + 1];
+    var unique = [];
+    values.forEach(function (value) { if (unique.indexOf(value) < 0) unique.push(value); });
+    while (unique.length < 3) unique.push(unique[unique.length - 1] + 1);
+    return unique;
+  }
+
+  function scaffoldQuestionHtml(q) {
+    if (q.operation === "multiplication") {
+      return '<b>' + escapeHtml(q.left) + '</b><span>×</span><b>' + escapeHtml(q.right) + '</b><span>=</span><b>?</b>';
+    }
+    if (q.operation === "comparison") {
+      return '<b>' + escapeHtml(q.left) + '</b><span>or</span><b>' + escapeHtml(q.right) + '</b><span>→</span><b>?</b>';
+    }
+    if (q.operation === "number_bond") {
+      return '<b>' + escapeHtml(q.left) + '</b><span>+</span><b>?</b><span>=</span><b>' + escapeHtml(q.right) + '</b>';
+    }
+    var op = q.operation === "subtraction" ? "−" : "+";
+    return '<b>' + escapeHtml(q.left) + '</b><span>' + op + '</span><b>' + escapeHtml(q.right) + '</b><span>=</span><b>?</b>';
+  }
+
+  function showEasierFollowUp(meta, intervention) {
+    var q = intervention && intervention.easierQuestion;
+    if (!supportEl || !q || !Number.isFinite(Number(q.answer))) {
+      showVisualExplanation(meta, intervention);
+      return;
+    }
+    notifyLearningAttempt(meta, 1);
+    state = "learning-scaffold";
+    supportEl.hidden = false;
+    var choices = scaffoldChoices(q.answer);
+    supportEl.innerHTML =
+      '<div class="brain-learning-support__scaffold">' +
+        '<div class="brain-learning-support__scaffold-head"><span>🪜</span><div><b>One smaller step first</b><em>先做一個簡單一點的小步驟</em></div></div>' +
+        '<div class="brain-learning-support__scaffold-question" aria-label="Smaller math step 小一點的數學步驟">' +
+          scaffoldQuestionHtml(q) +
+        '</div>' +
+        '<div class="brain-learning-support__scaffold-choices">' + choices.map(function (value) {
+          return '<button type="button" data-scaffold-answer="' + value + '">' + value + '</button>';
+        }).join("") + '</div>' +
+        '<div class="brain-learning-support__scaffold-status" aria-live="polite"></div>' +
+      '</div>' +
+      '<div class="brain-learning-support__actions brain-learning-support__actions--single">' +
+        '<button type="button" data-learning-action="next">→ <b>Skip</b><span>跳過</span></button>' +
+      '</div>';
+    var statusEl = supportEl.querySelector('.brain-learning-support__scaffold-status');
+    var nextBtn = supportEl.querySelector('[data-learning-action="next"]');
+    if (nextBtn) nextBtn.onclick = function () { notifyLearningSupportOutcome(meta, "support_skipped", intervention && intervention.kind); transition(); };
+    Array.prototype.forEach.call(supportEl.querySelectorAll('[data-scaffold-answer]'), function (button) {
+      button.onclick = function () {
+        if (Number(button.getAttribute('data-scaffold-answer')) !== Number(q.answer)) {
+          if (statusEl) statusEl.textContent = "Almost — one more try. 再試一次。";
+          if (button.animate) button.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "translateX(0)" }], { duration: 180 });
+          return;
+        }
+        audioSvc.play("success", {});
+        Array.prototype.forEach.call(supportEl.querySelectorAll('[data-scaffold-answer]'), function (candidate) { candidate.disabled = true; });
+        if (nextBtn) nextBtn.disabled = true;
+        if (statusEl) statusEl.textContent = "Yes! Now try the original one. 好！現在回到原本那題。";
+        notifyLearningSupportOutcome(meta, "scaffold_success", intervention && intervention.kind);
+        scheduler.after(reducedMotion ? 80 : 620, function () { if (!destroyed) beginGuidedRetry(meta); });
+      };
+    });
+  }
+
+  function applyLearningIntervention(meta, intervention) {
+    activeLearningIntervention = intervention && intervention.kind ? intervention.kind : null;
+    if (!intervention || !intervention.kind) { showLearningChoice(meta, null); return; }
+    if (intervention.kind === "continue") {
+      notifyLearningAttempt(meta, 0);
+      transition();
+      return;
+    }
+    if (intervention.kind === "visual_explanation") {
+      showVisualExplanation(meta, intervention);
+      return;
+    }
+    if (intervention.kind === "easier_follow_up") {
+      showEasierFollowUp(meta, intervention);
+      return;
+    }
+    showLearningChoice(meta, intervention);
+  }
+
+  function maybeOfferLearningSupport(meta) {
+    if (!opts.canLearningSupport || !opts.getLearningHint) {
+      notifyLearningAttempt(meta, 0);
+      transition();
+      return;
+    }
+    state = "learning-check";
+    Promise.resolve(opts.canLearningSupport(meta)).then(function (supported) {
+      if (destroyed) return;
+      if (!supported) { notifyLearningAttempt(meta, 0); transition(); return; }
+      if (!opts.getLearningIntervention) { showLearningChoice(meta, null); return; }
+      return Promise.resolve(opts.getLearningIntervention(meta)).then(function (intervention) {
+        if (destroyed) return;
+        applyLearningIntervention(meta, intervention);
+      });
+    }).catch(function () {
+      if (destroyed) return;
+      showLearningChoice(meta, null);
+    });
   }
 
   function unlockAudioOnce() {
@@ -243,6 +555,11 @@ function createRound(opts) {
     if (destroyed) return Promise.resolve();
     state = "presenting";
     pendingSubmitAccepted = false;
+    guidedRetry = false;
+    guidedRetryMeta = null;
+    activeLearningIntervention = null;
+    learningAttemptRecorded = false;
+    hideLearningSupport();
     renderProgress();
     var item = round.items[idx];
     if (!sceneInstance) return Promise.resolve();
@@ -260,6 +577,7 @@ function createRound(opts) {
       if (destroyed) return;
       if (item.say && opts.say) opts.say(item.say);
       state = "active";
+      attemptStartedAt = now();
       if (sceneInstance.setInputEnabled) sceneInstance.setInputEnabled(true);
       startActiveClock();
     }).catch(function (err) {
@@ -299,6 +617,22 @@ function createRound(opts) {
     renderClock();
     var item = round.items[idx];
     var graded = C.gradeItem(item, given);
+    var responseMs = attemptStartedAt ? Math.max(0, now() - attemptStartedAt) : 0;
+
+    if (guidedRetry) {
+      guidedRetry = false;
+      notifyLearningSupportOutcome(guidedRetryMeta || learningMeta(given, responseMs), graded.correct ? "retry_recovered" : "retry_failed", activeLearningIntervention);
+      guidedRetryMeta = null;
+      var guidedFeedback = Object.freeze({
+        correct: graded.correct, got: graded.got, worth: graded.worth, given: given, answer: item.answer, guidedRetry: true
+      });
+      state = graded.correct ? "feedback-correct" : "feedback-corrective";
+      renderProgress();
+      if (graded.correct) audioSvc.play("success", {});
+      runFeedback(guidedFeedback, transition);
+      return;
+    }
+
     answers[idx] = { given: given, got: graded.got, worth: graded.worth, correct: graded.correct };
 
     /* Math Recall's first "just remember it" item (worth 0) has no correct answer
@@ -314,13 +648,19 @@ function createRound(opts) {
     var feedback = Object.freeze({
       correct: graded.correct, got: graded.got, worth: graded.worth, given: given, answer: item.answer
     });
+    var meta = learningMeta(given, responseMs);
     state = graded.correct ? "feedback-correct" : "feedback-corrective";
     renderProgress();
-    if (graded.correct) audioSvc.play("success", {});
-    runFeedback(feedback);
+    if (graded.correct) {
+      audioSvc.play("success", {});
+      notifyLearningAttempt(meta, 0);
+      runFeedback(feedback);
+      return;
+    }
+    runFeedback(feedback, function () { maybeOfferLearningSupport(meta); });
   }
 
-  function runFeedback(feedback) {
+  function runFeedback(feedback, after) {
     var settled = false;
     var result;
     try {
@@ -343,17 +683,25 @@ function createRound(opts) {
         resolve();
       });
     });
-    capped.then(function () { if (!destroyed) transition(); });
+    capped.then(function () {
+      if (destroyed) return;
+      if (after) after(); else transition();
+    });
   }
 
   function saveProgress() {
     if (!opts.onProgress) return;
-    opts.onProgress({ gameId: gameId, tier: tier, idx: idx, items: round.items, answers: answers, ms: activeMsAccum });
+    opts.onProgress({ gameId: gameId, tier: tier, idx: idx, items: round.items, answers: answers, ms: activeMsAccum, mathSkill: opts.mathSkill || undefined });
   }
 
   function transition() {
     if (destroyed) return;
     state = "transitioning";
+    hideLearningSupport();
+    guidedRetry = false;
+    guidedRetryMeta = null;
+    activeLearningIntervention = null;
+    attemptStartedAt = 0;
     idx++;
     if (idx >= round.items.length) { complete(); return; }
     saveProgress();
@@ -431,7 +779,7 @@ export function openRound(opts) {
   if (previous) previous.destroy(true);
   var round = createRound(opts);
   activeRound = round;
-  round.start();
+  round.ready=round.start();
   return round;
 }
 

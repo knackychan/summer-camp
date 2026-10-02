@@ -1,0 +1,11 @@
+{
+  "appId": "com.summerquest.app",
+  "appName": "Summer Quest",
+  "webDir": "../../dist/android-web",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#f8f3df"
+  }
+}

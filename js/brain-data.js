@@ -40,7 +40,77 @@
   /* ---- 1. Calculations 計算 ---- */
   const COUNT_EMOJI=["🍎","🍌","⭐","🐟","🚗","🎈"];
 
-  function genCalcTot(rnd){
+  function directedCalcItem(rnd,skill,useChoices){
+    let a=1,b=1,plus=true,max=20,answer,sign;
+    let out=null;
+    if(skill==="math.number_comparison.within_20"||skill==="math.number_comparison.within_100"){
+      max=skill==="math.number_comparison.within_20"?20:100;
+      a=intBetween(rnd,0,max);b=intBetween(rnd,0,max);
+      if(a===b)b=a===max?Math.max(0,a-1):a+1;
+      answer=Math.max(a,b);
+      out={
+        prompt:{type:"comparison",a:a,b:b,en:"Which is bigger?  "+a+"  or  "+b,zh:"哪個比較大？ "+a+" 還是 "+b},
+        say:["Which number is bigger, "+a+" or "+b+"?",a+" 和 "+b+"，哪個比較大？"],
+        answer:String(answer),
+        corrective:["Look at which number is bigger.","看看哪個數字比較大。"]
+      };
+      if(useChoices)out.choices=shuffleWith(rnd,[String(a),String(b)]);
+      return out;
+    }
+    if(skill==="math.number_bonds.to_10"||skill==="math.number_bonds.to_20"){
+      max=skill==="math.number_bonds.to_10"?10:20;
+      const minTarget=max===10?5:10;
+      const target=intBetween(rnd,minTarget,max);
+      a=intBetween(rnd,0,Math.max(0,target-1));
+      b=target;
+      answer=target-a;
+      out={
+        prompt:{type:"numberbond",a:a,b:b,en:a+" + ? = "+target,zh:a+" + ? = "+target},
+        say:["What goes with "+a+" to make "+target+"?",a+" 加多少會變成 "+target+"？"],
+        answer:String(answer),
+        corrective:["Find the missing part.","找出少掉的那一部分。"]
+      };
+      if(useChoices)out.choices=numChoices(rnd,answer,4,Math.max(2,Math.ceil(max/5)));
+      return out;
+    }
+    if(skill==="math.multiplication.tables_2_5_10"||skill==="math.multiplication.tables_2_to_9"){
+      const tables=skill==="math.multiplication.tables_2_5_10"?[2,5,10]:[3,4,6,7,8,9];
+      a=pick(rnd,tables);b=intBetween(rnd,1,10);answer=a*b;
+      out={
+        prompt:{type:"text",a:a,b:b,en:a+" × "+b+" = ?",zh:a+" × "+b+" = ?"},
+        say:[a+" times "+b,a+" 乘 "+b],
+        answer:String(answer),
+        corrective:["Think in equal groups.","想成一樣大的幾組。"]
+      };
+      if(useChoices)out.choices=numChoices(rnd,answer,4,Math.max(3,a));
+      return out;
+    }
+    if(skill==="math.addition.within_5"){
+      max=5; a=intBetween(rnd,1,4); b=intBetween(rnd,1,Math.max(1,max-a));
+    }else if(skill==="math.addition.within_20"){
+      max=20; a=intBetween(rnd,2,19); b=intBetween(rnd,1,Math.max(1,max-a));
+    }else if(skill==="math.subtraction.within_20"){
+      plus=false; a=intBetween(rnd,2,20); b=intBetween(rnd,1,a);
+    }else if(skill==="math.addition.within_100"){
+      max=100; a=intBetween(rnd,11,89); b=intBetween(rnd,1,Math.max(1,max-a));
+    }else if(skill==="math.subtraction.within_100"){
+      plus=false; a=intBetween(rnd,11,99); b=intBetween(rnd,1,a);
+    }else if(skill==="math.addition.within_200"){
+      max=200; a=intBetween(rnd,40,149); b=intBetween(rnd,10,Math.max(10,max-a));
+    }else return null;
+    answer=plus?a+b:a-b; sign=plus?"+":"−";
+    out={
+      prompt:{type:"text",a:a,b:b,en:a+" "+sign+" "+b+" = ?",zh:a+" "+sign+" "+b+" = ?"},
+      say:[a+(plus?" plus ":" minus ")+b,String(a)+(plus?"加":"減")+String(b)],
+      answer:String(answer)
+    };
+    if(useChoices)out.choices=numChoices(rnd,answer,4,Math.max(3,Math.min(12,Math.ceil(max/10))));
+    return out;
+  }
+
+  function genCalcTot(rnd,ctx){
+    const directed=ctx&&ctx.mathSkill?directedCalcItem(rnd,ctx.mathSkill,true):null;
+    if(directed)return directed;
     const em=pick(rnd,COUNT_EMOJI);
     const a=intBetween(rnd,1,3), b=intBetween(rnd,1,2), sum=a+b;
     return {
@@ -53,7 +123,9 @@
     };
   }
 
-  function genCalcMid(rnd){
+  function genCalcMid(rnd,ctx){
+    const directed=ctx&&ctx.mathSkill?directedCalcItem(rnd,ctx.mathSkill,false):null;
+    if(directed)return directed;
     const plus=rnd()<0.5;
     let a=intBetween(rnd,2,20), b=intBetween(rnd,2,9);
     if(!plus&&b>a){const t=a;a=b;b=t;}
@@ -65,7 +137,9 @@
     };
   }
 
-  function genCalcHard(rnd){
+  function genCalcHard(rnd,ctx){
+    const directed=ctx&&ctx.mathSkill?directedCalcItem(rnd,ctx.mathSkill,false):null;
+    if(directed)return directed;
     const mode=intBetween(rnd,0,2);
     if(mode===2){
       const a=intBetween(rnd,2,9), b=intBetween(rnd,2,9);

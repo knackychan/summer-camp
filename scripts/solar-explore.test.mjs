@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+test("leaving Solar during module imports cancels initialization before touching its mount", async () => {
+  const { default: solar } = await import("../js/games/solar.js");
+  const pending = solar.init({ get mount() { throw new Error("cancelled launch touched mount"); } });
+  solar.stop();
+  await pending;
+});
+
 test("solar module exports the expected contract without touching vendor files", async function () {
   /* Dynamic import of solar-data works because it has no DOM/Three imports. */
   var { PLANETS } = await import("../js/games/solar-data.js");
