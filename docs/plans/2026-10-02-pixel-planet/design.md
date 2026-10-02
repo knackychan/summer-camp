@@ -1,9 +1,9 @@
 # Pixel Planet — world home redesign
 
 **Date:** 2026-10-02
-**Status:** Approved by Papa (brainstorm 2026-10-02)
+**Status:** Approved by Papa (brainstorm 2026-10-02; toys + mini-games addendum approved the same day)
 **Supersedes:** the low-poly floating-island look of `js/world/world-explorer.js` (Three.js). The approved world *behaviour* from `docs/plans/2026-09-23-learning-runtime-planet-home/design.md` — explorable home, tap a place, GO opens real content, Classic menu always available — stays in force. Only the rendering, the art and the touch model change.
-**Slices:** 60–64 in this folder.
+**Slices:** 60–64 in this folder. A reference implementation of every module was built and exercised in a scratch browser harness while planning; the slices carry that code verbatim.
 
 ## Why
 
@@ -19,6 +19,9 @@ Today's world is a flat disc island built from Three.js primitives. Papa's verdi
 | D4 | **v1 includes the ambient extras:** space backdrop, drifting clouds, the kid's hero on the planet, and living biomes. | Papa picked all four. |
 | D5 | **A software pixel globe on a 2D canvas, not WebGL.** Every frame, each pixel of a low-res buffer is mapped back to a lat/long on the surface map, then shaded. | Authentic pixel art with full per-pixel control (banded light, dither, rim). WebGL failure modes go away. Cheap: ~40k lookups per frame. |
 | D6 | **Rewrite in place behind the same public contract.** | `index.html`, the registry and the harnesses keep working. The old version stays in git history. |
+| D7 | **Adibou-style toys.** 27 small tappables on the surface plus three sky toys (moon, clouds, starfield). Each plays an instant reaction: animation, a short synth sound through the app's own muted-aware `beep`, and a haptic tap. | Papa: "a lot of things interactable that do some cute animation or quick game like in Adibou." Exploration rewards curiosity, which suits pre-readers (planet-home §2.2). |
+| D8 | **Four in-place mini-games, no stars.** Star Catch 接星星 (moon), Bubble Pop 戳泡泡 (whale), Mole Hop 打地鼠 (molehill), Crystal Echo 水晶回音 (echo stone). 20–30 s each, with no fail state. A wrong note in Crystal Echo just replays the song. | Pure play. The stars ledger, admin and offline queue are untouched, so the reward economy is out of scope. |
+| D9 | **Toys are data, not code.** `planet-toys.js` declares each toy's site, sprite, reaction, particle effect and sound. One generic reaction + particle engine runs all of them. | Adding a toy is one line plus a sprite. |
 
 ## Architecture
 
@@ -29,20 +32,22 @@ There are four units in `js/world/`. Each has one job and can be tested on its o
 | `planet-palette.js` | The fixed 32-colour palette, as both RGBA `Uint32` values and CSS strings. | nothing |
 | `planet-map.js` | `buildPlanetMap(seed)` returns an equirectangular surface (256×128 palette indices, plus a parallel biome-id grid) and the list of landmark sites (`{id, lat, lon, biome}`). Contents: ocean, 8 biome regions with noisy borders, two polar caps, and pixel paths from each biome to the home village. Deterministic. Pure. | palette |
 | `planet-globe.js` | Projection math and the pixel fill. `project(lat, lon, view)` returns `{x, y, z}`. `unproject(x, y, view)` returns `{lat, lon}` or `null`. `drawGlobe(imageData, map, clouds, view, light)` fills only pixels inside the disc. Pure apart from the buffer it is given. | map output, palette |
-| `planet-sprites.js` | Draw functions for every landmark, the hero, the moon, stars and the effects. Each sprite has 2–4 frames and is rasterised once at start to offscreen canvases. | palette |
+| `planet-sprites.js` | Pixel art as text rows (one char per pixel, keyed to the palette) for every landmark, toy, the hero, the moon, particles and mini-game pieces. Each sprite has 1–2 frames (an explicit `alt`, or a char `remap`), plus `dark` and `sleep` variants. Pure `spritePixels()`; `buildAtlas()` rasterises everything to canvases once at start. | palette |
+| `planet-toys.js` | Toy sites/reactions/sounds (`TOYS`), sky toys (`SKY`), mini-game titles (`GAMES`, bilingual) and synth note patterns (`SOUNDS`). Pure data. | nothing |
+| `planet-minigames.js` | `createMinigame(kind, env)` returns a game with `{step, draw, pointer, timeLeft, score, finished}`. All logic is in buffer pixels and runs on the world canvas. | toys (titles), sprites (via the atlas) |
 | `world-explorer.js` | Lifecycle, input, selection card, saved view and `snapshot()`. Composes the units above. | the units above, registry |
 
 `view` is `{rotation: quaternion [x, y, z, w], radius}`. `radius` is in art pixels.
 
 ### Public contract (unchanged)
 
-- **Exports:** `start(options)`, `pause()`, `resume()`, `destroy()`, `snapshot()`. `start` returns `{pause, resume, resize, destroy, showSelection, snapshot}`.
-- **`options`:** `mount, registry, kid, kidId, selectionEl, titleEl, subtitleEl, iconEl, goEl, haptic, onStatus`.
+- **Exports:** `start(options)`, `pause()`, `resume()`, `destroy()`, `snapshot()`, plus a new `back()`. `back()` returns `true` when it ended a running mini-game, and `index.html`'s `summerQuestBack` calls it before leaving the world. `start` returns `{pause, resume, resize, destroy, showSelection, snapshot, back}`.
+- **`options`:** `mount, registry, kid, kidId, selectionEl, titleEl, subtitleEl, iconEl, goEl, haptic, onStatus`, plus a new optional `beep(freq, dur, type, vol)`. `index.html` passes its existing `beep`, which already respects Sound off.
 - **Launch:** GO calls `registry.open(id, {origin:"world"})`, with the same error copy as today.
 - **Visibility:** a landmark is drawn only if `registry.get(id)` returns an entry. `entry.available === false` shows the sleeping sprite and disables GO.
 - **DOM:** the ids in `index.html` (`worldMount`, `worldSelection*`, `worldGo`, `worldStatus`, `worldHint`) are unchanged. The Classic menu and Heroes buttons are untouched.
 - **`snapshot()`:**
-  - Keeps `running, frames, contextLost (always false), error, selected, landmarks[{id, x, y, visible, available}]`.
+  - Keeps `running, frames, contextLost (always false), error, selected, landmarks[{id, x, y, visible, available}]`, and adds `minigame` (kind or null) and `toys[{id, x, y, visible}]`.
   - `camera` keeps `position`: a virtual eye point in planet space, which changes with rotation and zoom.
   - `camera` keeps `target: [0,0,0]`, plus `distance`, `minDistance` and `maxDistance`, mapped from zoom.
   - `camera` adds `rotation` and `zoom`.
@@ -70,7 +75,7 @@ There are four units in `js/world/`. Each has one job and can be tested on its o
   - **Night edge.** A soft dithered terminator on the far right. It dims the surface but never goes black.
   - **Disc edge.** A 2-pixel cyan atmosphere rim and a 1-pixel dark outline.
   - **Clouds.** A second equirectangular layer with transparency, drifting about 15% faster than the surface. Each cloud casts a 1-pixel offset shadow.
-  - **Sprites near the edge.** A sprite shrinks one step when `z < 0.35`, and switches to its darker ramp when `z < 0.2`. It is not drawn when `z ≤ 0.08`.
+  - **Sprites near the edge.** A sprite switches to its darker variant when `z < 0.3`, and is not drawn when `z ≤ 0.08`. *(Amended while planning: the original "shrink one step" would break the 1:1 pixel grid. Sprites stay pixel-locked.)*
 - **Backdrop.** Night-indigo space with two parallax star layers. Some stars twinkle on a 2-frame cycle. A small moon orbits once every 40 s, passing behind and in front of the planet.
 
 ### Biome districts
@@ -87,9 +92,36 @@ There are four units in `js/world/`. Each has one job and can be tested on its o
 | `section:rewards` | Treasure-cove beach with a sparkling chest | — |
 
 - **Layout.** Districts are spread so that 3–4 are visible from any angle. Ocean fills the gaps. Polar caps (ice at the north, rock at the south) mean free spin never reveals an empty stretch.
-- **Sprites.** Landmarks are 16–28 art pixels tall, with a 1-pixel dark outline and a ground-shadow ellipse.
+- **Sprites.** Section landmarks are 12–16 art pixels tall, featured items 8–13 and toys up to 12. All have a 1-pixel dark outline (drawn by hand or added by the `outline` flag) and a ground shadow. *(Amended while planning: the original 16–28 crowded the 116-pixel planet.)*
 - **Unavailable places** show a calm grey "sleeping" variant with 💤. No red, in keeping with coach-not-cop.
 - **Hero.** The kid's colour sprite (`kid.color`, snapped to the nearest palette colour) stands in the home village. When a place is selected, the hero hops and faces it.
+
+### Toys (D7)
+
+| Where | Toys (reaction · effect) |
+|---|---|
+| Village | apple tree (shake · apples), chicken (hop · egg), windmill (spin), sleepy cat (squash · hearts) |
+| Arcade | robot (hop · notes), gumball machine (shake · gumballs) |
+| Volcano | lava vent (squash · lava blobs), rock buddy (yawn frame · smoke) |
+| Snow | snowman (hop · snow), penguin (slide · snow) |
+| Forest | owl (blink frame · note), bush (shake · bunny) |
+| Grove | bouncy mushroom (squash), three singing crystals C/E/G (glow · sparkles: a tiny xylophone), frog (jump), **echo stone ✨ → Crystal Echo** |
+| Meadow | sunflower (grow), cow (shake · hearts), beehive (shake · bees), **molehill ✨ → Mole Hop** |
+| Beach | crab (slide), palm (shake · coconut) |
+| Ocean | **whale ✨ → Bubble Pop** (spout), fish (jump · splash), boat (bob · toot) |
+| Sky | **moon ✨ → Star Catch** (wink); tapping a cloud makes rain; tapping empty space sends a shooting star |
+
+- Toys sit at least 6° from every landmark and 4.5° from each other, and stand on their declared biome (ocean toys on ocean). A unit test checks all three.
+- A tap on a plain toy never opens a card and never moves the planet.
+- A tap on a game toy plays its reaction **and** opens the selection card with the game's bilingual title. **GO** starts the game.
+
+### Mini-games (D8)
+
+- A running game draws on the same canvas over a dimmed planet. Planet input and motion are frozen.
+- The selection card becomes the game bar: icon, `Title · 中文`, and `⏱ 18 · 🫧 × 7`. The **Done 完成** button can be pressed at any time.
+- When time is up: confetti, `Yay! 好棒！ 🫧 × N`, a success haptic, and the button becomes **OK 好**.
+- Native Back ends a running game first, via `back()`.
+- Play areas avoid the HUD (top 84 CSS px) and the card (measured from `selectionEl`).
 
 ## Interaction
 
@@ -125,10 +157,12 @@ There are four units in `js/world/`. Each has one job and can be tested on its o
   - If `getContext("2d")` fails or a draw throws, the error goes through `onStatus("paused", error)`, and the existing status panel offers the Classic menu.
   - Module import failure keeps using the path `index.html` already has.
 - **Assets.** Three.js stays vendored and precached for the Solar game. The world no longer imports it.
+- **Ambient life.** Every ~1.2 s, a visible volcano puffs smoke, music floats a note and rewards sparkles. Sleeping places float a `z` instead. Places with two frames blink at 2 fps. All of this is off under reduced motion.
 
 ## Testing and compatibility
 
-- **Node unit tests:**
+- **Node unit tests** (auto-run by `check.mjs`): `planet-map`, `planet-globe`, `planet-toys`, `planet-sprites`, `planet-minigames`, `world-explorer`.
+- **What they cover:**
   - `planet-map`: output is deterministic; every site is on land, inside its own biome; ocean is present; every biome connects to the village by path.
   - `planet-globe`: `project` and `unproject` round-trip; the far side gives `z < 0`; the disc centre maps to the facing lat/long; fill writes only in-disc pixels.
   - `world-explorer`: the `readView` accept/reject matrix; `registry.open(..., {origin:"world"})` is present; there is no Three.js, iframe or `location` navigation; all 12 landmark ids are present.
@@ -136,7 +170,7 @@ There are four units in `js/world/`. Each has one job and can be tested on its o
   - `scripts/world-explorer.test.mjs`: the Three.js assertions become pixel-planet equivalents.
   - `scripts/check-world-explorer-ui.py` (`webgl_canvas`): becomes a canvas-present check.
   - `scripts/check-architecture-recovery.py`: the context-loss step becomes pause, resume and resize redraw steps; the drag, pinch and reload steps keep working through the compatible `camera` fields.
-  - `scripts/audit-architecture-runtime.py`: the "WebGL failure" step becomes a world-module failure that leaves the status panel and the Classic menu working.
+  - The `webgl` failure scenario in `check-architecture-recovery.py` (which `scripts/audit-architecture-runtime.py` runs by default) becomes `canvas`: the 2D context of the `data-sq-world="planet"` canvas is forced to `null`. The world must show the status panel, and the Classic menu must still work. The `--historical` probe in `audit-architecture-runtime.py` is left untouched, since it deliberately reproduces the original audit.
 - **Offline.** `sw.js` precaches the new modules, and the cache name is bumped.
 - **Gates:**
   - `node scripts/check.mjs`
@@ -154,3 +188,4 @@ There are four units in `js/world/`. Each has one job and can be tested on its o
 - Day/night tied to the real clock.
 - Walking the hero around the planet.
 - New destinations beyond today's 12 landmarks.
+- Stars, badges or any ledger write from toys or mini-games (D8).
