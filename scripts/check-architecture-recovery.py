@@ -110,11 +110,11 @@ def context_for(browser, seed=None, failure=None, offline=False):
             for (const [k,v] of Object.entries(%s)) localStorage.setItem(k,v);
             localStorage.setItem('sq:recoveryFixture','1');
         })();""" % json.dumps(seed))
-    if failure == "webgl":
+    if failure == "canvas":
         context.add_init_script("""(() => {
             const original = HTMLCanvasElement.prototype.getContext;
             HTMLCanvasElement.prototype.getContext = function(kind,...args) {
-                return kind.startsWith('webgl') ? null : original.call(this,kind,...args);
+                return this.dataset && this.dataset.sqWorld === 'planet' ? null : original.call(this,kind,...args);
             };
         })();""")
 
@@ -442,12 +442,11 @@ def world_interaction(page):
     assert not world(page)["running"]
     page.evaluate("window.dispatchEvent(new Event('summerquest:native-resume'))")
     wait_world(page)
-    page.evaluate("window.recoveryGL=document.querySelector('#worldMount canvas').getContext('webgl2').getExtension('WEBGL_lose_context'); recoveryGL.loseContext()")
-    page.wait_for_function("SummerQuest.getDiagnostics().world.contextLost")
-    assert page.locator("#worldStatus").is_visible()
-    page.evaluate("recoveryGL.restoreContext()")
-    page.wait_for_function("!SummerQuest.getDiagnostics().world.contextLost && SummerQuest.getDiagnostics().world.running")
-    assert not page.locator("#worldStatus").is_visible()
+    frames = world(page)["frames"]
+    page.set_viewport_size({"width": 800, "height": 600})
+    page.wait_for_function("SummerQuest.getDiagnostics().world.frames > %d" % (frames + 5))
+    assert canvas.bounding_box()["width"] >= 790 and not page.locator("#worldStatus").is_visible()
+    page.set_viewport_size({"width": 1024, "height": 768})
     cdp.detach()
     page.wait_for_timeout(500)
     persisted = world(page)
@@ -462,7 +461,7 @@ def world_interaction(page):
         page.locator(".hero").nth(child_index).click()
         wait_world(page)
         assert page.locator("#worldMount canvas").count() == 1
-    return {"dragDelta": delta, "pinchDistances": pinch_distances, "raycastSelection": hit, "contextRestored": True, "simulatedNativeLifecycle": True, "cameraReload": True, "childSwitches": 2}
+    return {"dragDelta": delta, "pinchDistances": pinch_distances, "raycastSelection": hit, "resizeRedraw": True, "simulatedNativeLifecycle": True, "cameraReload": True, "childSwitches": 2}
 
 
 def saved_fixture(view="hub"):
@@ -546,7 +545,7 @@ def fail_flow(page, base, failure):
     page.goto(base + "/index.html", wait_until="domcontentloaded")
     ready(page)
     page.locator(".hero").last.click()
-    if failure in ("webgl", "import"):
+    if failure in ("canvas", "import"):
         page.wait_for_selector("#worldStatus:not(.hidden)")
         invariant(page, "world")
         assert page.locator("#worldStatus").inner_text().strip()
@@ -611,7 +610,7 @@ def run_case(browser, base, name):
                 step(result, "keyboard book cards, grid, zoom and single Escape", lambda: keyboard_books(page))
                 step(result, "instrument keyboard input and audio stops on exit", lambda: keyboard_instruments(page))
                 step(result, "knowledge visual clue, local help and two answers", lambda: knowledge_interaction(page))
-                step(result, "world camera/pinch/raycast/lifecycle/resize/context restore", lambda: world_interaction(page))
+                step(result, "world camera/pinch/tap/lifecycle/resize redraw", lambda: world_interaction(page))
                 for origin in ("world", "classic"):
                     step(result, origin + " every catalog entry", lambda origin=origin: catalog_sweep(page, origin))
                 step(result, "all integrated book-data images decode", lambda: book_assets(page))
@@ -635,7 +634,7 @@ def run_case(browser, base, name):
             step(result, "offline reload, cold document and pending queue", lambda: offline_flow(page, base))
         else:
             step(result, "failure diagnostic and single root surface", lambda: fail_flow(page, base, name))
-        expected_console = {"webgl": ("THREE.WebGLRenderer:", "Summer Quest 3D world failed"),
+        expected_console = {"canvas": ("Summer Quest 3D world failed",),
                             "import": ("Summer Quest 3D world failed",),
                             "game": ("game module failed to load: balloon", "Summer Quest game launch failed")}.get(name, ())
         result["unexpectedConsoleErrors"] = [error for error in result["consoleErrors"] if not error.startswith(("Failed to load resource", *expected_console))]
@@ -656,8 +655,8 @@ def main():
     if args.out.resolve() == (ROOT / "docs/audits/runtime-probe.json").resolve():
         parser.error("Preserve original evidence; choose another --out path.")
     targets = TARGETS if args.target == "auto" else {args.target: TARGETS[args.target]}
-    report = {"remoteServices": "blocked; synthetic config also served to service workers", "webgl": "desktop SwiftShader; not Android hardware evidence", "targets": [], "unavailable": []}
-    scenarios = {"normal": ["normal"], "state": ["state", "pin"], "ages": ["ages"], "failures": ["webgl", "import", "config", "game"], "offline": ["offline"]}
+    report = {"remoteServices": "blocked; synthetic config also served to service workers", "world": "2D canvas pixel planet; desktop Chromium is not Android hardware evidence", "targets": [], "unavailable": []}
+    scenarios = {"normal": ["normal"], "state": ["state", "pin"], "ages": ["ages"], "failures": ["canvas", "import", "config", "game"], "offline": ["offline"]}
     names = sum(scenarios.values(), []) if args.scenario == "all" else scenarios[args.scenario]
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(executable_path=args.browser, headless=True, args=["--enable-webgl", "--enable-unsafe-swiftshader", "--use-angle=swiftshader"])
