@@ -169,12 +169,14 @@ const KIDS = {
     <div class="world-shell">
       <div class="world-canvas" id="worldMount" aria-label="Interactive pixel planet · 互動像素星球"></div>
       <div class="world-hud">
-        <button class="world-back" id="worldHeroes">← Heroes</button>
+        <!-- Base Camp first in the DOM: showOnly() focuses the first button, never the hero switch. -->
+        <button class="world-menu" id="worldClassic">⛺ Base Camp<span class="zh"> 營地</span></button>
         <div class="world-kid" id="worldKid">
           <span class="world-kid__avatar" id="worldKidAvatar">☀️</span>
           <span class="world-kid__copy"><b id="worldKidName">Summer Quest</b><small id="worldKidStats">⭐ 0</small></span>
+          <button class="world-switch" id="worldHeroes" aria-label="Switch hero · 換小英雄">⇄<span>Switch 換人</span></button>
         </div>
-        <button class="world-menu" id="worldClassic">☰ Classic menu</button>
+        <button class="world-waiting hidden" id="worldWaiting" aria-live="polite"></button>
       </div>
       <div class="world-hint" id="worldHint">☝️ Tap a place 點一個地方 · ↔️ spin the planet 轉動星球 · 🤏 pinch to zoom 雙指縮放</div>
       <div class="world-selection hidden" id="worldSelection" aria-live="polite">
@@ -183,14 +185,14 @@ const KIDS = {
         <button class="world-go" id="worldGo">GO 出發 →</button>
         <span class="world-selection__hint" id="worldSelectionHint">Tap GO or tap it again · 點「出發」或再點一次</span>
       </div>
-      <div class="world-status hidden" id="worldStatus"><b>3D world unavailable</b><span>You can still use the Classic menu. · 仍可使用傳統選單。</span></div>
+      <div class="world-status hidden" id="worldStatus"><b>World unavailable · 世界暫時打不開</b><span>You can still open Base Camp. · 仍可打開營地。</span></div>
     </div>
   </section>
 
   <!-- KID HUB -->
   <section id="hub" class="hidden">
     <div class="topbar">
-      <button class="btn" id="hubBack">← Heroes</button>
+      <button class="btn" id="hubBack">← 🌍 Planet 星球</button>
       <button class="btn small" id="papaBtn">🔧 Papa 爸爸</button>
       <div class="spacer"></div>
       <div class="hubstars" id="hubStars"></div>
@@ -950,6 +952,56 @@ function returnAfterContent(fallbackTab){
   if(target==="world"&&hubKid){openWorld(hubKid);return;}
   hubTab=fallbackTab||hubTab||"quests";showOnly("hub");saveAppPlace("hub");renderHub();
 }
+/* Every Back button names where it lands (docs/plans/2026-10-03-world-first-navigation D3):
+   the planet when the content was opened there, otherwise its Base Camp shelf. */
+const BACK_SHELF={games:["Games","遊戲"],practice:["Practice","練習"],acts:["Activities","活動"],learn:["Learning","學習"],music:["Music","音樂"],books:["Books","書籍"]};
+function backLabel(shelf,shelfOnly){
+  if(!shelfOnly&&contentReturnSurface==="world")return "← 🌍 Planet 星球";
+  const name=BACK_SHELF[shelf]||["Base Camp","營地"];
+  return "← "+name[0]+" "+name[1];
+}
+/* What on the planet is waiting for this kid (D5). Invitations only — coach, not cop:
+   a bobbing "!" over the landmark and a line on its card, never red, never a deadline.
+   Keys are planet landmark ids (js/world/planet-map.js SITES). */
+function worldAttention(){
+  const out={};
+  if(!hubKid||!KIDS[hubKid]||appLockReason(hubKid))return out;
+  try{
+    if(window.SQQuestCore&&window.SQQuestProgress&&window.SQQuestConfig){
+      const ctx=questContextFor("surprise","any"),active=SQQuestProgress.active(hubKid,ctx.day);
+      const left=SQQuestCore.dailyRequired(questCatalog(),ctx).filter(function(q){return !SQQuestProgress.done(hubKid,ctx.day,q.id);}).length;
+      if(active.some(function(r){return r.state==="redo";}))out["section:quests"]=["Papa says: one more try!","爸爸說：再試一次！"];
+      else if(active.some(function(r){return r.state==="in_progress"||r.state==="paused";}))out["section:quests"]=["Your quest is waiting for you","你的任務在等你"];
+      else if(left)out["section:quests"]=[left+(left===1?" quest":" quests")+" for today","今天還有 "+left+" 個任務"];
+    }
+    const lock=gameLockState(hubKid);
+    if(lock.locked&&lock.reason==="brain"){
+      const g=brainGate(hubKid);
+      out["section:games"]=["Brain Gym first, then games open ("+g.doneCount+"/"+(g.doneCount+g.remaining.length)+")","先做頭腦體操，遊戲就會打開"];
+    }else if(lock.locked)out["section:day"]=["Papa asked for a redo","爸爸請你再做一次"];
+    const news=window.SQNotify?SQNotify.unread(hubKid):0;
+    if(news)out["section:rewards"]=[news+" new in Rewards","獎勵有 "+news+" 則新消息"];
+  }catch(error){console.warn("World attention unavailable",error);}
+  return out;
+}
+function renderWorldWaiting(){
+  const button=document.getElementById("worldWaiting"),count=Object.keys(worldAttention()).length;
+  button.innerHTML=count?'✨ <b>'+count+'</b><span class="world-waiting__words"> waiting · '+count+' 件事在等你</span>':"";
+  button.setAttribute("aria-label",count+" things waiting · "+count+" 件事在等你");
+  button.classList.toggle("hidden",!count);
+}
+/* Store changes land through refreshLockUI; coalesce them into one planet refresh. */
+let worldAttentionQueued=false;
+function refreshWorldAttention(){
+  if(worldAttentionQueued||!worldVisible())return;
+  worldAttentionQueued=true;
+  setTimeout(function(){
+    worldAttentionQueued=false;
+    if(!worldVisible()||!hubKid)return;
+    renderWorldWaiting();
+    if(worldExplorerModule&&worldExplorerModule.refresh)worldExplorerModule.refresh();
+  },0);
+}
 function renderWorldHud(){
   if(!hubKid||!KIDS[hubKid])return;
   const k=KIDS[hubKid];
@@ -957,6 +1009,7 @@ function renderWorldHud(){
   document.getElementById("worldKidName").textContent=k.name;
   document.getElementById("worldKidStats").textContent=pointsOf(hubKid).available+" Points 點數 · "+pointsOf(hubKid).pending+" pending 待確認";
   document.documentElement.style.setProperty("--accent",k.color);
+  renderWorldWaiting();
 }
 async function openWorld(id){
   if(!id||!KIDS[id])return {ok:false,reason:"no_kid_selected"};
@@ -966,7 +1019,7 @@ async function openWorld(id){
   refreshStarsFromServer(id);reconcileQuestVerifications(id);updateSummerCompanion();
   if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("APP_OPENED",{surface:"world"});
   const token=++worldOpenToken,status=document.getElementById("worldStatus");
-  const worldMessage="The world is resting. You can open Classic. 世界暫時休息中，可以打開經典模式。";
+  const worldMessage="The world is resting. You can open Base Camp. 世界暫時休息中，可以打開營地。";
   status.textContent="Opening your world… 正在開啟你的世界…";
   status.classList.remove("hidden");
   try{
@@ -1187,7 +1240,7 @@ async function startGame(id,lvl,options){
   hud([]);
   if(window.SQActivityRouter){const gm=gameMeta(lvl)||{};SQActivityRouter.setCurrent("game",lvl,{title:gm.title||lvl,icon:gm.icon||"🎮"});}
   if(typeof updateSummerCompanion==="function")updateSummerCompanion();
-  document.getElementById("back").textContent="← "+KIDS[id].name;
+  document.getElementById("back").textContent=learningDirectorLaunch?backLabel("learn",true):backLabel(hubTab);
   document.documentElement.style.setProperty("--accent",KIDS[id].color);
   /* Hide the on-screen keyboard when the game doesn't read keys. The manifest
      carries authoritative `keyboard` flags (solar: false, hunt: true…); the
@@ -2638,7 +2691,6 @@ function openSummerCompanion(){
 }
 function renderHub(){
   queueBrowserPlace();
-  document.getElementById("hubBack").textContent=hubReturnSurface==="world"?"← World 世界":"← Heroes 小英雄";
   if(hubTab!=="learn")invalidateLearningSessionView();
   const k=KIDS[hubKid], done=actsToday(hubKid);
   if(hubKid!=="luis"&&hubTab==="captain") hubTab="quests";
@@ -2721,6 +2773,7 @@ function renderHub(){
   updateSummerCompanion();
 }
 function refreshLockUI(){
+  refreshWorldAttention();
   const games=document.getElementById("tab-games"),practice=document.getElementById("tab-practice");
   if(!games||!practice)return;
   const ls=gameLockState();
@@ -2760,6 +2813,7 @@ function openAct(i){
   if(!Number.isInteger(i)||!BANK[i])return {ok:false,reason:"content_not_found"};
   if(appLockReason(hubKid)||catLockReason(hubKid,"acts"))return {ok:false,reason:"not_available"};
   rememberContentReturn();
+  document.getElementById("actBack").textContent=backLabel("acts");
   stopActTimer();
   actIdx=i;
   const award=pointActivityTask(BANK_POOL[i]);
@@ -3382,6 +3436,7 @@ function openLearn(key){
   if(!LEARN_GUIDES[key])return {ok:false,reason:"content_not_found"};
   if(appLockReason(hubKid)||catLockReason(hubKid,"learn"))return {ok:false,reason:"not_available"};
   rememberContentReturn();
+  document.getElementById("actBack").textContent=backLabel("learn");
   stopActTimer();
   if(window.SQActivityRouter)SQActivityRouter.setCurrent("learning","guide:"+key);
   actIdx="L"+key; showOnly("act"); saveAppPlace("act");
@@ -3546,6 +3601,7 @@ async function openInstrument(id){
   if(appLockReason(hubKid))return {ok:false,reason:"app_locked"};
   var m=gameMeta(id); if(!m||!m.music)return {ok:false,reason:"content_not_found"};
   rememberContentReturn();
+  document.getElementById("musicBack").textContent=backLabel("music");
   stopArena(); stopActTimer(); closeInstrument(true);
   const token=instrumentLaunchToken,expectedKid=hubKid;
   hubTab="music";
@@ -3655,6 +3711,7 @@ async function openBook(id){
   if(appLockReason(hubKid)||tabLocked("books"))return {ok:false,reason:"not_available"};
   var cards=window[b.data];
   rememberContentReturn();
+  document.getElementById("bookBack").textContent=backLabel("books");
   stopArena(); stopActTimer();
   hubTab="books";
   var lyt=b.layout||null;
@@ -4043,6 +4100,7 @@ function updateRewardBadge(){
   const n=SQNotify.unread(hubKid);
   badge.textContent=n;
   badge.classList.toggle("hidden",n===0);
+  refreshWorldAttention();
 }
 function fmtWhen(t){
   const d=new Date(t);
@@ -4554,7 +4612,8 @@ if(window.SQContentRegistry){
       });
       questCatalog().forEach(function(quest){entries.push({id:"quest:"+quest.id,kind:"quest",zone:"plaza",icon:quest.icon,title:quest.title,blurb:quest.blurb,capabilities:["quests"],meta:{questId:quest.id}});});
       rewardCatalog().forEach(function(reward){entries.push({id:"reward:"+reward.id,kind:"reward",zone:"plaza",icon:reward.icon,title:reward.title,blurb:reward.blurb,capabilities:["rewards"],meta:{rewardId:reward.id,cost:reward.cost,enabled:reward.enabled}});});
-      return entries.map(function(entry){const access=contentEntryAccess(entry,{});entry.available=access.ok;entry.reason=access.reason||null;return entry;});
+      const attention=typeof worldAttention==="function"?worldAttention():{};
+      return entries.map(function(entry){const access=contentEntryAccess(entry,{});entry.available=access.ok;entry.reason=access.reason||null;entry.attention=attention[entry.id]||null;return entry;});
     },
     open:launchContentEntry
   });
@@ -4576,9 +4635,12 @@ function summerQuestBack(){
   const game=document.getElementById("game");
   if(game&&!game.classList.contains("hidden")){goHome();return true;}
   const hub=document.getElementById("hub");
-  if(hub&&!hub.classList.contains("hidden")){stopActTimer();if(hubReturnSurface==="world"&&hubKid){const id=hubKid;hubReturnSurface=null;openWorld(id);return true;}hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;}
+  /* Base Camp always goes back to the planet, however it was reached (D2). */
+  if(hub&&!hub.classList.contains("hidden")){stopActTimer();if(hubKid){const id=hubKid;hubReturnSurface=null;openWorld(id);return true;}hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;}
+  /* The planet is the root: Back closes focus or a mini-game, then lets Android leave.
+     Switching hero is the explicit ⇄ button, never a Back press (D4). */
   const world=document.getElementById("world");
-  if(world&&!world.classList.contains("hidden")){if(worldExplorerModule&&worldExplorerModule.back&&worldExplorerModule.back())return true;hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;}
+  if(world&&!world.classList.contains("hidden"))return !!(worldExplorerModule&&worldExplorerModule.back&&worldExplorerModule.back());
   return false;
 }
 function runtimeSurface(){return window.SQActivityRouter?SQActivityRouter.context():{surface:"home"};}
@@ -4687,6 +4749,7 @@ window.SQAppNavigation=window.SummerQuest;
 
 document.getElementById("worldHeroes").onclick=function(){SummerQuest.navigate("home");};
 document.getElementById("worldClassic").onclick=function(){SummerQuest.navigate("classic");};
+document.getElementById("worldWaiting").onclick=function(){if(worldExplorerModule&&worldExplorerModule.nextAttention)worldExplorerModule.nextAttention();};
 
 const summerCompanionButton=document.getElementById("summerCompanion");
 if(summerCompanionButton)summerCompanionButton.onclick=openSummerCompanion;

@@ -16,6 +16,8 @@
       blurb:Array.isArray(entry.blurb)?entry.blurb.slice(0,2):[String(entry.blurb||""),""],
       available:entry.available!==false,
       reason:entry.reason||null,
+      /* Optional [en, zh] invite the planet shows over a landmark (world-first navigation D5). */
+      attention:Array.isArray(entry.attention)?entry.attention.slice(0,2).map(String):null,
       capabilities:Array.isArray(entry.capabilities)?entry.capabilities.slice():[],
       meta:entry.meta&&typeof entry.meta==="object"?Object.assign({},entry.meta):{}
     } : null;

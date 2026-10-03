@@ -49,7 +49,33 @@ test("content opened from the world can return to that same surface", () => {
   assert.match(html, /returnAfterContent\("books"\)/);
   assert.match(html, /returnAfterContent\("music"\)/);
   assert.match(html, /returnAfterContent\(String\(actIdx\).*"learn":"acts"/);
-  assert.match(html, /hubReturnSurface==="world"/);
+});
+
+test("world-first navigation: Base Camp always backs out to the planet, the planet is the root", () => {
+  const html = read("index.html");
+  // Base Camp's Back reopens the planet however Base Camp was reached (boot restore included).
+  assert.match(html, /if\(hub&&!hub\.classList\.contains\("hidden"\)\)\{stopActTimer\(\);if\(hubKid\)\{const id=hubKid;hubReturnSurface=null;openWorld\(id\);return true;\}/);
+  // Back on the planet never logs the kid out: it closes focus/mini-game or lets Android leave.
+  assert.match(html, /if\(world&&!world\.classList\.contains\("hidden"\)\)return !!\(worldExplorerModule/);
+  assert.match(html, /id="hubBack">← 🌍 Planet 星球</);
+  assert.match(html, /id="worldClassic">⛺ Base Camp<span class="zh"> 營地<\/span>/);
+  assert.match(html, /class="world-switch" id="worldHeroes"/);
+  // Every content Back names where it lands.
+  for (const id of ["back", "actBack", "musicBack", "bookBack"]) {
+    assert.match(html, new RegExp(`getElementById\\("${id}"\\)\\.textContent=.*backLabel\\(`), `${id} label`);
+  }
+});
+
+test("waiting landmarks: the registry carries an [en, zh] invite and the planet draws it", () => {
+  const html = read("index.html");
+  assert.match(html, /entry\.attention=attention\[entry\.id\]\|\|null/);
+  assert.match(read("js/content-registry.js"), /attention:Array\.isArray\(entry\.attention\)/);
+  const world = read("js/world/world-explorer.js");
+  assert.match(world, /function drawAttention\(\)/);
+  assert.match(world, /export function nextAttention\(\)/);
+  assert.match(world, /export function refresh\(\)/);
+  // Coach, not cop: the bubble is yellow, never red.
+  assert.doesNotMatch(world.slice(world.indexOf("function bubbleImage"), world.indexOf("function drawAttention")), /C\.red|C\.lava/);
 });
 
 test("native Back ends a planet mini-game before leaving the world, and toys use the app's muted-aware beep", () => {
