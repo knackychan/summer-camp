@@ -36,6 +36,9 @@ export var MANIFEST = [
      lock the same way Brain Gym goes through. */
   { id: "paint",    brain: false, keyboard: false, bestKey: null,      legacy: false,
     meta: { icon: "\ud83c\udfa8", title: "Paint & Colour", tz: "\u756b\u756b\u8457\u8272", blurb: "Colour the sheets" } },
+  /* Creative builder, same open door as Paint (docs/plans/2026-10-03-brick-lab/ D4). */
+  { id: "bricklab", brain: false, keyboard: false, bestKey: null,      legacy: false,
+    meta: { icon: "🧱", title: "Brick Lab", tz: "積木實驗室", blurb: "Build with bricks · 積木建造" } },
 
   /* music: true keeps these out of the Games grid \u2014 they live in the Music Room
      tab, which hosts them full-screen (design.md D15 supersedes D1). They stay in

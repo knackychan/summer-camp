@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v141-origami-atelier";
+const CACHE_NAME = "summer-quest-v142-brick-lab-01";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -82,6 +82,7 @@ const APP_SHELL = [
   "./css/world-explorer.css",
   "./css/kitchen-quest.css",
   "./css/codequest.css",
+  "./css/brick-lab.css",
   "./js/config.js",
   "./js/day.js",
   "./js/star-id.js",
@@ -213,6 +214,10 @@ const APP_SHELL = [
   "./js/games/vocab.js",
   "./js/games/paint.js",
   "./js/games/paint-sheets.js",
+  "./js/games/bricklab.js",
+  "./js/brick-lab/brick-lab.js",
+  "./js/brick-lab/brick-catalog.js",
+  "./js/brick-lab/brick-storage.js",
   "./js/world/world-explorer.js",
   "./js/world/planet-palette.js",
   "./js/world/planet-map.js",

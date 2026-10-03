@@ -72,7 +72,7 @@ def run_case(browser, base, mode, out, offline=False):
             recovery.ready(page)
             recovery.wait_world(page)
         page.evaluate('sqTestMode.set(true)')
-        for game in ('solar','monster-truck'):
+        for game in ('solar','monster-truck','bricklab'):
             page.evaluate('mode=>window.sqGraphicsTestMode=mode', mode)
             opened = page.evaluate('id=>SummerQuest.open("game:"+id)', game)
             if mode == 'none':
