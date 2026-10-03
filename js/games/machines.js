@@ -10,7 +10,7 @@ function mchWords() {
 }
 
 function machinesHud() {
-  C.hud([{ k: "Wins", v: S.wins, c: C.kids[C.kid].raw }, { k: "Stars", v: C.stars }]);
+  C.hud([{ k: "Wins", v: S.wins, c: C.kids[C.kid].raw }, { k: "Points 點數", v: C.stars }]);
 }
 
 function mountMachine(kind, html) {

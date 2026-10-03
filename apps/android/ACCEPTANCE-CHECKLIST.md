@@ -41,9 +41,12 @@ Acceptance:
 
 - [ ] Authoritative Summer Quest root app opens without a LAN server.
 - [ ] No blank page / connection error appears.
-- [ ] Hero → **Miniature 3D World** opens as the primary child surface.
-- [ ] Drag rotates/looks around the world; pinch zoom remains bounded and stable.
-- [ ] Tap at least three physical landmarks/props and confirm the selection card updates.
+- [ ] Hero → **Pixel Planet** opens as the primary child surface (pixel globe on a starfield, crisp pixels, no blur).
+- [ ] Drag spins the globe in any direction, a flick coasts, the planet rights itself; pinch zoom stays bounded (1×–2×) and springs back at the limits.
+- [ ] Tap at least three places: the planet turns to centre each, the hero hops, the selection card updates with bilingual text.
+- [ ] Tap at least five toys: each plays its animation + sound (silent with Sound off) + haptic, never opens content, never awards stars.
+- [ ] Moon / whale / molehill / echo stone open a mini-game card; **GO** plays it in place; **Done 完成** and time-up (**Yay! 好棒！**, **OK 好**) both return to the planet.
+- [ ] Frame pacing feels smooth while spinning and during a mini-game (note any stutter with device model).
 - [ ] Use **GO** on a world destination and confirm it launches real root-runtime content.
 - [ ] Open **Classic menu**, then Back, and confirm it returns to the same world instead of another shell.
 - [ ] Games/Activities/Learning/Books/Music remain reachable from the world or Classic menu.
@@ -57,7 +60,8 @@ Turn Airplane mode back off after the test.
 
 ## 3. Android Back behavior
 
-- [ ] From content launched from the 3D world, Android Back returns to the 3D world rather than immediately closing the app.
+- [ ] From content launched from the planet, Android Back returns to the planet rather than immediately closing the app.
+- [ ] During a planet mini-game, Android Back ends the game and stays on the planet.
 - [ ] From Classic menu opened from the world, Android Back returns to the world.
 - [ ] From the world, Android Back returns to hero selection; at hero selection system Back may leave the app.
 - [ ] Repeated content launches do not create nested shells, duplicate headers/back controls, blank frames or iframes.
@@ -68,7 +72,7 @@ Turn Airplane mode back off after the test.
 Test at least one full rotation cycle while each state is visible.
 
 - [ ] Hero/world: portrait → landscape → portrait.
-- [ ] Rotate the world camera before orientation change and confirm the 3D scene recovers without a black canvas.
+- [ ] Spin the planet before an orientation change and confirm it redraws at the new size with crisp pixels and the same pose.
 - [ ] Books/Music/Games hub: portrait → landscape → portrait.
 - [ ] One real game/activity: portrait → landscape → portrait.
 - [ ] No clipped primary action or inaccessible navigation.

@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v113-desktop-acceptance";
+const CACHE_NAME = "summer-quest-v137-codequest-v14";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -71,6 +71,7 @@ const APP_SHELL = [
   "./dist/mobile/packages/learning/src/telemetry/TutorExperimentEvaluation.js",
   "./dist/mobile/packages/learning/src/experiments/TutorExperimentHarness.js",
   "./css/admin-tokens.css",
+  "./css/app.css",
   "./css/admin-shell.css",
   "./css/admin.css",
   "./css/admin-quests.css",
@@ -79,9 +80,12 @@ const APP_SHELL = [
   "./css/brain-scenes.css",
   "./css/quest-shell.css",
   "./css/world-explorer.css",
+  "./css/kitchen-quest.css",
+  "./css/codequest.css",
   "./js/config.js",
   "./js/day.js",
   "./js/star-id.js",
+  "./js/points.js",
   "./js/star-id.js?v=3",
   "./js/day-data.js",
   "./js/act-data.js",
@@ -127,6 +131,15 @@ const APP_SHELL = [
   "./js/brain/scenes/generic.js",
   "./js/brain/scenes/change.js",
   "./js/brain/scenes/recall.js",
+  "./js/brain/scenes/bonds.js",
+  "./js/brain/scenes/fractions.js",
+  "./js/brain/scenes/balance.js",
+  "./js/brain/scenes/circuit.js",
+  "./js/brain/scenes/sorter.js",
+  "./js/brain/scenes/sentence.js",
+  "./js/brain/scenes/soundmatch.js",
+  "./js/brain/scenes/memorymatch.js",
+  "./js/brain/scenes/patternecho.js",
   "./js/game-services/scheduler.js",
   "./js/game-services/motion.js",
   "./js/game-services/audio.js",
@@ -158,8 +171,33 @@ const APP_SHELL = [
   "./js/games/solar-sim.js",
   "./js/games/solar-quiz.js",
   "./js/games/solar.js",
-  "./js/games/dig.js",
-  "./js/games/city.js",
+  "./js/games/kitchen.js",
+  "./js/games/kitchen/model.js",
+  "./js/games/kitchen/ingredients.js",
+  "./js/games/kitchen/recipes.js",
+  "./js/games/kitchen/kitchen.js",
+  "./js/games/kitchen/motion.js",
+  "./js/games/kitchen/pixel-art.js",
+  "./js/games/kitchen/strings.js",
+  "./js/games/kitchen/progression.js",
+  "./js/games/kitchen/prep-plan.js",
+  "./js/games/kitchen/sprites.js",
+  "./js/games/kitchen/scene.js",
+  "./js/games/kitchen/audio.js",
+  "./js/games/kitchen/customers.js",
+  "./js/games/codequest.js",
+  "./js/games/codequest/ast.js",
+  "./js/games/codequest/interpreter.js",
+  "./js/games/codequest/parser.js",
+  "./js/games/codequest/alchemy-code.js",
+  "./js/games/codequest/loot.js",
+  "./js/games/codequest/run.js",
+  "./js/games/codequest/model.js",
+  "./js/games/codequest/levels.js",
+  "./js/games/codequest/progression.js",
+  "./js/games/codequest/strings.js",
+  "./js/games/codequest/pixel-art.js",
+  "./js/games/codequest/dungeon-view.js",
   "./js/games/monster-truck.js",
   "./js/games/hunt.js",
   "./js/games/home.js",
@@ -171,9 +209,19 @@ const APP_SHELL = [
   "./js/games/paint.js",
   "./js/games/paint-sheets.js",
   "./js/world/world-explorer.js",
+  "./js/world/planet-palette.js",
+  "./js/world/planet-map.js",
+  "./js/world/planet-globe.js",
+  "./js/world/planet-sprites.js",
+  "./js/world/planet-toys.js",
+  "./js/world/planet-minigames.js",
   "./js/vendor/three.core.min.js",
   "./js/vendor/three.module.min.js",
   "./js/vendor/OrbitControls.js",
+  "./js/games/three-runtime.js",
+  "./js/vendor/three-legacy/three.module.min.js",
+  "./js/vendor/three-legacy/OrbitControls.js",
+  "./js/vendor/three-legacy/Timer.js",
   "./js/vendor/supabase.js",
   "./assets/solar/sun.jpg",
   "./assets/solar/mercury.jpg",
@@ -425,22 +473,30 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => Promise.all(
-      APP_SHELL.map(url =>
-        fetch(url, {cache: "reload"})
-          .then(response => response.ok ? cache.put(url, response) : null)
-          .catch(() => null)
-      )
-    ))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => {
+    // Leave connections available for the screen the child is opening.
+    const pending = new Set(APP_SHELL).values();
+    return Promise.all(Array.from({ length: 4 }, async () => {
+      for (const url of pending) {
+        try {
+          const response = await fetch(url, { cache: "no-cache", priority: "low" });
+          if (!response.ok) throw new Error("Precache fetch failed");
+          await cache.put(url, response);
+        } catch {
+          // A failed update should not discard an asset that already works offline.
+          const previous = await caches.match(url);
+          if (previous) await cache.put(url, previous).catch(() => null);
+        }
+      }
+    }));
+  }));
   self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
-      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      keys.filter(key => key.startsWith("summer-quest-") && key !== CACHE_NAME).map(key => caches.delete(key))
     ))
   );
   self.clients.claim();
@@ -452,24 +508,35 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (/\/api(?:\/|$)/.test(url.pathname) || (request.headers && request.headers.has("authorization"))) return;
+  if (request.mode !== "navigate" && !/\.(?:html|js|mjs|css|json|svg|png|jpe?g|webp|gif|ico|mp3|wav|ogg|woff2?|webmanifest)$/i.test(url.pathname)) return;
 
-  // Network-first for EVERY same-origin GET, not just navigations. Cache-first on
-  // scripts meant tablets kept running the previous deploy's JS until someone did a
-  // hard reload. js/config.js is handled here too: leaving it to the browser's HTTP
-  // cache is what made F5 show "Config needed" while ctrl+shift+R worked.
-  const offline = request.mode === "navigate"
-    ? cached => cached || caches.match("./index.html")
-    : cached => cached;
-
-  event.respondWith(
-    fetch(request)
-      .then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-          event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => null));
-        }
-        return response;
-      })
-      .catch(() => caches.match(request).then(offline))
-  );
+  // App code and runtime config stay fresh. Media and vendored libraries are
+  // refreshed at install, so revisiting a world or book needs no network trip.
+  const cacheFirst = /\.(?:svg|png|jpe?g|webp|gif|ico|mp3|wav|ogg|woff2?)$/i.test(url.pathname)
+    || /\/js\/vendor\//.test(url.pathname);
+  let refresh;
+  const response = caches.open(CACHE_NAME).then(async cache => {
+    const cached = await cache.match(request)
+      || (request.mode === "navigate" ? await cache.match("./index.html") : undefined);
+    if (cacheFirst && request.cache !== "reload" && request.cache !== "no-cache") {
+      if (cached) return cached;
+    }
+    const network = fetch(request);
+    refresh = network.then(response => response.ok ? cache.put(request, response.clone()) : null).catch(() => null);
+    const fresh = network.catch(() => cached);
+    if (!cached) return fresh;
+    // A weak connection must not hold an already downloaded screen indefinitely.
+    // The request still refreshes the cache if it completes after this fallback.
+    let timeout;
+    try {
+      return await Promise.race([fresh, new Promise(resolve => {
+        timeout = setTimeout(() => resolve(cached), 2000);
+      })]);
+    } finally {
+      clearTimeout(timeout);
+    }
+  });
+  event.respondWith(response);
+  event.waitUntil(response.then(() => refresh).catch(() => null));
 });

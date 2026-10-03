@@ -18,6 +18,7 @@ var PRESETS = {
 
 /* Clamp resonance — hearing safety (design.md §6 constraint 3) */
 var MAX_RESONANCE = 20;
+var MAX_VOICES = 24;
 
 /* Waveform selector options */
 var WAVEFORMS = ["sine", "triangle", "sawtooth", "square"];
@@ -25,7 +26,7 @@ var WAVEFORMS = ["sine", "triangle", "sawtooth", "square"];
 /* Create a single voice for a given midi note.
    Signal path: osc1+osc2 → resonant lowpass → amp gain → instrument bus.
    Filter envelope modulates the cutoff from an offset down to the base value. */
-function createMoogVoice(ctx, bus, analyserNode, params, midi) {
+function createMoogVoice(ctx, analyserNode, params, midi, onEnded) {
   var freq = midiToFreq(midi);
   var detuneCents = params.detune || 0;
   var currentParams = params;
@@ -73,6 +74,25 @@ function createMoogVoice(ctx, bus, analyserNode, params, midi) {
   osc2.start(ctx.currentTime);
 
   var stopped = false;
+  var released = false;
+
+  function cleanup() {
+    if (stopped) return;
+    stopped = true;
+    osc1.disconnect();
+    osc2.disconnect();
+    lp.disconnect();
+    ampGain.disconnect();
+    onEnded();
+  }
+  osc2.onended = cleanup;
+
+  function stop() {
+    if (stopped) return;
+    osc1.stop();
+    osc2.stop();
+    cleanup();
+  }
 
   function glideParam(audioParam, value, timeConstant) {
     var now = ctx.currentTime;
@@ -85,7 +105,7 @@ function createMoogVoice(ctx, bus, analyserNode, params, midi) {
   }
 
   function update(nextParams) {
-    if (stopped) return;
+    if (stopped || released) return;
     currentParams = nextParams || currentParams;
     var nextDetune = currentParams.detune || 0;
     var nextWave = currentParams.wave || "sawtooth";
@@ -101,8 +121,8 @@ function createMoogVoice(ctx, bus, analyserNode, params, midi) {
   }
 
   function release() {
-    if (stopped) return;
-    stopped = true;
+    if (stopped || released) return;
+    released = true;
     var now = ctx.currentTime;
     var rel = currentParams.release || 0.3;
     ampGain.gain.cancelScheduledValues(now);
@@ -111,14 +131,9 @@ function createMoogVoice(ctx, bus, analyserNode, params, midi) {
     var stopAt = now + rel + 0.05;
     osc1.stop(stopAt);
     osc2.stop(stopAt);
-    setTimeout(function () {
-      try { osc1.disconnect(); osc2.disconnect(); } catch (e) {}
-      try { lp.disconnect(); } catch (e) {}
-      try { ampGain.disconnect(); } catch (e) {}
-    }, rel * 1000 + 100);
   }
 
-  return { release: release, update: update, ampGain: ampGain };
+  return { release: release, stop: stop, update: update, ampGain: ampGain };
 }
 
 /* Knob: pointer-drag delta. Returns a DOM div that tracks vertical drag and
@@ -225,8 +240,11 @@ function init(ctx) {
   var audio = getSharedAudio();
   var graph = audio.graph();
   var sched = createScheduler();
-  var previousCap = audio.setMaxVoices(24);
+  var previousCap = audio.setMaxVoices(MAX_VOICES);
   var voices = new Map();
+  /* Direct oscillator voices bypass the shared service's cap. Include release
+     tails here so fast chords and slides cannot accumulate audio graphs. */
+  var liveVoices = new Set();
   var mount = ctx.mount;
 
   /* Current parameters */
@@ -281,7 +299,7 @@ function init(ctx) {
   WAVEFORMS.forEach(function (w) {
     var btn = document.createElement("button");
     btn.textContent = w[0].toUpperCase() + w.slice(1);
-    btn.style.cssText = "background:" + (w === params.wave ? "#5AD1C4" : "#2F2E3D") + ";border:2px solid " + (w === params.wave ? "#5AD1C4" : "#3A3850") + ";color:" + (w === params.wave ? "#14131A" : "#F4F2FA") + ";border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:32px;";
+    btn.style.cssText = "background:" + (w === params.wave ? "#5AD1C4" : "#2F2E3D") + ";border:2px solid " + (w === params.wave ? "#5AD1C4" : "#3A3850") + ";color:" + (w === params.wave ? "#14131A" : "#F4F2FA") + ";border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:44px;";
     btn.setAttribute("role", "radio");
     btn.setAttribute("aria-checked", String(w === params.wave));
     btn.addEventListener("pointerdown", function () {
@@ -333,7 +351,7 @@ function init(ctx) {
     var p = PRESETS[pid];
     var btn = document.createElement("button");
     btn.textContent = p.name.en + " " + p.name.tz;
-    btn.style.cssText = "background:#2F2E3D;border:2px solid #3A3850;color:#B98CFF;border-radius:10px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:36px;";
+    btn.style.cssText = "background:#2F2E3D;border:2px solid #3A3850;color:#B98CFF;border-radius:10px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:44px;";
     btn.setAttribute("role", "button");
     btn.addEventListener("pointerdown", function () {
       var preset = PRESETS[pid];
@@ -387,7 +405,12 @@ function init(ctx) {
         voices.get(midi).release();
         voices.delete(midi);
       }
-      var voice = createMoogVoice(graph.ctx, instrumentBus, analyser, params, midi);
+      if (liveVoices.size >= MAX_VOICES) liveVoices.values().next().value.stop();
+      var voice = createMoogVoice(graph.ctx, analyser, params, midi, function () {
+        liveVoices.delete(voice);
+        if (voices.get(midi) === voice) voices.delete(midi);
+      });
+      liveVoices.add(voice);
       voices.set(midi, voice);
     },
     onNoteOff: function (midi) {
@@ -441,7 +464,9 @@ function init(ctx) {
     sched: sched,
     previousCap: previousCap,
     voices: voices,
+    liveVoices: liveVoices,
     instrumentBus: instrumentBus,
+    analyser: analyser,
     keybed: keybed,
     mount: mount,
     unblocked: false,
@@ -456,8 +481,7 @@ function init(ctx) {
   function onVisibility() {
     if (document.hidden && S) {
       if (S.keybed) S.keybed.allNotesOff();
-      voices.forEach(function (v) { v.release(); });
-      voices.clear();
+      liveVoices.forEach(function (v) { v.stop(); });
     }
   }
   document.addEventListener("visibilitychange", onVisibility);
@@ -476,10 +500,10 @@ function stop() {
     S.keybed.destroy();
   }
 
-  S.voices.forEach(function (v) { v.release(); });
-  S.voices.clear();
+  S.liveVoices.forEach(function (v) { v.stop(); });
 
   S.sched.cancelAll();
+  S.analyser.disconnect();
 
   if (S.instrumentBus) {
     try { S.instrumentBus.disconnect(); } catch (e) {}

@@ -83,20 +83,12 @@ const lock = (done, redos = {}, passOk = noPass) => {
   return { locked: st.locked, blockIdx: st.blockIdx };
 };
 
-test("free by default (games are only gated by redo/brain, not the schedule)", () => {
+test("free by default (games are only gated by brain, not the schedule)", () => {
   assert.deepEqual(lock({}), { locked: false, blockIdx: null });
 });
 
-test("redo block locks games regardless of the schedule", () => {
-  assert.deepEqual(lock({}, { 1: true }), { locked: true, blockIdx: 1 });
-});
-
-test("re-ticked redo block unlocks", () => {
-  assert.deepEqual(lock({ 1: true }, { 1: true }), { locked: false, blockIdx: null });
-});
-
-test("pass on redo block unlocks", () => {
-  assert.deepEqual(lock({}, { 1: true }, i => i === 1), { locked: false, blockIdx: null });
+test("redo block no longer locks games (Papa, 2026-10-03 — My Day is a guideline)", () => {
+  assert.deepEqual(lock({}, { 1: true }), { locked: false, blockIdx: null });
 });
 
 /* ---- Brain Gym gate (slice 11) ---- */
@@ -147,16 +139,16 @@ test("brainEnabled defaults to true and only '0' turns it off", () => {
 
 test("computeLock reports a reason for every lock", () => {
   assert.deepEqual(gateLock({ done: {}, redos: { 3: 1 }, brainOpen: true }),
-    { locked: true, blockIdx: 3, reason: "redo" });
+    { locked: false, blockIdx: null, reason: null });
   assert.deepEqual(gateLock({ done: {}, brainOpen: false }),
     { locked: true, blockIdx: null, reason: "brain" });
   assert.deepEqual(gateLock({ done: {}, brainOpen: true }),
     { locked: false, blockIdx: null, reason: null });
 });
 
-test("redo lock outranks the brain gate", () => {
+test("brain gate locks games even with a redo outstanding (redo no longer gates)", () => {
   assert.deepEqual(gateLock({ done: {}, redos: { 3: 1 }, brainOpen: false }),
-    { locked: true, blockIdx: 3, reason: "redo" });
+    { locked: true, blockIdx: null, reason: "brain" });
 });
 
 test("brainOpen defaults to open so pre-gate callers are unaffected", () => {
@@ -465,14 +457,15 @@ test("Color Words tot uses swatches and never a written word", () => {
   }
 });
 
-test("Number Cruncher's answer equals the real count in the field", () => {
+test("Number Bonds answer is a pair on the board that makes the target", () => {
   const rnd = SQBrainCore.mulberry32(7);
   for (const tier of ["tot", "mid", "hard"]) {
     const round = SQBrainCore.buildRound("crunch", tier, rnd);
     for (const item of round.items) {
-      const actual = item.prompt.glyphs.filter((g) => g === item.prompt.target).length;
-      assert.equal(Number(item.answer), actual);
-      assert.ok(actual >= 1, "never ask for a count of zero");
+      const pair = item.answer.split(' + ').map(Number);
+      assert.equal(pair[0] + pair[1], item.prompt.target);
+      assert.ok(pair.every(n => item.prompt.tiles.includes(n)));
+      assert.ok(item.choices.includes(item.answer), 'generic fallback remains playable');
     }
   }
 });

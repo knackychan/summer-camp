@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createTransport, judge } from "../js/game-services/music.js";
+import { createTransport, judge, HIT_WINDOW_MS } from "../js/game-services/music.js";
 
 /* Fake clock: the test drives time forward; the transport reads it. */
 function fakeClock() {
@@ -233,35 +233,48 @@ test("pause and resume keep one transport loop", function () {
 /* Judge tests */
 
 test("judge boundaries at offset=0", function () {
-  var noteAbsTime = 0; /* reference: note should fire at time 0 */
-  /* Perfect: <50ms */
-  assert.equal(judge(noteAbsTime + 0.049, noteAbsTime, 0, []), "perfect");
-  assert.equal(judge(noteAbsTime + 0.001, noteAbsTime, 0, []), "perfect");
-  assert.equal(judge(noteAbsTime - 0.049, noteAbsTime, 0, []), "perfect");
-
-  /* Good: 50-99ms */
-  assert.equal(judge(noteAbsTime + 0.051, noteAbsTime, 0, []), "good");
-  assert.equal(judge(noteAbsTime + 0.099, noteAbsTime, 0, []), "good");
-  assert.equal(judge(noteAbsTime - 0.051, noteAbsTime, 0, []), "good");
-
-  /* OK: 100-179ms */
-  assert.equal(judge(noteAbsTime + 0.101, noteAbsTime, 0, []), "ok");
-  assert.equal(judge(noteAbsTime + 0.179, noteAbsTime, 0, []), "ok");
-  assert.equal(judge(noteAbsTime - 0.101, noteAbsTime, 0, []), "ok");
-
-  /* Miss: >=180ms */
-  assert.equal(judge(noteAbsTime + 0.181, noteAbsTime, 0, []), "miss");
-  assert.equal(judge(noteAbsTime - 0.181, noteAbsTime, 0, []), "miss");
+  assert.equal(HIT_WINDOW_MS, 240);
+  [[0, "perfect"], [80, "perfect"], [81, "good"], [140, "good"],
+    [141, "ok"], [HIT_WINDOW_MS, "ok"], [HIT_WINDOW_MS + 1, "miss"]]
+    .forEach(function (entry) {
+      assert.equal(judge(entry[0] / 1000, 0, 0), entry[1], entry[0] + "ms late");
+      assert.equal(judge(-entry[0] / 1000, 0, 0), entry[1], entry[0] + "ms early");
+    });
 });
 
 test("judge honours the calibration offset", function () {
   var noteAbsTime = 0;
-  var offset = 80; /* ms — the tablet is 80ms late */
+  var offset = 100; /* ms — the tablet is 100ms late */
 
-  /* Tap comes 80ms after the beat — with 80ms offset this is perfect */
-  assert.equal(judge(noteAbsTime + 0.080, noteAbsTime, offset, []), "perfect");
+  assert.equal(judge(noteAbsTime + 0.100, noteAbsTime, offset), "perfect");
+  assert.equal(judge(noteAbsTime, noteAbsTime, offset), "good");
+  assert.equal(judge(noteAbsTime + 0.339, noteAbsTime, offset), "ok");
+  assert.equal(judge(noteAbsTime + 0.341, noteAbsTime, offset), "miss");
+});
 
-  /* Tap exactly on the drawn beat — with 80ms offset, effective diff is 80ms, which is "good" */
-  assert.equal(judge(noteAbsTime, noteAbsTime, offset, []), "good");
+test("pause freezes note position and resume keeps an unscheduled upcoming note", function () {
+  [0, 75].forEach(function (pauseAtMs) {
+    var clock = fakeClock();
+    var sched = fakeScheduler();
+    var played = [];
+    var note = { beat: 0, lane: 0 };
+    var transport = createTransport({ clock: clock, sched: sched,
+      playNote: function (next, time) { played.push({ note: next, time: time }); }
+    });
+    transport.start({ bpm: 70, notes: [note] }, (pauseAtMs + 50) / 1000);
+    clock.advance(pauseAtMs);
+    transport.pause();
+    var position = transport.positionOf(note);
+    clock.advance(3000);
+    sched.tick();
+    assert.equal(transport.positionOf(note), position, "notes remain frozen while paused");
+    assert.equal(played.length, 0);
+    transport.resume();
+    assert.equal(played.length, 1, "resume schedules the note 50ms ahead instead of skipping it");
+    assert.ok(Math.abs(played[0].time - clock.now - position) < 0.000001);
+    sched.tick();
+    assert.equal(played.length, 1, "the note is scheduled only once");
+    transport.stop();
+  });
 });
 

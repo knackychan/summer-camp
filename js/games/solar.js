@@ -5,6 +5,7 @@
 import { PLANETS, SOLAR, SCENE, ISS, SATELLITES, PLUTO, MILKYWAY, NEARBY_STARS } from "./solar-data.js";
 import { SPEEDS, daysPerSec, advance, orbitCount } from "./solar-sim.js";
 import { buildMission, grade } from "./solar-quiz.js";
+import { loadThree, createRenderer, releaseContext, firstFrame, observeResize } from "./three-runtime.js";
 
 var R = null;
 var initToken = 0;
@@ -158,11 +159,11 @@ function _settings(bar, ctx) {
 var SOLAR_CSS = [
   ".solar-ui * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent }",
   ".solar-ui { font-family:'Nunito',system-ui,sans-serif }",
-  ".solar-ui .chip { font-family:'Fredoka',system-ui,sans-serif; font-weight:600; font-size:16px; ",
+  ".solar-ui .chip { font-family:'Fredoka',system-ui,sans-serif; font-weight:600; font-size:16px; min-height:44px; ",
   "  border:2px solid #4A4090; background:rgba(25,19,64,.72); backdrop-filter:blur(6px); color:#A79FD6; ",
   "  border-radius:999px; padding:8px 18px; cursor:pointer; pointer-events:auto }",
   ".solar-ui .chip.on { background:#FFC93C; color:#1C1436; border-color:transparent }",
-  ".solar-ui .modebar { position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:2 }",
+  ".solar-ui .modebar { position:absolute; top:12px; left:12px; display:flex; gap:10px; z-index:2 }",
   ".solar-ui .timeband { position:absolute; left:10px; right:10px; bottom:10px; min-height:44px; ",
   "  background:rgba(51,43,102,.82); backdrop-filter:blur(8px); border:2px solid #4A4090; ",
   "  border-radius:14px; padding:6px 8px; display:flex; align-items:center; gap:8px; ",
@@ -173,9 +174,9 @@ var SOLAR_CSS = [
   ".solar-ui .counter2 { flex:1 1 auto; min-width:0; font-weight:800; font-size:11px; color:#A79FD6; ",
   "  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right; padding-right:4px }",
   ".solar-ui .speeds { flex:0 0 auto; display:flex; gap:5px; justify-content:center; align-items:center; flex-wrap:nowrap }",
-  ".solar-ui .speeds .chip { min-width:42px; min-height:32px; font-size:12px; padding:5px 8px; border-radius:11px }",
+  ".solar-ui .speeds .chip { min-width:44px; min-height:44px; font-size:12px; padding:5px 8px; border-radius:11px }",
   /* Info card */
-  ".solar-ui .infocard { position:absolute; top:12px; right:12px; bottom:12px; width:min(360px,92vw); overflow-y:auto; ",
+  ".solar-ui .infocard { position:absolute; top:12px; right:12px; bottom:80px; width:min(360px,calc(100% - 24px)); overflow-y:auto; ",
   "  background:rgba(25,19,64,.82); backdrop-filter:blur(10px); border:1px solid rgba(78,168,255,.45); border-radius:18px; ",
   "  padding:16px 16px 18px; box-shadow:0 0 32px rgba(78,168,255,.12); pointer-events:auto; z-index:2; ",
   "  animation:solar-card-in .22s ease-out; scrollbar-width:thin }",
@@ -196,7 +197,7 @@ var SOLAR_CSS = [
   ".solar-ui .ic-desc-tz { margin-top:4px; font-weight:700; font-size:14px; line-height:1.45; color:#A79FD6 }",
   ".solar-ui .ic-factbox { margin-top:12px; border:1px dashed rgba(255,201,60,.45); border-radius:12px; padding:10px 12px }",
   ".solar-ui .fb-head { display:flex; align-items:center; gap:8px; font-weight:800; font-size:11px; letter-spacing:2px; color:#FFC93C }",
-  ".solar-ui .fb-head button { margin-left:auto; width:34px; height:34px; font-size:15px; border-radius:10px; ",
+  ".solar-ui .fb-head button { margin-left:auto; flex:none; width:44px; height:44px; font-size:15px; border-radius:10px; ",
   "  border:1px solid rgba(255,201,60,.45); background:transparent; color:#FFC93C; cursor:pointer }",
   ".solar-ui .fb-en { margin-top:6px; font-weight:700; font-size:15px; line-height:1.4; color:#F3F0FF }",
   ".solar-ui .fb-tz { margin-top:2px; font-weight:700; font-size:14px; color:#A79FD6 }",
@@ -210,7 +211,7 @@ var SOLAR_CSS = [
   ".solar-ui .btn:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.25) }",
   ".solar-ui .btn.gold { background:#FFC93C; color:#1C1436 }",
   /* Quiz banner */
-  ".solar-ui .quizbanner { position:absolute; top:64px; left:50%; transform:translateX(-50%); width:min(92vw,600px); ",
+  ".solar-ui .quizbanner { position:absolute; top:64px; left:50%; transform:translateX(-50%); width:min(calc(100% - 24px),600px); ",
   "  background:#3D3475; border:2px solid #4A4090; border-radius:18px; padding:12px 18px; ",
   "  display:flex; align-items:center; gap:14px; pointer-events:auto; z-index:2; ",
   "  animation:solar-card-in .22s ease-out }",
@@ -229,7 +230,7 @@ var SOLAR_CSS = [
   ".solar-ui .endcard { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; ",
   "  background:rgba(20,14,46,.55); z-index:3; pointer-events:auto }",
   ".solar-ui .endcard .card { background:#332B66; border:2px solid #4A4090; border-radius:22px; ",
-  "  padding:28px 32px; text-align:center; max-width:min(90vw,420px); animation:solar-card-in .22s ease-out }",
+  "  padding:28px 32px; text-align:center; max-width:min(90%,420px); max-height:calc(100% - 24px); overflow:auto; animation:solar-card-in .22s ease-out }",
   ".solar-ui .endcard .big { font-family:'Fredoka',system-ui,sans-serif; font-weight:700; font-size:48px; color:#F3F0FF }",
   ".solar-ui .endcard .big b { color:#FFC93C }",
   ".solar-ui .endcard p { margin-top:6px; font-weight:800; font-size:16px; color:#A79FD6 }",
@@ -243,7 +244,7 @@ var SOLAR_CSS = [
   "  .solar-ui .counter2 { display:none } ",
   "  .solar-ui .speeds { flex:1 1 auto } ",
   "  .solar-ui .speeds .chip { flex:1 1 0; min-width:0; padding:5px 2px; font-size:11px } ",
-  "  .solar-ui .infocard { top:auto; left:12px; right:12px; bottom:62px; width:auto; max-height:48vh } }"
+  "  .solar-ui .infocard { top:auto; left:12px; right:12px; bottom:80px; width:auto; max-height:48vh } }"
 ].join("\n");
 
 /* ====== Helpers ====== */
@@ -364,10 +365,11 @@ export default {
 
   init: async function (ctx) {
     var token = ++initToken;
-    var THREE = await import("../vendor/three.module.min.js");
-    var OrbitControlsMod = await import("../vendor/OrbitControls.js");
+    await Promise.resolve();
     if(token !== initToken)return;
-    var OrbitControls = OrbitControlsMod.OrbitControls;
+    var runtime = await loadThree(document.createElement("canvas"),true);
+    if(token !== initToken){releaseContext(runtime);return;}
+    var THREE = runtime.THREE, OrbitControls = runtime.OrbitControls;
 
     R = {};
     R.THREE = THREE;
@@ -392,7 +394,7 @@ export default {
     mount.style.overscrollBehavior = "none";
     mount.innerHTML = "";
 
-    var canvas = document.createElement("canvas");
+    var canvas = runtime.canvas;
     canvas.style.display = "block";
     canvas.style.width = "100%";
     canvas.style.height = "100%";
@@ -400,8 +402,7 @@ export default {
     mount.appendChild(canvas);
 
     /* Renderer */
-    R.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-    R.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    R.renderer = createRenderer(runtime,2);
     R.renderer.setClearColor(0x191340);
     var initialW = Math.max(mount.clientWidth || 640, 1);
     var initialH = Math.max(mount.clientHeight || 320, 1);
@@ -769,6 +770,7 @@ export default {
     mwTexLoader.load(
       "assets/solar/milkyway-sky.jpg",
       function (tex) {
+        if(token !== initToken){tex.dispose();return;}
         tex.colorSpace = THREE.SRGBColorSpace;
         mwBackdrop.material.map = tex;
         mwBackdrop.material.color.set(0xffffff);
@@ -1335,8 +1337,7 @@ export default {
       R.camera.aspect = w / Math.max(h, 1);
       R.camera.updateProjectionMatrix();
     };
-    R.ro = new ResizeObserver(function () { R.resize(); });
-    R.ro.observe(mount);
+    R.ro = observeResize(mount,R.resize);
 
     /* ====== Visibility ====== */
     function onVisChange() {
@@ -1387,6 +1388,7 @@ export default {
 
     function tick() {
       if (!R) return;
+      if(R.renderer.getContext().isContextLost()||R.renderer.sqGraphicsError){R.raf=requestAnimationFrame(tick);return;}
       R.timer.update();
       var dt = Math.min(R.timer.getDelta(), 0.1);
 
@@ -1493,6 +1495,7 @@ export default {
       R.raf = requestAnimationFrame(tick);
     }
 
+    firstFrame(R.renderer,R.scene,R.camera);
     R.raf = requestAnimationFrame(tick);
   },
 

@@ -28,15 +28,28 @@ function clockSvg(h, m) {
 }
 
 function promptHtml(p) {
-  if (p.type === "emoji") return '<div class="brain-generic__task">' + p.en + '</div>';
-  if (p.type === "swatch") return '<div class="brain-generic__swatch" style="background:' + COLORS[p.ink][0] + '"></div>';
-  if (p.type === "colorword") return '<div class="brain-generic__task" style="color:' + COLORS[p.ink][0] + '">' + p.word + '</div>';
+  if (p.type === 'numberbonds') return sub(p);
+  if (p.type === "emoji") {
+    function counters(count) {
+      return '<span class="brain-generic__counters">' + Array.from({ length: count }, function (_, i) {
+        return '<button type="button" class="brain-generic__counter" aria-pressed="false" aria-label="Count object ' + (i + 1) + ' 數第 ' + (i + 1) + ' 個">' + p.em + '</button>';
+      }).join('') + '</span>';
+    }
+    return '<div class="brain-generic__equation">' + counters(p.a) + '<span class="brain-generic__operator">+</span>' + counters(p.b) + '</div>' +
+      '<div class="brain-generic__sub">Tap each object to count<span class="zhs">點一下物品，數一數</span></div>';
+  }
+  if (p.type === "swatch") return '<div class="brain-generic__swatch" style="background:' + COLORS[p.ink][0] + '"></div>' + sub(p);
+  if (p.type === "colorword") return '<div class="brain-generic__task" style="color:' + COLORS[p.ink][0] + '">' + p.word + '</div>' + sub(p);
   if (p.type === "countfield") return '<div class="brain-generic__field">' + p.glyphs.join("") + '</div>' + sub(p);
   if (p.type === "clockface") return clockSvg(p.h, p.m) + sub(p);
   if (p.type === "money") return '<div class="brain-generic__task">' + (p.art || "") + '</div>' + sub(p);
   if (p.type === "gridflash") return '<div class="brain-generic__grid" data-role="grid"></div>' + sub(p);
   if (p.type === "wordlist") return '<div class="brain-generic__words" data-role="words"></div>' + sub(p);
-  return '<div class="brain-generic__task">' + p.en + '</div>';
+  if (/^[\d\s+×÷−=?]+$/.test(p.en)) return '<div class="brain-generic__equation">' + p.en.split(/\s+/).map(function (part) {
+    var kind = part === '?' ? 'missing' : /^\d+$/.test(part) ? 'number' : 'operator';
+    return '<span class="brain-generic__' + kind + '">' + part + '</span>';
+  }).join('') + '</div>';
+  return p.zh && p.zh !== p.en ? sub(p) : '<div class="brain-generic__task">' + p.en + '</div>';
 }
 function sub(p) {
   return '<div class="brain-generic__sub">' + p.en + '<span class="zhs">' + p.zh + '</span></div>';
@@ -48,7 +61,7 @@ function padHtml(pad, entry) {
       '<div class="brain-generic__grid" data-role="gridpad"></div>';
   }
   if (pad === "type") {
-    return '<textarea class="brain-generic__type" data-role="type" rows="3" placeholder="Type the words 打出單字"></textarea>' +
+    return '<textarea class="brain-generic__type" data-role="type" rows="3" aria-label="Words you remember 你記得的單字" placeholder="Type the words 打出單字"></textarea>' +
       '<div class="brain-generic__bpmfpad" data-role="bpmfpad"></div>' +
       '<button class="brain-key" data-v="✓">Done 完成</button>';
   }
@@ -56,7 +69,7 @@ function padHtml(pad, entry) {
     var keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "✓"];
     return '<div class="brain-generic__entry">' + (entry === "" ? "&nbsp;" : entry) + '</div>' +
       '<div class="brain-generic__keypad">' + keys.map(function (k) {
-        return '<button class="brain-key" data-v="' + k + '">' + k + '</button>';
+        return '<button class="brain-key" type="button" data-v="' + k + '" aria-label="' + (k === '⌫' ? 'Delete 刪除' : k === '✓' ? 'Check answer 確認答案' : k) + '">' + k + '</button>';
       }).join("") + '</div>';
   }
   return '<div class="brain-generic__choices" data-role="choices"></div>';
@@ -65,7 +78,7 @@ function padHtml(pad, entry) {
 function choiceButtonsHtml(item) {
   return (item.choices || []).map(function (c) {
     if (item.choiceStyle === "swatch") {
-      return '<button class="brain-key brain-key--swatch" data-v="' + c + '" style="background:' + COLORS[c][0] + '" aria-label="' + COLORS[c][1] + '"></button>';
+      return '<button class="brain-key brain-key--swatch" type="button" data-v="' + c + '" style="background:' + COLORS[c][0] + '" aria-label="' + COLORS[c][1] + ' ' + COLORS[c][2] + '"></button>';
     }
     var label = COLORS[c] ? COLORS[c][1] + " " + COLORS[c][2] : c;
     return '<button class="brain-key" data-v="' + c + '">' + label + '</button>';
@@ -84,6 +97,7 @@ function create(ctx) {
   var entry = "";
   var currentItem = null;
   var inputEnabled = false;
+  var pendingSubmit = false;
 
   function root() { return ctx.mount; }
   function isBopomofoType() { return pad === "type" && ctx.inputScript === "bpmf" && ctx.bopomofo; }
@@ -94,6 +108,8 @@ function create(ctx) {
   }
 
   function submitValue(v) {
+    if (pendingSubmit) return;
+    pendingSubmit = true;
     ctx.submit(v);
   }
 
@@ -118,7 +134,7 @@ function create(ctx) {
   function wireKeys() {
     root().querySelectorAll(".brain-key").forEach(function (b) {
       b.disabled = !inputEnabled;
-      b.onclick = function () { if (inputEnabled) press(b.dataset.v); };
+      b.onclick = function () { if (inputEnabled && !pendingSubmit) press(b.dataset.v); };
     });
   }
 
@@ -146,7 +162,7 @@ function create(ctx) {
       }).join("");
       padHost.querySelectorAll(".brain-key").forEach(function (b) {
         b.onclick = function () {
-          if (!inputEnabled) return;
+          if (!inputEnabled || b.disabled || pendingSubmit) return;
           b.disabled = true; b.classList.add("is-used");
           entry = entry === "" ? b.dataset.v : entry + "," + b.dataset.v;
           renderEntry();
@@ -203,7 +219,7 @@ function create(ctx) {
   }
 
   function present(item) {
-    currentItem = item; entry = ""; inputEnabled = false;
+    currentItem = item; entry = ""; inputEnabled = false; pendingSubmit = false;
     root().innerHTML =
       '<div class="brain-task-card brain-generic__prompt">' + promptHtml(item.prompt) + '</div>' +
       '<div class="brain-answer brain-generic__pad">' + padHtml(pad, entry) + '</div>' +
@@ -218,19 +234,32 @@ function create(ctx) {
     else if (pad === "choice") mountChoices(item);
     else wireKeys();
     if (pad === "type") mountBopomofoPad();
+    root().querySelectorAll('.brain-generic__counter').forEach(function (button) {
+      button.onclick = function () {
+        if (!inputEnabled || pendingSubmit) return;
+        var counted = button.getAttribute('aria-pressed') !== 'true';
+        button.setAttribute('aria-pressed', String(counted));
+        button.classList[counted ? 'add' : 'remove']('is-counted');
+        ctx.motion.emphasize(button);
+        ctx.audio.play('token-pick', {});
+      };
+    });
   }
 
   function setInputEnabled(enabled) {
     inputEnabled = !!enabled;
     var ta = root().querySelector('[data-role="type"]');
     var studying = !!(ta && ta.dataset.studying);
-    root().querySelectorAll(".brain-key").forEach(function (b) { b.disabled = !inputEnabled || studying; });
+    root().querySelectorAll(".brain-key,.brain-generic__counter").forEach(function (b) { b.disabled = !inputEnabled || studying || b.classList.contains('is-used'); });
     if (ta && !ta.dataset.studying) ta.disabled = !inputEnabled;
+    if (inputEnabled && pad === 'keypad') { root().setAttribute('tabindex', '-1'); root().focus({ preventScroll: true }); }
   }
 
   function showFeedback(feedback) {
     root().querySelectorAll(".brain-key").forEach(function (b) { b.disabled = true; });
-    if (feedback.correct) return null;
+    var task = root().querySelector('.brain-task-card');
+    if (task) task.classList.add(feedback.correct ? 'is-success' : 'is-hint');
+    if (feedback.correct) return ctx.motion.emphasize(task);
     var panel = root().querySelector(".brain-corrective");
     if (panel) {
       panel.hidden = false;
@@ -238,7 +267,7 @@ function create(ctx) {
       if (Array.isArray(corrective) && corrective[0] && corrective[1]) {
         panel.innerHTML = '<span>' + corrective[0] + '</span><span class="zhs">' + corrective[1] + '</span>';
       } else {
-        panel.innerHTML = '<span>Count</span> <b>' + feedback.answer + '</b><span class="zhs">數一數 ' + feedback.answer + '</span>';
+        panel.innerHTML = '<span>Answer:</span> <b>' + feedback.answer + '</b><span class="zhs">答案：' + feedback.answer + '</span>';
       }
     }
     return new Promise(function (resolve) { ctx.scheduler.after(900, resolve); });
@@ -246,8 +275,19 @@ function create(ctx) {
 
   function destroy() {
     currentItem = null;
+    root().removeEventListener('keydown', onKeydown);
     root().innerHTML = "";
   }
+
+  function onKeydown(event) {
+    if (!inputEnabled || pendingSubmit || pad !== 'keypad' || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key === 'Enter' && event.target && event.target.tagName === 'BUTTON') return;
+    var value = event.key === 'Enter' ? '✓' : event.key === 'Backspace' ? '⌫' : event.key;
+    if (!/^[0-9]$/.test(value) && value !== '✓' && value !== '⌫') return;
+    event.preventDefault();
+    press(value);
+  }
+  root().addEventListener('keydown', onKeydown);
 
   return {
     present: function (item) { present(item); },

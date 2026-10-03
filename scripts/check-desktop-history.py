@@ -120,15 +120,23 @@ def history_checks(page, base):
     page.wait_for_function("!browserPlaceRestoring")
     recovery.invariant(page, "home")
     assert page.evaluate("localStorage.getItem('sq:kid')") == "lucien"
+    saved_index = page.evaluate("history.state.index")
     page.reload(wait_until="domcontentloaded")
     recovery.ready(page)
-    recovery.invariant(page, "home")
+    recovery.wait_world(page)
+    assert page.evaluate("history.state.index") == saved_index
     assert page.evaluate("JSON.parse(localStorage.getItem('sq:kidPins')).lucien") == "2468"
+    page.locator("#summerCompanion").click()
+    page.wait_for_selector("body > .overlay")
+    page.go_back()
+    page.wait_for_function("!document.querySelector('body > .overlay') && !browserPlaceUndo")
+    recovery.invariant(page, "world")
+    assert page.evaluate("history.state.index") == saved_index
     initial = page.context.new_page()
     initial.goto(base + "/manifest.webmanifest")
     initial.goto(base + "/index.html", wait_until="domcontentloaded")
     recovery.ready(initial)
-    recovery.wait_screen(initial, "home")
+    recovery.wait_world(initial)
     initial.go_back()
     assert initial.url.endswith("/manifest.webmanifest"), initial.url
     initial.close()

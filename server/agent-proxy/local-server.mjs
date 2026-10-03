@@ -1,8 +1,11 @@
-import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync } from "node:fs";
+import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { networkInterfaces } from "node:os";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { pipeline } from "node:stream/promises";
+import { createGzip, constants as zlibConstants } from "node:zlib";
 
 import { AgentProxyService } from "../../dist/agent-proxy/server/agent-proxy/src/AgentProxyService.js";
 import { createAgentProxyFetchHandler } from "../../dist/agent-proxy/server/agent-proxy/src/createFetchHandler.js";
@@ -266,7 +269,7 @@ export async function startLocalServer(options = {}) {
   const rateAllow = createRateLimiter(rateLimit);
   const telemetryRateAllow = createRateLimiter(telemetryRateLimit);
   const telemetryStore = new LearningTelemetryFileStore({
-    path: resolve(PROJECT_ROOT, "server/agent-proxy/data/learning-telemetry.json"),
+    path: resolve(PROJECT_ROOT, options.telemetryPath || "server/agent-proxy/data/learning-telemetry.json"),
     limit: telemetryLimit,
   });
 
@@ -339,17 +342,38 @@ export async function startLocalServer(options = {}) {
       if (req.method !== "GET" && req.method !== "HEAD") return sendText(res, 405, "Method not allowed", "text/plain; charset=utf-8", { allow: "GET, HEAD" });
       let filePath = publicPathForUrl(url.pathname);
       if (!filePath) return sendText(res, 404, "Not found");
-      if (existsSync(filePath) && statSync(filePath).isDirectory()) filePath = join(filePath, "index.html");
-      if (!existsSync(filePath) || !statSync(filePath).isFile()) return sendText(res, 404, "Not found");
-      const stat = statSync(filePath);
+      let info = await stat(filePath).catch(() => null);
+      if (info?.isDirectory()) {
+        filePath = join(filePath, "index.html");
+        info = await stat(filePath).catch(() => null);
+      }
+      if (!info?.isFile()) return sendText(res, 404, "Not found");
       const type = MIME.get(extname(filePath).toLowerCase()) || "application/octet-stream";
-      res.writeHead(200, {
-        "content-type": type,
-        "content-length": stat.size,
-        "cache-control": /(?:^|[\\/])(?:dist|assets)[\\/]/.test(filePath) ? "public, max-age=300" : "no-cache",
+      const etag = `W/"${info.size.toString(16)}-${info.mtimeMs.toString(16)}"`;
+      const compressible = info.size >= 1024 && /^(?:text\/|application\/(?:json|manifest\+json)|image\/svg\+xml)/.test(type);
+      const gzip = compressible && String(req.headers["accept-encoding"] || "").split(",").some(value => {
+        const [encoding, ...params] = value.trim().split(";");
+        return encoding.toLowerCase() === "gzip" && !params.some(param => /^q\s*=\s*0(?:\.0*)?\s*$/i.test(param.trim()));
       });
+      const headers = {
+        "content-type": type,
+        "cache-control": /(?:^|[\\/])assets[\\/]/.test(filePath) ? "public, max-age=300" : "no-cache",
+        etag,
+        ...(compressible ? { vary: "Accept-Encoding" } : {}),
+      };
+      if (String(req.headers["if-none-match"] || "").split(/\s*,\s*/).some(value => value === "*" || value.replace(/^W\//, "") === etag.slice(2))) {
+        res.writeHead(304, headers);
+        return res.end();
+      }
+      res.writeHead(200, { ...headers, ...(gzip ? { "content-encoding": "gzip" } : { "content-length": info.size }) });
       if (req.method === "HEAD") return res.end();
-      createReadStream(filePath).pipe(res);
+      const stream = createReadStream(filePath);
+      if (gzip) await pipeline(stream, createGzip({
+        level: zlibConstants.Z_BEST_SPEED,
+        // Let the browser parse the first HTML chunk before the rest is read.
+        flush: type.startsWith("text/html") ? zlibConstants.Z_SYNC_FLUSH : zlibConstants.Z_NO_FLUSH,
+      }), res);
+      else await pipeline(stream, res);
     } catch (error) {
       const statusCode = Number(error && error.statusCode) || 500;
       if (!res.headersSent) sendJson(res, statusCode, { error: statusCode === 413 ? "payload_too_large" : "server_error", message: statusCode === 500 ? "Local Summer Quest server error" : String(error.message || error) });

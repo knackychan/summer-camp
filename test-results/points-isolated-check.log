@@ -1,0 +1,5 @@
+Summer Quest check passed: syntax, bilingual data, pool alignment, and tracked-file secret scan are green.
+(node:35864) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/WORK/sq-points-verify-1791000055773/js/games/index.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\WORK\sq-points-verify-1791000055773\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)

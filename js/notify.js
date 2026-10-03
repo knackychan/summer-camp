@@ -61,11 +61,11 @@
 
   /* ---- achievements ---- */
   const ACHIEVEMENTS=[
-    {id:"star1", icon:"⭐", en:"First star", zh:"第一顆星", test:s=>s.stars>=1},
-    {id:"star10", icon:"🌟", en:"10 stars", zh:"10 顆星", test:s=>s.stars>=10},
-    {id:"star25", icon:"✨", en:"25 stars", zh:"25 顆星", test:s=>s.stars>=25},
-    {id:"star50", icon:"💫", en:"50 stars", zh:"50 顆星", test:s=>s.stars>=50},
-    {id:"star100", icon:"🏆", en:"100 stars", zh:"100 顆星", test:s=>s.stars>=100},
+    {id:"star1", icon:"⭐", en:"First 10 points", zh:"第一筆 10 點", test:s=>s.stars>=10},
+    {id:"star10", icon:"🌟", en:"100 points", zh:"100 點數", test:s=>s.stars>=100},
+    {id:"star25", icon:"✨", en:"250 points", zh:"250 點數", test:s=>s.stars>=250},
+    {id:"star50", icon:"💫", en:"500 points", zh:"500 點數", test:s=>s.stars>=500},
+    {id:"star100", icon:"🏆", en:"1000 points", zh:"1000 點數", test:s=>s.stars>=1000},
     {id:"day", icon:"📅", en:"A whole day finished", zh:"完成一整天", test:s=>s.fullDay},
     {id:"brain", icon:"🧠", en:"Brain Gym trio done", zh:"完成頭腦體操三項", test:s=>s.brain},
     {id:"acts3", icon:"🏕", en:"3 activities in one day", zh:"一天完成 3 個活動", test:s=>s.acts>=3},

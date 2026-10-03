@@ -59,6 +59,11 @@
   const BONUS_DELTA=2;
 
   const api={
+    random:function(){
+      return crypto.randomUUID?crypto.randomUUID():
+        "10000000-1000-4000-8000-100000000000".replace(/[018]/g,c=>
+          (c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
+    },
     block:function(kid,dayISO,blockIdx){return starId(kid,dayISO,blockIdx);},
     bonus:function(kid,dayISO){return starId(kid,dayISO,BONUS_SLOT);},
     brain:function(kid,dayISO){return starId(kid,dayISO,BRAIN_SLOT);},

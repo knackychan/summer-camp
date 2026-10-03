@@ -129,22 +129,29 @@ export function createKeybed(opts) {
     positionBlackKeys();
   }
 
-  function activateKey(el, pointerId) {
+  function isHeld(midi) {
+    return Array.from(keyMap.values()).indexOf(midi) !== -1;
+  }
+
+  function activateKey(el, pointerId, capture) {
     if (destroyed) return;
     var midi = parseInt(el.dataset.midi, 10);
+    if (keyMap.get(pointerId) === midi) return;
+    releasePointer(pointerId);
+    var alreadyHeld = isHeld(midi);
     keyMap.set(pointerId, midi);
-    if (typeof pointerId === "number" && el.setPointerCapture) {
+    if (capture !== false && typeof pointerId === "number" && el.setPointerCapture) {
       try { el.setPointerCapture(pointerId); } catch (e) {}
     }
     el.classList.add("sq-key-active");
-    onNoteOn(midi);
+    if (!alreadyHeld) onNoteOn(midi);
   }
 
   function releasePointer(pointerId) {
     if (destroyed) return;
     var midi = keyMap.get(pointerId);
     keyMap.delete(pointerId);
-    if (midi === undefined) return;
+    if (midi === undefined || isHeld(midi)) return;
     var el = keyElements.get(midi);
     if (el) el.classList.remove("sq-key-active");
     onNoteOff(midi);
@@ -157,14 +164,8 @@ export function createKeybed(opts) {
     var target = document.elementFromPoint(e.clientX, e.clientY);
     if (target && target.dataset && target.dataset.midi) {
       var newMidi = parseInt(target.dataset.midi, 10);
-      if (newMidi !== oldMidi) {
-        keyMap.set(e.pointerId, newMidi);
-        onNoteOff(oldMidi);
-        onNoteOn(newMidi);
-        var oldEl = keyElements.get(oldMidi);
-        if (oldEl) oldEl.classList.remove("sq-key-active");
-        var newEl = keyElements.get(newMidi);
-        if (newEl) newEl.classList.add("sq-key-active");
+      if (newMidi !== oldMidi && keyElements.get(newMidi) === target) {
+        activateKey(target, e.pointerId, false);
       }
     }
   }
@@ -224,10 +225,9 @@ export function createKeybed(opts) {
   window.addEventListener("resize", positionBlackKeys);
 
   function allNotesOff() {
-    keyMap.forEach(function (midi, ptrId) {
-      onNoteOff(midi);
-    });
+    var notes = new Set(keyMap.values());
     keyMap.clear();
+    notes.forEach(function (midi) { onNoteOff(midi); });
     keyElements.forEach(function (el) {
       el.classList.remove("sq-key-active");
     });

@@ -52,6 +52,7 @@ function deviceInfo() {
     model: prop("ro.product.model"),
     androidVersion: prop("ro.build.version.release"),
     apiLevel: Number(prop("ro.build.version.sdk")) || null,
+    webView: shellText(["dumpsys", "webviewupdate"]).split(/\r?\n/).find(line => line.includes("Current WebView package"))?.trim() || "unknown",
     display: shellText(["wm", "size"]),
     density: shellText(["wm", "density"]),
     installed: installed(),
@@ -128,6 +129,7 @@ if (command === "status") {
 if (json) process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 else {
   console.log(`Device: ${report.device.manufacturer} ${report.device.model} (${report.device.serial}) Android ${report.device.androidVersion} / API ${report.device.apiLevel}`);
+  console.log(`WebView: ${report.device.webView}`);
   console.log(`Display: ${report.device.display || "unknown"}; ${report.device.density || "density unknown"}`);
   console.log(`Summer Quest installed: ${report.device.installed ? "yes" : "no"}`);
   if (report.artifact) console.log(`Installed APK SHA-256: ${report.artifact.sha256}`);

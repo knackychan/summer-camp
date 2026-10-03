@@ -1,0 +1,1964 @@
+{
+  "remoteServices": "blocked; synthetic config also served to service workers",
+  "world": "2D canvas pixel planet; desktop Chromium is not Android hardware evidence",
+  "targets": [
+    {
+      "target": "web",
+      "path": "D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\dist\\android-web",
+      "cases": [
+        {
+          "scenario": "normal",
+          "steps": [
+            {
+              "name": "fresh Hero -> rendered world",
+              "ok": true,
+              "detail": null
+            },
+            {
+              "name": "Classic clicks and repeated UI/native Back",
+              "ok": true,
+              "detail": {
+                "rounds": 2,
+                "launches": 10,
+                "back": "UI buttons and shared native handler"
+              }
+            },
+            {
+              "name": "keyboard book cards, grid, zoom and single Escape",
+              "ok": true,
+              "detail": {
+                "books": [
+                  "space",
+                  "minecraft"
+                ],
+                "input": "Tab, Enter, Space, Escape and ArrowRight",
+                "focus": "reachable cards, page selection and zoom return"
+              }
+            },
+            {
+              "name": "instrument keyboard input and audio stops on exit",
+              "ok": true,
+              "detail": {
+                "signalPeaks": {
+                  "piano": 0.18644455075263977,
+                  "moog": 0.1404733806848526,
+                  "pads": 0.5547847151756287
+                },
+                "exitSilence": true,
+                "keyboard": "Piano/Synth Enter, Space, keyup and blur",
+                "audio": "WebAudio waveform; not a human listening check"
+              }
+            },
+            {
+              "name": "knowledge visual clue, local help and two answers",
+              "ok": true,
+              "detail": {
+                "lesson": "science-plants-parts",
+                "visualClue": true,
+                "localHelp": true,
+                "correctAnswers": 2
+              }
+            },
+            {
+              "name": "world camera/pinch/tap/lifecycle/resize redraw",
+              "ok": true,
+              "detail": {
+                "dragDelta": 18.68496760548157,
+                "pinchDistances": [
+                  8.064910471046316,
+                  16.56279973878939
+                ],
+                "raycastSelection": "section:quests",
+                "resizeRedraw": true,
+                "simulatedNativeLifecycle": true,
+                "cameraReload": true,
+                "childSwitches": 2
+              }
+            },
+            {
+              "name": "world every catalog entry",
+              "ok": true,
+              "detail": {
+                "passed": true,
+                "outcomes": [
+                  {
+                    "id": "section:quests",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "quests"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:day",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "day"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:rewards",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "rewards"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:games",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "games"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:acts",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "acts"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:learn",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "learn"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:books",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "books"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:music",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "music"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:machines",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "machines"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:monster-truck",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "monster-truck"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:dig",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "dig"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:kitchen",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "kitchen"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:balloon",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "balloon"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:hunt",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "hunt"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:home",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "home"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:race",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "race"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:orc",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "orc"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:vocab",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "vocab"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:solar",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "solar"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:paint",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "paint"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:calc",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "calc"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:signs",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "signs"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:lowhigh",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "lowhigh"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:stroop",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "stroop"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:crunch",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "crunch"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:clock",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "clock"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:change",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "change"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:wordmem",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "wordmem"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:recall",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "recall"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:fractions",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "fractions"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:balance",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "balance"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:circuit",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "circuit"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:sorter",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "sorter"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:sentence",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "sentence"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:soundmatch",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "soundmatch"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:memorymatch",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "memorymatch"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:patternecho",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "patternecho"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "music:pads",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "pads"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "music:piano",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "piano"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "music:moog",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "moog"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:space",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "space"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:animals",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "animals"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:giraffe",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "giraffe"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:minecraft",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "minecraft"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:science",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:race-cars",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "race-cars"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:construction",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "construction"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:public-vehicles",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "public-vehicles"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:0",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 0
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:1",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 1
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:2",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 2
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:3",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 3
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:4",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 4
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:5",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 5
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:6",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 6
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:7",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 7
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:8",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 8
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:9",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 9
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:10",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 10
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "guide:know",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "know"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "guide:doskill",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "doskill"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "guide:askai",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "askai"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-animals-groups",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-animals-groups"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-plants-parts",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-plants-parts"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-body-jobs",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-body-jobs"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-matter-states",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-matter-states"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-weather-water-cycle",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-weather-water-cycle"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-space-motion",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-space-motion"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-cardinal-directions",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-cardinal-directions"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-map-symbols",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-map-symbols"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-land-water-features",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-land-water-features"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-continents-oceans",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-continents-oceans"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-equator-hemispheres",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-equator-hemispheres"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-environment-clues",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-environment-clues"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-past-present",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-past-present"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-before-after",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-before-after"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-clues-sources",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-clues-sources"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-ancient-egypt",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-ancient-egypt"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-ancient-china",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-ancient-china"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-communication-change",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-communication-change"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "learning:practice",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "practice"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "learning:placement",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "placement"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:morning_teeth",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:plant_patrol",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "plant_patrol"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:room_rescue",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "room_rescue"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:laundry_helper",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "laundry_helper"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:table_helper",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "table_helper"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:shower",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:evening_teeth",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:reading_nest",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "reading_nest"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:move_break",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "move_break"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:creative_build",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "creative_build"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:brain_sprint",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "brain_sprint"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:game_adventure",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "game_adventure"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:table_helper_breakfast",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:table_helper_dinner",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:dressing",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "reward:choose_dessert",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "choose_dessert"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "reward:movie_pick",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "movie_pick"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "reward:breakfast_pick",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "breakfast_pick"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "reward:special_activity",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "special_activity"
+                    },
+                    "ok": true
+                  }
+                ]
+              }
+            },
+            {
+              "name": "classic every catalog entry",
+              "ok": true,
+              "detail": {
+                "passed": true,
+                "outcomes": [
+                  {
+                    "id": "section:quests",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "quests"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:day",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "day"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:rewards",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "rewards"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:games",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "games"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:acts",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "acts"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:learn",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "learn"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:books",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "books"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "section:music",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "music"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:machines",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "machines"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:monster-truck",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "monster-truck"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:dig",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "dig"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:kitchen",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "kitchen"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:balloon",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "balloon"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:hunt",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "hunt"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:home",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "home"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:race",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "race"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:orc",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "orc"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:vocab",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "vocab"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:solar",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "solar"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:paint",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "paint"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:calc",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "calc"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:signs",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "signs"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:lowhigh",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "lowhigh"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:stroop",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "stroop"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:crunch",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "crunch"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:clock",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "clock"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:change",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "change"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:wordmem",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "wordmem"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:recall",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "recall"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:fractions",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "fractions"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:balance",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "balance"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:circuit",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "circuit"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:sorter",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "sorter"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:sentence",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "sentence"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:soundmatch",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "soundmatch"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:memorymatch",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "memorymatch"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "game:patternecho",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "patternecho"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "music:pads",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "pads"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "music:piano",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "piano"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "music:moog",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "moog"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:space",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "space"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:animals",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "animals"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:giraffe",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "giraffe"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:minecraft",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "minecraft"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:science",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:race-cars",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "race-cars"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:construction",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "construction"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "book:public-vehicles",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "public-vehicles"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:0",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 0
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:1",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 1
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:2",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 2
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:3",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 3
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:4",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 4
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:5",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 5
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:6",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 6
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:7",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 7
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:8",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 8
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:9",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 9
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "activity:10",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": 10
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "guide:know",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "know"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "guide:doskill",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "doskill"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "guide:askai",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "askai"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-animals-groups",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-animals-groups"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-plants-parts",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-plants-parts"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-body-jobs",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-body-jobs"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-matter-states",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-matter-states"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-weather-water-cycle",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-weather-water-cycle"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:science-space-motion",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "science-space-motion"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-cardinal-directions",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-cardinal-directions"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-map-symbols",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-map-symbols"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-land-water-features",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-land-water-features"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-continents-oceans",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-continents-oceans"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-equator-hemispheres",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-equator-hemispheres"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:geography-environment-clues",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "geography-environment-clues"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-past-present",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-past-present"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-before-after",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-before-after"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-clues-sources",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-clues-sources"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-ancient-egypt",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-ancient-egypt"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-ancient-china",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-ancient-china"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "lesson:history-communication-change",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "history-communication-change"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "learning:practice",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "practice"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "learning:placement",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "placement"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:morning_teeth",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:plant_patrol",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "plant_patrol"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:room_rescue",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "room_rescue"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:laundry_helper",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "laundry_helper"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:table_helper",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "table_helper"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:shower",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:evening_teeth",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:reading_nest",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "reading_nest"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:move_break",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "move_break"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:creative_build",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "creative_build"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:brain_sprint",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "brain_sprint"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:game_adventure",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "game_adventure"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:table_helper_breakfast",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:table_helper_dinner",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "quest:dressing",
+                    "available": false,
+                    "result": {
+                      "ok": false,
+                      "reason": "not_available"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "reward:choose_dessert",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "choose_dessert"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "reward:movie_pick",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "movie_pick"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "reward:breakfast_pick",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "breakfast_pick"
+                    },
+                    "ok": true
+                  },
+                  {
+                    "id": "reward:special_activity",
+                    "available": true,
+                    "result": {
+                      "ok": true,
+                      "id": "special_activity"
+                    },
+                    "ok": true
+                  }
+                ]
+              }
+            },
+            {
+              "name": "all integrated book-data images decode",
+              "ok": true,
+              "detail": {
+                "decoded": 178,
+                "failures": []
+              }
+            },
+            {
+              "name": "invalid content returns a truthful failure",
+              "ok": true,
+              "detail": {
+                "ok": false,
+                "reason": "content_not_found"
+              }
+            },
+            {
+              "name": "retired entry absent or redirects to root",
+              "ok": true,
+              "detail": {
+                "prototype": "absent from payload"
+              }
+            }
+          ],
+          "pageErrors": [],
+          "consoleErrors": [
+            "Failed to load resource: net::ERR_FAILED",
+            "Failed to load resource: net::ERR_FAILED"
+          ],
+          "httpFailures": [],
+          "requestFailures": [
+            {
+              "url": "https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap",
+              "error": "net::ERR_FAILED"
+            },
+            {
+              "url": "https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap",
+              "error": "net::ERR_FAILED"
+            }
+          ],
+          "shellImports": [],
+          "unexpectedConsoleErrors": [],
+          "ok": true
+        }
+      ]
+    }
+  ],
+  "unavailable": [],
+  "browser": "138.0.7204.183",
+  "ok": true
+}

@@ -6,6 +6,10 @@ This folder is the native boundary for the Summer Quest Android tablet app. The 
 
 The shell remains pinned to Capacitor **8.5.2**. The isolated Android package is deliberate: the root web project can keep running and testing without an Android toolchain.
 
+### Android 8 compatibility
+
+The native minimum is API 24, so Android 8.0/8.1 (API 26/27) is within the install range; a Capacitor downgrade is unnecessary. [Capacitor supports Android 7+ and WebView 60+](https://capacitorjs.com/docs/android), but the app also needs a sufficiently updated browser engine. On Android 8, update Chrome and the active WebView provider to their latest compatible version. `npm run android:device` reports both the Android version and active WebView package; Android 8 hardware acceptance still requires a physical tablet or emulator running that OS.
+
 ## First-time development-machine setup
 
 Requirements:

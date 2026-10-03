@@ -58,7 +58,7 @@
     "android:launch": "npm --prefix apps/android run device -- launch",
     "android:smoke": "npm --prefix apps/android run device -- smoke",
     "test:unified-runtime": "npm run build:android-web && node --test scripts/unified-runtime.test.mjs",
-    "test:world": "npm run build:android-web && node --test scripts/world-explorer.test.mjs",
+    "test:world": "npm run build:android-web && node --test scripts/world-explorer.test.mjs scripts/planet-globe.bench.mjs",
     "verify:android-web": "node scripts/verify-android-web.mjs",
     "test:build-tools": "node --test scripts/build-tools.test.mjs"
   },

@@ -337,6 +337,47 @@ test("hidden document excludes time from the active-time clock", async () => {
   } finally { restoreFakeScene(); document.hidden = false; }
 });
 
+test("rounds opened hidden freeze study and defer clocks even if async presentation resolves", async () => {
+  for (const scheduled of [true, false]) {
+    let round, finishPresent, studyFinished = false;
+    changeMod.default.create = (ctx) => ({
+      present() {
+        return new Promise(resolve => {
+          finishPresent = () => { studyFinished = true; resolve(); };
+          if (scheduled) ctx.scheduler.after(20, finishPresent);
+        });
+      },
+      setInputEnabled() {}, destroy() {}
+    });
+    try {
+      document.hidden = true;
+      round = hostMod.openRound({ gameId: "change", tier: "mid", kid: "lili" });
+      await flush(50);
+      assert.equal(round.debugScheduler().paused, true);
+      assert.equal(studyFinished, false, "study cannot run before the first visible frame");
+      if (!scheduled) {
+        finishPresent(); await round.ready;
+        assert.equal(round.debugState(), "active");
+        assert.equal(round.debugScheduler().activeCount, 0, "async completion while hidden must not start a clock");
+      }
+      document.hidden = false;
+      document.dispatch("visibilitychange");
+      await round.ready;
+      assert.equal(studyFinished, true);
+      assert.equal(round.debugState(), "active");
+      assert.equal(round.debugScheduler().activeCount, 1, "visible play has one clock");
+      document.dispatch("visibilitychange");
+      assert.equal(round.debugScheduler().activeCount, 1, "repeated visibility events cannot stack clocks");
+      document.hidden = true;
+      document.dispatch("visibilitychange");
+      assert.equal(round.debugScheduler().activeCount, 0, "hiding cancels the only active clock");
+    } finally {
+      if (round) round.destroy(true);
+      restoreFakeScene(); document.hidden = false;
+    }
+  }
+});
+
 test("fmtMs formats minutes:seconds with a leading zero", () => {
   assert.equal(hostMod.fmtMs(0), "0:00");
   assert.equal(hostMod.fmtMs(9000), "0:09");
@@ -346,6 +387,120 @@ test("fmtMs formats minutes:seconds with a leading zero", () => {
 test("generic scene module exposes the required contract shape", () => {
   assert.equal(genericMod.default.id, "generic");
   assert.equal(typeof genericMod.default.create, "function");
+});
+
+test("lesson clues pause without losing work and mistake review keeps the first score through practice", async () => {
+  const calls = installFakeScene(), config = window.SQBrainData.GAMES.change.tiers.mid;
+  const originalGen = config.gen, progress = [], attempts = [];
+  config.gen = window.SQBrainData.GAMES.balance.tiers.mid.gen;
+  let round;
+  try {
+    round = hostMod.openRound({
+      gameId: "change", tier: "mid", kid: "lili", itemLimit: 3,
+      onProgress: saved => { if (saved) progress.push(saved); },
+      onLearningAttempt: attempt => attempts.push(attempt)
+    });
+    await round.ready;
+    const overlay = round.debugOverlay(), lesson = calls.lastItem.lesson;
+    assert.equal(overlay.querySelector('.brain-lesson').hidden, false);
+    assert.equal(overlay.querySelector('.brain-lesson__topic').textContent, lesson.topic.join(''));
+    const selected = document.createElement('button');
+    selected.setAttribute('aria-pressed', 'true'); selected.textContent = '4';
+    calls.ctx.mount.appendChild(selected);
+    let scheduledWorkRan = false;
+    calls.ctx.scheduler.after(15, () => { scheduledWorkRan = true; });
+    overlay.querySelector('[data-lesson-clue]').onclick();
+    const beforeClue = round.debugActiveMs();
+    assert.equal(round.debugState(), 'lesson-clue');
+    assert.equal(calls.inputEnabled.at(-1), false);
+    assert.equal(round.debugScheduler().paused, true);
+    assert.ok(overlay.querySelector('.brain-learning-support').textContent.includes(lesson.hint[1]));
+    assert.equal(calls.ctx.submit(calls.lastItem.answer), false, 'clue gates answers');
+    await flush(40);
+    assert.equal(scheduledWorkRan, false);
+    assert.equal(round.debugActiveMs(), beforeClue);
+    document.hidden = true; document.dispatch('visibilitychange');
+    document.hidden = false; document.dispatch('visibilitychange');
+    assert.equal(round.debugScheduler().paused, true, 'returning to the tab keeps an open clue paused');
+    overlay.querySelector('[data-learning-action="resume"]').onclick();
+    assert.equal(calls.present, 1, 'closing a clue does not restart the scene');
+    assert.equal(calls.ctx.mount.querySelector('button'), selected);
+    assert.equal(selected.getAttribute('aria-pressed'), 'true');
+    assert.equal(calls.inputEnabled.at(-1), true);
+    await flush(25);
+    assert.equal(scheduledWorkRan, true);
+    assert.equal(round.debugScheduler().activeCount, 1, 'only the active clock remains');
+
+    const answer = calls.lastItem.answer;
+    calls.ctx.submit('first-mistake'); await flush(15);
+    assert.equal(round.debugState(), 'lesson-review');
+    assert.equal(progress.at(-1).idx, 0, 'the first answer is saved before the review can be quit');
+    assert.equal(progress.at(-1).answers[0].given, 'first-mistake');
+    assert.ok(overlay.querySelector('.brain-learning-support').textContent.includes(lesson.explanation[1]));
+    assert.equal(round.debugScheduler().activeCount, 0, 'review has no automatic advance timer');
+    await flush(40);
+    assert.equal(round.debugItemIndex(), 0);
+    assert.equal(calls.ctx.submit(answer), false, 'review gates answers');
+    assert.equal(attempts[0].hintsUsed, 1);
+    overlay.querySelector('[data-learning-action="retry"]').onclick(); await flush(10);
+    assert.equal(calls.lastView.guidedRetry, true);
+    assert.equal(round.debugScheduler().activeCount, 0, 'practice is unclocked');
+    calls.ctx.submit('practice-mistake'); await flush(15);
+    assert.equal(round.debugState(), 'lesson-review', 'a practice mistake returns to its explanation');
+    overlay.querySelector('[data-learning-action="retry"]').onclick(); await flush(10);
+    calls.ctx.submit(answer); await flush(15);
+    assert.equal(round.debugItemIndex(), 1);
+    assert.equal(progress.at(-1).answers[0].given, 'first-mistake');
+    assert.equal(progress.at(-1).answers[0].got, 0, 'a successful retry preserves the original score');
+    assert.equal(attempts.length, 1, 'practice does not duplicate learning attempts');
+
+    calls.ctx.submit('second-mistake'); await flush(15);
+    overlay.querySelector('[data-learning-action="next"]').onclick(); await flush(10);
+    assert.equal(round.debugItemIndex(), 2, 'Next is the explicit way to leave a mistake review');
+    calls.ctx.submit('third-mistake'); await flush(15);
+    assert.equal(round.debugState(), 'lesson-review');
+    const detachedNext = overlay.querySelector('[data-learning-action="next"]');
+    round.destroy(true); detachedNext.onclick();
+    assert.equal(round.debugState(), 'destroyed');
+    assert.equal(round.debugScheduler().activeCount, 0);
+  } finally {
+    if (round) round.destroy(true);
+    config.gen = originalGen; restoreFakeScene(); document.hidden = false;
+  }
+});
+
+test("a saved first-item lesson review resumes without allowing its original score to be overwritten", async () => {
+  const calls = installFakeScene(), config = window.SQBrainData.GAMES.change.tiers.mid;
+  const originalGen = config.gen, progress = [];
+  config.gen = window.SQBrainData.GAMES.balance.tiers.mid.gen;
+  let round;
+  try {
+    const generated = window.SQBrainCore.buildRound('change', 'mid', window.SQBrainCore.mulberry32(17));
+    const saved = JSON.parse(JSON.stringify({
+      gameId: 'change', tier: 'mid', idx: 0, items: generated.items.slice(0, 2), ms: 37,
+      answers: [{ given: 'saved-mistake', got: 0, worth: 1, correct: false }]
+    }));
+    round = hostMod.openRound({
+      gameId: 'change', tier: 'mid', kid: 'lili', itemLimit: 2, resume: saved,
+      onProgress: state => { if (state) progress.push(state); }
+    });
+    await round.ready;
+    assert.equal(round.debugItemIndex(), 0);
+    assert.equal(round.debugState(), 'lesson-review');
+    assert.equal(round.debugActiveMs(), 37, 'saved active time also resumes at item zero');
+    assert.equal(calls.lastItem.answer, saved.items[0].answer);
+    assert.equal(calls.ctx.submit(saved.items[0].answer), false, 'an answered restored item cannot be scored again');
+    assert.equal(round.debugScheduler().activeCount, 0);
+    round.debugOverlay().querySelector('[data-learning-action="retry"]').onclick();
+    await flush(10);
+    calls.ctx.submit(saved.items[0].answer); await flush(15);
+    assert.equal(round.debugItemIndex(), 1);
+    assert.equal(progress.at(-1).answers[0].given, 'saved-mistake');
+    assert.equal(progress.at(-1).answers[0].got, 0);
+  } finally {
+    if (round) round.destroy(true);
+    config.gen = originalGen; restoreFakeScene();
+  }
 });
 
 test("learning support: wrong answer can request a hint, retry locally, and preserve original Brain score", async () => {
@@ -388,6 +543,8 @@ test("learning support: wrong answer can request a hint, retry locally, and pres
     await flush(30);
     assert.equal(round.debugState(), "active");
     assert.ok(calls.present >= 2, "same item is presented again for guided retry");
+    assert.equal(round.debugOverlay().querySelector('.brain-round__feedback').textContent, '');
+    assert.equal(round.debugOverlay().getAttribute('data-feedback'), null);
     calls.ctx.submit(firstAnswer);
     await flush(40);
     assert.equal(round.debugItemIndex(), 1, "guided retry advances after local grading");

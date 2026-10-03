@@ -1,0 +1,15 @@
+✔ feed records newest-first and unread clears on markSeen (1.1472ms)
+✔ a repeated ref is dropped — realtime replays the same row on reconnect (0.5462ms)
+✔ feeds are per kid and capped (1.1239ms)
+✔ an achievement unlocks once and is never taken back (0.5801ms)
+✔ every achievement ships EN + 中文 (0.1349ms)
+ok - points admin, catalog migration, preserved labels, required reasons and transactional exchanges
+✔ scripts\points-admin.test.mjs (167.7019ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 183.3241

@@ -1,0 +1,42 @@
+[
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\js\\games\\pads.js",
+    "line": 111,
+    "snippet": "border-left:4px solid #FF7A45}\" +"
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\js\\games\\pads.js",
+    "line": 112,
+    "snippet": "border-left:4px solid #5AD1C4}\" +"
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\js\\games\\pads.js",
+    "line": 113,
+    "snippet": "border-left:4px solid #FFB13C}\" +"
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\js\\games\\pads.js",
+    "line": 114,
+    "snippet": "border-left:4px solid #B98CFF}\" +"
+  }
+]

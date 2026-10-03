@@ -1,0 +1,5 @@
+Summer Quest check passed: syntax, bilingual data, pool alignment, and tracked-file secret scan are green.
+(node:1368) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/js/games/index.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\WORK\10 - AI\SUMMER CAMP\summer-quest\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)

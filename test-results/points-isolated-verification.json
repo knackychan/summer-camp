@@ -1,0 +1,46 @@
+{
+  "snapshot": "D:\\WORK\\sq-points-verify-1791000055773",
+  "source": "D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest",
+  "head": "f8f7240c01b21ffc6e3ecbe6612c7ca838dcdf7f",
+  "sourceFileCount": 944,
+  "sourceDifferencesAtVerification": [
+    "css/kitchen-quest.css",
+    "docs/plans/2026-10-03-pixel-brain-gym/03-exercise-depth.md",
+    "sw.js"
+  ],
+  "androidBuild": {
+    "version": 2,
+    "release": "v0.6.3-desktop",
+    "runtime": "unified-root",
+    "entry": "index.html",
+    "localOnlyConfig": true,
+    "fileCount": 478,
+    "treeSha256": "c140992fe387d62834ba865945647e02f3f990cfd8a985d25cea138b325b8386"
+  },
+  "checks": {
+    "androidWebBuild": "passed",
+    "agentBuild": "passed",
+    "node scripts/check.mjs": "passed",
+    "python scripts/check-points-ui.py": "passed",
+    "node --test scripts/knowledge-help.test.mjs": "50 passed; 0 failed; late Check help assertion passed"
+  },
+  "pointsSourceHashes": {
+    "index.html": "1851dfb70271cef963af87fef038f4b4668cd41dd7cc114b3fe5f3845bc9c1ac",
+    "admin.html": "55294a094277e9f8b861dbf8723fa09e3dd4b6199abf75409c3739d799d8d2c7",
+    "js/admin.js": "3212f3b9e49e28ce70bc065d054c7b3cbb17423f30e9ddfcea51c1c332c8bb0c",
+    "js/points.js": "cc53874bd372179235273a9ab5724b9dd12fda6cc4af0faf42bc2e9e5e37c20e",
+    "js/sync.js": "d16a6678095e827ae533a74baea15c8e75a9896fa6cf2546e8176d0abe10de0b",
+    "js/quest-config.js": "cc9b279c719eba1a54898ec81dc3a33055978f138d47f82cfeee1f28be9c2143",
+    "js/quest-data.js": "1e2db6dc5344a082a8dbe73df3f38be3df49a7f689eba8c63d3e20f1a657cdf1",
+    "js/reward-data.js": "23e430da0d83413f02fd023004efee3228adbaa976e830054889c57658d509de",
+    "sw.js": "25afb5ab6f9f392a9de832f7a7ab4b0b743d72829d082ab5642a5f4b0d654523",
+    "supabase/schema.sql": "19b5ef21655be68bb0f095b71bff9586260df8407fa0813f0a63a1028d44c477",
+    "supabase/migrations/20261003_points_system.sql": "583d84872e0dd46645e8be60e239c65f2a53fdb0b00f3cf68c5338c99f71b4eb",
+    "scripts/points.test.mjs": "751b642285ec50a422316a9d684519e46531a6945d9e8406bd8480b6ea69a660",
+    "scripts/points-admin.test.mjs": "98ebb76a548dc38ac22a8de401140cc2f55cffaddeb621cdaeffc1a7c6ecb989",
+    "scripts/points-database.test.mjs": "5ae16c64ecf0b969db4eca433504b5ad6d09a691338ad50d4b65012472026aeb",
+    "scripts/check-points-ui.py": "6f6e6e65b599d0d0b34d29a5e379f2af9a1150df96225f5d43610ead601d096c",
+    "scripts/check.mjs": "ed90aaae8bdddb41819a1de1281cf8f8a5e0971236f1327933913f85b3a424cc",
+    "scripts/build-android-web.mjs": "6253149f14f9085be093f045dbacf429c72885448b618a9e3529e366b6fcf7b7"
+  }
+}

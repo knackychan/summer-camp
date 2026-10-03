@@ -1,0 +1,28 @@
+[
+  {
+    "throttled": false,
+    "homeSeconds": 0.237,
+    "worldSeconds": 0.22,
+    "startup": {
+      "requests": 47,
+      "bytes": 129098,
+      "longTasks": [
+        64
+      ],
+      "deferred": true
+    }
+  },
+  {
+    "throttled": true,
+    "homeSeconds": 2.896,
+    "worldSeconds": 1.396,
+    "startup": {
+      "requests": 46,
+      "bytes": 129018,
+      "longTasks": [
+        187
+      ],
+      "deferred": true
+    }
+  }
+]

@@ -32,7 +32,7 @@
     const data=cat(override), tier=tierForIn(kid,settings,data);
     return Object.keys(data.GAMES).filter(function(id){
       const g=data.GAMES[id];
-      return !!(g&&g.tiers&&g.tiers[tier]);
+      return !!(g&&!g.retired&&g.tiers&&g.tiers[tier]);
     });
   }
 
@@ -114,7 +114,7 @@
       if(!(got>0))got=0;
       if(got>worth)got=worth;
     }else{
-      got=g===String(item.answer).trim()?worth:0;
+      got=g===String(item.answer).trim()||(Array.isArray(item.acceptedAnswers)&&item.acceptedAnswers.indexOf(g)>=0)?worth:0;
     }
     return {got:got,worth:worth,correct:worth>0&&got===worth};
   }

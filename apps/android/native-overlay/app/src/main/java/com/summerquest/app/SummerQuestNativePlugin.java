@@ -83,7 +83,7 @@ public class SummerQuestNativePlugin extends Plugin {
     @PluginMethod
     public void haptic(PluginCall call) {
         String kind = call.getString("kind");
-        if (kind == null || kind.isBlank()) kind = "tap";
+        if (kind == null || kind.trim().isEmpty()) kind = "tap";
         final String requestedKind = kind;
         getActivity().runOnUiThread(() -> vibrate(requestedKind));
         JSObject result = new JSObject();
