@@ -119,3 +119,22 @@ test("each kid's hero takes that kid's own colour, snapped to the palette", asyn
   assert.ok(/nearestIndex\(\(options\.kid&&\(options\.kid\.raw\|\|options\.kid\.color\)\)/.test(read("js/world/world-explorer.js")),
     "hero colour reads kid.raw (kid.color is a CSS var the palette cannot snap)");
 });
+
+test("a mini-game hides the planet's ambient sparks: they stay under the dim overlay and stop spawning", () => {
+  const source = read("js/world/world-explorer.js");
+  const body = (name) => { const at = source.indexOf(`function ${name}(`); return source.slice(at, source.indexOf("\n  function ", at + 1)); };
+  const log = [];
+  const context = {
+    log, HEX: [], C: { space: 0 }, bw: 10, bh: 10, moon: { z: 0 }, surface: [], globeCanvas: {},
+    minigame: { draw: () => log.push("game") },
+    ctx: { set fillStyle(v) {}, set globalAlpha(v) {}, drawImage: () => log.push("globe"), fillRect: () => log.push("fill") },
+    drawStars: () => log.push("stars"), drawItem: () => {}, drawParticles: () => log.push("sparks"), drawConfetti: () => log.push("confetti")
+  };
+  vm.createContext(context);
+  vm.runInContext(body("composite"), context);
+  vm.runInContext("composite()", context);
+  assert.equal(log.filter((x) => x === "sparks").length, 1, "sparks drawn once");
+  assert.ok(log.indexOf("sparks") < log.lastIndexOf("fill"), "sparks sit under the dim overlay");
+  assert.ok(log.indexOf("game") < log.indexOf("confetti"), "the win confetti still lands on top of the game");
+  assert.match(body("ambient"), /if\(reduced\|\|minigame\)return;/, "no new landmark sparks during a game");
+});

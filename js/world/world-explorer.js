@@ -439,10 +439,12 @@ function createWorld(options){
       ctx.drawImage(img,Math.round(p.x-img.width/2),Math.round(p.y-img.height/2));
     });
     ctx.globalAlpha=1;
+  }
+  function drawConfetti(){
     confetti.forEach(function(p){ctx.fillStyle=HEX[p.color];ctx.fillRect(Math.round(p.x),Math.round(p.y),1,1);});
   }
   function ambient(dt){
-    if(reduced)return;
+    if(reduced||minigame)return;
     places.forEach(function(mark){
       if(!mark.entry||mark.z<0.2)return;
       mark.ambient-=dt;
@@ -460,7 +462,8 @@ function createWorld(options){
     surface.filter(function(item){return item.z>0.08;}).sort(function(a,b){return a.z-b.z;}).forEach(drawItem);
     if(moon.z>0)drawItem(moon);
     drawParticles();
-    if(minigame){ctx.globalAlpha=0.62;ctx.fillStyle=HEX[C.space];ctx.fillRect(0,0,bw,bh);ctx.globalAlpha=1;minigame.draw(ctx);drawParticles();}
+    if(minigame){ctx.globalAlpha=0.62;ctx.fillStyle=HEX[C.space];ctx.fillRect(0,0,bw,bh);ctx.globalAlpha=1;minigame.draw(ctx);}
+    drawConfetti();
   }
   function frame(now){
     if(!active)return;
