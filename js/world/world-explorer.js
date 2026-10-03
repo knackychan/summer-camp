@@ -109,7 +109,7 @@ function createWorld(options){
     notes.forEach(function(note){setTimeout(function(){if(!destroyed)options.beep(note[0],note[1],note[2],note[4]);},note[3]);});
   }
   function haptic(kind){if(options.haptic)options.haptic(kind);}
-  function radius(){return Math.max(8,Math.round(Math.min(bw,bh)*0.3*zoom));}
+  function radius(){return Math.max(8,Math.round(Math.min(bw,bh)*0.45*zoom));}
   function view(){return {rotation:rotation,radius:radius(),cx:cx,cy:cy};}
 
   /* ---------- selection card ---------- */
@@ -425,7 +425,7 @@ function createWorld(options){
   /* ---------- rendering ---------- */
   function resize(){
     var w=Math.max(1,mount.clientWidth),h=Math.max(1,mount.clientHeight);
-    scale=Math.min(w,h)<600?3:4;
+    scale=Math.min(w,h)<600?4.5:6;
     bw=Math.ceil(w/scale);bh=Math.ceil(h/scale);
     if(canvas.width!==bw||canvas.height!==bh){
       canvas.width=globeCanvas.width=bw;canvas.height=globeCanvas.height=bh;

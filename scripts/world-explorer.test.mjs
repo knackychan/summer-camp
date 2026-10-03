@@ -216,3 +216,9 @@ test("on narrow screens the selection card stops short of the floating companion
   assert.match(narrow[1], /right:calc\(max\(14px,var\(--sq-safe-right,0px\)\) \+ 74px\)/, "clears the 64px companion plus a gap");
   assert.match(narrow[1], /transform:none/);
 });
+
+test("planet art is drawn 50% bigger than the original 4/3-pixel scale (design amendment 2026-10-03)", () => {
+  const source = read("js/world/world-explorer.js");
+  assert.ok(source.includes("scale=Math.min(w,h)<600?4.5:6;"), "6 screen px per art px, 4.5 on small screens");
+  assert.ok(source.includes("Math.min(bw,bh)*0.45*zoom"), "planet grows with the pixels so sprites do not crowd it");
+});

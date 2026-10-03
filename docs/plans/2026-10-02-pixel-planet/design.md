@@ -58,7 +58,7 @@ There are four units in `js/world/`. Each has one job and can be tested on its o
 
 ## Look
 
-- **Pixel scale.** 4 screen pixels per art pixel; 3 when the shorter viewport side is under 600 CSS px. The buffer is the mount size divided by that scale. At zoom 1 the planet radius is about 30% of the shorter buffer side. Zoom goes from 1× to 2×. Zoom changes the radius, never the pixel size.
+- **Pixel scale.** 4 screen pixels per art pixel; 3 when the shorter viewport side is under 600 CSS px. The buffer is the mount size divided by that scale. At zoom 1 the planet radius is about 30% of the shorter buffer side. Zoom goes from 1× to 2×. Zoom changes the radius, never the pixel size. *(Amended 2026-10-03, Papa: everything on the planet was too small, so it is all 50% bigger. That means 6 screen pixels per art pixel, or 4.5 under 600 CSS px, and a radius of about 45% of the shorter buffer side. In art pixels the planet stays the same size, so the sprites crowd it no more than before. Making the pixels bigger without enlarging the planet was tried and rejected: the planet shrank to about 77 art pixels across, sprites overlapped, and only 14 of the 21 visible places and toys could still be tapped.)*
 - **Palette.** One fixed 32-colour set, bright and saturated in the spirit of the reference:
   - deep purple-blue ocean
   - lime and jungle greens
