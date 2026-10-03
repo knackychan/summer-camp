@@ -125,7 +125,7 @@ function createWorld(options){
 
   /* ---------- view persistence ---------- */
   function saveView(){
-    var saved={rotation:rotation.slice(),zoom:zoom,selected:selected&&selected.kind==="place"?selected.id:null};
+    var saved={rotation:rotation.slice(),zoom:clamp(zoom,MIN_ZOOM,MAX_ZOOM),selected:selected&&selected.kind==="place"?selected.id:null};
     savedViews.set(options.kidId,saved);
     try{window.localStorage.setItem("sq:world-view:"+options.kidId,JSON.stringify(saved));}catch(error){}
     viewDirty=false;

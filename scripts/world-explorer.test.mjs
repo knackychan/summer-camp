@@ -138,3 +138,22 @@ test("a mini-game hides the planet's ambient sparks: they stay under the dim ove
   assert.ok(log.indexOf("game") < log.indexOf("confetti"), "the win confetti still lands on top of the game");
   assert.match(body("ambient"), /if\(reduced\|\|minigame\)return;/, "no new landmark sparks during a game");
 });
+
+test("a view saved mid-pinch past the zoom limit is still accepted on the next launch", () => {
+  const source = read("js/world/world-explorer.js");
+  let stored = null;
+  const context = {
+    savedViews: new Map(), MIN_ZOOM: 1, MAX_ZOOM: 2, rotation: [0, 0.2, 0, Math.sqrt(1 - 0.04)], zoom: 2.12, selected: null, viewDirty: true,
+    options: { kidId: "lili" }, window: { localStorage: { getItem: () => stored, setItem: (k, v) => { stored = v; } } }
+  };
+  vm.createContext(context);
+  vm.runInContext(source.slice(source.indexOf("function readView("), source.indexOf("function clamp(")), context);
+  vm.runInContext(source.slice(source.indexOf("function clamp("), source.indexOf("\n", source.indexOf("function clamp("))), context);
+  const at = source.indexOf("function saveView(");
+  vm.runInContext(source.slice(at, source.indexOf("\n  }\n", at) + 4), context);
+  vm.runInContext("saveView()", context);
+  context.savedViews.clear();
+  const view = context.readView("lili");
+  assert.ok(view, "saved view survives");
+  assert.equal(view.zoom, 2);
+});
