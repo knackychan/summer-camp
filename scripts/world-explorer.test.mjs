@@ -207,3 +207,11 @@ test("a lost 2D canvas is reported and fully redrawn, crisp, when the browser re
     assert.ok(source.includes(`globeCanvas.removeEventListener("${name}"`), `${name} listener removed on destroy`);
   }
 });
+
+test("on narrow screens the selection card stops short of the floating companion", () => {
+  const css = read("css/world-explorer.css");
+  const narrow = css.match(/@media\(max-width:700px\)\{\.world-selection\{([^}]*)\}\}/);
+  assert.ok(narrow, "a narrow-screen rule for the card");
+  assert.match(narrow[1], /right:calc\(max\(14px,var\(--sq-safe-right,0px\)\) \+ 74px\)/, "clears the 64px companion plus a gap");
+  assert.match(narrow[1], /transform:none/);
+});
