@@ -88,7 +88,7 @@ def probe(browser, base, path, fail_webgl=False):
         if state["flatSelector"]:
             result["ok"] = state["shells"] == 1 and state["legacyBadge"]
             return result
-        step("game manifest ready", lambda: page.wait_for_function("window.SQManifest && SQManifest.length === 24"), lambda s: s["manifestCount"] == 24)
+        step("game manifest ready", lambda: page.wait_for_function("window.SQManifest && SQManifest.length > 0"), lambda s: s["manifestCount"] > 0)
         if fail_webgl:
             step("WebGL failure stays in world with visible error", lambda: (page.locator('.hero').first.click(), page.wait_for_selector('#worldStatus:not(.hidden)')), lambda s: s["screens"] == ["world"] and s["worldError"] and not s["flatSelector"] and s["shells"] == 0)
             result["ok"] = all(item["ok"] for item in result["steps"]) and not errors

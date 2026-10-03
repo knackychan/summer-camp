@@ -4,7 +4,7 @@ import { HEX, DARK, LIGHT, RGBA, C, nearestIndex } from "../js/world/planet-pale
 import { buildPlanetMap, buildCloudMap, BIOMES, SITES, DISTRICTS, PATH_EDGES, MAP_W, MAP_H, cellIndex, latLonToVec, angleBetween, pathPoints } from "../js/world/planet-map.js";
 
 const WORLD_IDS = ["section:quests","section:games","section:acts","section:learn","section:books","section:music","section:day","section:rewards",
-  "game:monster-truck","game:solar","book:space","game:paint"];
+  "game:monster-truck","game:solar","book:space","game:paint","game:kitchen"];
 
 test("palette is 32 hex colours with in-palette shading steps", () => {
   assert.equal(HEX.length, 32);

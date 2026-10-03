@@ -141,3 +141,40 @@
 @media(max-width:760px){.quest-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.summer-panel{grid-template-columns:78px 1fr}.summer-face{width:70px;height:70px}.quest-upcoming{grid-template-columns:1fr}.quest-upcoming>div{grid-template-columns:1fr 1fr}.quest-grid{gap:10px}}
 @media(max-width:520px){.summer-panel{min-height:126px;padding:16px 15px;gap:12px;grid-template-columns:62px 1fr}.summer-face{width:58px;height:58px;border-width:3px}.summer-face::before{inset:-8px}.summer-face::after{font-size:12px}.summer-copy h3{font-size:22px}.summer-copy .zhs{font-size:12px}.quest-context{gap:5px}.quest-context span{font-size:10px;min-height:27px;padding:5px 8px}.quest-dialogue{padding:13px}.quest-filter{min-height:78px}.quest-section-head h3{font-size:22px}.quest-card{min-height:188px}.quest-upcoming>div{grid-template-columns:1fr}.summer-nudge{right:8px;left:8px;width:auto;bottom:calc(max(9px,var(--sq-safe-bottom)) + 137px)}}
 @media(prefers-reduced-motion:reduce){.summer-face::before,.summer-motion-blink,.summer-motion-lean_in,.summer-motion-small_hop,.summer-motion-double_hop,.summer-motion-thinking_loop,.summer-motion-celebrate,.summer-motion-wave,.quest-filter,.summer-nudge.is-arriving,.summer-companion.has-attention,.summer-companion.has-attention::before,#hubTabs .chip.on .nav-ico{animation:none!important}.quest-card,#hubTabs .chip{transition:none!important}}
+
+/* Short landscape tablets need the question and its choices above the fixed navigation. */
+.quest-card{display:flex;flex-direction:column;align-items:flex-start}
+.quest-card .quest-meta{position:static;width:100%;margin-top:auto;padding-top:10px}
+.quest-card p{margin-bottom:10px}
+.quest-skip,.summer-nudge__close,.summer-nudge__action,.reward-shop-card__foot .btn{min-height:44px}
+.summer-nudge__close{width:44px}
+.summer-nudge__copy{padding-right:30px}
+@media(min-width:600px){
+  body.game-mode:not(:has(.kq,.brain-round)) .summer-companion{top:auto;left:calc(12px + clamp(142px,16vw,190px)/2 - 24px);right:auto;bottom:max(20px,var(--sq-safe-bottom))}
+  body.music-mode .summer-companion{top:max(18px,var(--sq-safe-top));right:max(24px,var(--sq-safe-right));bottom:auto}
+  body.game-mode:not(:has(.kq,.brain-round)) .summer-companion,body.music-mode .summer-companion{width:48px;height:48px;border-radius:16px}
+  body.game-mode:not(:has(.kq,.brain-round)) .summer-companion__face,body.music-mode .summer-companion__face{font-size:28px}
+}
+@media(min-width:800px) and (max-height:700px){
+  .quest-home{grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:12px}
+  .quest-home>.quest-active,.quest-home>#questResults,.quest-home>.quest-upcoming{grid-column:1/-1}
+  .summer-panel{grid-template-columns:62px minmax(0,1fr);min-height:0;gap:12px;padding:16px}
+  .summer-face{width:58px;height:58px;border-width:3px}
+  .summer-face::before{inset:-8px}
+  .summer-copy h3{font-size:25px}
+  .summer-copy .zhs{font-size:12px}
+  .quest-context{gap:5px;margin-top:9px}
+  .quest-context span{padding:5px 7px;font-size:11px}
+  .quest-dialogue{padding:12px}
+  .quest-dialogue .quest-question{font-size:20px;margin-bottom:8px}
+  .quest-dialogue-foot{margin-top:8px}
+  .quest-filter{min-height:78px;padding:7px 5px}
+  .quest-filter .qi{width:30px;height:30px;font-size:22px}
+  .quest-section-head h3{font-size:22px}
+  .quest-card{min-height:180px;padding:14px}
+  .quest-card .qicon{width:42px;height:42px;font-size:27px;margin-bottom:7px}
+  .quest-card h4{font-size:20px}
+  .adventure-card{min-height:128px;padding:14px}
+  .summer-companion-sheet{padding:14px}
+  .summer-companion-sheet__head{min-height:70px}
+}

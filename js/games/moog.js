@@ -281,7 +281,7 @@ function init(ctx) {
   WAVEFORMS.forEach(function (w) {
     var btn = document.createElement("button");
     btn.textContent = w[0].toUpperCase() + w.slice(1);
-    btn.style.cssText = "background:" + (w === params.wave ? "#5AD1C4" : "#2F2E3D") + ";border:2px solid " + (w === params.wave ? "#5AD1C4" : "#3A3850") + ";color:" + (w === params.wave ? "#14131A" : "#F4F2FA") + ";border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:32px;";
+    btn.style.cssText = "background:" + (w === params.wave ? "#5AD1C4" : "#2F2E3D") + ";border:2px solid " + (w === params.wave ? "#5AD1C4" : "#3A3850") + ";color:" + (w === params.wave ? "#14131A" : "#F4F2FA") + ";border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:44px;";
     btn.setAttribute("role", "radio");
     btn.setAttribute("aria-checked", String(w === params.wave));
     btn.addEventListener("pointerdown", function () {
@@ -333,7 +333,7 @@ function init(ctx) {
     var p = PRESETS[pid];
     var btn = document.createElement("button");
     btn.textContent = p.name.en + " " + p.name.tz;
-    btn.style.cssText = "background:#2F2E3D;border:2px solid #3A3850;color:#B98CFF;border-radius:10px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:36px;";
+    btn.style.cssText = "background:#2F2E3D;border:2px solid #3A3850;color:#B98CFF;border-radius:10px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:44px;";
     btn.setAttribute("role", "button");
     btn.addEventListener("pointerdown", function () {
       var preset = PRESETS[pid];

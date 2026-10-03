@@ -1,9 +1,24 @@
 import assert from "node:assert/strict";
-import { resolve, dirname } from "node:path";
+import { mkdtempSync, readFileSync, rmSync, rmdirSync } from "node:fs";
+import { get } from "node:http";
+import { tmpdir } from "node:os";
+import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync, constants as zlibConstants } from "node:zlib";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const mod = await import(new URL("../server/agent-proxy/local-server.mjs", import.meta.url));
+
+function compressedResponse(url) {
+  return new Promise((resolvePromise, reject) => {
+    get(url, { headers: { "accept-encoding": "gzip" } }, response => {
+      const chunks = [];
+      response.on("data", chunk => chunks.push(chunk));
+      response.on("error", reject);
+      response.on("end", () => resolvePromise({ headers: response.headers, chunks, body: Buffer.concat(chunks) }));
+    }).on("error", reject);
+  });
+}
 
 const parsed = mod.parseEnvText('OPENAI_API_KEY="abc"\nSUMMER_PORT=9011\n# comment\nFAMILY_TZ=Asia/Taipei\n');
 assert.equal(parsed.OPENAI_API_KEY, "abc");
@@ -25,14 +40,17 @@ assert.equal(mod.publicPathForUrl("/server/agent-proxy/.env", root), null);
 assert.equal(mod.publicPathForUrl("/.env", root), null);
 
 const prior = { ...process.env };
+const testDir = mkdtempSync(join(tmpdir(), "summer-quest-server-"));
+const telemetryPath = join(testDir, "telemetry.json");
 for (const key of ["OPENAI_API_KEY","ANTHROPIC_API_KEY","OPENROUTER_API_KEY","SUMMER_AGENT_ALLOWED_PROFILES","SUMMER_AGENT_PROFILE","SUMMER_AGENT_LAB_MODE","SUMMER_HOST","SUMMER_PORT"]) delete process.env[key];
 try {
-  const local = await mod.startLocalServer({ host: "127.0.0.1", port: 0, labMode: true, envPath: "__missing-test-env__" });
+  const local = await mod.startLocalServer({ host: "127.0.0.1", port: 0, labMode: true, envPath: "__missing-test-env__", telemetryPath });
   try {
     assert.equal(local.labMode, true);
     const base = `http://127.0.0.1:${local.port}`;
     const healthRes = await fetch(base + "/api/summer-agent/health");
     assert.equal(healthRes.status, 200);
+    assert.equal(healthRes.headers.get("cache-control"), "no-store");
     const health = await healthRes.json();
     assert.equal(health.ok, true);
     assert.equal(health.mode, "ai_lab");
@@ -40,6 +58,7 @@ try {
 
     const configRes = await fetch(base + "/js/config.js");
     assert.equal(configRes.status, 200);
+    assert.equal(configRes.headers.get("cache-control"), "no-store");
     const configJs = await configRes.text();
     assert.match(configJs, /SUMMER_AGENT_ENDPOINT/);
     assert.match(configJs, /SUMMER_LEARNING_TELEMETRY_ENDPOINT/);
@@ -48,7 +67,35 @@ try {
 
     const indexRes = await fetch(base + "/index.html");
     assert.equal(indexRes.status, 200);
+    assert.equal(indexRes.headers.get("content-encoding"), "gzip");
+    assert.equal(indexRes.headers.get("vary"), "Accept-Encoding");
+    assert.equal(indexRes.headers.get("cache-control"), "no-cache");
     assert.match(await indexRes.text(), /Summer Quest/i);
+
+    const etag = indexRes.headers.get("etag");
+    assert.ok(etag);
+    const unchanged = await fetch(base + "/index.html", { headers: { "if-none-match": etag } });
+    assert.equal(unchanged.status, 304, "unchanged app source requires no retransmission");
+    assert.equal(await unchanged.text(), "");
+    const changed = await fetch(base + "/index.html", { headers: { "if-none-match": 'W/"old-release"', "accept-encoding": "gzip;q=0, identity" } });
+    assert.equal(changed.status, 200, "a changed source is returned rather than serving stale code");
+    assert.equal(changed.headers.get("content-encoding"), null, "compression respects gzip;q=0");
+    await changed.arrayBuffer();
+    const compiled = await fetch(base + "/dist/mobile/packages/core/src/localization.js", { method: "HEAD" });
+    assert.equal(compiled.headers.get("cache-control"), "no-cache", "compiled app code revalidates immediately after a build");
+    const picture = await fetch(base + "/assets/solar/earth.jpg", { method: "HEAD" });
+    assert.equal(picture.headers.get("content-encoding"), null, "already compressed images are streamed directly");
+    const html = await compressedResponse(base + "/index.html");
+    const firstHtml = gunzipSync(html.chunks[0], { finishFlush: zlibConstants.Z_SYNC_FLUSH });
+    assert.ok(firstHtml.length > 0, "the first gzip chunk contains parseable HTML, not just a gzip header");
+    assert.match(firstHtml.toString(), /<!doctype html>/i);
+    assert.deepEqual(gunzipSync(html.body), readFileSync(resolve(root, "index.html")), "flushing early preserves the entire document");
+    const source = readFileSync(resolve(root, "js/vendor/three.core.min.js"));
+    const compressed = await compressedResponse(base + "/js/vendor/three.core.min.js");
+    assert.equal(compressed.headers["content-encoding"], "gzip");
+    assert.deepEqual(gunzipSync(compressed.body), source, "wire compression preserves exact JavaScript source");
+    assert.ok(compressed.body.length < source.length / 2, "large libraries transfer at less than half their raw size");
+    console.log(`Three.js transfer: ${source.length} -> ${compressed.body.length} bytes (${Math.round(100 * (1 - compressed.body.length / source.length))}% smaller)`);
 
     const secretRes = await fetch(base + "/server/agent-proxy/.env");
     assert.equal(secretRes.status, 404);
@@ -78,6 +125,8 @@ try {
     await local.close();
   }
 } finally {
+  rmSync(telemetryPath, { force: true });
+  rmdirSync(testDir);
   for (const key of Object.keys(process.env)) if (!(key in prior)) delete process.env[key];
   Object.assign(process.env, prior);
 }

@@ -72,6 +72,61 @@ test("createMoneyTray: undo on empty tray returns null and does not throw", () =
   assert.equal(tray.undo(), null);
 });
 
+test('money tray removes one chosen denomination and preserves undo order', () => {
+  const tray = createMoneyTray([1, 5, 10]);
+  [5, 1, 5, 10].forEach(tray.add);
+  assert.equal(tray.remove(5), true);
+  assert.deepEqual(tray.pieces, [5, 1, 10]);
+  assert.equal(tray.remove(50), false);
+  assert.equal(tray.undo(), 10);
+  assert.equal(tray.total(), 6);
+});
+
+test('math counters toggle independently; keypad accepts keyboard input once', () => {
+  const ctx = fakeCtx({ gameId: 'calc', tier: 'tot' });
+  const scene = generic.create(ctx);
+  scene.present(SQBrainCore.buildRound('calc', 'tot', SQBrainCore.mulberry32(3)).items[0]);
+  scene.setInputEnabled(true);
+  const counter = ctx.mount.querySelector('.brain-generic__counter');
+  counter.onclick();
+  assert.equal(counter.getAttribute('aria-pressed'), 'true');
+  counter.onclick();
+  assert.equal(counter.getAttribute('aria-pressed'), 'false');
+  assert.deepEqual(ctx._submitted, [], 'counting never submits an answer');
+  scene.destroy();
+  ctx.scheduler.cancelAll();
+
+  const keyboardCtx = fakeCtx({ gameId: 'calc', tier: 'mid' });
+  const keyboardScene = generic.create(keyboardCtx);
+  keyboardScene.present(SQBrainCore.buildRound('calc', 'mid', SQBrainCore.mulberry32(3)).items[0]);
+  keyboardScene.setInputEnabled(true);
+  const one = keyboardCtx.mount.querySelector('[data-v="1"]');
+  keyboardCtx.mount.dispatch('keydown', { key: 'Enter', target: one, preventDefault() { assert.fail('native button Enter was intercepted'); } });
+  one.onclick();
+  ['3', 'Backspace', '2', 'Enter', 'Enter'].forEach(key => keyboardCtx.mount.dispatch('keydown', { key, preventDefault() {} }));
+  assert.deepEqual(keyboardCtx._submitted, ['12']);
+  keyboardScene.destroy();
+  keyboardCtx.mount.dispatch('keydown', { key: '1', preventDefault() { assert.fail('listener survives destroy'); } });
+  keyboardCtx.scheduler.cancelAll();
+});
+
+test('change tray coins can be taken back and cannot change after submission', () => {
+  const ctx = fakeCtx({ gameId: 'change', tier: 'mid' });
+  const scene = changeScene.create(ctx);
+  scene.present(SQBrainCore.buildRound('change', 'mid', SQBrainCore.mulberry32(23)).items[0]);
+  scene.setInputEnabled(true);
+  const coin = ctx.mount.querySelector('[data-v="5"]');
+  coin.onclick(); coin.onclick();
+  ctx.mount.querySelector('[data-remove="5"]').onclick();
+  assert.equal(ctx.mount.querySelector('.brain-change__tray-total').textContent, 'NT$5');
+  ctx.mount.querySelector('[data-act="give"]').onclick();
+  ctx.mount.querySelector('[data-remove="5"]').onclick();
+  assert.equal(ctx.mount.querySelector('.brain-change__tray-total').textContent, 'NT$5');
+  assert.deepEqual(ctx._submitted, ['5']);
+  scene.destroy();
+  ctx.scheduler.cancelAll();
+});
+
 test("createMoneyTray: groups are sorted highest denomination first", () => {
   const tray = createMoneyTray([50, 10, 5, 1]);
   tray.add(1); tray.add(50); tray.add(5);

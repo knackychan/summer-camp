@@ -30,6 +30,12 @@ export function createMoneyTray(denominations) {
     return pieces.pop();
   }
   function clear() { pieces.length = 0; }
+  function remove(value) {
+    var index = pieces.lastIndexOf(value);
+    if (index < 0) return false;
+    pieces.splice(index, 1);
+    return true;
+  }
   function total() { return pieces.reduce(function (s, v) { return s + v; }, 0); }
   function groups() {
     var counts = {};
@@ -40,7 +46,7 @@ export function createMoneyTray(denominations) {
   function serialize() { return String(total()); }
 
   return {
-    add: add, undo: undo, clear: clear, total: total, groups: groups, serialize: serialize,
+    add: add, undo: undo, remove: remove, clear: clear, total: total, groups: groups, serialize: serialize,
     get pieces() { return pieces.slice(); }
   };
 }
@@ -70,9 +76,9 @@ function trayHtml(tray) {
       '<span>Tap money above<small>點上面的錢幣</small></span></span>';
   }
   return groups.map(function (g) {
-    return '<div class="brain-change__tray-group" aria-label="NT$' + g.value + ' times ' + g.count + '，NT$' + g.value + ' 共 ' + g.count + ' 枚">' +
+    return '<button type="button" class="brain-change__tray-group" data-remove="' + g.value + '" aria-label="Remove one NT$' + g.value + ', ' + g.count + ' in tray 移除一個 ' + g.value + ' 元，目前有 ' + g.count + ' 個">' +
       '<span>NT$' + g.value + '</span>' + (g.count > 1 ? '<small>&times;' + g.count + '</small>' : '') +
-      '</div>';
+      '</button>';
   }).join("");
 }
 
@@ -116,8 +122,7 @@ function create(ctx) {
     buttons.forEach(function (b) { b.disabled = true; });
     var correctBtn = root().querySelector('.brain-change__token[data-v="' + feedback.answer + '"]');
     if (feedback.correct) {
-      if (correctBtn) ctx.motion.move(correctBtn, [{ transform: "translateY(0)" }, { transform: "translateY(-6px)" }], "snap");
-      return null;
+      return ctx.motion.emphasize(correctBtn);
     }
     if (correctBtn) ctx.motion.emphasize(correctBtn, "outline");
     return new Promise(function (resolve) { ctx.scheduler.after(700, resolve); });
@@ -160,6 +165,7 @@ function create(ctx) {
           '<div class="brain-change__label"><span>Your change<span class="zhs"> 你找的錢</span></span>' +
             '<output class="brain-change__tray-total">NT$0</output></div>' +
           '<div class="brain-tray brain-change__tray"><div class="brain-change__tray-groups"></div></div>' +
+          '<div class="brain-change__hint">Tap a coin to take it back<span class="zhs">點托盤裡的錢幣可以拿回</span></div>' +
         '</div>' +
         '<div class="brain-change__actions-col brain-change__actions">' +
           '<button class="brain-button" type="button" data-act="undo">Undo <span class="zht">上一步</span></button>' +
@@ -176,9 +182,19 @@ function create(ctx) {
     if (!groupsEl || !totalEl) return;
     groupsEl.innerHTML = trayHtml(tray);
     totalEl.textContent = "NT$" + tray.total();
-    totalEl.classList.remove("is-bumping");
-    void totalEl.offsetWidth;
-    totalEl.classList.add("is-bumping");
+    ctx.motion.emphasize(totalEl);
+    groupsEl.querySelectorAll('[data-remove]').forEach(function (button) {
+      button.disabled = !inputEnabled;
+      button.onclick = function () {
+        if (!inputEnabled || pendingSubmit) return;
+        if (!tray.remove(Number(button.dataset.remove))) return;
+        ctx.audio.play('token-pick', {});
+        renderTray();
+        scheduleAnnounce();
+        var next = root().querySelector('[data-remove="' + button.dataset.remove + '"]') || root().querySelector('[data-v="' + button.dataset.remove + '"]');
+        if (next) next.focus({ preventScroll: true });
+      };
+    });
     var last = groupsEl.lastElementChild;
     if (last) ctx.motion.move(last, [{ transform: "scale(.85)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], "move");
     var giveBtn = root().querySelector('[data-act="give"]');
@@ -194,11 +210,12 @@ function create(ctx) {
     root().querySelectorAll(".brain-change__token").forEach(function (b) {
       b.disabled = !inputEnabled;
       b.onclick = function () {
-        if (!inputEnabled) return;
+        if (!inputEnabled || pendingSubmit) return;
         var value = Number(b.dataset.v);
         if (!tray.add(value)) return;
         var cue = value >= 100 ? "note-place" : "coin-" + value;
         ctx.audio.play(cue, { rate: 1 + ((tray.pieces.length % 3) - 1) * 0.03 });
+        ctx.motion.move(b, [{ transform: 'rotate(0)' }, { transform: 'rotate(-6deg) translateY(-4px)' }, { transform: 'rotate(3deg)' }, { transform: 'rotate(0)' }], 'snap');
         renderTray();
         scheduleAnnounce();
         b.focus();
@@ -236,7 +253,7 @@ function create(ctx) {
       sprite.style.setProperty("--sprite-duration", ctx.motion.tokens.reveal + "ms");
       sprite.classList.add("brain-sprite--play");
     }
-    return new Promise(function (resolve) { ctx.scheduler.after(ctx.motion.tokens.reveal, resolve); });
+    return Promise.resolve();
   }
 
   function presentShop(item) {
@@ -245,10 +262,8 @@ function create(ctx) {
     wireShop(item);
     renderTray();
     var panels = root().querySelectorAll(".brain-change__panel");
-    var kf = ctx.reducedMotion
-      ? [{ opacity: 0 }, { opacity: 1 }]
-      : [{ transform: "translateY(12px)", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }];
-    panels.forEach(function (p, i) { ctx.motion.move(p, kf, "reveal"); });
+    var kf = [{ transform: "translateY(4px)" }, { transform: "translateY(0)" }];
+    panels.forEach(function (p) { ctx.motion.move(p, kf, "snap"); });
     return openDrawer();
   }
 
@@ -256,13 +271,13 @@ function create(ctx) {
     var trayEl = root().querySelector(".brain-change__tray");
     var giveBtn = root().querySelector('[data-act="give"]');
     if (giveBtn) giveBtn.disabled = true;
-    root().querySelectorAll(".brain-change__token,[data-act]").forEach(function (b) { b.disabled = true; });
+    root().querySelectorAll(".brain-change__token,[data-act],[data-remove]").forEach(function (b) { b.disabled = true; });
     if (feedback.correct) {
       if (trayEl) trayEl.classList.add("is-success");
       var receipt = root().querySelector(".brain-change__receipt");
       if (receipt) receipt.classList.add("is-visible");
-      ctx.audio.play("stamp", { when: 0.3 });
-      return new Promise(function (resolve) { ctx.scheduler.after(ctx.motion.tokens.celebrate, resolve); });
+      ctx.audio.play("stamp", {});
+      return new Promise(function (resolve) { ctx.scheduler.after(ctx.motion.tokens.move, resolve); });
     }
     if (trayEl) trayEl.classList.add("is-hint");
     var display = root().querySelector(".brain-change__display");
@@ -286,7 +301,8 @@ function create(ctx) {
       root().querySelectorAll(".brain-change__token").forEach(function (b) { b.disabled = !inputEnabled; });
       return;
     }
-    root().querySelectorAll(".brain-change__token,[data-act='undo'],[data-act='clear']").forEach(function (b) { b.disabled = !inputEnabled; });
+    root().querySelectorAll(".brain-change__token,[data-remove]").forEach(function (b) { b.disabled = !inputEnabled; });
+    root().querySelectorAll("[data-act='undo'],[data-act='clear']").forEach(function (b) { b.disabled = !inputEnabled || !tray || tray.total() === 0; });
     var giveBtn = root().querySelector('[data-act="give"]');
     if (giveBtn) giveBtn.disabled = !inputEnabled || !tray || tray.total() === 0;
   }

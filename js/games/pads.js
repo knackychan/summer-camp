@@ -73,11 +73,11 @@ function init(ctx) {
 
   var btnPlay = document.createElement("button");
   btnPlay.textContent = "\uD83E\uDD41 Play";
-  btnPlay.style.cssText = "background:#5AD1C4;border:2px solid #5AD1C4;color:#14131A;border-radius:10px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:36px;";
+  btnPlay.style.cssText = "background:#5AD1C4;border:2px solid #5AD1C4;color:#14131A;border-radius:10px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:44px;";
 
   var btnPractice = document.createElement("button");
   btnPractice.textContent = "\uD83C\uDFAF \u7DF4\u7FD2";
-  btnPractice.style.cssText = "background:#2F2E3D;border:2px solid #3A3850;color:#F4F2FA;border-radius:10px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:36px;";
+  btnPractice.style.cssText = "background:#2F2E3D;border:2px solid #3A3850;color:#F4F2FA;border-radius:10px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;font-weight:600;min-width:44px;min-height:44px;";
 
   var kitLabel = document.createElement("span");
   kitLabel.style.cssText = "font-family:Fredoka,Nunito,system-ui;font-size:11px;font-weight:600;color:#9A96B4;margin-left:auto;";
@@ -217,7 +217,7 @@ function init(ctx) {
 
   var backBtn = document.createElement("button");
   backBtn.textContent = "\u2190 \u8FD4\u56DE";
-  backBtn.style.cssText = "background:transparent;border:2px solid #3A3850;color:#9A96B4;border-radius:10px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;min-width:44px;min-height:32px;";
+  backBtn.style.cssText = "background:transparent;border:2px solid #3A3850;color:#9A96B4;border-radius:10px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:Fredoka,Nunito,system-ui;min-width:44px;min-height:44px;";
   trainBar.appendChild(backBtn);
 
   /* Score display */

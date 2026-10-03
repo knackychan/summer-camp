@@ -1,7 +1,8 @@
 (function(){
   const STORAGE_KEY="keyquest:v2";
   const QUEUE_KEY="sq:queue";
-  const SUPABASE_CDN="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+  const POINT_QUEUE_KEY="sq:points:queue:v1";
+  const SUPABASE_SCRIPT=typeof document!=="undefined"&&document.currentScript?new URL("vendor/supabase.js",document.currentScript.src).href:"js/vendor/supabase.js";
   const KIDS=["lucien","lili","luis"];
 
   /* Which game_stats keys are best scores.
@@ -25,7 +26,7 @@
   }
 
   const clone=value=>JSON.parse(JSON.stringify(value));
-  const uuid=()=>crypto.randomUUID?crypto.randomUUID():
+  const uuid=()=>window.SQStarId?window.SQStarId.random():crypto.randomUUID?crypto.randomUUID():
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g,c=>
       (c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
 
@@ -53,15 +54,22 @@
   function loadScript(src){
     return new Promise((resolve,reject)=>{
       if(window.supabase) return resolve();
-      const existing=document.querySelector(`script[src="${src}"]`);
-      if(existing){
-        existing.addEventListener("load",resolve,{once:true});
-        existing.addEventListener("error",reject,{once:true});
+      let script=document.querySelector(`script[src="${src}"]`);
+      const failed=()=>{
+        clearTimeout(timer);
+        if(script&&script.remove)script.remove();
+        reject(new Error("Sync library unavailable"));
+      };
+      const timer=setTimeout(failed,8000);
+      const loaded=()=>{clearTimeout(timer);resolve();};
+      if(script){
+        script.addEventListener("load",loaded,{once:true});
+        script.addEventListener("error",failed,{once:true});
         return;
       }
-      const s=document.createElement("script");
-      s.src=src; s.onload=resolve; s.onerror=reject;
-      document.head.appendChild(s);
+      script=document.createElement("script");
+      script.src=src; script.onload=loaded; script.onerror=failed;
+      document.head.appendChild(script);
     });
   }
 
@@ -69,8 +77,10 @@
     const cfg=window.SQ_CONFIG;
     if(!cfg||!cfg.SUPABASE_URL||!cfg.SUPABASE_ANON_KEY) return null;
     try{
-      await loadScript(SUPABASE_CDN);
-      return window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
+      await loadScript(SUPABASE_SCRIPT);
+      return window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{
+        db:{timeout:10000}
+      });
     }catch(e){
       return null;
     }
@@ -113,6 +123,8 @@
       });
       saveJson(QUEUE_KEY,this.queue);
       this.kidPins=loadJson("sq:kidPins",{});
+      this.pinsReady=loadJson("sq:kidPins",null)!==null;
+      this.hydrated=false;
       this.adminPin=loadJson("sq:adminPin","");
       this.familySettings=loadJson("sq:famSettings",{});
       const cachedRedos=loadJson("sq:redos",{d:null,map:{}});
@@ -135,25 +147,54 @@
       this.serverStars=loadJson("sq:serverStars",{});
       /* Local-only mode has no primary key to dedup against — see addStars. */
       this.localStarIds=loadJson("sq:localStarIds",[]);
+      /* A new cache key is the unit marker. Never multiply the old cache in
+         place: an older tablet/build still interprets it as legacy units. */
+      this.points=window.SQPoints||null;
+      this.pointCache=null;
+      if(this.points){
+        try{this.pointCache=this.points.migrateCache(localStorage);}
+        catch(e){this.pointsStorageError=e.message;this.pointCache=this.points.migrateCache(localStorage,true);}
+      }
+      this.pointClaims=this.pointCache?this.pointCache.claims||[]:[];
+      this.pointAttempts=this.pointCache?this.pointCache.attempts||{}:{};
+      this.pointAssignments=this.pointCache?this.pointCache.assignments||[]:[];
+      this.pointsReady=false;
+      if(this.points){
+        this.queue=Array.from(new Map(this.queue.concat(loadJson(POINT_QUEUE_KEY,[])).map(op=>[op.id,op])).values());
+        try{this.persistQueue(this.queue,true);}catch(e){this.pointsStorageError=e.message;}
+      }
     }
 
-    static async init(seed){
+    static init(seed){
       const local=loadJson(STORAGE_KEY,null);
       const progress=local&&local.progress?local.progress:clone(seed.progress);
       const settings=local&&local.settings?Object.assign(clone(seed.settings),local.settings):clone(seed.settings);
-      const client=await createSupabaseClient();
-      const store=new SyncStore({progress,settings},client);
-      if(client){
-        /* A tablet with no network still gets a working store: hydrate is how the
-           server's state arrives, not how the app starts. Letting this reject took
-           `store` to null in index.html's catch, and the kid saw zero stars and an
-           empty day for the whole session. */
-        try{ await store.hydrate(); }catch(e){}
-      }
+      const store=new SyncStore({progress,settings},null);
       store.persistLocal();
-      store.last=clone(store.progress);
-      store.startFlush();
+      /* Render the cached app now. Keep the first snapshot ahead of queued
+         writes, so a season reset can discard last season's offline queue. */
+      store.ready=store.connect().then(()=>{store.startFlush();return store;});
       return store;
+    }
+
+    connect(){
+      if(this.connecting)return this.connecting;
+      let connected=false;
+      this.connecting=this.run(async()=>{
+        if(!this.supabase){
+          this.supabase=await createSupabaseClient();
+          connected=!!this.supabase;
+        }
+        if(this.supabase){
+          this.mode="supabase";
+          if(navigator.onLine)await this._hydrate(false);
+        }
+      }).catch(()=>{}).then(()=>{
+        this.connecting=null;
+        if(connected&&typeof this.onConnected==="function")this.onConnected();
+        return this;
+      });
+      return this.connecting;
     }
 
     /* One row of game_stats -> one field of progress. Pulled out of hydrate()
@@ -177,10 +218,102 @@
        has earned and not yet sent — a star is in exactly one of the two terms at
        any moment, so the count never moves when the queue drains. */
     starsFor(kid){
+      if(this.points)return this.pointsFor(kid).totalEarned;
       return (this.serverStars[kid]||0)+this.queuedStarDelta(kid);
     }
 
+    pointsFor(kid){
+      if(!this.points)return {totalEarned:this.starsFor(kid),available:this.starsFor(kid),pending:0,spent:0};
+      const row=this.pointCache.totals[kid]||{};
+      const known=new Set(this.pointClaims.filter(c=>c.kid_id===kid&&c.status!=="started").map(c=>this.points.identity(c)));
+      const pendingClaims=this.pointClaims.filter(c=>c.kid_id===kid&&c.status==="pending");
+      let pending=Math.max(Number(row.pending)||0,pendingClaims.reduce((n,c)=>n+(c.amount||0),0));
+      pending+=this.pointClaims.filter(c=>c.kid_id===kid&&(c.status==="queued"||c.status==="confirmed"&&c.awaiting_totals)).reduce((n,c)=>n+(c.amount||0),0);
+      this.queue.forEach(op=>{
+        if(op.kid!==kid)return;
+        if(op.type==="stars"&&!this.pointClaims.some(c=>c.legacy_id===op.id))pending+=(op.delta||0)*10;
+        if(op.type==="pointClaim"&&!known.has(this.points.identity(op.claim)))pending+=op.claim.amount||0;
+      });
+      return {totalEarned:Number(row.total_earned)||0,available:Math.max(0,Number(row.available)||0),pending:pending,spent:Number(row.spent)||0};
+    }
+
+    persistPoints(){
+      this.pointCache.claims=this.pointClaims;
+      this.pointCache.attempts=this.pointAttempts;
+      this.pointCache.assignments=this.pointAssignments;
+      // Unlike cosmetic caches, losing an award intent must surface to caller.
+      localStorage.setItem("sq:points:v1",JSON.stringify(this.pointCache));
+    }
+
+    applyPointTotals(rows){
+      (rows||[]).forEach(row=>{if(row&&KIDS.includes(row.kid_id))this.pointCache.totals[row.kid_id]=row;});
+      this.pointClaims.forEach(c=>{delete c.awaiting_totals;});
+      this.persistPoints();
+      this.pointsReady=true;
+      this.pointsError="";
+    }
+
+    applyPointClaims(rows){
+      const rowsByKey=new Map(this.pointClaims.map(c=>[this.points.identity(c),c]));
+      (rows||[]).forEach(c=>{
+        const key=this.points.identity(c),previous=rowsByKey.get(key);
+        if(c.status==="started"&&previous&&previous.status==="queued")return;
+        rowsByKey.set(key,c);
+      });
+      this.pointClaims=Array.from(rowsByKey.values());
+      this.persistPoints();
+    }
+
+    beginPointAttempt(kid,kind,options){
+      if(!this.points)throw new Error("Points policy unavailable");
+      options=options||{};
+      const claim=this.points.claim(kid,options.day||todayISO(),kind,options,this.familySettings);
+      const assignment=this.pointAssignments.find(a=>a.kid_id===kid&&a.day===claim.day&&a.kind===kind&&(a.slot||"default")===claim.slot&&a.active!==false);
+      if(assignment){
+        claim.work_id=assignment.work_id||claim.work_id;
+        claim.evidence.assignment_id=assignment.id;
+        if(Number.isInteger(assignment.amount))claim.amount=assignment.amount;
+      }
+      claim.evidence.policy_snapshot={updated_at:this.familySettings.points_policy_updated_at||null,amount:claim.amount};
+      const key=this.points.identity(claim);
+      if(!this.pointAttempts[key]){
+        claim.id=uuid();
+        claim.started_at=new Date().toISOString();
+        this.pointAttempts[key]=claim;
+        this.persistPoints();
+      }
+      if(!this.pointClaims.some(c=>this.points.identity(c)===key)&&!this.queue.some(op=>op.type==="pointBegin"&&this.points.identity(op.claim)===key)){
+        const saved=this.pointAttempts[key];
+        this.enqueue({type:"pointBegin",id:saved.id+":begin",kid:kid,claim:saved});
+        this.flush().catch(()=>{});
+      }
+      return clone(this.pointAttempts[key]);
+    }
+
+    async awardPoints(kid,kind,options){
+      options=options||{};
+      const attempt=options.attempt||this.beginPointAttempt(kid,kind,options);
+      if(attempt.kid_id!==kid||attempt.kind!==kind)throw new Error("Points attempt does not match task");
+      const claim=Object.assign({},attempt,{evidence:Object.assign({},attempt.evidence,options.evidence||{})});
+      const key=this.points.identity(claim);
+      const existing=this.pointClaims.find(c=>this.points.identity(c)===key||c.kid_id===kid&&c.day===claim.day&&c.work_id===claim.work_id&&kind!=="project");
+      if(existing&&!["denied","rejected","started"].includes(existing.status))return existing;
+      const queued=this.queue.find(op=>op.type==="pointClaim"&&this.points.identity(op.claim)===key);
+      if(queued)return queued.claim;
+      /* Keep the same intent across reloads even in local-only installations.
+         Parent-verified earnings cannot become spendable without the server. */
+      this.enqueue({type:"pointClaim",id:claim.id,kid:kid,claim:claim});
+      this.pointClaims=this.pointClaims.filter(c=>this.points.identity(c)!==key);
+      claim.status="queued";
+      this.pointClaims.push(claim);
+      this.persistPoints();
+      this.announceStars(kid,claim.amount,this.points.rules[kind].label.join(" · "));
+      this.flush().catch(()=>{});
+      return claim;
+    }
+
     applyStarTotals(rows,kid){
+      if(this.points)return;
       (rows||[]).forEach(r=>{
         if(!r||!r.kid_id)return;
         if(kid&&r.kid_id!==kid)return;
@@ -194,6 +327,19 @@
     }
     async _refreshStarTotals(kid){
       if(!this.supabase) return;
+      if(this.points){
+        const results=await Promise.all([
+          this.supabase.from("point_totals").select("kid_id,total_earned,spent,available,pending"),
+          this.supabase.from("points_claims").select("*").order("created_at",{ascending:false}).limit(1000),
+          this.supabase.from("points_assignments").select("*")
+        ]);
+        const failed=results.find(r=>r.error);
+        if(failed){this.pointsReady=false;this.pointsError=failed.error.message;throw failed.error;}
+        this.applyPointClaims(results[1].data||[]);
+        this.pointAssignments=results[2].data||[];
+        this.applyPointTotals(results[0].data||[]);
+        return;
+      }
       const {data,error}=await this.supabase.from("star_totals").select("kid_id,stars");
       if(error) throw error;
       this.applyStarTotals(data||[],kid);
@@ -204,21 +350,36 @@
       /* flush first: the queue is the only copy of anything earned offline, and
          hydrate() re-baselines `last` against the server. Hydrating first would
          re-baseline over ops that had not been sent yet. */
-      addEventListener("online",()=>this.flush().then(()=>this.hydrate()).catch(()=>{}));
-      this.flushTimer=setInterval(()=>this.flush(),30000);
+      addEventListener("online",()=>{
+        const ready=this.supabase?this.flush().then(()=>this.hydrate()):this.connect().then(()=>this.flush());
+        ready.catch(()=>{});
+      });
+      this.flushTimer=setInterval(()=>this.flush().catch(()=>{}),30000);
       if(this.flushTimer&&this.flushTimer.unref)this.flushTimer.unref();
-      this.flush();
+      this.flush().catch(()=>{});
     }
 
     persistLocal(){
       saveJson(STORAGE_KEY,{progress:this.progress,settings:this.settings});
     }
 
-    async hydrate(){
-      const day=todayISO();
-      const p=normalize(this.progress);
+    hydrate(){
+      /* A burst of realtime events shares the next read. Events arriving during
+         a read get one trailing snapshot, so a late admin edit is not missed. */
+      if(!this.hydratePending){
+        this.hydratePending=this.run(()=>{
+          this.hydratePending=null;
+          return this._hydrate();
+        });
+      }
+      return this.hydratePending;
+    }
 
-      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings},{data:overrides},{data:redos},{data:brain}]=await Promise.all([
+    async _hydrate(flush=true){
+      if(!this.supabase)return;
+      const day=todayISO();
+
+      const results=await Promise.all([
         this.supabase.from("kids").select("id,pin"),
         this.supabase.from("day_ticks").select("kid_id,block_idx").eq("day",day),
         this.supabase.from("day_rolls").select("kid_id,block_idx,count").eq("day",day),
@@ -230,21 +391,34 @@
         this.supabase.from("passes").select("*").or(`day.is.null,day.eq.${day}`).order("created_at",{ascending:false}),
         this.supabase.from("photos").select("*").eq("day",day).order("created_at",{ascending:false}),
         this.supabase.from("help_claims").select("*").eq("day",day).order("created_at",{ascending:false}),
-        this.supabase.from("family_settings").select("key,value"),
+        this.supabase.from("family_settings").select("key,value,updated_at"),
         this.supabase.from("day_overrides").select("kid_id,block_idx,t").eq("day",day),
         this.supabase.from("day_redos").select("kid_id,block_idx,note").eq("day",day),
         this.supabase.from("brain_done").select("kid_id,day,game_id,score,ms").eq("day",day),
+        ...(this.points?[
+          this.supabase.from("point_totals").select("kid_id,total_earned,spent,available,pending"),
+          this.supabase.from("points_claims").select("*").order("created_at",{ascending:false}).limit(1000),
+          this.supabase.from("points_assignments").select("*")
+        ]:[])
       ]);
-
-      this.kidPins={};
-      (kids||[]).forEach(r=>{if(r.pin)this.kidPins[r.id]=r.pin;});
-      saveJson("sq:kidPins",this.kidPins);
+      const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings},{data:overrides},{data:redos},{data:brain}]=results;
+      if(!results[0].error&&Array.isArray(kids)){
+        this.kidPins={};
+        kids.forEach(r=>{if(r.pin)this.kidPins[r.id]=r.pin;});
+        saveJson("sq:kidPins",this.kidPins);
+        this.pinsReady=true;
+      }
+      const failed=results.slice(0,15).find(result=>result.error);
+      if(failed)throw failed.error;
+      const pointsFailure=this.points&&results.slice(15).find(result=>result.error);
+      if(pointsFailure){this.pointsReady=false;this.pointsError=pointsFailure.error.message;}
+      const p=normalize(this.progress);
       this.passes=passes||[];
       this.photos=photos||[];
       this.helpClaims=helpClaims||[];
       if(Array.isArray(famSettings)){
         this.familySettings={};
-        famSettings.forEach(r=>{this.familySettings[r.key]=r.value;});
+        famSettings.forEach(r=>{this.familySettings[r.key]=r.value;if(r.key==="points_policy_v1")this.familySettings.points_policy_updated_at=r.updated_at;});
         saveJson("sq:famSettings",this.familySettings);
       }
       this.adminPin=this.familySettings.admin_pin||"";
@@ -259,9 +433,21 @@
       const resetStamp=this.familySettings.season_reset_at||"";
       if(resetStamp&&loadJson("sq:seasonReset","")!==resetStamp){
         saveJson("sq:seasonReset",resetStamp);
+        if(this.points){
+          /* A season clears learning state, never wallet history or unsent
+             earning evidence. Retain all money-related operations. */
+          this.queue=this.queue.filter(op=>["pointBegin","pointClaim","stars","questVerify"].includes(op.type)||op.type==="brainDone"&&this.queue.some(p=>p.type==="pointClaim"&&p.kid===op.kid&&p.claim.kind==="brain"&&p.claim.day===op.day&&p.claim.slot===op.gameId));
+          this.persistQueue(this.queue,true);
+          [STORAGE_KEY,"sq:redos","sq:dayOverrides"].forEach(k=>localStorage.removeItem(k));
+          this.progress=normalize({});
+          this.last=clone(this.progress);
+          if(typeof location!=="undefined"&&location.reload)location.reload();
+          return;
+        }
         [STORAGE_KEY,QUEUE_KEY,"sq:kidPins","sq:adminPin","sq:famSettings",
          "sq:redos","sq:dayOverrides","sq:serverStars","sq:localStarIds"]
           .forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+        this.queue=[];
         if(typeof location!=="undefined"&&location.reload)location.reload();
         return;
       }
@@ -287,6 +473,7 @@
       (acts||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].actsDay.done[r.act_idx]=true;});
       (totals||[]).forEach(r=>{ensureKid(p,r.kid_id);});
       this.applyStarTotals(totals||[]);
+      if(this.points&&!pointsFailure){this.pointAssignments=results[17].data||[];this.applyPointClaims(results[16].data||[]);this.applyPointTotals(results[15].data||[]);}
       (vocab||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].vocab[r.word_key]=r.box||0;});
       (brain||[]).forEach(r=>{ensureKid(p,r.kid_id); p[r.kid_id].brain.done[r.game_id]={score:r.score||0,ms:r.ms||0};});
       this.applyStatRows(p,stats||[]);
@@ -294,7 +481,13 @@
 
       // spec: hydration merges server rows, then the local queue replays anything pending
       this.queue.forEach(op=>{
-        if(!op||!op.kid) return;
+        if(!op)return;
+        if(op.type==="famset")this.familySettings[op.key]=op.value;
+        if(op.type==="override"&&op.day===day){
+          const bucket=this.dayOverridesRaw[op.kidId]=this.dayOverridesRaw[op.kidId]||{};
+          if(op.t!=null)bucket[op.blockIdx]=op.t; else delete bucket[op.blockIdx];
+        }
+        if(!op.kid) return;
         ensureKid(p,op.kid);
         const P=p[op.kid];
         if(op.type==="tick"&&op.day===day){
@@ -318,8 +511,11 @@
          never syncs — and an admin star grant gets counted a second time. */
       this.last=clone(this.progress);
       this.persistLocal();
+      saveJson("sq:famSettings",this.familySettings);
+      saveJson("sq:dayOverrides",{d:day,map:this.dayOverridesRaw});
+      this.hydrated=true;
 
-      await this.flush();
+      if(flush)await this._flush();
     }
 
     async save(progress,settings){
@@ -328,12 +524,24 @@
       this.persistLocal();
       if(this.configured) this.enqueueDiff(this.last,this.progress);
       this.last=clone(this.progress);
-      await this.flush();
+      this.flush().catch(()=>{});
+    }
+
+    persistQueue(next,strict){
+      const write=strict?(key,value)=>localStorage.setItem(key,JSON.stringify(value)):saveJson;
+      if(this.points){
+        /* Older sync builds discard unknown operation types. Keep point intents
+           in a separate durable key so an old cached build cannot drain them. */
+        const isPoint=op=>op.type==="pointBegin"||op.type==="pointClaim";
+        write(POINT_QUEUE_KEY,next.filter(isPoint));
+        write(QUEUE_KEY,next.filter(op=>!isPoint(op)));
+      }else write(QUEUE_KEY,next);
     }
 
     enqueue(op){
-      this.queue.push(Object.assign({id:uuid()},op));
-      saveJson(QUEUE_KEY,this.queue);
+      const next=this.queue.concat(Object.assign({id:uuid()},op));
+      this.persistQueue(next,this.points&&["pointBegin","pointClaim","stars","questVerify"].includes(op.type));
+      this.queue=next;
     }
 
     enqueueDiff(before,after){
@@ -395,11 +603,22 @@
       for(const op of pending){
         try{
           await this.applyOp(op);
-          if(op.type==="stars") sentStars=true;
+          if(op.type==="stars"||op.type==="pointClaim") sentStars=true;
           this.queue=this.queue.filter(q=>q.id!==op.id);
-          saveJson(QUEUE_KEY,this.queue);
+          this.persistQueue(this.queue,!!this.points);
         }catch(e){
-          return;
+          if(this.points&&["pointBegin","pointClaim","stars"].includes(op.type)&&["PGRST202","PGRST205","42P01","42883"].includes(e.code)){
+            /* App files can arrive before the database migration. Keep points
+               durable while unrelated ticks, bests and learning still sync. */
+            this.pointsReady=false;this.pointsError=e.message;
+            continue;
+          }
+          if(this.points&&["pointBegin","pointClaim"].includes(op.type)&&["22023","P0001","23514"].includes(e.code)){
+            const claim=this.pointClaims.find(c=>this.points.identity(c)===this.points.identity(op.claim));
+            if(claim){claim.sync_error=e.message||"Points task needs parent review";this.persistPoints();}
+            continue;
+          }
+          break;
         }
       }
       /* The op has left the queue; the server total must catch up in the same turn,
@@ -425,6 +644,30 @@
           kid_id:op.kid,day:op.day,block_idx:op.blockIdx,count:op.count
         });
         if(error) throw error;
+      }else if(op.type==="pointBegin"){
+        const {data,error}=await this.supabase.rpc("points_begin_attempt",{p_claim:op.claim});
+        if(error)throw error;
+        const row=Array.isArray(data)?data[0]:data;
+        if(!row||!row.status)throw new Error("Points attempt unavailable");
+        if(this.points.identity(row)!==this.points.identity(op.claim))this.applyPointClaims([Object.assign({},op.claim,{id:row.id,status:row.status,amount:0,duplicate_of:row.id})]);
+        this.applyPointClaims([row]);
+      }else if(op.type==="pointClaim"){
+        const {data,error}=await this.supabase.rpc("points_claim",{p_claim:op.claim});
+        if(error)throw error;
+        const row=Array.isArray(data)?data[0]:data;
+        if(!row||!row.status)throw new Error("Points confirmation unavailable");
+        if(this.points.identity(row)!==this.points.identity(op.claim)){
+          /* A project/outing can intentionally reuse another task's work ID.
+             Retain a zero-value alias so this entrance stops showing a queued
+             payment after the server returns the already-paid activity. */
+          this.applyPointClaims([Object.assign({},op.claim,{id:row.id,status:row.status,amount:0,duplicate_of:row.id})]);
+        }
+        this.applyPointClaims([Object.assign({},row,{awaiting_totals:row.status==="confirmed"||row.status==="pending"})]);
+      }else if(op.type==="stars"&&this.points){
+        const {data,error}=await this.supabase.rpc("points_legacy_award",{p_row:{id:op.id,kid_id:op.kid,delta:op.delta,reason:op.reason,unit_version:1}});
+        if(error)throw error;
+        const row=Array.isArray(data)?data[0]:data;
+        if(row&&row.status)this.applyPointClaims([Object.assign({kid_id:op.kid,day:op.day||todayISO(),kind:"legacy",slot:op.id,work_id:"legacy:"+op.id},row,{legacy_id:op.id,awaiting_totals:row.status==="confirmed"||row.status==="pending"})]);
       }else if(op.type==="stars"){
         const {error}=await this.supabase.from("stars_ledger").insert({
           id:op.id,kid_id:op.kid,delta:op.delta,reason:op.reason,source:"app"
@@ -484,11 +727,11 @@
 
     async tick(kid,dayISO,blockIdx,ticked){
       this.enqueue({type:"tick",kid,day:dayISO,blockIdx,ticked});
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     async roll(kid,dayISO,blockIdx){
       this.enqueue({type:"roll",kid,day:dayISO,blockIdx,count:1});
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     async setOverride(dayISO,blockIdx,t,kidId){
       kidId=kidId||"all";
@@ -496,17 +739,17 @@
       if(t!=null)bucket[blockIdx]=t; else delete bucket[blockIdx];
       saveJson("sq:dayOverrides",{d:dayISO,map:this.dayOverridesRaw});
       this.enqueue({type:"override",day:dayISO,blockIdx:blockIdx,t:t,kidId:kidId});
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     async setFamilySetting(key,value){
       this.familySettings[key]=value;
       saveJson("sq:famSettings",this.familySettings);
       this.enqueue({type:"famset",key,value});
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     async markBrainDone(kid,dayISO,gameId,score,ms){
       this.enqueue({type:"brainDone",kid,day:dayISO,gameId,score,ms});
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     /* Papa's "open games today" — the anon RLS policy only lets the tablet write
        braingate_* keys, and setFamilySetting already updates locally first, so
@@ -518,6 +761,16 @@
        see js/star-id.js. It becomes the stars_ledger primary key, so a repeat is
        a 23505 the server rejects rather than a second star. */
     async addStars(kid,delta,reason,id){
+      if(this.points){
+        /* Compatibility for already loaded legacy callers. New actions use the
+           canonical task, so the old flat-block/full-day payouts cannot stack. */
+        const parsed=window.SQStarId&&window.SQStarId.parse(id);
+        if(parsed&&parsed.kind==="block"){
+          return Promise.all(this.points.block(parsed.slot).map(task=>this.awardPoints(kid,task.kind,{day:parsed.day,slot:task.slot,evidence:{source:"schedule",block_idx:parsed.slot}})));
+        }
+        if(parsed&&(parsed.kind==="brain"||parsed.kind==="bonus"))return;
+        throw new Error("Use a defined points task; legacy balances migrate through the saved queue");
+      }
       if(!this.configured){
         /* No server exists and never will. The local cache is the ledger, so the
            kid still earns stars in a clean local-only deploy — including the PK
@@ -541,7 +794,7 @@
       /* after enqueue, before flush: starsFor() already counts it, so the
          notification and the number a kid sees can never disagree */
       this.announceStars(kid,delta,reason);
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     /* The one place every self-earned star passes through. index.html sets
        onLocalStars to raise the toast — admin grants arrive over realtime
@@ -552,15 +805,15 @@
     }
     async actDone(kid,dayISO,actIdx){
       this.enqueue({type:"actDone",kid,day:dayISO,actIdx});
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     async setVocab(kid,wordKey,box){
       this.enqueue({type:"vocab",kid,wordKey,box});
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     async setStat(kid,stat,value){
       this.enqueue({type:"stat",kid,stat,value});
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     async createAsk(kid,kind,body,audioBlob){
       if(!this.supabase) return {error:new Error("Sync is offline")};
@@ -581,7 +834,7 @@
          remains a local waiting state until sync is configured. */
       if(this.configured){
         this.enqueue({type:"questVerify",id:id,kid:kid,kind:kind,body:body||null});
-        await this.flush();
+        this.flush().catch(()=>{});
       }
       return {data:{id:id,kind:kind},error:null,queued:!!this.configured,localOnly:!this.configured};
     }
@@ -600,10 +853,10 @@
       kids.forEach(kid=>blockIdxs.forEach(blockIdx=>{
         this.enqueue({type:"outingBlock",kid:kid,day:dayISO,blockIdx:blockIdx,credited:credited,reason:reason});
         this.passes.unshift({kid_id:kid,kind:"outing",status:"granted",day:dayISO,block_idx:blockIdx,credited:!!credited,reason:reason});
-        if(credited)this.enqueue({type:"stars",kid:kid,delta:1,
+        if(credited&&!this.points)this.enqueue({type:"stars",kid:kid,delta:1,
           reason:"Outing 出遊 · "+(reason||"Family outing 家庭出遊")});
       }));
-      await this.flush();
+      this.flush().catch(()=>{});
     }
     async spendPass(id,day,blockIdx){
       if(!this.supabase) return {error:new Error("Sync is offline")};
@@ -632,6 +885,13 @@
       const ch=this.supabase.channel(`stars-${Date.now()}`)
         .on("postgres_changes",{event:"*",schema:"public",table:"stars_ledger"},p=>cb(p.new||p.old,p.eventType))
         .subscribe();
+      return ()=>this.supabase.removeChannel(ch);
+    }
+    onPoints(cb){
+      if(!this.supabase||!this.points)return ()=>{};
+      const ch=this.supabase.channel(`points-${Date.now()}`);
+      ["points_claims","points_assignments","points_requests"].forEach(table=>ch.on("postgres_changes",{event:"*",schema:"public",table:table},p=>cb(p.new||p.old,p.eventType)));
+      ch.subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }
     onAsks(cb){
@@ -677,7 +937,15 @@
     onFamilySettings(cb){
       if(!this.supabase) return ()=>{};
       const ch=this.supabase.channel(`famset-${Date.now()}`)
-        .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},p=>cb(p.new||p.old))
+        .on("postgres_changes",{event:"*",schema:"public",table:"family_settings"},p=>{
+          const row=p.new||p.old;
+          if(this.points&&row.key==="points_policy_v1"){
+            this.familySettings[row.key]=row.value;
+            this.familySettings.points_policy_updated_at=row.updated_at;
+            saveJson("sq:famSettings",this.familySettings);
+          }
+          cb(row);
+        })
         .subscribe();
       return ()=>this.supabase.removeChannel(ch);
     }
@@ -708,5 +976,6 @@
     bestStatCheck=typeof fn==="function"?fn:null;
   };
 
-  window.SyncStore=SyncStore;
+  if(typeof window!=="undefined")window.SyncStore=SyncStore;
+  if(typeof module!=="undefined"&&module.exports)module.exports=SyncStore;
 })();

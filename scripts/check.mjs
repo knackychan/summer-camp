@@ -543,10 +543,13 @@ try {
   if (/UNLABELLED|App progress/.test(syncJs)) {
     fail("stars are a ledger", "sync.js still has an anonymous star bucket");
   }
-  const grants = [...appScript.matchAll(/addStars\(([^)]*)\)/g)];
-  if (grants.length < 3) {
-    fail("stars are a ledger", `only ${grants.length} addStars call sites; the app earns via block, day-complete bonus and the Brain Gym set`);
+  // The approved points policy replaces flat schedule/trio bonuses. Every child
+  // entrance must use the same server-validated claim, never a supplied delta.
+  if (/store\.addStars\s*\(/.test(appScript)) fail("points provenance", "child runtime still supplies raw ledger deltas");
+  if (!/store\.awardPoints\s*\(/.test(appScript) || !/SQPoints\.block\s*\(/.test(appScript) || !/SQPoints\.quest\s*\(/.test(appScript)) {
+    fail("points provenance", "schedule, quests and Brain must use shared point claims");
   }
+  if (/SQStarId\.(BONUS_DELTA|brain|bonus)\b/.test(appScript)) fail("points provenance", "legacy flat bonuses remain active");
   // Papa, 2026-08-03: stars come from the schedule, where Papa sees the block and
   // can accept or send it back. The Activities and Learn tabs used to hand one out
   // for a single "I did it" tap — free stars, and the Learn ledger reason said
@@ -554,9 +557,6 @@ try {
   if (/addStars\([^)]*(Activity 活動|self-claimed)/.test(appScript)) {
     fail("stars are a ledger", "a self-claimed Activity/Learn star is back — stars come from the schedule (Papa, 2026-08-03)");
   }
-  grants.forEach(([, args]) => {
-    if (args.split(",").length < 3) fail("stars are a ledger", `addStars(${args}) passes no reason — the ledger would be unauditable`);
-  });
   if (!/starsFor\s*\(/.test(syncJs)) {
     fail("stars are a ledger", "sync.js has no starsFor() — nothing derives the displayed total");
   }
@@ -596,7 +596,8 @@ if (!/!brainGate\(savedKid\)\.open/.test(indexHtml)) {
   }
 }
 // the gate hides the rest of the row; hiding the brain games too would deadlock the kid
-if (!indexHtml.includes(".brainlocked #gameRow .gamecard:not(.brain)")) {
+const gateStyles = indexHtml + (indexHtml.includes('href="css/app.css"') ? readFileSync(new URL("css/app.css", root), "utf8") : "");
+if (!gateStyles.includes(".brainlocked #gameRow .gamecard:not(.brain)")) {
   fail("brain gate", "brain games are not exempt from the locked-row rule");
 }
 if (!/先做頭腦體操/.test(indexHtml)) {

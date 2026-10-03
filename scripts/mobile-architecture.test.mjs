@@ -19,6 +19,6 @@ assert.equal(manifest.start_url, "./index.html");
 assert.equal(manifest.id, "./index.html");
 const sw = readFileSync(resolve(root, "sw.js"), "utf8");
 assert.doesNotMatch(sw, /apps\/kid|TabletRuntimeController|ActivityHostScreen|NavigationService|WorldModel|AppSessionStore/);
-assert.ok(sw.includes('caches.match("./index.html")'));
+assert.ok(sw.includes('cache.match("./index.html")'), "offline navigation uses the active release cache");
 await import("./tablet-runtime.test.mjs");
 console.log("root mobile architecture tests: ok");

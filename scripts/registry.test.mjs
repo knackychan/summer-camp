@@ -1,12 +1,39 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
 import { SQGames } from "../js/games/registry.js";
-import { MANIFEST } from "../js/games/index.js";
+import { MANIFEST, findEntry } from "../js/games/index.js";
 
 function fresh() {
   SQGames.reset();
   return SQGames;
 }
+
+test("retired City Drive cannot launch before or after manifest readiness, and keeps its saved score", async function () {
+  const read = (file) => readFileSync(new URL("../" + file, import.meta.url), "utf8");
+  const html = read("index.html");
+  let bestStat;
+  const context = { SQGames: fresh(), MANIFEST, findEntry, Promise, console,
+    SyncStore: { setBestStatCheck(check) { bestStat = check; } },
+    dispatchEvent() {}, CustomEvent: class {}, KIDS: { lili: {} } };
+  context.window = context;
+  vm.createContext(context);
+  vm.runInContext(html.match(/const LEVELS = \{[\s\S]*?\n\};/)[0]
+    + html.slice(html.indexOf("function gameMeta("), html.indexOf("function renderGameSwitcher("))
+    + html.slice(html.indexOf("function gameLaunchAccess("), html.indexOf("let gameLaunchToken=")), context);
+  assert.equal(context.gameMeta("city"), null);
+  assert.equal(context.allGameIds().includes("city"), false);
+  assert.equal(context.gameLaunchAccess("lili", "city").reason, "content_not_found");
+  vm.runInContext(read("js/main.js").replace(/^import .*;\r?\n/gm, ""), context);
+  assert.equal(findEntry("city"), null);
+  assert.equal(context.gameMeta("city"), null);
+  assert.equal(context.allGameIds().includes("city"), false);
+  assert.equal(await context.SQLoadGame("city"), null);
+  assert.equal(context.gameLaunchAccess("lili", "city").reason, "content_not_found");
+  assert.equal(bestStat("city"), true, "retirement must preserve existing scores");
+  assert.equal(read("sw.js").includes('"./js/games/city.js"'), false);
+});
 
 var DIG = {
   id: "dig",
@@ -86,7 +113,7 @@ test("manifest bestKeys are unique where present", function () {
 
 test("brain games are flagged and carry no arcade bestKey", function () {
   var brain = MANIFEST.filter(function (e) { return e.brain; });
-  assert.equal(brain.length, 9);
+  assert.equal(brain.length, 17);
   for (var i = 0; i < brain.length; i++) {
     assert.equal(brain[i].bestKey, null, brain[i].id + ": brain games score via brain_*");
   }

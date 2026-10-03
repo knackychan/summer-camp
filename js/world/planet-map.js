@@ -10,6 +10,7 @@ export const DEFAULT_SEED = 7;
 /* Section ids are district centres; featured content sits inside its parent biome. */
 export const SITES = [
   {id:"section:quests",     biome:"village", lat:6,   lon:0},
+  {id:"game:kitchen",       biome:"village", lat:4,   lon:20},
   {id:"section:games",      biome:"arcade",  lat:30,  lon:55},
   {id:"game:monster-truck", biome:"arcade",  lat:19,  lon:68},
   {id:"game:paint",         biome:"arcade",  lat:41,  lon:68},

@@ -125,7 +125,11 @@ function create(ctx) {
 
   function showFeedback(feedback) {
     root().querySelectorAll(".brain-key,[data-next]").forEach(function (b) { b.disabled = true; });
-    if (feedback.correct) return null;
+    if (feedback.correct) {
+      var answerPanel = root().querySelector('.brain-recall__panel--old');
+      if (answerPanel) answerPanel.classList.add('is-success');
+      return ctx.motion.emphasize(answerPanel);
+    }
     var panel = root().querySelector(".brain-corrective");
     var old = root().querySelector(".brain-recall__old-value");
     if (old) ctx.motion.emphasize(old, "outline");

@@ -153,6 +153,19 @@ export const SPRITES = {
     "oooooooooooo"], remap:{y:"z"}},
 
   /* ---- featured content ---- */
+  kitchen: {art:[
+    "....oooo.....",
+    "...o####o....",
+    "....oooo.....",
+    ".ooooooooooo.",
+    "oRR##RR##RRRo",
+    "ooooooooooooo",
+    ".ozzzzzzzzzo.",
+    ".oztitoowwzo.",
+    ".oziyiowywzo.",
+    ".oztitoowwzo.",
+    ".ozzzzzzzzzo.",
+    "ooooooooooooo"], remap:{y:"z"}},
   truck: {art:[
     "........ooooo.",
     "........oBBRo.",
@@ -522,7 +535,7 @@ export const SPRITES = {
 export const LANDMARK_SPRITE = {
   "section:quests":"questHut", "section:games":"arcade", "section:acts":"volcano", "section:learn":"observatory",
   "section:books":"libraryTree", "section:music":"musicShroom", "section:day":"clockTower", "section:rewards":"chest",
-  "game:monster-truck":"truck", "game:paint":"easel", "game:solar":"orrery", "book:space":"spaceBook"
+  "game:monster-truck":"truck", "game:paint":"easel", "game:solar":"orrery", "game:kitchen":"kitchen", "book:space":"spaceBook"
 };
 
 function rowsOf(name, frame){
@@ -581,23 +594,28 @@ export function spritePixels(name, frame, variant, heroIndex){
   return {width:W, height:H, pixels:px};
 }
 
-/* Browser only: rasterise every sprite into canvases. atlas[name][variant][frame] -> canvas. */
+/* Browser only: rasterise each variant when first drawn, then reuse its canvases.
+   Hidden landmarks and mini-game pieces do not delay the first world frame. */
 export function buildAtlas(heroIndex){
   var atlas = {};
   Object.keys(SPRITES).forEach(function(name){
     atlas[name] = {};
     ["normal","dark","sleep"].forEach(function(variant){
-      atlas[name][variant] = [];
-      for (var f = 0; f < frameCount(name); f++) {
-        var sprite = spritePixels(name, f, variant, heroIndex);
-        var canvas = document.createElement("canvas");
-        canvas.width = sprite.width; canvas.height = sprite.height;
-        var ctx = canvas.getContext("2d"), img = ctx.createImageData(sprite.width, sprite.height);
-        var out = new Uint32Array(img.data.buffer);
-        for (var i = 0; i < sprite.pixels.length; i++) out[i] = sprite.pixels[i] < 0 ? 0 : RGBA[sprite.pixels[i]];
-        ctx.putImageData(img, 0, 0);
-        atlas[name][variant].push(canvas);
-      }
+      Object.defineProperty(atlas[name], variant, {enumerable:true, configurable:true, get:function(){
+        var frames = [];
+        for (var f = 0; f < frameCount(name); f++) {
+          var sprite = spritePixels(name, f, variant, heroIndex);
+          var canvas = document.createElement("canvas");
+          canvas.width = sprite.width; canvas.height = sprite.height;
+          var ctx = canvas.getContext("2d"), img = ctx.createImageData(sprite.width, sprite.height);
+          var out = new Uint32Array(img.data.buffer);
+          for (var i = 0; i < sprite.pixels.length; i++) out[i] = sprite.pixels[i] < 0 ? 0 : RGBA[sprite.pixels[i]];
+          ctx.putImageData(img, 0, 0);
+          frames.push(canvas);
+        }
+        Object.defineProperty(atlas[name], variant, {enumerable:true, value:frames});
+        return frames;
+      }});
     });
   });
   return atlas;

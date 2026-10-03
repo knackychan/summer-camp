@@ -12,8 +12,8 @@
 <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 <title>Summer Quest</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&amp;family=Nunito:wght@600;700;800&amp;display=swap" media="print" onload="this.media='all'">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap');
 
 :root{
   --bg:#201A40; --bg2:#2A2350; --panel:#332B66; --panel2:#3D3475;
@@ -40,7 +40,7 @@ body.game-mode .wrap{max-width:none;width:100%}
 
 /* ---------- HOME ---------- */
 .brand{text-align:center;margin:14px 0 6px}
-.brand h1{font-family:'Fredoka';font-weight:700;font-size:clamp(40px,9vw,72px);letter-spacing:.5px;
+.brand h1{font-family:'Fredoka',system-ui,sans-serif;font-weight:700;font-size:clamp(40px,9vw,72px);letter-spacing:.5px;
   background:linear-gradient(90deg,var(--lucien),var(--luis),var(--lili));
   -webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
 .brand p{color:var(--muted);font-weight:700;margin-top:2px;font-size:clamp(14px,2.4vw,18px)}
@@ -54,7 +54,7 @@ body.game-mode .wrap{max-width:none;width:100%}
 .hero .glow{position:absolute;inset:-40% -20% auto auto;width:180px;height:180px;border-radius:50%;
   filter:blur(28px);opacity:.55}
 .hero .av{font-size:52px;line-height:1}
-.hero h2{font-family:'Fredoka';font-weight:600;font-size:26px;margin-top:8px}
+.hero h2{font-family:'Fredoka',system-ui,sans-serif;font-weight:600;font-size:26px;margin-top:8px}
 .hero .age{color:var(--muted);font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px}
 .hero .mode{margin-top:12px;font-weight:800;font-size:15px}
 .hero .stats{margin-top:12px;display:flex;gap:14px;color:var(--muted);font-weight:800;font-size:13px}
@@ -69,718 +69,19 @@ body.game-mode .wrap{max-width:none;width:100%}
   box-shadow:0 4px 0 rgba(0,0,0,.25);transition:transform .1s}
 .btn:hover{filter:brightness(1.08)} .btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
 .btn.small{padding:8px 12px;font-size:14px}
-.spacer{flex:1}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{font-family:'Fredoka';font-weight:600;font-size:14px;border:2px solid var(--line);background:transparent;
-  color:var(--muted);border-radius:999px;padding:6px 14px;cursor:pointer}
-.chip.on{color:#1c1436;border-color:transparent}
-.chip.locked{opacity:.55;cursor:not-allowed}
-.chip.locked::after{content:" 🔒"}
-.hud{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
-.stat{background:var(--panel);border-radius:16px;padding:10px 16px;min-width:92px;text-align:center;
-  border:2px solid transparent}
-.stat .k{color:var(--muted);font-weight:800;font-size:11px;letter-spacing:1px;text-transform:uppercase}
-.stat .v{font-family:'Fredoka';font-weight:700;font-size:26px;line-height:1.1}
-
-/* ---------- SETTINGS BAR (arena modes) ---------- */
-.setbar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:center;
-  background:var(--panel);border-radius:18px;padding:10px 16px;margin-bottom:14px;border:2px solid var(--line)}
-.setbar .grp{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:var(--muted)}
-.setbar .grp .val{font-family:'Fredoka';font-weight:700;font-size:16px;color:var(--ink);min-width:22px;text-align:center}
-.setbar input[type=range]{-webkit-appearance:none;appearance:none;width:110px;height:8px;border-radius:99px;
-  background:var(--line);outline:none;cursor:pointer}
-.setbar input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;
-  border-radius:50%;background:var(--gold);box-shadow:0 2px 0 rgba(0,0,0,.3);cursor:pointer}
-.setbar input[type=range]::-moz-range-thumb{width:22px;height:22px;border:none;
-  border-radius:50%;background:var(--gold);box-shadow:0 2px 0 rgba(0,0,0,.3);cursor:pointer}
-.setbar .dchips{display:flex;gap:6px}
-.setbar__own{display:contents}
-
-/* ---------- STAGE ---------- */
-.stage{background:linear-gradient(180deg,var(--bg2),var(--panel));border-radius:26px;
-  padding:26px 20px;text-align:center;position:relative;overflow:hidden;min-height:190px;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;border:2px solid var(--line)}
-.stage.arena{display:block;padding:0;height:min(52vh,420px);min-height:320px;text-align:left}
-.arena-msg{position:absolute;left:50%;top:12px;transform:translateX(-50%);color:var(--muted);
-  font-weight:800;font-size:14px;z-index:5;pointer-events:none;white-space:nowrap;text-align:center}
-
-/* ---------- SHARED GAME SCENE PRIMITIVES ---------- */
-.game-scene{position:relative;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden}
-.game-scene__center{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;text-align:center;padding:14px}
-.game-scene__canvas{position:absolute;inset:0;width:100%;height:100%}
-.game-scene__prompt{color:var(--ink);font-family:'Fredoka';font-weight:600;text-align:center}
-.game-scene__controls{display:flex;justify-content:center;align-items:center;gap:12px}
-.game-scene__message{text-align:center;font-weight:800;color:var(--muted);min-height:22px}
-.game-action{min-height:44px;min-width:44px;border-radius:14px;border:2px solid var(--line);
-  background:var(--panel);color:var(--ink);font-family:'Fredoka';font-weight:700;
-  font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  touch-action:manipulation;box-shadow:0 4px 0 rgba(0,0,0,.25)}
-.game-action:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
-.game-action:disabled{opacity:.48;cursor:not-allowed}
-.game-action--gold{border-color:var(--gold);background:var(--gold);color:#1c1436}
-
-/* stage.arena wraps .game-scene to fill */
-.stage.arena > .game-scene{width:100%;height:100%}
-.cue{color:var(--muted);font-weight:800;font-size:15px;margin-bottom:10px;min-height:20px;text-align:center}
-.bigletter{font-family:'Fredoka';font-weight:700;font-size:clamp(90px,22vw,150px);line-height:1}
-.picword{font-family:'Fredoka';font-weight:600;font-size:26px;margin-top:4px}
-.picword .em{font-size:40px;display:block}
-.word{font-family:'Fredoka';font-weight:600;font-size:clamp(34px,8vw,62px);letter-spacing:2px;line-height:1.15}
-.word .done{color:var(--ok)} .word .cur{border-bottom:6px solid var(--gold)}
-.word .todo{color:var(--muted)} .word .bad{color:var(--bad)}
-.word-em{font-size:44px;margin-bottom:4px}
-.msg{margin-top:12px;font-weight:800;color:var(--muted);min-height:22px;text-align:center}
-.stage.flash-ok{animation:fok .3s} .stage.flash-bad{animation:fbad .3s}
-@keyframes fok{0%{background:rgba(74,222,128,.25)}100%{}}
-@keyframes fbad{0%,60%{transform:translateX(-6px)}30%,90%{transform:translateX(6px)}100%{transform:none}}
-
-/* ---------- BALLOON POP ---------- */
-.balloon{position:absolute;display:flex;flex-direction:column;align-items:center;will-change:transform;z-index:3}
-.balloon .bl{position:relative;width:clamp(52px,9vw,68px);height:clamp(62px,11vw,80px);
-  border-radius:50% 50% 47% 47% / 55% 55% 45% 45%;
-  display:flex;align-items:center;justify-content:center;font-family:'Fredoka';font-weight:700;
-  font-size:clamp(24px,5vw,32px);color:#1c1436;
-  box-shadow:inset -9px -12px 0 rgba(0,0,0,.14), 0 3px 0 rgba(0,0,0,.18)}
-.balloon .bl::after{content:"";position:absolute;top:12%;left:22%;width:14px;height:20px;border-radius:50%;
-  background:rgba(255,255,255,.45);transform:rotate(-18deg)}
-.balloon .knot{width:10px;height:8px;border-radius:0 0 6px 6px;margin-top:-2px}
-.balloon .str{width:2px;height:26px;background:rgba(255,255,255,.45);border-radius:2px}
-.balloon.popfx{animation:bpop .28s forwards}
-@keyframes bpop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(0);opacity:0}}
-.balloon.byefx{animation:bbye .5s forwards}
-@keyframes bbye{to{transform:translateY(-70px) scale(.7);opacity:0}}
-
-/* ---------- ORC ATTACK ---------- */
-.hero-fig{position:absolute;left:14px;bottom:0;top:0;display:flex;flex-direction:column;
-  justify-content:center;align-items:center;z-index:4;pointer-events:none}
-.hero-fig .fig{width:clamp(44px,8vw,60px);height:clamp(44px,8vw,60px);object-fit:contain;
-  filter:drop-shadow(0 4px 0 rgba(0,0,0,.3))}
-.hero-fig.hit .fig{animation:hshake .4s}
-@keyframes hshake{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
-.orc{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;will-change:transform;z-index:3}
-.orc .fig{width:clamp(34px,6.5vw,46px);height:clamp(34px,6.5vw,46px);object-fit:contain;
-  filter:drop-shadow(0 3px 0 rgba(0,0,0,.3));animation:owalk .5s infinite alternate ease-in-out}
-@keyframes owalk{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-4px) rotate(3deg)}}
-.orc .tag{font-family:'Fredoka';font-weight:700;font-size:clamp(15px,3vw,19px);letter-spacing:1px;
-  background:rgba(16,10,36,.75);border:2px solid var(--line);border-radius:10px;padding:2px 8px;white-space:nowrap}
-.orc .tag .done{color:var(--ok)} .orc .tag .todo{color:var(--ink)}
-.orc.locked .tag{border-color:var(--gold);box-shadow:0 0 10px rgba(255,201,60,.5)}
-.orc.diefx{animation:odie .3s forwards}
-@keyframes odie{0%{transform:scale(1);filter:none}100%{transform:scale(.1) rotate(180deg);opacity:0}}
-.zap{position:absolute;height:4px;background:linear-gradient(90deg,#fff,var(--gold));border-radius:4px;
-  z-index:2;transform-origin:left center;animation:zapfx .18s forwards;pointer-events:none}
-@keyframes zapfx{from{opacity:1}to{opacity:0}}
-@media(prefers-reduced-motion:reduce){.orc .fig{animation:none}}
-
-/* ---------- CITY DRIVE ---------- */
-.game-scene--city .cd-wrap{position:absolute;inset:0;width:100%;height:100%;border-radius:16px;
-  overflow:hidden;border:2px solid var(--line);touch-action:none}
-.cd-wrap canvas{position:absolute;inset:0;width:100%;height:100%}
-.game-scene--city .msg{position:absolute;left:50%;bottom:94px;transform:translateX(-50%);
-  max-width:88%;margin:0;background:rgba(20,14,40,.72);border-radius:10px;padding:5px 10px;z-index:5}
-.cd-prompt{position:absolute;top:6px;left:50%;transform:translateX(-50%);max-width:92%;
-  background:rgba(20,14,40,.82);border:2px solid var(--gold);border-radius:12px;padding:6px 12px;
-  font-family:'Fredoka';font-weight:600;font-size:clamp(15px,3vw,20px);text-align:center;z-index:5}
-.cd-btn{position:absolute;bottom:10px;width:64px;height:64px;border-radius:50%;z-index:6;
-  display:flex;align-items:center;justify-content:center;font-size:28px;
-  background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);color:#fff;
-  user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
-.cd-btn:active{background:rgba(255,255,255,.3)}
-.cd-l{left:12px}.cd-r{left:86px}
-.cd-gas{right:12px;width:76px;height:76px;font-size:32px;background:rgba(61,220,151,.25);
-  border-color:var(--ok,#3DDC97)}
-.cd-back{right:96px;background:rgba(78,168,255,.24);border-color:rgba(78,168,255,.7)}
-
-/* ---------- DIG SITE ---------- */
-.dig-layout{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;padding:8px;text-align:center}
-.dg-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;max-width:520px;margin:0 auto}
-.dg-cell{position:relative;min-height:clamp(44px,16vw,94px);aspect-ratio:1;background:#3a3160;border:2px solid var(--line);
-  border-radius:10px;display:flex;align-items:center;justify-content:center}
-.dg-cell.ex{border-color:var(--gold);box-shadow:0 0 10px rgba(255,201,60,.4)}
-.dg-rock{position:relative;font-size:clamp(22px,5vw,34px)}
-.dg-rock i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-style:normal;font-family:'Fredoka';font-weight:700;font-size:clamp(13px,2.6vw,17px);
-  color:#fff;text-shadow:0 1px 2px #000}
-.dg-rock.clunk{animation:dgclunk .35s}
-@keyframes dgclunk{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
-.dg-exv{position:absolute;font-size:clamp(26px,6vw,40px);z-index:2}
-.dg-ctl{display:flex;justify-content:center;align-items:center;gap:18px;margin-top:10px}
-.dg-pad{display:flex;align-items:center;gap:6px}
-.dg-ud{display:flex;flex-direction:column;gap:6px}
-.dbtn{width:52px;height:52px;font-size:22px;border-radius:12px;border:2px solid var(--line);
-  background:var(--panel);color:var(--ink);touch-action:manipulation}
-.dbtn:active{transform:translateY(2px)}
-.dg-dig{height:64px;padding:0 22px;font-family:'Fredoka';font-weight:700;font-size:20px;
-  border-radius:16px;border:2px solid var(--gold);background:var(--gold);color:#1c1436;
-  touch-action:manipulation}
-.dg-dig:active{transform:translateY(2px)}
-
-/* ---------- WORD WIZARD ---------- */
-.vfr{font-family:'Fredoka';font-weight:600;font-size:24px;color:var(--gold);margin-top:2px}
-.vzh{font-family:'Fredoka';font-weight:500;font-size:19px;color:var(--muted);margin-top:2px}
-.vbubble .vzh{margin-top:4px;font-size:17px}
-.vrow{margin-top:14px;display:flex;gap:8px;justify-content:center}
-.vshelf{margin-top:12px;font-size:24px;letter-spacing:5px;min-height:30px;opacity:.95}
-.vshelf .lbl{font-size:12px;letter-spacing:1px;color:var(--muted);font-weight:800;display:block;margin-bottom:2px}
-.word .hintl{color:var(--gold)}
-.vbubble{background:var(--panel2);border:2px solid var(--line);border-radius:18px;padding:10px 18px;
-  font-family:'Fredoka';font-weight:600;font-size:26px;margin:8px 0 4px;display:inline-block}
-.game-scene--vocab .game-scene__center{gap:8px}
-.game-scene--vocab .word{max-width:100%;overflow-wrap:anywhere;text-align:center}
-.game-scene--vocab .vshelf{max-width:min(92%,680px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.v-ai-hint{display:inline-flex;align-items:center;justify-content:center;gap:10px;max-width:min(92%,680px);padding:8px 12px;border:1px solid rgba(255,201,60,.28);border-radius:14px;background:rgba(255,201,60,.08);text-align:left}
-.v-ai-hint>div{min-width:0}.v-ai-hint b{display:block;font-size:14px;line-height:1.2}.v-ai-hint div span{display:block;margin-top:2px;color:var(--muted);font-size:12px;line-height:1.2}
-.v-ai-hint__visual,.v-ai-hint__letter{font-size:30px;line-height:1}.v-ai-hint__letter{font-family:'Fredoka';font-weight:800;color:var(--gold);min-width:34px;text-align:center}
-.v-ai-hint__shape,.v-ai-hint__cue{font-family:'Fredoka';font-weight:700;color:var(--gold);font-size:18px;letter-spacing:2px;max-width:220px;overflow-wrap:anywhere}
-.pbar{width:min(70%,320px);height:14px;background:rgba(0,0,0,.3);border-radius:99px;margin:10px auto 6px;
-  overflow:hidden;border:2px solid var(--line)}
-.pfill{height:100%;background:var(--ok);border-radius:99px}
-
-/* ---------- KEYBOARD ---------- */
-.kbwrap{margin-top:18px}
-.legend{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;
-  color:var(--muted);font-weight:800;font-size:12px}
-.legend span{display:inline-flex;align-items:center;gap:5px}
-.dot{width:12px;height:12px;border-radius:4px;display:inline-block}
-.kb{display:flex;flex-direction:column;gap:8px;align-items:center;user-select:none}
-.krow{display:flex;gap:8px;justify-content:center}
-.key{width:clamp(30px,7.2vw,52px);height:clamp(38px,8vw,52px);border-radius:12px;
-  display:flex;align-items:center;justify-content:center;font-family:'Fredoka';font-weight:600;
-  font-size:clamp(14px,3.4vw,20px);color:#20183f;position:relative;cursor:pointer;
-  box-shadow:0 4px 0 rgba(0,0,0,.28);transition:transform .06s,filter .06s;opacity:.92}
-.kb.bpmf{gap:6px}
-.kb.bpmf .krow{gap:6px}
-.kb.bpmf .key{width:clamp(28px,6.4vw,48px);font-size:clamp(18px,4vw,24px)}
-.kb.bpmf .key.space{font-size:clamp(14px,3vw,18px)}
-.key.space{width:clamp(150px,40vw,320px)}
-.key.pressed{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.28);filter:brightness(.9)}
-.key.target{opacity:1;animation:pulse 1s infinite;outline:3px solid #fff;z-index:2}
-@keyframes pulse{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-@media(prefers-reduced-motion:reduce){.key.target{animation:none}}
-
-/* ---------- TABLET (coarse pointer) ---------- */
-@media(pointer:coarse){
-  .btn{padding:13px 20px;font-size:17px}
-  .btn.small{padding:11px 15px;font-size:15px}
-  .chip{padding:10px 16px;font-size:15px}
-  .key{height:clamp(46px,6.8vw,60px);width:clamp(34px,8vw,58px);font-size:clamp(16px,3.6vw,22px)}
-  .key.space{width:clamp(180px,44vw,360px)}
-  .setbar input[type=range]{width:150px;height:10px}
-  .setbar input[type=range]::-webkit-slider-thumb{width:28px;height:28px}
-  .setbar input[type=range]::-moz-range-thumb{width:28px;height:28px}
-  .vrow .btn{padding:14px 22px}
-}
-@media(pointer:coarse) and (max-height:720px){
-  body.game-mode .legend{display:none}
-  body.game-mode .kb{gap:5px}
-  body.game-mode .krow{gap:5px}
-  body.game-mode .key{width:clamp(30px,5.6vw,46px);height:clamp(40px,6.2dvh,46px);
-    border-radius:10px;font-size:clamp(14px,3vw,18px);box-shadow:0 3px 0 rgba(0,0,0,.28)}
-  body.game-mode .kb.bpmf .key{width:clamp(27px,5.1vw,42px);font-size:clamp(16px,3vw,20px)}
-  body.game-mode .key.space{width:clamp(150px,34vw,260px)}
-  /* 7" tablet: the setbar is chrome, the stage is the game. Word Wizard's nine
-     chips wrapped to two tablet-sized rows and left the stage ~139px. */
-  #game>.setbar{gap:6px;padding:5px 8px}
-  #game>.setbar .chip{padding:7px 9px;font-size:13px}
-  #game>.setbar .dchips{gap:4px}
-  #game>.setbar .grp{font-size:12px;gap:6px}
-  #game>.setbar input[type=range]{width:110px}
-  /* same trade for the stat row — it was pushing Say it / Hint off the stage */
-  #game>.hud{gap:6px}
-  #game>.hud .stat{padding:5px 10px;min-width:76px}
-  #game>.hud .stat .k{font-size:10px}
-  #game>.hud .stat .v{font-size:19px}
-  /* Word Wizard's scene is taller than a 600px-high tablet stage, and which parts
-     render depends on the prompt (picture / French / both) — so trimming sizes can
-     only ever fix the combination you measured. `safe center` + scroll makes Say it
-     and Hint reachable in every combination; the trims just mean less scrolling.
-     !important beats the inline font-sizes drawVocab writes. */
-  .game-scene--vocab .word-em{font-size:34px!important;line-height:1}
-  .game-scene--vocab .vshelf{display:none}
-  .game-scene--vocab .game-scene__center{gap:5px;padding:6px;
-    justify-content:safe center;overflow-y:auto}
-  .game-scene--vocab .vrow .btn{padding:9px 14px}
-  .game-scene--vocab .word{font-size:clamp(20px,3.4vw,30px)!important;line-height:1.15}
-}
-@media(min-width:600px) and (max-width:1100px){
-  .wrap{max-width:920px;padding:16px 20px 40px}
-  .stage.arena{height:min(46vh,440px)}
-}
-@media(min-width:600px){
-  body.game-mode{overflow:hidden}
-  body.game-mode .wrap{height:100vh;height:100dvh;padding:10px 12px}
-  /* Music Room takes the same full-bleed wrap as game mode — .wrap's 20/40px
-     padding is what made a 100dvh instrument scroll (D13: nothing scrolls). */
-  body.music-mode .wrap{height:100vh;height:100dvh;padding:10px 12px;max-width:none;width:100%}
-  #game:not(.hidden){display:grid;grid-template-columns:clamp(142px,16vw,210px) minmax(0,1fr);
-    grid-template-rows:auto auto minmax(0,1fr) auto;gap:10px 12px;height:calc(100vh - 20px);
-    height:calc(100dvh - 20px);max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px)}
-  #game>.topbar{grid-column:1;grid-row:1/-1;display:grid;grid-template-rows:auto minmax(0,1fr) auto;
-    align-items:stretch;align-content:start;gap:10px;margin:0;min-height:0;overflow:hidden;
-    background:rgba(51,43,102,.72);border:2px solid var(--line);border-radius:18px;padding:10px}
-  #game>.topbar .spacer{display:none}
-  #game>.topbar .btn{width:100%;min-height:44px;padding:9px 10px;border-radius:12px}
-  #game>.topbar .btn.small{min-height:44px;font-size:18px}
-  #levelChips{display:flex;flex-direction:column;flex-wrap:nowrap;gap:8px;min-height:0;
-    overflow-y:auto;padding:2px 4px 2px 0;scrollbar-width:thin}
-  #levelChips .chip{width:100%;min-height:44px;display:flex;align-items:center;justify-content:flex-start;
-    gap:8px;border-radius:12px;padding:8px 10px;text-align:left;white-space:normal;line-height:1.05}
-  #levelChips .chip-ico{flex:0 0 22px;text-align:center;font-size:18px;line-height:1}
-  #levelChips .chip-title{min-width:0;font-size:13px}
-  #game>.setbar{grid-column:2;grid-row:1;margin:0;padding:8px 10px}
-  #game>.hud{grid-column:2;grid-row:2;margin:0}
-  #game>.stage{grid-column:2;grid-row:3;min-height:0;height:100%;border-radius:18px}
-  #game>.stage.arena{height:100%;min-height:0}
-  #game>.kbwrap{grid-column:2;grid-row:4;margin-top:0;min-height:0}
-}
-
-/* ---------- CAMP ---------- */
-.camprow{display:grid;grid-template-columns:1fr;gap:12px;margin-top:18px}
-.campbtn{font-family:'Fredoka';font-weight:600;font-size:20px;border:none;cursor:pointer;color:var(--ink);
-  background:linear-gradient(135deg,#2E5E4E,#3D7A5F);border-radius:22px;padding:18px;
-  box-shadow:0 8px 0 rgba(0,0,0,.25);text-align:left}
-.campbtn:active{transform:translateY(3px);box-shadow:0 4px 0 rgba(0,0,0,.25)}
-.campbtn small{display:block;font-family:'Nunito';font-weight:700;font-size:13px;color:#BFE3CF;margin-top:4px}
-.kidtabs{display:flex;gap:8px;justify-content:center;margin:10px 0 16px;flex-wrap:wrap}
-.bigcard{background:var(--panel);border:2px solid var(--line);border-radius:22px;padding:20px;margin-bottom:14px;
-  text-align:center}
-.bigcard h3{font-family:'Fredoka';font-weight:600;font-size:22px;margin-bottom:8px}
-.bigcard .res{font-family:'Fredoka';font-weight:600;font-size:clamp(19px,4vw,26px);min-height:34px;margin:8px 0}
-.bigcard .res .em{font-size:44px;display:block;margin-bottom:6px}
-.bigcard .fr{color:var(--gold);font-size:16px;font-weight:700;margin-bottom:4px}
-.bigcard .sub{color:var(--muted);font-weight:800;font-size:13px}
-.bankgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
-.bankcard{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:14px 16px;text-align:left}
-.bankcard .bt{font-family:'Fredoka';font-weight:600;font-size:17px;margin-bottom:6px}
-.bankcard p{color:var(--muted);font-weight:700;font-size:14px;line-height:1.45}
-.tipline{color:var(--muted);font-weight:700;font-size:13px;text-align:center;margin:14px 0 4px}
-
-/* ---------- SMART LEARNING DIRECTOR ---------- */
-.learning-director{position:relative;overflow:hidden;text-align:left}
-.learning-director:before{content:"";position:absolute;right:-36px;top:-42px;width:150px;height:150px;border-radius:50%;background:rgba(78,168,255,.08);pointer-events:none}
-.learning-director__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.learning-director__head h3{margin:0}.learning-director__status{font-size:12px;font-weight:900;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--line);padding:6px 9px;border-radius:999px}
-.learning-director__skills{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.learning-director__skill{padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:12px;font-weight:900}.learning-director__skill b{display:block;font-size:14px;color:var(--ink)}.learning-director__skill.is-locked{opacity:.52;filter:saturate(.65)}.learning-director__skill.is-secure{border-color:rgba(52,211,153,.28)}.learning-director__skill.is-review-due{border-color:rgba(255,201,60,.55);background:rgba(255,201,60,.07)}
-.learning-director__track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:12px 0}.learning-director__step{min-width:0;border:1px solid var(--line);border-radius:14px;padding:8px;background:rgba(255,255,255,.025);font-size:11px;color:var(--muted);font-weight:900}.learning-director__step b{display:block;color:var(--ink);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.learning-director__step.is-current{border-color:var(--accent);background:rgba(255,255,255,.07)}.learning-director__step.is-review{border-color:rgba(255,201,60,.45)}.learning-director__step.is-done{opacity:.7}.learning-director__step.is-done b:before{content:"✓ ";color:var(--ok)}
-.learning-director__current{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;border-radius:18px;padding:13px;background:rgba(255,255,255,.045);border:1px solid var(--line)}.learning-director__icon{font-size:38px}.learning-director__current h4{font:600 18px 'Fredoka',system-ui;margin:0}.learning-director__current p{color:var(--muted);font-size:13px;font-weight:800;margin:4px 0 0}.learning-director__progress{margin-top:8px;font-size:12px;font-weight:900;color:var(--gold)}
-.learning-session-map{margin-top:14px}.learning-session-map summary{cursor:pointer;min-height:44px;padding:12px 0;color:var(--muted);font-weight:800}.learning-director__actions button{min-height:44px}.learning-director__actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.learning-director__done{text-align:center;padding:12px}.learning-director__done .em{font-size:52px}.learning-director__done h4{font:600 21px 'Fredoka',system-ui;margin:4px 0}
-.learning-director__step.is-teach{border-color:rgba(78,168,255,.5);background:rgba(78,168,255,.06)}
-.science-lab__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.science-lab__status{font-size:12px;font-weight:900;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--line);padding:6px 9px;border-radius:999px}.science-lab__topics{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.science-lab__topic{border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--ink);border-radius:14px;padding:9px 11px;font:900 12px 'Nunito',system-ui;text-align:left}.science-lab__topic b{display:block;font:600 14px 'Fredoka',system-ui}.science-lab__topic.is-active{border-color:var(--accent);background:rgba(255,255,255,.08)}.science-lab__scene{border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:20px;padding:14px}.science-lab__scene-head{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.science-lab__scene-icon{font-size:40px}.science-lab__scene h4{margin:0;font:600 19px 'Fredoka',system-ui}.science-lab__source{font-size:10px;font-weight:1000;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.science-lab__intro{font-weight:900;line-height:1.4;margin:11px 0}.science-lab__intro .zhs{display:block;margin-top:4px;color:var(--muted);font-size:13px}.science-lab__visual{display:flex;align-items:stretch;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0}.science-lab__visual.is-cycle .science-lab__visual-item:after,.science-lab__visual.is-sequence .science-lab__visual-item:after,.science-lab__visual.is-orbit .science-lab__visual-item:after{content:"→";position:absolute;right:-10px;top:50%;transform:translateY(-50%);color:var(--gold);font-weight:1000}.science-lab__visual-item{position:relative;min-width:100px;flex:1 1 100px;max-width:150px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.045);color:var(--ink);padding:12px 9px;text-align:center}.science-lab__visual-item:last-child:after{display:none}.science-lab__visual-item .em{font-size:34px;display:block}.science-lab__visual-item b{display:block;margin-top:4px;font:600 14px 'Fredoka',system-ui}.science-lab__visual-item small{display:block;color:var(--muted);font-weight:900}.science-lab__observation{min-height:46px;border-radius:14px;background:rgba(78,168,255,.07);border:1px solid rgba(78,168,255,.18);padding:9px 11px;font-size:12px;font-weight:900;line-height:1.35}.science-lab__facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}.science-lab__fact{border:1px solid var(--line);border-radius:14px;padding:9px;background:rgba(255,255,255,.025);font-size:12px;font-weight:900;line-height:1.3}.science-lab__fact .em{font-size:22px}.science-lab__fact .zhs{display:block;color:var(--muted);margin-top:3px}.science-lab__question{text-align:center;padding:6px 0}.science-lab__question .qicon{font-size:46px}.science-lab__question h4{font-size:21px;margin:4px 0}.science-lab__options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.science-lab__option{min-height:78px;border:1px solid var(--line);border-radius:17px;background:rgba(255,255,255,.045);color:var(--ink);font-weight:1000;padding:10px}.science-lab__option .em{display:block;font-size:27px}.science-lab__option.is-correct{border-color:var(--ok);background:rgba(74,222,128,.08)}.science-lab__option.is-wrong{border-color:var(--bad);background:rgba(255,107,107,.08)}.science-lab__feedback{padding:10px;border-radius:14px;text-align:center;font-weight:1000}.science-lab__feedback.good{background:rgba(74,222,128,.08)}.science-lab__feedback.retry{background:rgba(255,201,60,.08)}.science-lab__actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px}.science-lab__complete{text-align:center;padding:12px}.science-lab__complete .em{font-size:58px}.science-lab__complete h4{font-size:22px}.science-lab__safety{font-size:10px;color:var(--muted);font-weight:800;margin-top:8px;text-align:center}@media(max-width:620px){.science-lab__facts,.science-lab__options{grid-template-columns:1fr}.science-lab__scene-head{grid-template-columns:auto 1fr}.science-lab__source{grid-column:1/-1}.science-lab__visual-item{max-width:none}}
-
-.learning-teach{margin-top:12px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.035);padding:14px}.learning-teach__head{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.learning-teach__head h4{font:600 18px 'Fredoka',system-ui;margin:0}.learning-teach__source{font-size:10px;font-weight:1000;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.learning-teach__visual{margin:12px 0;padding:14px;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid var(--line);min-height:112px;display:flex;align-items:center;justify-content:center}.learning-teach__copy{text-align:center;font-size:14px;font-weight:900;line-height:1.35}.learning-teach__copy .zhs{display:block;margin-top:4px;color:var(--muted);font-size:12px}.learning-teach__example{text-align:center;font:700 24px 'Fredoka',system-ui;margin:4px 0 10px}.learning-teach__groups{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}.learning-teach__group{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;align-items:center;min-width:42px;padding:8px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04)}.learning-teach__dot{width:12px;height:12px;border-radius:50%;background:var(--accent);display:inline-block}.learning-teach__op{font:700 26px 'Fredoka',system-ui}.learning-teach__line{width:min(100%,430px);display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font:700 20px 'Fredoka',system-ui}.learning-teach__rail{height:8px;border-radius:999px;background:var(--line);position:relative}.learning-teach__rail:after{content:"";position:absolute;right:0;top:50%;width:14px;height:14px;border-top:3px solid var(--accent);border-right:3px solid var(--accent);transform:translateY(-50%) rotate(45deg)}.learning-teach__line.is-back .learning-teach__rail:after{right:auto;left:0;transform:translateY(-50%) rotate(-135deg)}.learning-teach__jump{position:absolute;left:50%;top:-28px;transform:translateX(-50%);font:700 13px 'Nunito',system-ui;color:var(--gold)}.learning-teach__bars{width:min(100%,420px);display:grid;gap:12px}.learning-teach__bar-row{display:grid;grid-template-columns:42px 1fr;gap:8px;align-items:center;font-weight:1000}.learning-teach__bar{height:22px;border-radius:999px;background:var(--accent);min-width:16px}.learning-teach__bond{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:center}.learning-teach__bond span{min-width:58px;padding:12px;border-radius:50%;border:2px solid var(--line);text-align:center;font:700 22px 'Fredoka',system-ui;background:rgba(255,255,255,.04)}.learning-teach__array{display:grid;gap:5px;justify-content:center}.learning-teach__array .learning-teach__dot{width:11px;height:11px}.learning-teach__picture-word{display:grid;gap:10px;justify-items:center}.learning-teach__emoji{font-size:58px;line-height:1}.learning-teach__letters,.learning-teach__sentence,.learning-teach__symbols{display:flex;gap:7px;align-items:center;justify-content:center;flex-wrap:wrap}.learning-teach__letter,.learning-teach__word-chip,.learning-teach__symbol{min-width:36px;padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);font:700 21px 'Fredoka',system-ui;text-align:center}.learning-teach__build{display:grid;gap:8px;justify-items:center}.learning-teach__build-step{display:flex;align-items:center;gap:8px;font:700 20px 'Fredoka',system-ui}.learning-teach__build-step b{min-width:86px;padding:7px 11px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.05);text-align:center}.learning-teach__translation{display:grid;grid-template-columns:minmax(90px,1fr) auto minmax(90px,1fr);gap:10px;align-items:center;width:min(100%,430px)}.learning-teach__translation-card{padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04);text-align:center}.learning-teach__translation-card b{display:block;font:700 19px 'Fredoka',system-ui}.learning-teach__translation-card span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.learning-teach__translation-arrow{font-size:24px;color:var(--gold)}.learning-teach__symbol{font-size:27px;min-width:45px}.learning-teach__han{font:700 34px 'Fredoka',system-ui}.learning-teach__target{font:700 25px 'Fredoka',system-ui;letter-spacing:.04em}.learning-teach__loading{text-align:center;color:var(--muted);font-weight:900;padding:20px}
-@media(max-width:600px){.learning-director__track{grid-template-columns:repeat(2,minmax(0,1fr))}.learning-director__current{grid-template-columns:1fr;text-align:center}.learning-director__icon{font-size:44px}.learning-teach__visual{padding:10px}.learning-teach__line{font-size:18px}}
-
-.placement-calibration{position:relative;overflow:hidden;text-align:left;border-color:rgba(255,201,60,.22)}
-.placement-calibration:before{content:"";position:absolute;right:-28px;top:-34px;width:130px;height:130px;border-radius:50%;background:rgba(255,201,60,.08);pointer-events:none}
-.placement-calibration__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.placement-calibration__head h3{margin:0}
-.placement-calibration__status{font-size:12px;font-weight:900;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--line);padding:6px 9px;border-radius:999px}
-.placement-calibration__intro{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.035)}
-.placement-calibration__icon{font-size:38px}.placement-calibration__intro h4{font:600 18px 'Fredoka',system-ui;margin:0}.placement-calibration__intro p{font-size:13px;color:var(--muted);font-weight:800;margin:4px 0 0}
-.placement-calibration__track{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.placement-calibration__step{padding:7px 9px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025);font-size:11px;color:var(--muted);font-weight:900}.placement-calibration__step.is-current{border-color:var(--gold);background:rgba(255,201,60,.08)}.placement-calibration__step.is-done{opacity:.7}.placement-calibration__step.is-done:before{content:"✓ ";color:var(--ok)}
-.placement-calibration__group{margin-top:12px}.placement-calibration__group-title{font-size:11px;font-weight:1000;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin:0 0 7px}.placement-calibration__results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.placement-calibration__result{padding:11px;border-radius:15px;border:1px solid var(--line);background:rgba(255,255,255,.035)}.placement-calibration__result small{display:block;color:var(--muted);font-weight:900}.placement-calibration__result b{display:block;font-size:15px;margin-top:3px}.placement-calibration__source{display:block;margin-top:5px;font-size:10px;color:var(--muted);font-weight:800}
-.placement-calibration__actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.placement-calibration__meta{font-size:11px;color:var(--muted);font-weight:800;margin-top:8px}
-@media(max-width:600px){.placement-calibration__intro{grid-template-columns:1fr;text-align:center}.placement-calibration__results{grid-template-columns:1fr}}
-
-/* ---------- KID HUB ---------- */
-.hubhead{display:flex;align-items:center;gap:14px;margin:6px 0 14px}
-.hubhead .av{font-size:58px}
-.hubhead h2{font-family:'Fredoka';font-weight:600;font-size:30px}
-.hubhead p{color:var(--muted);font-weight:800}
-.hubstars .starpill{font-family:'Fredoka';font-weight:600;background:var(--panel);
-  border:2px solid var(--line);border-radius:999px;padding:8px 16px;font-size:17px}
-.hsec{font-family:'Fredoka';font-weight:600;font-size:19px;color:var(--muted);margin:16px 0 10px}
-.gamerow{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.gamecard{position:relative;font-family:inherit;border:2px solid var(--line);background:var(--panel);
-  color:var(--ink);border-radius:18px;padding:14px 12px;cursor:pointer;text-align:center;
-  box-shadow:0 5px 0 rgba(0,0,0,.22)}
-.gamecard:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.22)}
-.gamecard .gi{font-size:34px;display:block}
-.gamecard b{font-family:'Fredoka';font-weight:600;display:block;margin-top:4px}
-.gamecard small{color:var(--muted);font-weight:700;font-size:12px}
-#bookGrid .gamecard{font-size:inherit}
-.gamecard .favtag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);
-  font-family:'Fredoka';font-weight:600;font-size:10px;letter-spacing:1px;background:var(--gold);
-  color:#1c1436;border-radius:99px;padding:2px 10px}
-.actcard{cursor:pointer;font-family:inherit;color:var(--ink);width:100%}
-.actcard:active{transform:translateY(2px)}
-.actcard.donetoday{opacity:.75;border-color:var(--ok)}
-.donetag{font-size:12px;color:var(--ok);font-weight:800;margin-left:6px}
-.actmine{background:rgba(0,0,0,.2);border-left:4px solid;border-radius:10px;
-  padding:10px 12px;font-weight:700;color:var(--ink);margin:10px 0 14px}
-.steps{display:flex;flex-direction:column;gap:10px}
-.step{display:flex;gap:10px;align-items:flex-start;font-weight:700;color:var(--ink);line-height:1.4}
-.step .sn{flex:0 0 26px;height:26px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;font-family:'Fredoka';font-weight:700;color:#1c1436;font-size:14px}
-.qinput{width:100%;max-width:420px;font-family:'Fredoka';font-weight:500;font-size:17px;
-  background:rgba(0,0,0,.25);border:2px solid var(--line);border-radius:14px;color:var(--ink);
-  padding:12px 14px;margin:8px 0;outline:none}
-.qinput:focus{border-color:var(--gold)}
-.qout{font-family:'Fredoka';font-weight:600;font-size:clamp(18px,4vw,24px);color:var(--gold)}
-.timerbig{font-family:'Fredoka';font-weight:700;font-size:64px;margin:6px 0}
-button:disabled{cursor:default}
-
-/* ---------- MUSIC ROOM ---------- */
-/* D13: one landscape screen, nothing scrolls. The stage takes the height left
-   over after the topbar and clips — an instrument shrinks, it never scrolls. */
-#music{height:100%;overflow:hidden}
-body.music-mode{overflow:hidden}
-.music-shell{display:flex;flex-direction:column;height:100%;padding:0 8px 8px}
-.music-stage{flex:1;min-height:0;width:100%;position:relative;overflow:hidden;
-  background:#1B1A24;border:2px solid var(--line);border-radius:14px}
-
-/* ---------- BOOK READER ---------- */
-#book{min-height:calc(100vh - 60px)}
-.book-shell{display:flex;flex-direction:column;min-height:calc(100vh - 120px)}
-.book-title{font-family:'Fredoka';font-weight:700;color:var(--gold)}
-.book-count{font-family:'Fredoka';font-weight:700;font-size:13px;background:var(--panel);border:2px solid var(--line);
-  border-radius:999px;padding:6px 12px;color:var(--ink)}
-.book-stage{flex:1;width:100%;display:flex;align-items:center;justify-content:center;padding:4px 0;overflow:hidden}
-.book{width:100%;height:min(62vh,620px);display:flex;align-items:stretch;background:#2A2650;border-radius:12px;
-  box-shadow:0 6px 28px rgba(0,0,0,.4),0 2px 8px rgba(124,111,247,.15);overflow:hidden;position:relative;
-  transition:opacity .18s,transform .18s}
-.book.turning{opacity:.4;transform:scale(.97)}
-@media(prefers-reduced-motion:reduce){.book{transition:none}}
-.book-page-left{flex:1 1 50%;display:flex;flex-direction:column;padding:20px 12px 20px 20px;gap:10px;
-  overflow-y:auto;min-width:0;background:linear-gradient(135deg,#2A2650,#312B5E);border-right:1px solid var(--line)}
-.book-page-left h2{font-family:'Fredoka';font-weight:600;font-size:1.55rem;line-height:1.15;color:var(--ink)}
-.book-title-zh{font-size:1.15rem;color:var(--muted);font-weight:700;margin-top:2px}
-.book-type{display:inline-block;background:var(--accent,var(--luis));color:#fff;padding:3px 12px;border-radius:20px;
-  font-size:.78rem;font-weight:800;font-family:'Fredoka';letter-spacing:.06em;width:fit-content}
-.book-facts{display:flex;flex-direction:column;gap:10px;flex:1}
-.book-fact{background:rgba(255,255,255,.04);border-radius:14px;padding:12px 14px;line-height:1.45}
-.book-fact .en{font-weight:800;font-size:.95rem;margin-bottom:3px}
-.book-fact .zh{color:var(--muted);font-size:1rem;font-weight:700}
-.book-page-num{font-family:'Fredoka';font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin-top:auto;padding-top:8px}
-.book-spine{width:3px;flex-shrink:0;background:linear-gradient(to right,rgba(0,0,0,.3),var(--line),rgba(0,0,0,.3))}
-.book-photo{flex:1 1 50%;display:flex;flex-direction:column;position:relative;overflow:hidden;min-width:0;background:var(--bg);cursor:pointer;border:0;padding:0;color:inherit;font:inherit;text-align:left}
-.book-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.book-emoji{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:8rem}
-.book-photo img.error+.book-emoji{display:flex}
-.book-photo-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.82),transparent);
-  padding:32px 16px 16px;pointer-events:none}
-.book-photo-name{font-size:1.3rem;font-weight:800;font-family:'Fredoka'}
-.book-photo-zh{font-size:1.05rem;color:var(--muted);font-weight:700}
-.book-photo-tap{font-size:.8rem;color:var(--muted);font-weight:800;opacity:.75;margin-top:4px}
-.book-nav{display:flex;align-items:center;gap:8px;justify-content:center;padding:8px 0 12px;width:100%}
-.book-nav .arrow{font-size:1.3rem;padding:8px;border-radius:50%;width:48px;height:48px;justify-content:center}
-.book-pager{font-family:'Fredoka';font-size:.88rem;color:var(--muted);min-width:80px;text-align:center}
-.book-progress{display:flex;gap:3px;justify-content:center;align-items:center;flex-wrap:wrap;max-width:360px}
-.book-progress .bdot{width:6px;height:6px;border-radius:50%;background:var(--line)}
-.book-progress .bdot.on{background:var(--accent,var(--luis));width:8px;height:8px}
-.book-gridview{width:100%;flex:1;overflow-y:auto;padding:8px 0;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start}
-.book-gridcard{width:calc(25% - 8px);min-width:90px;max-width:150px;aspect-ratio:1;border-radius:16px;background:var(--panel);
-  border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;
-  overflow:hidden;position:relative;touch-action:manipulation;color:inherit;font:inherit;padding:0}
-.book-gridcard:active{transform:scale(.93);border-color:var(--accent,var(--luis))}
-.book-gridcard.current{border-color:var(--accent,var(--luis));box-shadow:0 0 12px rgba(124,111,247,.4)}
-.book-gridcard img{width:100%;height:50%;object-fit:cover}
-.book-gridcard .emoji{font-size:2rem;line-height:1}
-.book-gridcard .gname{font-size:.75rem;font-weight:800;font-family:'Fredoka';text-align:center;line-height:1.15;padding:0 4px}
-.book-gridcard .gname .zh{display:block;font-size:.8rem;color:var(--muted);font-weight:700}
-.book-zoom{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.book-zoom img{max-width:96vw;max-height:74vh;border-radius:14px;object-fit:contain}
-.book-zoom .z-close{position:absolute;top:16px;right:16px;width:48px;height:48px;border-radius:50%;background:var(--panel);color:var(--ink);
-  border:none;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;z-index:101}
-.book-zoom .z-cap{color:var(--muted);margin-top:14px;font-size:1rem;font-weight:800}
-.book-zoom .z-hint{color:var(--muted);font-size:.8rem;font-weight:800;opacity:.75;margin-top:6px}
-@media(max-width:560px){
-  .book{height:calc(100vh - 190px);flex-direction:column}
-  .book-page-left{flex:0 0 auto;max-height:48%;border-right:none;border-bottom:1px solid var(--line);padding:14px 14px 10px}
-  .book-photo{flex:1 1 auto}
-  .book-spine{width:100%;height:3px}
-  .book-page-left h2{font-size:1.25rem}
-  .book-fact{padding:10px 12px}
-  .book-fact .en{font-size:.88rem}
-  .book-fact .zh{font-size:.92rem}
-  .book-gridcard{width:calc(33.333% - 8px)}
-}
-
-/* ── Minecraft magazine spread (2 mini-pages per turn) ── */
-.mcraft-spread{
-  --mcraft-accent:#79C64A;
-  width:100%;height:min(66vh,660px);display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
-  padding:8px;border-radius:12px;overflow:hidden;position:relative;isolation:isolate;
-  background:linear-gradient(90deg,rgba(255,255,255,.06),transparent 18%,transparent 82%,rgba(255,255,255,.05)),#10160F;
-  box-shadow:0 14px 42px rgba(0,0,0,.44),0 2px 8px rgba(98,179,75,.18);
-  transition:opacity .18s,transform .18s;
-}
-.mcraft-spread::before{content:"";position:absolute;inset:8px;border:1px solid rgba(255,255,255,.08);pointer-events:none;z-index:5}
-.book.turning,.mcraft-spread.turning{opacity:.4;transform:scale(.97)}
-@media(prefers-reduced-motion:reduce){.mcraft-spread{transition:none}}
-.mcraft-page{
-  min-width:0;min-height:0;position:relative;display:flex;flex-direction:column;
-  padding:18px;border:1px solid rgba(244,242,223,.16);border-radius:6px;
-  background:linear-gradient(180deg,rgba(255,255,255,.055),transparent 44%),#20271E;
-  overflow:hidden;
-}
-.mcraft-page::after{
-  content:attr(data-page);position:absolute;right:12px;bottom:10px;z-index:7;
-  color:rgba(244,242,223,.62);font:.76rem/1 Fredoka,system-ui;font-weight:800;
-}
-.mcraft-page.photo{padding:0;cursor:pointer;background:#0D100C;color:inherit;font:inherit;text-align:left}
-.mcraft-page.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.02)}
-.mcraft-page.photo::before{
-  content:"";position:absolute;inset:0;z-index:1;
-  background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.24) 36%,rgba(0,0,0,.84)),linear-gradient(90deg,rgba(0,0,0,.4),transparent 58%);
-}
-.mcraft-copy{position:relative;z-index:2;display:flex;flex-direction:column;gap:10px}
-.mcraft-page.photo .mcraft-copy{position:absolute;left:16px;right:16px;bottom:16px}
-.mcraft-page.text{justify-content:flex-end;gap:12px}
-.mcraft-page.quote{justify-content:center;background:linear-gradient(145deg,rgba(121,198,74,.18),rgba(216,137,77,.13)),#252D22}
-.mcraft-kicker{
-  display:inline-flex;width:fit-content;padding:6px 8px;background:var(--mcraft-accent);
-  color:#10140E;font:.72rem/1 Fredoka,system-ui;font-weight:900;letter-spacing:.05em;
-  text-transform:uppercase;
-}
-.mcraft-kicker.gold{background:#F2C94C}.mcraft-kicker.sky{background:#65A9DC}.mcraft-kicker.grass{background:#79C64A}
-.mcraft-kicker.copper{background:#D8894D}.mcraft-kicker.nether{background:#DD5C4D}.mcraft-kicker.cherry{background:#F3A8BD}
-/* The per-topic tone also drives the magazine furniture accent below. */
-.mcraft-spread.gold{--mcraft-accent:#F2C94C}.mcraft-spread.sky{--mcraft-accent:#65A9DC}.mcraft-spread.grass{--mcraft-accent:#79C64A}
-.mcraft-spread.copper{--mcraft-accent:#D8894D}.mcraft-spread.nether{--mcraft-accent:#DD5C4D}.mcraft-spread.cherry{--mcraft-accent:#F3A8BD}
-.mcraft-title{margin:0;max-width:13ch;color:#F7F3D8;font:900 clamp(1.35rem,3vw,3.15rem)/.92 Fredoka,system-ui;letter-spacing:-.025em;overflow-wrap:anywhere}
-.mcraft-title-zh{color:#E8EFD6;font-size:clamp(1rem,1.7vw,1.45rem);line-height:1.28;font-weight:900;word-break:break-word}
-.mcraft-body{margin:0;color:#C8D1BB;font-size:.92rem;line-height:1.48;font-weight:800;overflow-wrap:anywhere}
-.mcraft-body.zh{color:#E8EFD6;font-size:1.08rem;line-height:1.55;font-weight:800;word-break:break-word}
-.mcraft-pull{margin:0;color:#F7F3D8;font:900 clamp(1.25rem,2.35vw,2.5rem)/1 Fredoka,system-ui;letter-spacing:-.025em;overflow-wrap:anywhere}
-.mcraft-photo-hint{color:#DDE8C9;font-size:.86rem;line-height:1.25;font-weight:900;opacity:.82}
-.mcraft-meta{
-  position:absolute;left:16px;top:14px;z-index:4;display:inline-flex;padding:7px 9px;
-  background:#F2C94C;color:#10140E;font:.72rem/1 Fredoka,system-ui;font-weight:900;
-}
-#book[data-lang="zh"] .mcraft-title,#book[data-lang="zh"] .mcraft-pull,#book[data-lang="zh"] .mcraft-body:not(.zh){display:none}
-#book[data-lang="en"] .mcraft-title-zh,#book[data-lang="en"] .mcraft-body.zh{display:none}
-/* ── Magazine floating overlays + furniture. Markup comes from
-      js/books/minecraft-magazine.js and is shared with books/minecraft.html,
-      which carries its own copy of these rules. ── */
-.ovl{position:absolute;z-index:6;pointer-events:none;opacity:0;animation:ovlIn .6s ease-out forwards, ovlFloat 18s ease-in-out .6s infinite}
-.ovl img{display:block;width:var(--ovl-s,48px);height:auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))}
-.ovl svg{display:block;filter:drop-shadow(0 4px 10px rgba(0,0,0,.55))}
-@keyframes ovlIn{from{opacity:0;transform:translateY(12px) rotate(var(--ovl-rot,0deg)) scale(.85)}to{opacity:var(--ovl-op,.3);transform:translateY(0) rotate(var(--ovl-rot,0deg)) scale(1)}}
-@keyframes ovlFloat{0%,100%{transform:translateY(0) rotate(var(--ovl-rot,0deg))}50%{transform:translateY(-7px) rotate(calc(var(--ovl-rot,0deg) + 2deg))}}
-.ovl-deco{position:absolute;z-index:5;pointer-events:none;opacity:.1;animation:ovlFloat 26s ease-in-out infinite}
-@media(prefers-reduced-motion:reduce){.ovl,.ovl-deco{animation:none;opacity:.28}}
-.mcx-era{position:absolute;left:16px;top:44px;z-index:4;display:inline-flex;padding:5px 8px;
-  background:rgba(16,20,14,.74);border-left:3px solid var(--mcraft-accent);
-  color:#E8EFD6;font:.68rem/1.15 Fredoka,system-ui;font-weight:900;letter-spacing:.03em}
-.mcx-stat{position:absolute;right:14px;top:14px;z-index:4;max-width:46%;text-align:right;
-  padding:8px 10px;border-radius:4px;background:rgba(16,20,14,.78);border-right:3px solid var(--mcraft-accent)}
-.mcx-stat b{display:block;color:var(--mcraft-accent);font:900 clamp(1.25rem,2.6vw,2rem)/1 Fredoka,system-ui;letter-spacing:-.02em}
-.mcx-stat-label{display:block;margin-top:3px;color:#DDE8C9;font-size:.66rem;line-height:1.2;font-weight:900}
-.mcx-band{position:absolute;left:0;right:0;top:0;height:54%;z-index:0;padding:0;border:0;
-  overflow:hidden;background:#0D100C;cursor:pointer;display:block;touch-action:manipulation}
-.mcx-band img{width:100%;height:100%;object-fit:cover;display:block}
-.mcx-band::after{content:"";position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(13,16,12,.62),rgba(13,16,12,.12) 38%,rgba(32,39,30,.86) 78%,#20271E)}
-.mcraft-page.quote .mcx-band{height:50%}
-.mcraft-page.quote .copy,.mcraft-page.quote .mcraft-copy{margin-top:auto}
-.mcraft-page.quote .mcx-band::after{background:linear-gradient(180deg,rgba(13,16,12,.62),rgba(13,16,12,.12) 34%,rgba(42,49,38,.86) 76%,#2A3126)}
-.mcx-thumb:active img{transform:scale(1.03)}
-.mcx-card{position:relative;z-index:3;padding:10px 12px;border-radius:6px;
-  background:rgba(16,20,14,.7);border-left:4px solid var(--mcraft-accent);box-shadow:0 6px 18px rgba(0,0,0,.34)}
-.mcx-card-label{display:block;margin-bottom:4px;color:var(--mcraft-accent);
-  font:.66rem/1 Fredoka,system-ui;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
-.mcx-card-text{display:block;color:#DDE8C9;font-size:.82rem;line-height:1.42;font-weight:800}
-.mcx-card-text.mcx-zh{font-size:.95rem;line-height:1.5}
-.mcx-keys{list-style:none;display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
-.mcx-keys li{padding:5px 8px;border:1px solid var(--mcraft-accent);border-radius:20px;
-  color:#E8EFD6;font:.68rem/1 Fredoka,system-ui;font-weight:900}
-.mcx-rhead{position:absolute;left:18px;right:18px;top:14px;z-index:3;text-shadow:0 1px 4px rgba(0,0,0,.75);display:flex;align-items:baseline;gap:8px;
-  padding-bottom:8px;border-bottom:1px solid rgba(244,242,223,.16);color:rgba(244,242,223,.58);
-  font:.7rem/1.2 Fredoka,system-ui;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
-.mcx-rhead b{flex:0 0 auto;color:var(--mcraft-accent);font-size:.95rem}
-.mcx-rhead span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#book[data-lang="zh"] .mcx-en{display:none}
-#book[data-lang="en"] .mcx-zh{display:none}
-@media(max-width:860px){
-  .mcraft-spread{height:calc(100vh - 190px);overflow-y:auto;align-content:start}
-  .mcraft-page{min-height:250px}
-}
-@media(max-width:520px){
-  .mcraft-spread{grid-template-columns:1fr;height:calc(100vh - 190px);max-width:100%;overflow-x:hidden}
-  .mcraft-page{min-height:260px;padding-right:42px}
-  .mcraft-page.photo{min-height:430px}
-  .mcraft-page.photo .mcraft-copy{right:42px}
-  .mcraft-title{font-size:1.65rem}
-  /* Phones stack to one column — drop the side furniture so the copy still fits. */
-  .ovl,.ovl-deco{display:none}
-  .mcx-stat{padding:6px 8px}.mcx-stat b{font-size:1.1rem}
-}
-
-/* ---------- MY DAY ---------- */
-.dayprog{position:relative;height:30px;background:var(--panel);border:2px solid var(--line);
-  border-radius:99px;overflow:hidden;margin-bottom:14px}
-.dayfill{position:absolute;inset:0;width:0%;background:linear-gradient(90deg,var(--lucien),var(--gold));
-  transition:width .4s;border-radius:99px}
-.dayprog span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-family:'Fredoka';font-weight:600;font-size:14px;color:var(--ink);text-shadow:0 1px 2px rgba(0,0,0,.4)}
-.daylist{display:flex;flex-direction:column;gap:10px}
-.dayrow{display:flex;gap:12px;align-items:flex-start;background:rgba(78,168,255,.08);border:2px solid rgba(78,168,255,.32);
-  border-radius:16px;padding:12px 14px;cursor:pointer;transition:transform .15s ease,border-color .15s ease,background .15s ease}
-.dayrow:active{transform:translateY(1px)}
-.dayrow:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
-.dayrow.done{border-color:rgba(61,220,151,.55);background:rgba(61,220,151,.12);opacity:.86}
-.dayrow.done .dt-title{text-decoration:line-through}
-.dayrow.now{border-color:var(--gold);
-  background:rgba(255,201,60,.18);
-  box-shadow:0 6px 22px rgba(255,201,60,.22),0 0 0 3px rgba(255,201,60,.18)}
-.dayrow.now .dtime{color:#FFD966;font-size:16px}
-.nowflag{display:block;background:var(--gold);color:#201A40;font-weight:800;font-size:11px;
-  border-radius:999px;padding:2px 6px;margin-top:5px;text-align:center;animation:nowpulse 2s ease-in-out infinite}
-@keyframes nowpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
-.dayrow.next{border-color:rgba(78,168,255,.65);background:rgba(78,168,255,.1)}
-.dayrow.past{border-color:rgba(255,122,144,.55);background:rgba(255,122,144,.13)}
-.dayrow.excused{border-color:rgba(61,220,151,.55);background:rgba(61,220,151,.08)}
-.dayrow .dtime{flex:0 0 52px;font-family:'Fredoka';font-weight:700;font-size:14px;color:var(--gold);
-  text-align:center;padding-top:3px}
-.movedflag{display:block;font-size:.6em;color:var(--ok);opacity:.9}
-.dayrow .dmid{flex:1;min-width:0}
-.dayrow .dt-title{font-family:'Fredoka';font-weight:600;font-size:16px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.dt-more{margin-left:auto;min-width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
-  background:rgba(255,255,255,.12);border:1px solid var(--line);font-weight:800;color:var(--gold)}
-.dayrow .dt-mis{color:var(--ink);font-weight:700;font-size:14px;margin-top:3px;line-height:1.4}
-.dayrow .dt-mis.routine{color:var(--muted)}
-.timeflag,.screenflag{display:inline-block;margin-top:5px;font-size:12px;font-weight:900;color:var(--gold)}
-.screenflag.locked{color:#B7B9D6}
-.notehero{background:rgba(78,168,255,.16);border:2px solid rgba(78,168,255,.35);border-radius:16px;
-  padding:12px 14px;margin-bottom:12px;font-weight:800;color:var(--ink);white-space:pre-wrap;text-align:left}
-.badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:99px;
-  background:var(--bad);color:white;font-size:12px;font-weight:900;margin-left:4px;padding:0 6px}
-/* toasts — above the lock overlay (40) and confetti (50) so a star still lands
-   while a game or an overlay is up */
-#sqToasts{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:60;display:flex;
-  flex-direction:column;gap:8px;width:min(430px,calc(100vw - 24px));pointer-events:none}
-.sqtoast{pointer-events:auto;cursor:pointer;display:flex;gap:10px;align-items:center;text-align:left;
-  background:var(--panel2);border:2px solid var(--line);border-left:6px solid var(--gold);
-  border-radius:16px;padding:10px 14px;box-shadow:0 8px 0 rgba(0,0,0,.3);animation:sqtin .28s ease-out}
-.sqtoast.out{opacity:0;transform:translateY(-12px);transition:opacity .3s,transform .3s}
-.sqtoast--ok{border-left-color:var(--ok)}
-.sqtoast--msg{border-left-color:var(--luis)}
-.sqtoast .e{font-size:28px;line-height:1}
-.sqtoast .tx{min-width:0}
-.sqtoast .tx b{display:block;font-family:'Fredoka';font-weight:600;font-size:16px}
-.sqtoast .tx i{display:block;font-style:normal;color:var(--ink);font-weight:800;font-size:13px}
-.sqtoast .tx small{display:block;color:var(--muted);font-weight:800;font-size:11px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sqtoast .tx small:empty{display:none}
-@keyframes sqtin{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
-/* rewards tab */
-.achvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-.achv{background:rgba(0,0,0,.2);border:2px solid var(--line);border-radius:16px;padding:12px 8px;text-align:center}
-.achv.on{border-color:var(--gold);background:rgba(255,201,60,.12)}
-.achv .e{display:block;font-size:34px}
-.achv.off .e{filter:grayscale(1);opacity:.45}
-.achv b{display:block;font-family:'Fredoka';font-weight:600;font-size:14px;margin-top:4px}
-.achv span{display:block;color:var(--muted);font-weight:800;font-size:12px}
-.feedrow{display:flex;gap:10px;align-items:flex-start;text-align:left;background:rgba(0,0,0,.2);
-  border:2px solid var(--line);border-radius:16px;padding:10px 12px}
-.feedrow .e{font-size:24px;line-height:1.2}
-.feedrow .tx{flex:1;min-width:0}
-.feedrow .tx b{display:block;font-family:'Fredoka';font-weight:600;font-size:15px}
-.feedrow .tx span{display:block;color:var(--ink);font-weight:800;font-size:13px}
-.feedrow .tx small{display:block;color:var(--muted);font-weight:800;font-size:12px;margin-top:2px}
-.feedrow .tx small:empty{display:none}
-.feedrow time{color:var(--muted);font-weight:800;font-size:11px;white-space:nowrap}
-.asklist{display:grid;gap:10px;margin-top:12px}
-.askcard{background:rgba(0,0,0,.2);border:2px solid var(--line);border-radius:16px;padding:12px;text-align:left}
-.askcard.open{border-color:var(--gold)}
-.askcard.answered{border-color:var(--ok)}
-.askmeta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-weight:800;font-size:12px}
-.askaudio{width:100%;max-width:320px;margin-top:8px}
-.pininput{font-family:'Fredoka';font-size:28px;text-align:center;letter-spacing:6px;max-width:180px}
-.proofthumb{max-width:160px;max-height:120px;border-radius:12px;border:2px solid var(--line);margin-top:6px}
-.passline{font-size:12px;font-weight:900;color:var(--gold);margin-top:6px}
-.dayrow .dbtns{display:flex;flex-direction:column;gap:6px}
-.dayrow .btn.tick{padding:8px 12px;font-size:15px}
-.dayrow.mission{border-left-width:5px}
-.dayrow.mission.done,
-.dayrow.mission.excused{border-left-color:rgba(61,220,151,.75)}
-.dayrow.mission.past{border-left-color:rgba(255,122,144,.75)}
-.dayrow.mission.now{border-left-color:var(--gold)}
-.dayrow.mission.next{border-left-color:rgba(78,168,255,.75)}
-.dayclock{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  background:linear-gradient(135deg,var(--panel2),var(--panel));border:2px solid var(--line);
-  border-radius:18px;padding:10px 16px;margin-bottom:10px}
-.dc-time{font-family:'Fredoka';font-weight:700;font-size:clamp(34px,7vw,46px);color:var(--ink);
-  letter-spacing:1px;line-height:1;display:flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums}
-.dc-sec{font-size:.42em;color:var(--gold);font-weight:700;min-width:2ch}
-.dc-now{font-family:'Fredoka';font-weight:600;font-size:15px;color:var(--ink);text-align:right;border:2px solid rgba(255,201,60,.5);
-  background:rgba(255,201,60,.14);border-radius:14px;padding:8px 14px;cursor:pointer;min-height:52px}
-.dc-now .zhs{margin-top:1px}
-.dt-guide{margin-top:7px;padding:8px 12px;background:rgba(16,10,36,.35);border-radius:12px}
-.dt-tip{font-size:13px;font-weight:600;color:var(--ink);line-height:1.5;margin:4px 0}
-.dt-detail{margin-top:10px;padding:10px 12px;background:rgba(16,10,36,.38);border:1px solid rgba(255,255,255,.12);
-  border-radius:12px;color:var(--ink)}
-.dt-detail p{margin:0 0 8px;font-weight:800}
-.dt-detail ol{margin:0;padding-left:22px}
-.dt-detail li{font-size:13px;font-weight:700;line-height:1.45;margin:5px 0}
-.zhs{display:block;font-size:12.5px;color:var(--muted);font-weight:700;margin-top:2px}
-.dt-title .zht{font-size:12px;color:var(--muted);font-weight:700;margin-left:6px}
-.dayhero{background:linear-gradient(135deg,#2E5E4E,#3D7A5F);border-radius:18px;padding:14px 16px;
-  font-weight:800;color:#DFF3E7;margin-bottom:12px;text-align:center;font-size:15px}
-
-/* ---------- BIG MACHINES ---------- */
-.game-scene--machines .game-scene__center{gap:8px}
-.mch-track{position:relative;width:min(92%,560px);height:74px;margin:14px auto 4px;
-  border-bottom:5px dashed var(--line)}
-.mch-car{position:absolute;bottom:2px;font-size:52px;transition:left .25s ease;transform:scaleX(-1)}
-.mch-flag{position:absolute;right:0;bottom:2px;font-size:44px}
-.mch-row{font-size:clamp(34px,7vw,46px);letter-spacing:6px;margin:8px 0;min-height:52px}
-.mch-lift{display:inline-block;transition:transform .9s ease-in,opacity .9s}
-.mch-lift.up{transform:translateY(-160px);opacity:0}
-.mch-digger{display:inline-block;font-size:52px;transition:transform .3s}
-.mch-digger.dig{animation:digga .5s}
-@keyframes digga{0%,100%{transform:rotate(0)}50%{transform:rotate(-16deg) translateY(6px)}}
-
-/* confetti + finish */
-#confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
-.overlay{position:fixed;inset:0;background:rgba(20,14,40,.82);display:flex;align-items:center;
-  justify-content:center;z-index:40;padding:20px}
-/* Every popup leaves the same two ways: tap the backdrop, or tap the ✕. The ✕ is
-   a pseudo-element so hits land on the overlay itself — one handler covers both. */
-.overlay::after{content:"✕";position:absolute;top:10px;right:14px;font-size:30px;font-weight:800;
-  color:#fff;opacity:.7;line-height:1;padding:10px 14px;text-shadow:0 2px 6px rgba(0,0,0,.6)}
-.overlay[data-nodismiss]::after{content:none}
-.card{background:var(--panel);border-radius:26px;padding:30px 26px;text-align:center;max-width:420px;width:100%;
-  border:2px solid var(--line);box-shadow:0 14px 0 rgba(0,0,0,.3)}
-.card h3{font-family:'Fredoka';font-weight:700;font-size:34px;margin-bottom:6px}
-.card .big{font-family:'Fredoka';font-weight:700;font-size:64px;line-height:1;margin:8px 0}
-.card p{color:var(--muted);font-weight:800;margin:6px 0 18px}
-.mute{margin-left:auto}
-.pincard{text-align:center;max-width:280px}
-.pindots{font-size:1.6em;letter-spacing:.3em;margin:10px 0}
-.pingrid{display:grid;grid-template-columns:repeat(3,64px);gap:10px;justify-content:center;margin-bottom:12px}
-.pinkey{font-size:1.3em;min-height:52px}
-.shake{animation:pinshake .4s}
-@keyframes pinshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
-.gameslocked #gameRow .gamecard{opacity:.58;filter:saturate(.7)}
-/* Brain gate: the trio stays tappable; the rest stays visible and opens the nudge. */
-.brainlocked #gameRow .gamecard:not(.brain){opacity:.58;filter:saturate(.7)}
-.brainnudge{display:block;width:100%;text-align:left;font:inherit;color:inherit;border:none;cursor:pointer;
-  background:linear-gradient(135deg,#3D5E8C,#5B7FB8)}
-.brainnudge:active{transform:translateY(2px)}
-.btrio{display:flex;flex-wrap:wrap;gap:.4em;justify-content:center;margin:.6em 0}
-.btchip{background:rgba(255,255,255,.09);border-radius:12px;padding:.35em .6em;font-size:.85em}
-.btchip.done{opacity:.5}
-.todaytag{display:block;font-size:.72em;margin-top:.3em;color:var(--accent);font-weight:700}
-.todaytag.done{opacity:.6}
-.ptkid.on{background:var(--ok);color:#1c1436}
-.ptblk.on{background:var(--ok);color:#1c1436}
-.drillcard{max-width:380px;text-align:center}
-.drilldots{letter-spacing:.25em;margin:8px 0;opacity:.85}
-.drillstep{font-size:1.25em;margin:14px 0;line-height:1.4}
-.metrow{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
-.metbpm.on{background:var(--ok);color:#1c1436}
-.bclockface{width:150px;height:150px;margin:.4em auto;display:block}
-.knowledge-help{margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow-wrap:anywhere}
-.knowledge-help__clue p{margin:8px 0;color:var(--ink)}.knowledge-help__clue .zhs{display:block;margin-top:6px}
-.knowledge-help .btn{min-height:44px;white-space:normal}.is-help-focus{outline:3px solid var(--accent,var(--gold));outline-offset:3px}
+#bootStatus{text-align:center;padding:40px 16px;min-height:220px;font-weight:800;color:var(--muted)}
+#bootStatus b{display:block;color:var(--ink);font-size:25px;margin:14px 0 8px}
+#bootStatus .boot-avatar{display:block;font-size:64px;line-height:1.2;animation:boot-breathe 1.2s ease-in-out infinite alternate}
+#bootStatus .btn{margin-top:18px;font-family:inherit}
+@keyframes boot-breathe{to{opacity:.55;transform:translateY(-4px)}}
+@media(prefers-reduced-motion:reduce){#bootStatus .boot-avatar{animation:none}}
 </style>
-<link rel="stylesheet" href="css/brain-shell.css">
-<link rel="stylesheet" href="css/brain-sprites.css">
-<link rel="stylesheet" href="css/brain-scenes.css">
-<link rel="stylesheet" href="css/quest-shell.css">
-<link rel="stylesheet" href="css/world-explorer.css">
+<link rel="stylesheet" data-app-style media="print" onload="this.media='all'" onerror="this.dataset.failed='1'" href="css/app.css">
+<link rel="stylesheet" data-app-style media="print" onload="this.media='all'" onerror="this.dataset.failed='1'" href="css/brain-shell.css">
+<link rel="stylesheet" data-app-style media="print" onload="this.media='all'" onerror="this.dataset.failed='1'" href="css/brain-sprites.css">
+<link rel="stylesheet" data-app-style media="print" onload="this.media='all'" onerror="this.dataset.failed='1'" href="css/brain-scenes.css">
+<link rel="stylesheet" data-app-style media="print" onload="this.media='all'" onerror="this.dataset.failed='1'" href="css/quest-shell.css">
+<link rel="stylesheet" data-app-style media="print" onload="this.media='all'" onerror="this.dataset.failed='1'" href="css/world-explorer.css">
 </head>
 <body>
 
@@ -789,9 +90,66 @@ body.music-mode{overflow:hidden}
   <section id="home">
     <div class="brand">
       <h1 class="font-d">SUMMER QUEST</h1>
-      <p>Pick your hero — your day is waiting! ☀️</p>
+      <p>Pick your hero · 選擇你的小英雄 ☀️</p>
     </div>
     <div class="heroes" id="heroes"></div>
+    <div id="bootStatus" class="hidden" role="status" aria-live="polite"></div>
+    <script>
+const KIDS = {
+  lucien:{name:"Lucien", age:4, av:"🐨", color:"var(--lucien)", raw:"#3DDC97", level:"machines"},
+  lili:  {name:"Lili",   age:7, av:"🦄", color:"var(--lili)",   raw:"#FF6FB5", level:"home"},
+  luis:  {name:"Luis",   age:9, av:"🚀", color:"var(--luis)",   raw:"#4EA8FF", level:"orc"},
+};
+/* The first interaction needs no downloaded scripts, fonts, images or styles. */
+(function(){
+  if(typeof document==="undefined")return;
+  const heroes=document.getElementById("heroes"),status=document.getElementById("bootStatus");
+  const boot=window.SQBoot={requestedKid:null,ready:false};
+  boot.preloadWorld=function(){
+    const link=document.createElement("link");link.rel="modulepreload";link.href="./js/world/world-explorer.js";
+    document.head.appendChild(link);
+  };
+  boot.show=function(id){
+    const child=KIDS[id];if(!child)return;
+    heroes.classList.add("hidden");status.classList.remove("hidden");
+    status.innerHTML='<span class="boot-avatar" aria-hidden="true">'+child.av+'</span><b>'+child.name+'</b><span>Opening your adventure…<br>正在開啟你的冒險…</span>';
+  };
+  boot.finish=function(){
+    clearTimeout(timer);status.classList.add("hidden");heroes.classList.remove("hidden");
+  };
+  boot.fail=function(){
+    if(boot.ready)return;
+    heroes.classList.add("hidden");status.classList.remove("hidden");
+    status.innerHTML='<b>Let’s try again · 再試一次</b><span>Could not finish loading. · 載入未完成。</span><br><button class="btn" type="button">Reload · 重新載入</button>';
+    status.querySelector("button").onclick=function(){location.reload();};
+  };
+  boot.choose=function(id){
+    if(!KIDS[id])return;
+    if(boot.ready)return selectKid(id);
+    boot.requestedKid=id;boot.show(id);boot.preloadWorld();
+  };
+  Object.entries(KIDS).forEach(function([id,child]){
+    const button=document.createElement("button");button.className="hero";button.dataset.kid=id;
+    button.innerHTML='<div class="glow" style="background:'+child.color+'"></div><div class="av">'+child.av+'</div><div class="age">Age '+child.age+' · '+child.age+' 歲</div><h2 style="color:'+child.color+'">'+child.name+'</h2><div class="mode">Open world · 開啟世界</div><div class="stats" style="min-height:18px"></div>';
+    button.onclick=function(){boot.choose(id);};heroes.appendChild(button);
+  });
+  try{
+    const saved=localStorage.getItem("sq:kid"),view=localStorage.getItem("sq:view");
+    if(KIDS[saved]){boot.show(saved);if(!view||view==="home"||view==="world")boot.preloadWorld();}
+  }catch(error){}
+  const timer=setTimeout(boot.fail,15000);
+  boot.styles=Promise.all(Array.from(document.querySelectorAll("link[data-app-style]")).map(function(link){
+    if(link.sheet)return Promise.resolve();
+    if(link.dataset.failed)return Promise.reject(new Error("Styles unavailable"));
+    return new Promise(function(resolve,reject){
+      link.addEventListener("load",resolve,{once:true});
+      link.addEventListener("error",reject,{once:true});
+    });
+  }));
+  boot.styles.catch(boot.fail);
+  addEventListener("error",function(event){if(event.message||(event.target&&event.target.tagName==="SCRIPT"))boot.fail();},true);
+})();
+</script>
     <div style="text-align:center;margin-top:22px">
       <button class="btn small" id="muteHome">🔊 Sound: On</button>
       <a class="btn small" href="admin.html" style="text-decoration:none;display:inline-block;margin-left:8px;opacity:.6">🔧 Papa 爸爸</a>
@@ -885,7 +243,7 @@ body.music-mode{overflow:hidden}
     </div>
     <div id="tab-acts" class="hidden">
       <div class="bankgrid" id="actGrid"></div>
-      <div class="tipline">✓ Pick something fun — once per day. Stars come from My Day! · 挑一件好玩的事——每天每項一次。星星要在「我的一天」拿喔！</div>
+      <div class="tipline">✓ Pick something fun. Agreed activities earn points after Papa checks. · 挑一件好玩的事，約定的活動經爸爸確認後可獲得點數。</div>
     </div>
     <div id="tab-learn" class="hidden">
       <div class="bigcard placement-calibration" id="placementCalibrationCard">
@@ -982,7 +340,7 @@ body.music-mode{overflow:hidden}
         <div class="vrow">
           <button class="btn" id="claimSend">Send claim 送出申請</button>
         </div>
-        <div class="tipline" id="claimStatus">Papa approves captain stars · 爸爸核准隊長星星</div>
+        <div class="tipline" id="claimStatus">Papa confirms helping points · 爸爸確認幫忙點數</div>
       </div>
       <div class="asklist" id="claimList"></div>
     </div>
@@ -1087,7 +445,7 @@ body.music-mode{overflow:hidden}
 <script src="js/config.js"></script>
 <script src="js/day.js"></script>
 <script src="js/star-id.js"></script>
-<script src="js/vendor/supabase.js"></script>
+<script src="js/points.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/notify.js"></script>
 <script src="js/day-data.js"></script>
@@ -1122,15 +480,6 @@ body.music-mode{overflow:hidden}
 <script src="js/brain-core.js"></script>
 <script src="js/brain-audio-cues.js"></script>
 <script src="js/brain-ui.js"></script>
-<script src="js/books/space-data.js"></script>
-<script src="js/books/animals-data.js"></script>
-<script src="js/books/giraffe-data.js"></script>
-<script src="js/books/science-data.js"></script>
-<script src="js/books/race-cars-data.js"></script>
-<script src="js/books/construction-data.js"></script>
-<script src="js/books/public-vehicles-data.js"></script>
-<script src="js/books/minecraft-data.js"></script>
-<script src="js/books/minecraft-magazine.js"></script>
 <script type="module" src="js/main.js"></script>
 <script>
 /* Optional remote Summer provider. The configured URL is a protected backend
@@ -1140,14 +489,9 @@ if(window.SQSummerAgent&&window.SQAgentProvider){
   if(remoteSummer)SQSummerAgent.setRemoteProvider(remoteSummer);
 }
 /* ============ DATA ============ */
-const KIDS = {
-  lucien:{name:"Lucien", age:4, av:"🐨", color:"var(--lucien)", raw:"#3DDC97", level:"machines"},
-  lili:  {name:"Lili",   age:7, av:"🦄", color:"var(--lili)",   raw:"#FF6FB5", level:"home"},
-  luis:  {name:"Luis",   age:9, av:"🚀", color:"var(--luis)",   raw:"#4EA8FF", level:"orc"},
-};
+
 const LEVELS = {
   machines:{icon:"🚜", title:"Big Machines", tz:"大機器",   blurb:"Race, dig & fly"},
-  city:   {icon:"🏙️", title:"City Drive", tz:"城市開車",    blurb:"Drive & deliver"},
   dig:    {icon:"⛏️", title:"Dig Site", tz:"挖土工地",      blurb:"Dig the right rocks"},
   balloon:{icon:"🎈", title:"Balloon Pop", tz:"戳氣球",     blurb:"Pop balloons with keys"},
   hunt:   {icon:"🔎", title:"Key Hunt", tz:"找按鍵",        blurb:"Find the glowing key"},
@@ -1160,11 +504,19 @@ const LEVELS = {
   signs:  {icon:"❓", title:"Sign Finder", tz:"找符號",   blurb:"Find the missing sign", brain:true},
   lowhigh:{icon:"🔢", title:"Low to High", tz:"由小到大", blurb:"Remember and order",    brain:true},
   stroop: {icon:"🎨", title:"Color Words", tz:"顏色字",   blurb:"Say the ink, not the word", brain:true},
-  crunch: {icon:"🔍", title:"Number Cruncher", tz:"數一數", blurb:"Count them fast",     brain:true},
+  crunch: {icon:"🧩", title:"Number Bonds", tz:"數字好朋友", blurb:"Find a pair to make the target", brain:true},
   clock:  {icon:"🕐", title:"Time Lapse", tz:"時鐘",      blurb:"Read the clock",        brain:true},
   change: {icon:"💱", title:"Change Maker", tz:"找零錢",  blurb:"Count the change",      brain:true},
   wordmem:{icon:"🧠", title:"Word Memory", tz:"記單字",   blurb:"Remember the words",    brain:true},
   recall: {icon:"🔁", title:"Math Recall", tz:"記憶計算", blurb:"Answer the one before", brain:true},
+  fractions: {icon:"🥪", title:"Fraction Picnic", tz:"分數野餐", blurb:"Share equal pieces · 平分每一份", brain:true},
+  balance: {icon:"⚖️", title:"Balance Lab", tz:"天平實驗室", blurb:"Balance the numbers · 讓數字平衡", brain:true},
+  circuit: {icon:"💡", title:"Circuit Builder", tz:"電路小工匠", blurb:"Build a working circuit · 動手接電路", brain:true},
+  sorter: {icon:"🔬", title:"Science Sorter", tz:"科學分類站", blurb:"Sort and discover why · 分類找原因", brain:true},
+  sentence: {icon:"🚂", title:"Sentence Train", tz:"句子小火車", blurb:"Put words in order · 排出完整句子", brain:true},
+  soundmatch: {icon:"🔊", title:"Sound Match", tz:"聽音找單字", blurb:"Listen and find a match · 聽一聽，找一找", brain:true},
+  memorymatch: {icon:"🃏", title:"Memory Match", tz:"記憶配對", blurb:"Remember the pictures · 記住圖片的位置", brain:true},
+  patternecho: {icon:"🎵", title:"Pattern Echo", tz:"節奏記憶", blurb:"Watch, remember, repeat · 看一看，記住，再點一次", brain:true},
 };
 /* Unified game metadata lookup. LEVELS carries inline and fallback tile metadata;
    the manifest (js/games/index.js, published to window.SQManifest by main.js)
@@ -1367,7 +719,7 @@ const ACT_GUIDE=[
  {type:"photo",steps:[["Grab the camera or the phone (ask first)", "拿相機或手機（先問過）"],["Tap the mission button below 🎲", "按下面的任務按鈕 🎲"],["Take LOTS of photos — then choose your best one", "拍很多張——再挑最棒的一張"],["Try today's trick from the tip", "試試今天的小技巧"],["Show your best photo at dinner tonight", "晚餐時展示你最棒的照片"]]},
  {steps:[["A grown-up must be nearby — always 🧑‍🦱", "一定要有大人在旁邊 🧑‍🦱"],["Golden rules: ask first, never type your name or address", "黃金規則：先問過，絕不打出名字或地址"],["Do your task from the list above", "做清單上的任務"],["If anything feels wrong — close it and tell Papa", "感覺不對勁——關掉並告訴爸爸"],["Tell one thing you learned at dinner", "晚餐時分享一件學到的事"]]},
  {steps:[["Being bored is GOOD — it starts your idea engine 🧠", "無聊是好事——它會啟動你的點子引擎 🧠"],["Grab the box of random objects, pick 2 or 3", "拿出雜物箱，挑2、3樣東西"],["Invent a game with them and make up the rules", "用它們發明一個遊戲，自己訂規則"],["Give your game a cool name", "幫遊戲取一個酷名字"],["Teach it to everyone tonight!", "今晚教大家玩！"]]},
- {steps:[["Pick ONE job from your list above", "從清單挑「一個」工作"],["Do it completely — halfway doesn't count 😉", "做完整——做一半不算 😉"],["Ask a grown-up to check when you're finished", "做完請大人檢查"],["This one earns EXTRA stars on the wall tracker too", "這個在牆上的追蹤表也能多拿星星"]]},
+ {steps:[["Pick ONE job from your list above", "從清單挑「一個」工作"],["Do it completely — halfway doesn't count 😉", "做完整——做一半不算 😉"],["Ask a grown-up to check when you're finished", "做完請大人檢查"],["Ask a parent to check this distinct helping job", "請家長確認這個不同的幫忙工作"]]},
  {timer:15,steps:[["Push chairs away — make a safe dance space", "把椅子推開——空出安全的跳舞空間"],["Pick a video from your list above", "從清單挑一支影片"],["Follow along the WHOLE video, no sitting down", "整支跟完，不可以坐下"],["Big glass of water when you finish 💧", "結束喝一大杯水 💧"]]},
  {steps:[["Only during a screen window, and only if your boxes are ticked ✓", "只能在螢幕時段，而且格子都打勾 ✓"],["Pick your mission from the list above", "從清單挑你的任務"],["Build it properly — details make it awesome", "好好蓋——細節讓它更厲害"],["Take a screenshot when it's finished", "完成後截圖"],["Give the tour at dinner tonight ⛏️", "晚餐時帶大家參觀 ⛏️"]]},
 ];
@@ -1463,7 +815,8 @@ let learningDirectorLaunch=null;
 const newProg=()=>({best:{},vocab:{},missions:0,day:{d:'',done:{},rr:{}}});
 let progress={lucien:newProg(),lili:newProg(),luis:newProg()};
 const bestOf=(id,mode)=>{const b=progress[id].best; return (b&&typeof b==="object")?(b[mode]||0):0;};
-const starsOf=id=>store?store.starsFor(id):0;
+const pointsOf=id=>store&&store.pointsFor?store.pointsFor(id):{available:0,totalEarned:0,pending:0,spent:0};
+const starsOf=id=>pointsOf(id).totalEarned;
 const heroBest=id=>{const lvl=KIDS[id].level;
   if(lvl==="race") return bestOf(id,"race")+" wpm";
   if(lvl==="orc") return bestOf(id,"orc");
@@ -1483,9 +836,8 @@ let store=null;
 function normalizeProgressShape(){
   if(settings.inputScript!=="bpmf")settings.inputScript="abc";
   Object.keys(progress).forEach(k=>{const P=progress[k];
-    if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0,city:0,dig:0};
+    if(!P.best||typeof P.best!=="object")P.best={balloon:0,race:0,orc:0,shop:0,dig:0};
     if(P.best.shop==null)P.best.shop=0;
-    if(P.best.city==null)P.best.city=0;
     if(P.best.dig==null)P.best.dig=0;
     if(!P.vocab)P.vocab={};
     if(P.missions==null)P.missions=0;
@@ -1539,13 +891,13 @@ function sayPair(en,fr){ say(en); if(fr) say(fr,"fr-FR",true); }
 function renderHome(){
   const box=document.getElementById("heroes"); box.innerHTML="";
   Object.entries(KIDS).forEach(([id,k])=>{
-    const b=document.createElement("button"); b.className="hero";
+    const b=document.createElement("button"); b.className="hero";b.dataset.kid=id;
     b.innerHTML=`<div class="glow" style="background:${k.color}"></div>
       <div class="av">${k.av}</div>
       <div class="age">Age ${k.age}</div>
       <h2 style="color:${k.color}">${k.name}</h2>
       <div class="mode">${LEVELS[k.level].icon} ${LEVELS[k.level].title}</div>
-      <div class="stats"><span>⭐ <b>${starsOf(id)}</b> stars</span>
+      <div class="stats"><span><b>${pointsOf(id).available}</b> Points 點數</span>
         <span>🏁 best <b>${heroBest(id)}</b></span></div>`;
     b.onclick=()=>selectKid(id);
     box.appendChild(b);
@@ -1573,7 +925,7 @@ function renderWorldHud(){
   const k=KIDS[hubKid];
   document.getElementById("worldKidAvatar").textContent=k.av;
   document.getElementById("worldKidName").textContent=k.name;
-  document.getElementById("worldKidStats").textContent="⭐ "+starsOf(hubKid)+" · age "+k.age;
+  document.getElementById("worldKidStats").textContent=pointsOf(hubKid).available+" Points 點數 · "+pointsOf(hubKid).pending+" pending 待確認";
   document.documentElement.style.setProperty("--accent",k.color);
 }
 async function openWorld(id){
@@ -1585,11 +937,14 @@ async function openWorld(id){
   if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("APP_OPENED",{surface:"world"});
   const token=++worldOpenToken,status=document.getElementById("worldStatus");
   const worldMessage="The world is resting. You can open Classic. 世界暫時休息中，可以打開經典模式。";
-  status.textContent=worldMessage;
-  status.classList.add("hidden");
+  status.textContent="Opening your world… 正在開啟你的世界…";
+  status.classList.remove("hidden");
   try{
-    if(window.SQContentRegistry&&SQContentRegistry.ready)await SQContentRegistry.ready();
-    if(!worldExplorerModule)worldExplorerModule=await import("./js/world/world-explorer.js");
+    const modules=await Promise.all([
+      worldExplorerModule||import("./js/world/world-explorer.js"),
+      window.SQManifest?Promise.resolve():import("./js/main.js")
+    ]);
+    worldExplorerModule=modules[0];
     if(token!==worldOpenToken||!worldVisible()||hubKid!==id)return {ok:false,reason:"cancelled"};
     await worldExplorerModule.start({
       mount:document.getElementById("worldMount"),kidId:id,kid:KIDS[id],registry:window.SQContentRegistry,
@@ -1598,6 +953,7 @@ async function openWorld(id){
       beep:beep,haptic:function(kind){return window.SQPlatform&&SQPlatform.haptic?SQPlatform.haptic(kind):null;},
       onStatus:function(state,error){status.textContent=worldMessage+(error?" ("+String(error.message||error)+")":"");status.classList.toggle("hidden",state!=="paused");}
     });
+    status.classList.add("hidden");
     return {ok:true,id:"world"};
   }catch(error){
     if(token!==worldOpenToken||!worldVisible()||hubKid!==id)return {ok:false,reason:"cancelled"};
@@ -1605,7 +961,20 @@ async function openWorld(id){
     return {ok:false,reason:"world_failed"};
   }
 }
-function selectKid(id){
+async function selectKid(id){
+  if(!KIDS[id])return;
+  const expectedRevision=navigationRevision;
+  if(store&&store.configured&&localStorage.getItem("sq:kid")!==id&&!store.pinsReady){
+    const button=document.querySelectorAll("#heroes .hero")[Object.keys(KIDS).indexOf(id)];
+    if(button){button.disabled=true;button.setAttribute("aria-busy","true");}
+    await store.connect();
+    if(button){button.disabled=false;button.removeAttribute("aria-busy");}
+    if(navigationRevision!==expectedRevision)return;
+    if(!store.pinsReady){
+      document.querySelector("#home .brand p").textContent="Connect once to check your hero's PIN, then try again. 連線確認小英雄密碼後，請再試一次。";
+      return;
+    }
+  }
   const pin=(store&&store.kidPins&&store.kidPins[id])||((JSON.parse(localStorage.getItem("sq:kidPins")||"{}"))[id]);
   if(!pin||localStorage.getItem("sq:kid")===id){localStorage.setItem("sq:kid",id);hubTab="quests";resetQuestSession(id);openWorld(id);return;}
   showPin(id,pin);
@@ -1789,10 +1158,10 @@ async function startGame(id,lvl,options){
   document.documentElement.style.setProperty("--accent",KIDS[id].color);
   /* Hide the on-screen keyboard when the game doesn't read keys. The manifest
      carries authoritative `keyboard` flags (solar: false, hunt: true…); the
-     old cutelist `lvl==="city"||lvl==="dig"` is preserved as a fallback if
+     Dig Site fallback is preserved if
      main.js hasn't published the manifest yet (deferred module load). */
   const noEntry=(window.SQManifest||[]).find(e=>e.id===lvl);
-  const noKb=noEntry? !noEntry.keyboard : (lvl==="city"||lvl==="dig");
+  const noKb=noEntry? !noEntry.keyboard : lvl==="dig";
   if(!noKb) ensureKeyboard();
   document.getElementById("kb").classList.toggle("hidden",noKb);
   document.getElementById("legend").classList.toggle("hidden",noKb);
@@ -1815,7 +1184,7 @@ async function startGame(id,lvl,options){
     if(token!==gameLaunchToken)return {ok:false,reason:"cancelled"};
     stopArena();
     console.error("Summer Quest game launch failed",error);
-    document.getElementById("stage").innerHTML='<div class="msg" role="alert">Could not open this game. Try again. 無法開啟遊戲，請再試一次。</div>';
+    showActivityLoadError(document.getElementById("stage"),error,function(){startGame(id,lvl,options);});
     return {ok:false,reason:"launch_failed"};
   }
 }
@@ -1829,6 +1198,7 @@ function gameCtx(mountEl,game,kidId){
     kid:kidId, mount:mountEl, stage:mountEl,
     hud:hud, say:say, sayPair:sayPair, sfx:H.sfx, keys:H.keys, fx:H.fx,
     settings:settings, rand:rand, shuffle:shuffle,
+    isOverlayOpen:function(){return !!document.querySelector("body > .overlay:not(.hidden)");},
     kids:KIDS, best:bestOf(kidId,game.bestKey||""),
     stars:starsOf(kidId),
     words:{easy:WORDS_EASY, hard:ALL_WORDS, all:ALL_WORDS, sentences:SENT, letters:LETTERS,
@@ -1862,6 +1232,17 @@ function gameCtx(mountEl,game,kidId){
   };
 }
 
+function showActivityLoadError(mount,error,retry){
+  mount.innerHTML="";
+  const message=document.createElement("div");message.className="msg";message.setAttribute("role","alert");
+  message.textContent=error&&error.code==="SQ_GRAPHICS_UNAVAILABLE"
+    ?"This tablet could not open the 3D view. Try again or choose another activity. · 這台平板暫時無法開啟 3D 畫面，請重試或選擇其他活動。"
+    :"Could not open this activity. Try again. · 無法開啟活動，請再試一次。";
+  const button=document.createElement("button");button.type="button";button.className="btn";
+  button.textContent="Try again · 再試一次";button.onclick=retry;
+  message.appendChild(document.createElement("br"));message.appendChild(button);mount.appendChild(message);
+}
+
 /* Run a game module into a mount, managing the loading message. The host owns
    that message, so the host also takes it down — a game that appends its own DOM
    without clearing the mount used to leave "Loading…" on screen for good. */
@@ -1873,12 +1254,7 @@ async function runRegistered(game,mountEl,kidId){
   mountEl.appendChild(msg);
   var clear=function(){ if(msg.parentNode)msg.parentNode.removeChild(msg); };
   try{ await game.init(gameCtx(mountEl,game,kidId)); }
-  catch(err){
-    console.error("game init failed: "+game.id,err);
-    msg.textContent="Could not open this activity. Try again. 無法開啟活動，請再試一次。";
-    throw err;
-  }
-  clear();
+  finally{ clear(); }
 }
 
 /* Hand off to a migrated game module (design.md §3). */
@@ -1909,6 +1285,7 @@ function startLegacy(lvl){
 /* Brain Gym round (design.md §8). Bests live in progress[kid].best.brain_<id>. */
 function startBrain(gameId){
   const k=kid, familySettings=(store&&store.familySettings)||{};
+  if(!learningDirectorLaunch&&brainTrio(k).includes(gameId))beginPointActivity({kind:"brain",slot:gameId},k);
   if(window.SQBrainData&&SQBrainData.setInputScript)SQBrainData.setInputScript(preferredInputScript());
   const tier=SQBrainCore.tierFor(k,familySettings);
   const directedRun=learningDirectorLaunch?Object.assign({},learningDirectorLaunch):null;
@@ -1941,8 +1318,8 @@ function startBrain(gameId){
     itemLimit:directedTarget||undefined,
     onHud:hud,
     onProgress:function(state){ if(learningDirectorLaunch)return; p.brain.inProgress=state; saveProgress(); },
-    say:function(pair){say(pair[0],"en-US");setTimeout(function(){say(pair[1],"zh-TW",true);},1200);},
-    sayPair:function(pair){sayPair(pair[0],pair[1]);},
+    say:function(pair){say(pair[0],"en-US");if(pair[1])say(pair[1],"zh-TW",true);},
+    sayPair:function(pair){say(pair[0],"en-US");if(pair[1])say(pair[1],"zh-TW",true);},
     canLearningSupport:function(meta){
       if(isPlacementCalibration||gameId!=="calc"||!window.SQLearningRuntime)return Promise.resolve(false);
       return SQLearningRuntime.canSupportBrainMath({
@@ -1991,7 +1368,7 @@ function startBrain(gameId){
     onFinish:function(res){ finishBrain(k,res); }
   });
 }
-function finishBrain(k,res){
+async function finishBrain(k,res){
   if(learningDirectorLaunch){
     showDirectedBrainResult(res);
     return;
@@ -2007,23 +1384,17 @@ function finishBrain(k,res){
     if(store)store.setStat(k,bestKey,res.score);
     if(store&&res.ms>0)store.setStat(k,msKey,res.ms);
   }
-  /* daily-3 progress and the ⭐ for the set (design.md §6-§7) */
+  /* Each assigned exercise has one shared award; practice keeps its score. */
   const day=todayStr();
   brainToday(k);                       /* rolls p.brain over to today if stale */
   const first=!p.brain.done[res.gameId];
   p.brain.done[res.gameId]={score:res.score,ms:res.ms};
   if(first&&store&&store.markBrainDone)store.markBrainDone(k,day,res.gameId,res.score,res.ms);
   const gate=SQBrainCore.gateState({trio:brainTrio(k),done:p.brain.done,bypass:false});
-  let earned=false;
-  if(gate.open&&!p.brain.starred){
-    /* The id is what stops a second star — one per (kid, day), enforced by the
-       ledger's primary key like blocks and the bonus, so a cleared tablet or a
-       second device cannot pay the trio twice. p.brain.starred is now only a
-       local fast-path (and what keeps the burst from replaying). */
-    p.brain.starred=true;
-    store.addStars(k,1,"Brain Gym 頭腦體操 · daily set 每日三項 · "+day,SQStarId.brain(k,day));
-    earned=true;
-  }
+  const assigned=brainTrio(k).includes(res.gameId);
+  const claim=assigned?await submitPointActivity({kind:"brain",slot:res.gameId},{game_id:res.gameId,score:res.score,total:res.total,completed:true},k):null;
+  const earned=first&&claim&&claim.status==="queued"?claim:null;
+  if(gate.open)p.brain.starred=true;
   saveProgress();
   refreshLockUI();
   if(earned){sWin();burst(60);star();}
@@ -2050,7 +1421,8 @@ function showBrainResult(res,better,earned){
     <div style="font-size:2.4em">${better?"🌟":"👏"}</div>
     <h3>${res.score} / ${res.total}${res.ms?" · "+SQBrain.fmtMs(res.ms):""}</h3>
     <p>${better?"New best! 新紀錄！":"Nice work! 做得好！"}</p>
-    ${earned?`<p>⭐ Brain Gym complete! 頭腦體操完成！<br>All games unlocked 🔓 遊戲全部解鎖</p>`:""}
+    ${earned?`<p>${earned.amount} points pending sync · 點數待同步</p>`:""}
+    ${brainGate(kid).open?`<p>All games unlocked 🔓 遊戲全部解鎖</p>`:""}
     <div class="vrow">
       <button class="btn" id="brAgain">Again 再一次</button>
       <button class="btn small" id="brDone">Done 完成</button>
@@ -2085,26 +1457,7 @@ function goHome(){
   showOnly("home");saveAppPlace("home");
   renderHome();
 }
-/* WebGL context-loss safety net (design.md §6). Tablets drop GL contexts on
-   background/resume; without this a kid returns to a black screen. */
-var glLost=false;
-/* DOMContentLoaded, not inline: window.SQHost is defined further down this same
-   script, so touching it here at parse time threw and aborted every line below
-   it \u2014 the app rendered nothing at all. */
-addEventListener("DOMContentLoaded",function(){
-  window.SQHost.mount().addEventListener("webglcontextlost",function(e){
-    e.preventDefault(); glLost=true;
-    wobbleMsg("One moment\u2026 \u7b49\u4e00\u4e0b\u5594");
-  },true);
-  window.SQHost.mount().addEventListener("webglcontextrestored",function(){
-    if(!glLost)return; glLost=false;
-    if(currentGame){ var g=currentGame;
-      try{ g.stop(); }catch(e){}
-      try{ startRegistered(g); return; }catch(e){ console.error(e); }
-    }
-    stopArena(); goHome();
-  },true);
-});
+/* three-runtime.js restores each game's own context without restarting its round. */
 
 const rand=a=>a[Math.floor(Math.random()*a.length)];
 const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
@@ -2333,9 +1686,6 @@ addEventListener("keydown",e=>{
   let ch=e.key;
   if(ch===" ")e.preventDefault();
   if(ch.length===1 && /[a-zA-Z0-9 ;'/\u3105-\u312f\u02ca\u02c7\u02cb\u02d9]/.test(ch)) { handleInput(ch.toLowerCase()); }
-});
-addEventListener("keyup",e=>{
-  /* city drive module handles its own keyup — nothing inline to do */
 });
 document.getElementById("back").onclick=summerQuestBack;
 function toggleMute(){sound=!sound;
@@ -2589,12 +1939,14 @@ function dayDetailHtml(i,b,mis,isPractice){
       :[b.txt?b.txt[hubKid]:"",b.txtz?b.txtz[hubKid]:"",b.tips||[]];
   return `<div class="dt-detail" id="day-detail-${i}">
     <p>${escHtml(main[0])}<span class="zhs">${escHtml(main[1])}</span></p>
+    <p>${pointBlockTasks(i).map(pointActivityHint).join(" + ")||"Schedule only · 行程紀錄"}</p>
+    ${(replacementSource(hubKid,i)==null?i:replacementSource(hubKid,i))===12?pointChoiceHtml("house"):""}
     ${main[2].length?`<ol>${main[2].map(s=>`<li>${escHtml(s[0])}<span class="zhs">${escHtml(s[1])}</span></li>`).join("")}</ol>`:""}
   </div>`;
 }
 function inDayControl(el){
   for(;el&&el.id!=="dayList";el=el.parentNode)
-    if(/^(BUTTON|LABEL|INPUT|A)$/.test(el.tagName))return true;
+    if(/^(BUTTON|LABEL|INPUT|SELECT|OPTION|A)$/.test(el.tagName))return true;
   return false;
 }
 function coveredCount(id,d){
@@ -2610,24 +1962,10 @@ function tickBlockDone(i){
   d2.done[i]=true;
   const b=blockFor(hubKid,i);
   const day=todayStr();
-  /* What the block is worth is SQStarId's call, not this function's — Papa's
-     Accept has to agree with it to the star. See js/star-id.js. */
-  const blockDelta=SQStarId.blockDelta(b);
-  if(blockDelta){
-    if(b.pool==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
-    /* The star lands now, not when Papa gets round to the admin panel (Papa's
-       policy, 2026-08-02: earn immediately, Papa revokes after if he must).
-       The id makes it once-per-block-per-day, so untick/re-tick cannot mint a
-       second one — and if Papa sends the block back, deleting that row is what
-       lets the kid earn it again for real. */
-    const reason=`Block 格子 · ${b.title} ${b.tz||""} · ${day}`;
-    if(store) store.addStars(hubKid,blockDelta,reason,SQStarId.block(hubKid,day,i));
-    sWin(); burst(16); star();
-  } else { sGood(); }
-  if(coveredCount(hubKid,d2)>=DAY.length){
-    if(store) store.addStars(hubKid,SQStarId.BONUS_DELTA,`Day complete 全部完成 · ${day}`,SQStarId.bonus(hubKid,day));
-    sWin(); burst(60); bigFloat("🌟");
-  }
+  if(b.pool==="photo")progress[hubKid].missions=(progress[hubKid].missions||0)+1;
+  const awards=pointBlockTasks(i);
+  awards.forEach(a=>submitPointActivity(a,{block_idx:i,completed:true},hubKid));
+  sGood();
   saveProgress(); renderMyDay(); renderHubHead(); refreshLockUI();
   const lo=document.getElementById("lockOverlay");
   if(lo&&!gameLockState().locked)lo.remove();
@@ -2639,7 +1977,7 @@ function renderMyDay(skipScroll){
   document.getElementById("dayTxt").textContent=done+" / "+total+(done>=total?"  — DAY COMPLETE! 全部完成！🌟":"");
   const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${escHtml(store.papaNote)}</div>`:"";
   document.getElementById("dayList").innerHTML=
-    brainNudge(hubKid)+note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div><div class="passline">Tick any block and the star is yours straight away. 完成任何格子，星星馬上到手。</div>`+
+    brainNudge(hubKid)+note+`<div class="dayhero">Good morning ${k.name}! Here is your day — fixed times + YOUR missions. 🧭<span class="zhs" style="color:#BFE3CF">早安！這是你今天的計畫——時間是固定的，任務由你完成！</span></div><div class="passline">Complete each real task once. Points for checked work are confirmed by Papa. 完成每件實際工作；需要檢查的點數由爸爸確認。</div>`+
     SQTime.displayOrder(dayFor(hubKid),dayOverrides).map(i=>{
       const b=blockFor(hubKid,i);
       const isDone=!!d.done[i], mis=missionFor(hubKid,i);
@@ -2683,13 +2021,14 @@ function renderMyDay(skipScroll){
     if(row&&!row.classList.contains("done")) row.scrollIntoView({block:"center",behavior:"smooth"});
   },80);
   document.querySelectorAll("#dayList .dayrow").forEach(row=>{
-    const toggle=()=>{openDayRow=openDayRow===+row.dataset.row?null:+row.dataset.row;renderMyDay(true);};
+    const toggle=()=>{openDayRow=openDayRow===+row.dataset.row?null:+row.dataset.row;if(openDayRow!=null)pointBlockTasks(openDayRow).forEach(a=>beginPointActivity(a));renderMyDay(true);};
     row.onclick=e=>{if(inDayControl(e.target))return;toggle();};
     row.onkeydown=e=>{
       if(e.target!==row||(e.key!=="Enter"&&e.key!==" "))return;
       e.preventDefault(); toggle();
     };
   });
+  bindPointChoices(document.getElementById("dayList"));
   document.querySelectorAll("#dayList [data-done]").forEach(btn=>btn.onclick=()=>{
     tickBlockDone(+btn.dataset.done);
   });
@@ -2824,10 +2163,11 @@ function renderHubHead(){
   const sub=hubTab==="quests"?"What fits right now? · 現在適合做什麼？":
     hubTab==="adventure"||["games","acts","learn","books","music"].includes(hubTab)?"Pick an adventure · 選一個冒險":
     hubTab==="day"?"Today's routines · 今天的日常":hubTab==="captain"?"Captain board 隊長看板 👑":"What do you want to do?";
-  document.getElementById("hubStars").innerHTML=`<span class="starpill">⭐ ${starsOf(hubKid)}</span><span class="starpill coinpill">🪙 ${questCoins(hubKid)}</span>`;
+  document.getElementById("hubStars").innerHTML=`<span class="starpill">${questCoins(hubKid)} available 可用點數</span><span class="starpill">${starsOf(hubKid)} earned 累積獲得</span><span class="starpill">${pointsOf(hubKid).pending} pending 待確認</span>`;
   document.getElementById("hubHead").innerHTML=
     `<span class="av">${k.av}</span><div><h2 style="color:${k.color}">Hi ${k.name}!</h2>
      <p>${sub}</p></div>`;
+  renderPointTasks();
 }
 
 function questMinutesNow(){
@@ -2843,7 +2183,70 @@ function questAssistantSettings(){
   return window.SQQuestConfig?SQQuestConfig.assistant(store&&store.familySettings):{askEnergy:true,maxSuggestions:3,showUpcoming:true};
 }
 function questCoins(id){
-  return window.SQQuestConfig?SQQuestConfig.wallet(starsOf(id),store&&store.familySettings,id):starsOf(id);
+  return pointsOf(id).available;
+}
+function pointSaveProblem(){
+  SQNotify.toast({icon:"💾",en:"Points could not be saved. Free device space, then retry completion.",zh:"點數尚未儲存。請清出裝置空間，再次確認完成。"});
+}
+function beginPointActivity(award,kidId){
+  if(!award||!store||!store.beginPointAttempt)return;
+  try{return store.beginPointAttempt(kidId||hubKid,award.kind,Object.assign({day:todayStr()},award));}catch(e){pointSaveProblem();return null;}
+}
+async function submitPointActivity(award,evidence,kidId){
+  if(!award||!store||!store.awardPoints)return null;
+  try{return await store.awardPoints(kidId||hubKid,award.kind,Object.assign({},award,{day:todayStr(),evidence:evidence||{completed:true}}));}catch(e){pointSaveProblem();return null;}
+}
+function pointActivityHint(award){
+  if(!award)return "Free play · 自由遊玩";
+  const claim=SQPoints.claim(hubKid,todayStr(),award.kind,award,store&&store.familySettings);
+  const attempt=store&&store.pointAttempts&&store.pointAttempts[SQPoints.identity(claim)]||claim;
+  return `${attempt.amount} points · 點數${SQPoints.rules[award.kind].parent?" · Papa checks 爸爸確認":""}`;
+}
+function pointBlockTasks(i){
+  const source=replacementSource(hubKid,i);
+  const effective=source==null?i:source;
+  if(effective===12)return [pointActivityTask("house")];
+  return i===PRACTICE_IDX&&source==null&&SQDrills.isPracticeDay(todayStr())?[{kind:"music",slot:"default"}]:SQPoints.block(effective);
+}
+function pointActivityTask(category){
+  const allowed=category==="house"?["room_rescue","laundry_helper","housework"]:category==="computer"?["learning","creative"]:null;
+  if(!allowed)return SQPoints.activity(category);
+  const chosen=localStorage.getItem("sq:point-choice:"+hubKid+":"+todayStr()+":"+category);
+  return SQPoints.quest(allowed.includes(chosen)?chosen:allowed[0]);
+}
+function pointChoiceHtml(category){
+  const kinds=category==="house"?["room_rescue","laundry_helper","housework"]:category==="computer"?["learning","creative"]:[];
+  if(!kinds.length)return "";
+  const current=pointActivityTask(category);
+  return `<label>Which job did you agree? · 約定做哪件事？ <select data-point-choice="${category}">${kinds.map(kind=>`<option value="${kind}" ${current.kind===kind?"selected":""}>${SQPoints.rules[kind].label.join(" · ")} · ${SQPoints.amount(kind,store&&store.familySettings)}</option>`).join("")}</select></label>`;
+}
+function bindPointChoices(root){
+  root.querySelectorAll("[data-point-choice]").forEach(select=>select.onchange=()=>{
+    localStorage.setItem("sq:point-choice:"+hubKid+":"+todayStr()+":"+select.dataset.pointChoice,select.value);
+    const award=pointActivityTask(select.dataset.pointChoice);
+    beginPointActivity(award);
+  });
+}
+function renderPointTasks(){
+  if(!hubKid)return;
+  const surface=document.getElementById("tab-"+hubTab);
+  if(!surface||!["day","games","books","music","learn","acts"].includes(hubTab))return;
+  let panel=surface.querySelector(".point-tasks");
+  if(!panel){panel=document.createElement("div");panel.className="bigcard point-tasks";surface.prepend(panel);}
+  const kinds={books:["reading"],music:["music"],learn:["learning"],games:["learning","creative","music"]}[hubTab];
+  const tasks=(store&&store.pointAssignments||[]).filter(a=>a.kid_id===hubKid&&(a.day===todayStr()||(a.kind==="project"&&a.day===SQPoints.week(todayStr())))&&(!kinds||kinds.includes(a.kind)));
+  panel.hidden=!tasks.length;
+  panel.innerHTML=tasks.length?`<h3>Agreed activities · 約定的活動</h3><p>Finish your goal, then ask Papa to check. Help and retries count. · 完成目標後請爸爸確認，幫助和重試都算數。</p>`+tasks.map((a,i)=>{
+    const goal=Array.isArray(a.goal)?a.goal:SQPoints.goal(a.kind,hubKid);
+    const claim=(store.pointClaims||[]).find(c=>c.kid_id===hubKid&&c.day===a.day&&c.kind===a.kind&&c.slot===a.slot);
+    const sent=claim&&!["denied","rejected","started"].includes(claim.status);
+    return `<div class="step"><div><b>${escHtml(goal[0])}</b><span class="zhs">${escHtml(goal[1])}</span><p>${Number(a.amount)||SQPoints.amount(a.kind,store.familySettings)} Points 點數</p><button class="btn small" data-point-task="${i}" ${sent?"disabled":""}>${sent?claim.status==="confirmed"?"Confirmed 已確認":"Waiting for Papa 等爸爸確認":"Finished — ask Papa 完成了，請爸爸確認"}</button></div></div>`;
+  }).join(""):"";
+  panel.querySelectorAll("[data-point-task]").forEach(button=>button.onclick=async()=>{
+    const task=tasks[Number(button.dataset.pointTask)];button.disabled=true;
+    try{await submitPointActivity({kind:task.kind,slot:task.slot,workId:task.work_id},{completed:true,assignment_id:task.id});renderPointTasks();renderHubHead();}
+    catch(e){button.disabled=false;button.textContent="Try again · 再試一次";}
+  });
 }
 function questById(id){return questCatalog().find(function(q){return q.id===id;})||null;}
 function questActionLocked(q){
@@ -2852,7 +2255,7 @@ function questActionLocked(q){
   const t=q.action.tab;
   return !!(t&&tabLocked(t));
 }
-function questRewardLabel(q){return q.rewardStars?`🪙 +${q.rewardStars}`:"↗ activity";}
+function questRewardLabel(q){return pointActivityHint(SQPoints.quest(q));}
 function questClock(mins){
   mins=Math.max(0,Math.min(1439,Number(mins)||0));
   return String(Math.floor(mins/60)).padStart(2,"0")+":"+String(mins%60).padStart(2,"0");
@@ -2970,7 +2373,7 @@ function renderQuestHome(){
   const available=questAvailable(pref,energy),required=SQQuestCore.dailyRequired(questCatalog(),ctx);
   const completedRequired=required.filter(function(q){return SQQuestProgress.done(hubKid,ctx.day,q.id);}).length;
   const clock=SQ_DAY.clock();
-  document.getElementById("questContext").innerHTML=`<span>🕐 ${clock.h}:${clock.m}</span><span>🪙 ${questCoins(hubKid)} coins 點數</span><span>✓ ${completedRequired}/${required.length} daily 每日</span>`;
+  document.getElementById("questContext").innerHTML=`<span>🕐 ${clock.h}:${clock.m}</span><span>${questCoins(hubKid)} Points 點數</span><span>✓ ${completedRequired}/${required.length} daily 每日</span>`;
   renderQuestActive();
   const direct=settings.questionMode==="direct";
   const needEnergy=!direct&&settings.askEnergy&&!questSession.energy;
@@ -3035,6 +2438,8 @@ function openQuestCard(id){
   SQPlatform.haptic("tap");
   const day=todayStr(),initial=SQQuestProgress.status(hubKid,day,q.id);
   if(initial!=="awaiting_verification")SQQuestProgress.start(hubKid,day,q.id);
+  const award=SQPoints.quest(q);
+  beginPointActivity(award);
   if(initial==="not_started"&&window.SQAgentOrchestrator)SQAgentOrchestrator.signal("QUEST_STARTED",{questId:q.id});
   const o=document.createElement("div");o.className="overlay";o.id="questOverlay";
   document.body.appendChild(o);
@@ -3065,8 +2470,17 @@ function renderQuestOverlay(q,o){
   const next=o.querySelector("#questNextStep"); if(next)next.onclick=()=>{SQQuestProgress.setStep(hubKid,day,q.id,step+1,steps.length);SQPlatform.haptic("tap");renderQuestOverlay(q,o);};
   const open=o.querySelector("#questOpenActivity"); if(open)open.onclick=()=>{SQQuestProgress.resume(hubKid,day,q.id);o.remove();routeQuestAction(q).then(updateSummerCompanion);};
   const done=o.querySelector("#questComplete"); if(done)done.onclick=()=>completeQuest(q,o);
+  const hint=document.createElement("p"),award=SQPoints.quest(q);
+  if(award){const goal=SQPoints.goal(award.kind,hubKid);hint.textContent=pointActivityHint(award)+" · "+goal.join(" · ");o.querySelector(".qo-hero").after(hint);}
 }
 async function requestQuestVerification(q,overlay){
+  const award=SQPoints.quest(q);
+  if(award){
+    const claim=await submitPointActivity(award,{quest_id:q.id,completed:true});
+    if(!claim){sBad();return;}
+    SQQuestProgress.requestVerification(hubKid,todayStr(),q.id,claim.id);
+    renderQuestOverlay(q,overlay);renderHubHead();return;
+  }
   const day=todayStr(),kind=SQQuestConfig.questVerificationKind(q.id,day);
   const current=SQQuestProgress.get(hubKid,day,q.id);
   if(current&&current.verification&&current.verification.status==="pending"){renderQuestOverlay(q,overlay);return;}
@@ -3085,13 +2499,11 @@ async function completeQuest(q,overlay){
   const day=todayStr();
   if(SQQuestProgress.done(hubKid,day,q.id)){overlay.remove();renderQuestHome();return;}
   if(q.verification==="parent"){await requestQuestVerification(q,overlay);return;}
+  const award=SQPoints.quest(q),claim=await submitPointActivity(award,{quest_id:q.id,completed:true});
+  if(award&&!claim)return;
   SQQuestProgress.complete(hubKid,day,q.id);
   if(window.SQAgentOrchestrator)SQAgentOrchestrator.signal("QUEST_COMPLETED",{questId:q.id,reward:q.rewardStars||0});
-  if(q.rewardStars&&store){
-    const reason=`Quest 任務 · ${q.title[0]} ${q.title[1]} · ${day}`;
-    await store.addStars(hubKid,q.rewardStars,reason,SQStarId.quest(hubKid,day,q.id));
-  }
-  SQPlatform.haptic("success"); sWin(); bigFloat(q.rewardStars?`⭐ +${q.rewardStars}`:"✓");
+  SQPlatform.haptic("success"); sWin(); bigFloat("✓");
   summerInteract({stage:"quest_completed",quest:{id:q.id,title:q.title}},[q]).then(function(r){SQNotify.push(hubKid,hubKid,{kind:"quest",icon:"✅",tone:"ok",en:r.speech,zh:r.speechZh,sub:q.title[0]});});
   overlay.remove(); renderHub();updateSummerCompanion();
 }
@@ -3099,6 +2511,15 @@ async function reconcileQuestVerifications(kidId){
   if(!kidId||!store||!store.fetchQuestVerifications)return;
   try{
     const rows=await store.fetchQuestVerifications(kidId,todayStr());let changed=false;
+    const states=SQQuestProgress.states(kidId,todayStr());
+    Object.keys(states).forEach(function(id){
+      const rec=SQQuestProgress.get(kidId,todayStr(),id),verification=rec&&rec.verification;
+      const award=SQPoints.quest(questById(id));
+      const claim=verification&&(store.pointClaims||[]).find(c=>c.id===verification.requestId||(award&&c.kid_id===kidId&&c.day===todayStr()&&c.kind===award.kind&&c.slot===award.slot));
+      if(claim&&["approved","confirmed","denied","rejected"].includes(claim.status)){
+        SQQuestProgress.resolveVerification(kidId,todayStr(),id,["approved","confirmed"].includes(claim.status),claim.note||"",claim.reviewed_at,claim.id);changed=true;
+      }
+    });
     rows.forEach(function(row){if(SQQuestProgress.applyVerificationRow(row))changed=true;});
     if(changed&&kidId===hubKid){if(hubTab==="quests")renderQuestHome();updateSummerCompanion();}
   }catch(e){}
@@ -3294,6 +2715,8 @@ function openAct(i){
   rememberContentReturn();
   stopActTimer();
   actIdx=i;
+  const award=pointActivityTask(BANK_POOL[i]);
+  beginPointActivity(award);
   if(window.SQActivityRouter&&BANK[i])SQActivityRouter.setCurrent("activity","act:"+i,{title:BANK[i].cat||"Activity",icon:BANK[i].icon||"🏕️"});
   showOnly("act"); saveAppPlace("act"); renderAct();
   return {ok:true,id:i};
@@ -3316,6 +2739,8 @@ function renderAct(){
     <div class="bigcard" style="text-align:left">
       <h3>${b.icon} ${b.cat}<span class="zhs" style="font-size:14px">${b.catz}</span></h3>
       <p class="actmine" style="border-color:${k.raw}">${k.av} <b>${k.name}:</b> ${b[hubKid]}<span class="zhs">${b.z[hubKid]}</span></p>
+      <p>${pointActivityHint(pointActivityTask(BANK_POOL[actIdx]))}</p>
+      ${pointChoiceHtml(BANK_POOL[actIdx])}
       <div class="steps">${g.steps.map((st,n)=>
         `<div class="step"><span class="sn" style="background:${k.raw}">${n+1}</span><span>${st[0]}<span class="zhs">${st[1]}</span></span></div>`).join("")}</div>
     </div>
@@ -3347,18 +2772,16 @@ function renderAct(){
       document.getElementById("timerBtn").textContent="▶️ Start";};
   }
   const d=document.getElementById("actDone");
-  /* No star here (Papa, 2026-08-03). A self-claimed "I did it" is one tap away
-     from free stars, so every star now comes from the schedule, where Papa can
-     see the block and accept or send it back. The completion still syncs to
-     act_done — reports and the once-a-day rule need it — it just is not currency.
-     The celebration stays; it must not promise a ⭐ that is not coming. */
+  /* Real-world work waits for parent verification; completion alone cannot pay. */
   d.onclick=()=>{
     if(actsToday(hubKid)[actIdx])return;
     actsToday(hubKid)[actIdx]=true;
+    submitPointActivity(pointActivityTask(BANK_POOL[actIdx]),{activity_idx:actIdx,completed:true});
     if(g.type==="photo") progress[hubKid].missions=(progress[hubKid].missions||0)+1;
     saveProgress(); sWin(); burst(30); bigFloat("🎉");
     renderAct();
   };
+  bindPointChoices(document.getElementById("actBody"));
 }
 function drawActTimer(){
   const el=document.getElementById("timerDisp"); if(!el)return;
@@ -3431,7 +2854,7 @@ function renderPlacementCalibration(){
     if(!state){
       if(snapshot.recommended){
         status.textContent="recommended";
-        body.innerHTML='<div class="placement-calibration__intro"><div class="placement-calibration__icon">🧭</div><div><h4>Find a starting point <span class="zhs">找出合適起點</span></h4><p>Usually 8–15 quick items across the Math strands and Words; recent practice can skip areas we already understand. No stars, ranking or AI hints. · 通常是數學各分支＋文字共 8–15 個小題；已有足夠練習紀錄的區域會自動略過。不給星星、不排名，也不用 AI 提示。</p></div></div><div class="placement-calibration__actions"><button class="btn" id="placementStart">▶ Start quick check 開始</button><button class="btn small" id="placementSkip">Later 稍後</button></div>';
+        body.innerHTML='<div class="placement-calibration__intro"><div class="placement-calibration__icon">🧭</div><div><h4>Find a starting point <span class="zhs">找出合適起點</span></h4><p>Usually 8–15 quick items across the Math strands and Words; recent practice can skip areas we already understand. No points, ranking or AI hints. · 通常是數學各分支＋文字共 8–15 個小題；已有足夠練習紀錄的區域會自動略過。不給點數、不排名，也不用 AI 提示。</p></div></div><div class="placement-calibration__actions"><button class="btn" id="placementStart">▶ Start quick check 開始</button><button class="btn small" id="placementSkip">Later 稍後</button></div>';
       }else{
         status.textContent="optional";
         body.innerHTML='<div class="placement-calibration__intro"><div class="placement-calibration__icon">✓</div><div><h4>Enough practice history <span class="zhs">已有足夠練習紀錄</span></h4><p>Smart Practice already has useful evidence. You can still run a quick check whenever you want. · 聰明練習已經有足夠資料；想重新定位時仍可做快速小測。</p></div></div><div class="placement-calibration__meta">Math '+(evidence.mathIndependentAttempts||0)+' · Words '+(evidence.languageIndependentAttempts||0)+' independent attempts · '+(evidence.resolvedTrackCount||0)+' / '+(evidence.requiredTrackCount||0)+' placement areas already evidenced</div><div class="placement-calibration__actions"><button class="btn small" id="placementReset">🧭 Run quick check 做一次定位</button></div>';
@@ -3957,7 +3380,7 @@ function renderCaptain(){
     const k=KIDS[id], P=progress[id], done=Object.keys(dayState(id).done).length;
     return `<article class="gamecard" style="border-color:${k.raw}">
       <span class="gi">${k.av}</span><b>${k.name}</b>
-      <small>${done}/${DAY.length} blocks 格子 · ⭐ ${starsOf(id)} · 📸 ${P.missions||0}</small>
+      <small>${done}/${DAY.length} blocks 格子 · ${starsOf(id)} total points 累積點數 · 📸 ${P.missions||0}</small>
       <div class="progress" style="margin-top:10px"><div class="progress__fill" style="width:${done/DAY.length*100}%;background:${k.raw}"></div></div>
     </article>`;
   }).join("");
@@ -3998,18 +3421,36 @@ async function sendHelpClaim(){
 
 /* ============ BOOKS TAB ============ */
 var BOOK_SHELF = [
-  { id: "space", icon: "🪐", titleEN: "Space", titleZH: "太空", blurbEN: "Planets, moons, stars, and galaxies", blurbZH: "行星、衛星、恆星和銀河", file: "books/space.html", data: "SPACE_CARDS", ready: true },
-  { id: "animals", icon: "🐾", titleEN: "Animals", titleZH: "動物", blurbEN: "Wildlife from around the world", blurbZH: "世界各地的動物", file: "books/animals.html", data: "ANIMALS_CARDS", ready: false },
-  { id: "giraffe", icon: "🦒", titleEN: "Giraffe", titleZH: "長頸鹿", blurbEN: "Necks, spots, calves, and savanna life", blurbZH: "脖子、斑點、小長頸鹿和草原生活", file: "books/giraffe.html", data: "GIRAFFE_CARDS", ready: true },
-  { id: "minecraft", icon: "⬛", titleEN: "Minecraft", titleZH: "Minecraft", blurbEN: "The story of Minecraft's evolution", blurbZH: "Minecraft 的演化故事", file: null, data: "MINECRAFT_SPREADS", layout: "spread", ready: true },
-  { id: "science", icon: "🔬", titleEN: "Science", titleZH: "科學", blurbEN: "How things work", blurbZH: "事物如何運作", file: "books/science.html", data: "SCIENCE_CARDS", ready: false },
-  { id: "race-cars", icon: "🏎️", titleEN: "Race Cars", titleZH: "賽車", blurbEN: "Fast cars and racing machines", blurbZH: "快車和賽車機器", file: "books/race-cars.html", data: "RACE_CARS", ready: false },
-  { id: "construction", icon: "🏗️", titleEN: "Construction", titleZH: "工地", blurbEN: "Big machines and building sites", blurbZH: "大機器和工地", file: "books/construction.html", data: "CONSTRUCTION_CARDS", ready: false },
-  { id: "public-vehicles", icon: "🚑", titleEN: "Public Vehicles", titleZH: "公共車輛", blurbEN: "Helpful vehicles in the city", blurbZH: "城市裡幫忙的車輛", file: "books/public-vehicles.html", data: "PUBLIC_VEHICLES_CARDS", ready: false },
+  { id: "space", src: "js/books/space-data.js", icon: "🪐", titleEN: "Space", titleZH: "太空", blurbEN: "Planets, moons, stars, and galaxies", blurbZH: "行星、衛星、恆星和銀河", file: "books/space.html", data: "SPACE_CARDS", ready: true },
+  { id: "animals", src: "js/books/animals-data.js", icon: "🐾", titleEN: "Animals", titleZH: "動物", blurbEN: "Wildlife from around the world", blurbZH: "世界各地的動物", file: "books/animals.html", data: "ANIMALS_CARDS", ready: false },
+  { id: "giraffe", src: "js/books/giraffe-data.js", icon: "🦒", titleEN: "Giraffe", titleZH: "長頸鹿", blurbEN: "Necks, spots, calves, and savanna life", blurbZH: "脖子、斑點、小長頸鹿和草原生活", file: "books/giraffe.html", data: "GIRAFFE_CARDS", ready: true },
+  { id: "minecraft", src: "js/books/minecraft-data.js", icon: "⬛", titleEN: "Minecraft", titleZH: "Minecraft", blurbEN: "The story of Minecraft's evolution", blurbZH: "Minecraft 的演化故事", file: null, data: "MINECRAFT_SPREADS", layout: "spread", ready: true },
+  { id: "science", src: "js/books/science-data.js", icon: "🔬", titleEN: "Science", titleZH: "科學", blurbEN: "How things work", blurbZH: "事物如何運作", file: "books/science.html", data: "SCIENCE_CARDS", ready: false },
+  { id: "race-cars", src: "js/books/race-cars-data.js", icon: "🏎️", titleEN: "Race Cars", titleZH: "賽車", blurbEN: "Fast cars and racing machines", blurbZH: "快車和賽車機器", file: "books/race-cars.html", data: "RACE_CARS", ready: false },
+  { id: "construction", src: "js/books/construction-data.js", icon: "🏗️", titleEN: "Construction", titleZH: "工地", blurbEN: "Big machines and building sites", blurbZH: "大機器和工地", file: "books/construction.html", data: "CONSTRUCTION_CARDS", ready: false },
+  { id: "public-vehicles", src: "js/books/public-vehicles-data.js", icon: "🚑", titleEN: "Public Vehicles", titleZH: "公共車輛", blurbEN: "Helpful vehicles in the city", blurbZH: "城市裡幫忙的車輛", file: "books/public-vehicles.html", data: "PUBLIC_VEHICLES_CARDS", ready: false },
 ];
 var bookState={id:null,idx:0,cards:[],spreads:[],layout:null,grid:false};
+var bookLoads={},bookLaunchToken=0;
 function bookById(id){return BOOK_SHELF.find(function(b){return b.id===id;})||null;}
-function canOpenBook(b){return !!(b&&Array.isArray(window[b.data])&&window[b.data].length);}
+function canOpenBook(b){return !!(b&&b.src);}
+function loadBook(b){
+  if(!bookLoads[b.id]){
+    const sources=[b.src];
+    if(b.layout==="spread")sources.push("js/books/minecraft-magazine.js");
+    bookLoads[b.id]=Promise.all(sources.map(src=>new Promise((resolve,reject)=>{
+      const script=document.createElement("script");script.src=src;
+      const failed=()=>{clearTimeout(timer);script.remove();reject(new Error("Book unavailable: "+b.id));};
+      const timer=setTimeout(failed,10000);
+      script.onload=()=>{clearTimeout(timer);resolve();};
+      script.onerror=failed;
+      document.head.appendChild(script);
+    }))).then(()=>{
+      if(!Array.isArray(window[b.data])||!window[b.data].length)throw new Error("Book data unavailable: "+b.id);
+    }).catch(error=>{delete bookLoads[b.id];throw error;});
+  }
+  return bookLoads[b.id];
+}
 function bookEscape(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
 function bookPhoto(src){return String(src||"").replace(/^\.\.\//,"");}
 function renderBooks(){
@@ -4024,9 +3465,14 @@ function renderBooks(){
   });
   g.innerHTML=html;
   g.querySelectorAll(".gamecard[data-book]").forEach(function(card){
-    card.onclick=function(){
+    card.onclick=async function(){
       var b=bookById(card.dataset.book);
-      if(canOpenBook(b)) SummerQuest.openBook(b.id);
+      if(!canOpenBook(b))return;
+      const label=card.lastElementChild;
+      card.disabled=true;card.setAttribute("aria-busy","true");label.textContent="Opening… 讀取中…";
+      const result=await SummerQuest.openBook(b.id);
+      card.disabled=false;card.removeAttribute("aria-busy");
+      label.textContent=result.ok?"Read now · 開始閱讀":"Try again · 請再試一次";
     };
   });
 }
@@ -4072,7 +3518,7 @@ async function openInstrument(id){
     if(token!==instrumentLaunchToken)return {ok:false,reason:"cancelled"};
     closeInstrument(true);
     console.error("Summer Quest instrument launch failed",error);
-    stage.innerHTML='<div class="msg">Could not open this instrument. Try again. 無法開啟樂器，請再試一次。</div>';
+    showActivityLoadError(stage,error,function(){openInstrument(id);});
     return {ok:false,reason:"launch_failed"};
   }
 }
@@ -4135,11 +3581,16 @@ function renderCalib(){
   };
 }
 
-function openBook(id){
-  var b=bookById(id), cards=b&&window[b.data];
+async function openBook(id){
+  var b=bookById(id);
   if(!hubKid||!KIDS[hubKid])return {ok:false,reason:"no_kid_selected"};
   if(appLockReason(hubKid))return {ok:false,reason:"app_locked"};
   if(!canOpenBook(b))return {ok:false,reason:"content_not_found"};
+  const expectedKid=hubKid,expectedRevision=navigationRevision,token=++bookLaunchToken;
+  try{await loadBook(b);}catch(error){console.warn(error);return {ok:false,reason:"launch_failed"};}
+  if(token!==bookLaunchToken||hubKid!==expectedKid||navigationRevision!==expectedRevision)return {ok:false,reason:"launch_cancelled"};
+  if(appLockReason(hubKid)||tabLocked("books"))return {ok:false,reason:"not_available"};
+  var cards=window[b.data];
   rememberContentReturn();
   stopArena(); stopActTimer();
   hubTab="books";
@@ -4472,8 +3923,9 @@ async function pingNtfy(body){
     body:`Summer Quest urgent ask from ${KIDS[hubKid].name}: ${body}`});}catch(e){}
 }
 async function startAskRecord(){
+  let stream;
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    stream=await navigator.mediaDevices.getUserMedia({audio:true});
     askChunks=[];
     askRecorder=new MediaRecorder(stream);
     askRecorder.ondataavailable=e=>{if(e.data.size)askChunks.push(e.data);};
@@ -4483,6 +3935,8 @@ async function startAskRecord(){
     document.getElementById("askStop").disabled=false;
     document.getElementById("askStatus").textContent="Recording 錄音中";
   }catch(e){
+    if(stream)stream.getTracks().forEach(t=>t.stop());
+    askRecorder=null;
     sBad(); document.getElementById("askStatus").textContent="Microphone is not available · 麥克風不能使用";
   }
 }
@@ -4494,7 +3948,7 @@ function stopAskRecord(){
   document.getElementById("askStatus").textContent="Voice ready 語音準備好了";
 }
 /* ============ REWARDS TAB — badges · stars · news · Papa ============ */
-const RW_SEGS=[["shop","🎁 Shop 獎勵商店"],["badges","🏆 Badges 徽章"],["stars","⭐ Stars 星星"],["news","🔔 News 通知"],["msgs","💬 Papa 爸爸"]];
+const RW_SEGS=[["shop","🎁 Shop 獎勵商店"],["badges","🏆 Badges 徽章"],["stars","⭐ Points 點數"],["news","🔔 News 通知"],["msgs","💬 Papa 爸爸"]];
 let rwSeg="shop";
 
 /* Everything an achievement can test, read straight off data the app already
@@ -4555,20 +4009,24 @@ function badgesHtml(id){
 /* The ledger is the truth, but it needs wifi — with none, the local feed still
    shows every star this tablet saw. */
 async function starHistory(id){
+  let history=SQNotify.feed(id).filter(r=>r.kind==="star");
   if(store&&store.supabase){
     try{
       const {data}=await store.supabase.from("stars_ledger")
         .select("delta,reason,source,created_at").eq("kid_id",id)
         .order("created_at",{ascending:false}).limit(50);
-      if(data)return data.map(r=>({
+      if(data)history=data.map(r=>({
         t:r.created_at,
         icon:r.delta>0?(r.source==="admin"?"🌟":"⭐"):"↩️",
-        en:(r.delta>0?"+":"")+r.delta+" ⭐"+(r.source==="admin"?" from Papa":""),
-        zh:(r.delta>0?"+":"")+r.delta+" 顆星"+(r.source==="admin"?"（爸爸給的）":""),
+        en:(r.delta>0?"+":"")+r.delta+" Points"+(r.source==="admin"?" from Papa":""),
+        zh:(r.delta>0?"+":"")+r.delta+" 點數"+(r.source==="admin"?"（爸爸給的）":""),
         sub:r.reason||""}));
+      const exchanges=await store.supabase.from("points_requests").select("*").eq("kid_id",id).order("created_at",{ascending:false}).limit(50);
+      (exchanges.data||[]).forEach(r=>history.push({t:r.approved_at||r.created_at,icon:"🎁",en:r.status+" · "+r.points+" Points",zh:({requested:"等待爸爸",approved:"已兌換",denied:"未核准",refunded:"已退款"})[r.status]||"兌換紀錄",sub:Array.isArray(r.label)?r.label.join(" · "):r.reward_id}));
     }catch(e){}
   }
-  return SQNotify.feed(id).filter(r=>r.kind==="star");
+  (store&&store.pointClaims||[]).filter(c=>c.kid_id===id&&!["confirmed","started"].includes(c.status)).forEach(c=>history.push({t:c.created_at||c.started_at,icon:"⏳",en:c.amount+" points · "+(c.sync_error?"Needs review":c.status==="queued"?"Pending sync":c.status==="pending"?"Waiting for Papa":"Try again"),zh:c.amount+" 點數 · "+(c.sync_error?"需要確認":c.status==="queued"?"待同步":c.status==="pending"?"等爸爸確認":"再試一次"),sub:SQPoints.rules[c.kind]?SQPoints.rules[c.kind].label.join(" · "):c.evidence&&c.evidence.reason||c.reason||"Legacy activity · 先前活動"}));
+  return history.sort((a,b)=>String(b.t).localeCompare(String(a.t)));
 }
 async function papaMessages(id){
   return (await fetchAsks(id)).filter(a=>a.answer||a.answered_at||a.kind==="papa").map(a=>({
@@ -4588,10 +4046,17 @@ async function requestReward(r){
   }
   const coins=questCoins(hubKid);
   if(coins<r.cost){sBad();return;}
-  const current=await fetchAsks(hubKid);
-  if(current.some(a=>a.kind===rewardAskKind(r)&&!a.answered_at)){sGood();return;}
-  const {error}=await store.createAsk(hubKid,rewardAskKind(r),`${r.icon||"🎁"} ${r.title[0]} / ${r.title[1]}`,null);
-  if(error){sBad();return;}
+  if(r.kind==="cash"&&!SQQuestConfig.cashReady(store.familySettings)||r.kind==="gift"&&!SQQuestConfig.conversionReady(store.familySettings))return;
+  const requestKey="sq:point-request:"+hubKid+":"+r.id;
+  let requestId=localStorage.getItem(requestKey);
+  if(!requestId){requestId=SQStarId.random();localStorage.setItem(requestKey,requestId);}
+  const result=await store.supabase.rpc("points_request_reward",{p_id:requestId,p_kid:hubKid,p_reward_id:r.id,p_points:r.cost});
+  if(result.error){
+    sBad();
+    document.getElementById("rwBody").insertAdjacentHTML("afterbegin",'<div class="reward-note" role="status">Request not saved. Reconnect and try again. · 申請尚未儲存，請連線後再試一次。</div>');
+    return;
+  }
+  localStorage.removeItem(requestKey);
   if(window.SQPlatform)SQPlatform.haptic("success");
   sGood();
   await renderRewards();
@@ -4599,27 +4064,32 @@ async function requestReward(r){
 async function renderRewardShop(){
   const body=document.getElementById("rwBody");
   if(!body||!hubKid)return;
-  const catalog=rewardCatalog().filter(r=>r.enabled!==false);
+  const catalog=rewardCatalog().filter(r=>r.enabled!==false&&(r.kind!=="cash"||SQQuestConfig.cashReady(store&&store.familySettings))&&(r.kind!=="gift"||SQQuestConfig.conversionReady(store&&store.familySettings)));
   const coins=questCoins(hubKid);
+  const economy=SQQuestConfig.economy(store&&store.familySettings);
   let pending=[];
   if(store&&store.supabase){
-    try{pending=(await fetchAsks(hubKid)).filter(a=>String(a.kind||"").indexOf("reward:")===0&&!a.answered_at);}catch(e){}
+    try{const result=await store.supabase.from("points_requests").select("*").eq("kid_id",hubKid).eq("status","requested");pending=result.data||[];}catch(e){}
   }
-  const pendingKinds=new Set(pending.map(a=>a.kind));
+  const pendingKinds=new Set(pending.map(a=>a.reward_id));
   body.innerHTML=`
-    <div class="reward-wallet"><span class="reward-wallet__icon">🪙</span><div><small>QUEST COINS · 任務金幣</small><b>${coins}</b></div><p>Ask Papa before spending · 兌換前請爸爸確認</p></div>
+    <div class="reward-wallet"><span class="reward-wallet__icon">🪙</span><div><small>AVAILABLE POINTS · 可用點數</small><b>${coins}</b></div><p>Ask Papa before spending · 兌換前請爸爸確認</p></div>
+    <p>${starsOf(hubKid)} total earned 累積獲得 · ${pointsOf(hubKid).pending} pending sync / parent check 待同步／家長確認</p>
+    ${economy.rateChange?`<div class="reward-note">Conversion updated · 兌換比率已更新 (${escHtml(economy.rateChange.at.slice(0,10))}): ${economy.rateChange.from} points/${escHtml(economy.rateChange.fromCurrency)} → ${economy.rateChange.to} points/${escHtml(economy.rateChange.currency)}. Saved point counts stay the same; existing requests keep their agreed rate. · 已存點數不變，既有申請保留原約定比率。</div>`:""}
+    ${pending.map(r=>`<div class="reward-note">⏳ ${escHtml(Array.isArray(r.label)?r.label.join(" · "):r.reward_id)} · ${Number(r.points)} Points 點數${r.currency&&r.points_per_unit?` · ${escHtml(r.currency)} ${Number(r.money_value)} (${Number(r.points_per_unit)} points/unit 每單位點數)`:""} · Waiting for Papa 等爸爸確認</div>`).join("")}
     <div class="reward-shop-grid">${catalog.map(r=>{
-      const wait=pendingKinds.has(rewardAskKind(r));
+      const wait=pendingKinds.has(r.id);
       const enough=coins>=r.cost;
       return `<article class="reward-shop-card${enough?"":" is-locked"}">
         <div class="reward-shop-card__icon">${escHtml(r.icon||"🎁")}</div>
         <div class="reward-shop-card__body"><h4>${escHtml(r.title[0])}<span>${escHtml(r.title[1])}</span></h4>
-          <p>${escHtml(r.blurb[0])}<span>${escHtml(r.blurb[1])}</span></p></div>
-        <div class="reward-shop-card__foot"><strong>🪙 ${r.cost}</strong>
+          <p>${escHtml(r.blurb[0])}<span>${escHtml(r.blurb[1])}</span></p>
+          ${["gift","cash"].includes(r.kind)?`<p>${escHtml(economy.currency)} ${(r.cost/economy.pointsPerUnit).toFixed(2)} · ${economy.pointsPerUnit} points/unit 每單位點數</p>`:""}</div>
+        <div class="reward-shop-card__foot"><strong>${r.cost} Points 點數</strong>
           <button class="btn small" data-reward-request="${escHtml(r.id)}" ${wait||!enough?"disabled":""}>${wait?"Waiting 等爸爸":enough?"Ask Papa 問爸爸":"Need more 還不夠"}</button></div>
       </article>`;
     }).join("")}</div>
-    <div class="reward-note">Coins come from earned stars. Spending coins never removes your XP or achievements. · 金幣來自已獲得的星星；兌換不會移除你的成就。</div>`;
+    <div class="reward-note">Spend confirmed points with Papa’s approval. Spending keeps your achievements. Pending points wait for sync or a parent check. · 點數確認後由爸爸核准兌換。花點數不影響成就；待確認點數需要同步或家長檢查。</div>`;
   body.querySelectorAll("[data-reward-request]").forEach(btn=>{
     btn.onclick=()=>{const r=catalog.find(x=>x.id===btn.dataset.rewardRequest);if(r)requestReward(r);};
   });
@@ -4639,38 +4109,51 @@ async function renderRewards(){
   updateRewardBadge();
   if(rwSeg==="shop"){await renderRewardShop();return;}
   if(rwSeg==="badges"){body.innerHTML=badgesHtml(hubKid);return;}
-  if(rwSeg==="news"){body.innerHTML=feedHtml(SQNotify.feed(hubKid),"Nothing yet — go earn a star! 還沒有通知——去拿星星吧！");return;}
+  if(rwSeg==="news"){body.innerHTML=feedHtml(SQNotify.feed(hubKid),"Nothing yet — try an activity! 還沒有通知——試試活動吧！");return;}
   body.innerHTML=`<div class="tipline">Loading… 讀取中…</div>`;
   /* a second tap while this awaits must not repaint the segment it left */
   const want=rwSeg, forKid=hubKid;
   const rows=await (want==="stars"?starHistory(forKid):papaMessages(forKid));
   if(rwSeg!==want||hubKid!==forKid)return;
-  body.innerHTML=feedHtml(rows,want==="stars"?"No stars yet 還沒有星星":"No messages yet 還沒有訊息");
+  body.innerHTML=feedHtml(rows,want==="stars"?"No points yet 還沒有點數":"No messages yet 還沒有訊息");
 }
 
 async function refreshStarsFromServer(kidId){
   if(!store||!store.refreshStarTotals)return;
   try{
     await store.refreshStarTotals(kidId);
+    if(worldVisible())renderWorldHud();
     if(hubKid){
       renderHubHead();
+      checkAchievements(hubKid);
+      if(hubTab==="rewards")renderRewards();
       if(hubTab==="captain")renderCaptain();
     }else{
       renderHome();
     }
   }catch(e){}
 }
-function setupRealtime(){
+let realtimeAttached=false;
+async function setupRealtime(){
   if(!store)return;
+  store.onConnected=setupRealtime;
   /* Every self-earned star — mission, activity, Learn, Brain Gym, a game —
      routes through store.addStars, so this one hook covers all of them. */
   store.onLocalStars=function(kidId,delta,reason){
     SQNotify.push(kidId,hubKid,{kind:"star",icon:"⭐",tone:"ok",
-      en:"+"+delta+" ⭐ earned!",zh:"獲得 "+delta+" 顆星！",sub:reason||""});
+      en:"+"+delta+" points pending",zh:delta+" 點待確認",sub:reason||""});
     checkAchievements(kidId);
     updateRewardBadge();
     if(kidId===hubKid&&hubTab==="rewards")renderRewards();
   };
+  await store.ready;
+  refreshOverrides();leaveLockedCategory();refreshAppLock();refreshLockUI();
+  if(worldVisible())renderWorldHud();
+  else if(hubKid&&!document.getElementById("hub").classList.contains("hidden"))renderHub();
+  else if(!hubKid)renderHome();
+  if(!store.supabase||realtimeAttached)return;
+  realtimeAttached=true;
+  if(store.onPoints)store.onPoints(async()=>{await refreshStarsFromServer();if(hubKid)await reconcileQuestVerifications(hubKid);});
   store.onStars(async (row,eventType)=>{
     if(!row)return;
     if(row.source==="app"&&store.queue&&store.queue.some(op=>op.id===row.id))return;
@@ -4682,8 +4165,8 @@ function setupRealtime(){
     /* coach, not cop: a revoke is "Papa updated your stars", never a telling-off */
     SQNotify.push(row.kid_id,hubKid,{kind:"star",ref:"ledger:"+row.id,
       icon:up?"🌟":"↩️",tone:up?"ok":"",
-      en:up?"+"+row.delta+" ⭐ from Papa!":row.delta+" ⭐ — Papa updated your stars",
-      zh:up?"爸爸給你 "+row.delta+" 顆星！":"爸爸調整了你的星星 "+row.delta,
+      en:up?"+"+row.delta+" points from Papa!":row.delta+" points — Papa updated your points",
+      zh:up?"爸爸給你 "+row.delta+" 點數！":"爸爸調整了你的點數 "+row.delta,
       sub:row.reason||""});
     if(row.kid_id===(hubKid||kid)&&up){bigFloat("🌟");sWin();}
     checkAchievements(row.kid_id);
@@ -4817,7 +4300,7 @@ function restoreAppPlace(){
   const savedTab=localStorage.getItem("sq:hubTab")||"quests";
   const tabs={quests:1,adventure:1,day:1,games:1,acts:1,learn:1,ask:1,rewards:1,books:1,music:1,captain:1};
   const hashTab=location.hash?location.hash.slice(1):"";
-  if(!savedKid||!KIDS[savedKid]||(savedView==="home"&&!tabs[hashTab])){
+  if(!savedKid||!KIDS[savedKid]){
     showOnly("home");
     return;
   }
@@ -4838,12 +4321,10 @@ function restoreAppPlace(){
   }
   if(savedView==="book"){
     hubKid=savedKid; refreshOverrides(); hubTab="books";
-    openBook(localStorage.getItem("sq:bookId")||"space");
-    return;
+    return openBook(localStorage.getItem("sq:bookId")||"space");
   }
-  if(savedView==="world"){
-    openWorld(savedKid);
-    return;
+  if(savedView==="world"||savedView==="home"){
+    return openWorld(savedKid);
   }
   if(savedView==="music"){
     /* Land on the Music tab, not back inside the instrument: SQLoadGame only
@@ -4855,8 +4336,10 @@ function restoreAppPlace(){
   }
   openHub(savedKid);
 }
-if(!(window.SummerQuestNative&&window.SummerQuestNative.native)&&"serviceWorker" in navigator){
-  addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").then(reg=>reg.update()).catch(()=>{}));
+function prepareOffline(){
+  if(!(window.SummerQuestNative&&window.SummerQuestNative.native)&&"serviceWorker" in navigator){
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  }
 }
 /* ---- Bridge to the ESM host (design.md §3) ----
    Everything a migrated game is allowed to touch, handed over explicitly.
@@ -4982,7 +4465,7 @@ if(window.SQContentRegistry){
       const entries=[
         {id:"section:quests",kind:"section",zone:"plaza",icon:"🧭",title:["Quests","任務"],blurb:["What fits right now?","現在適合做什麼？"],available:true,capabilities:["quests"]},
         {id:"section:day",kind:"section",zone:"plaza",icon:"☀️",title:["Today","今天"],blurb:["Daily routines","今天的日常"],available:true,capabilities:["routine"]},
-        {id:"section:rewards",kind:"section",zone:"plaza",icon:"🏆",title:["Rewards","獎勵"],blurb:["Stars and progress","星星與紀錄"],available:true,capabilities:["rewards"]},
+        {id:"section:rewards",kind:"section",zone:"plaza",icon:"🏆",title:["Rewards","獎勵"],blurb:["Points and progress","點數與紀錄"],available:true,capabilities:["rewards"]},
         {id:"section:games",kind:"section",zone:"arcade",icon:"🎮",title:["Games","遊戲"],blurb:["Arcade and Brain Gym","遊戲與頭腦體操"],available:!tabLocked("games"),capabilities:["play"]},
         {id:"section:acts",kind:"section",zone:"explore",icon:"🛠️",title:["Activities","活動"],blurb:["Hands-on missions","動手做任務"],available:!tabLocked("acts"),capabilities:["creative","play"]},
         {id:"section:learn",kind:"section",zone:"learn",icon:"🧠",title:["Learning","學習"],blurb:["Math, language and knowledge","數學、語言與知識"],available:!tabLocked("learn"),capabilities:["learning"]},
@@ -5076,12 +4559,15 @@ async function replayBrowserPlace(place){
   return result;
 }
 async function restoreBrowserPlace(){
-  if(window.SQPlatform&&SQPlatform.capabilities().native){restoreAppPlace();return;}
+  const native=window.SQPlatform&&SQPlatform.capabilities().native;
   const state=history.state;
-  if(state&&state.summerQuest){
-    browserPlaceIndex=state.index||0;
-    await replayBrowserPlace(state.summerQuest);
-  }else restoreAppPlace();
+  if(!native&&state&&state.summerQuest)browserPlaceIndex=state.index||0;
+  let result;
+  if(!native&&state&&state.summerQuest&&state.summerQuest.child===localStorage.getItem("sq:kid")&&state.summerQuest.destination!=="home"){
+    result=await replayBrowserPlace(state.summerQuest);
+  }else result=await restoreAppPlace();
+  if(result&&!result.ok&&result.reason==="launch_failed"&&hubKid&&runtimeSurface().surface==="home")openHub(hubKid);
+  if(native)return;
   browserPlaceReady=true;recordBrowserPlace(true);
 }
 addEventListener("popstate",async function(event){
@@ -5219,7 +4705,19 @@ addEventListener("sqmanifestready",function(){
   if(kid&&level&&gameEl&&!gameEl.classList.contains("hidden"))renderGameSwitcher(kid,level);
 });
 
-(async()=>{ await loadProgress(); await restoreBrowserPlace(); setupRealtime(); await refreshStarsFromServer(hubKid||kid); startTimelineWatcher(); refreshTestBanner(); })();
+(async()=>{
+  await SQBoot.styles;
+  await loadProgress();
+  setupRealtime();
+  SQBoot.ready=true;SQBoot.finish();
+  if(SQBoot.requestedKid){
+    renderHome();await selectKid(SQBoot.requestedKid);
+    browserPlaceReady=!(window.SQPlatform&&SQPlatform.capabilities().native);recordBrowserPlace(true);
+  }else await restoreBrowserPlace();
+  startTimelineWatcher();refreshTestBanner();
+  // Let the first interactive screen paint before downloading the offline library.
+  requestAnimationFrame(()=>setTimeout(prepareOffline,1000));
+})().catch(function(error){console.error("Summer Quest startup failed",error);SQBoot.ready=false;SQBoot.fail();});
 </script>
 </body>
 </html>

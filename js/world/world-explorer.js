@@ -94,7 +94,7 @@ function createWorld(options){
   var active=false,destroyed=false,nativePaused=false,frames=0,raf=0,last=performance.now(),lastError=null;
 
   var places=SITES.map(function(site){
-    return {kind:"place",id:site.id,lat:site.lat,lon:site.lon,sprite:LANDMARK_SPRITE[site.id],entry:registry.get?registry.get(site.id):null,react:null,ambient:rand()*2};
+    return {kind:"place",id:site.id,lat:site.lat,lon:site.lon,sprite:LANDMARK_SPRITE[site.id],entry:null,react:null,ambient:rand()*2};
   });
   var toys=TOYS.map(function(toy){
     return {kind:"toy",id:toy.id,lat:toy.lat,lon:toy.lon,sprite:toy.sprite,toy:toy,react:null};
@@ -128,8 +128,11 @@ function createWorld(options){
     if(!quiet)haptic("tap");
   }
   function refreshRegistry(){
-    places.forEach(function(mark){mark.entry=registry.get(mark.id);});
+    // One catalog snapshot: get(id) otherwise rebuilds every entry for each landmark.
+    var entries=typeof registry.list==="function"?new Map(registry.list().map(function(entry){return [entry.id,entry];})):null;
+    places.forEach(function(mark){mark.entry=entries?entries.get(mark.id)||null:registry.get(mark.id);});
     if(selected&&selected.kind==="place")showSelection(selected.entry?selected:null,true);
+    dirty=true;
   }
 
   /* ---------- view persistence ---------- */
@@ -231,6 +234,7 @@ function createWorld(options){
       var p=project(item.lat,item.lon,v);
       var hidden=item.kind==="place"&&!item.entry;
       item.z=hidden?-1:p.z;
+      if(item.z<=0.08)return;
       var img=atlas[item.sprite].normal[0];
       item.w=img.width;item.h=img.height;
       item.x=Math.round(p.x);item.y=Math.round(p.y);
@@ -328,7 +332,7 @@ function createWorld(options){
     if(minigame.finished)goEl.textContent="OK 好";
   }
   function endMinigame(){
-    minigame=null;goEl.textContent=goText;showSelection(null);
+    minigame=null;dirty=true;goEl.textContent=goText;showSelection(null);
   }
   function stepMinigame(dt){
     if(!minigame)return;
@@ -425,8 +429,10 @@ function createWorld(options){
   /* ---------- rendering ---------- */
   function resize(){
     var w=Math.max(1,mount.clientWidth),h=Math.max(1,mount.clientHeight);
+    var previousScale=scale;
     scale=Math.min(w,h)<600?4.5:6;
     bw=Math.ceil(w/scale);bh=Math.ceil(h/scale);
+    if(globeImage&&canvas.width===bw&&canvas.height===bh&&previousScale===scale){if(minigame)updateGameEnv();return;}
     if(canvas.width!==bw||canvas.height!==bh){
       canvas.width=globeCanvas.width=bw;canvas.height=globeCanvas.height=bh;
       globeImage=gctx.createImageData(bw,bh);globeData=new Uint32Array(globeImage.data.buffer);
@@ -490,6 +496,9 @@ function createWorld(options){
     var dt=clamp((now-last)/1000,0,0.05);last=now;clock+=dt;
     try{
       if(!minigame)updateMotion(dt);
+      if(reduced&&!dirty&&!particles.length&&!confetti.length&&!minigame&&!moon.react&&!surface.some(function(item){return item.react;})){
+        raf=requestAnimationFrame(frame);return;
+      }
       if(!reduced)cloudOffset+=dt*0.012;
       if(Math.abs(cloudOffset-cloudDrawn)>Math.PI*2/MAP_W)dirty=true;
       if(dirty)renderGlobe();
@@ -535,7 +544,7 @@ function createWorld(options){
 
   var saved=readView(options.kidId);
   if(saved){rotation=saved.rotation;zoom=saved.zoom;}
-  resize();
+  refreshRegistry();resize();
   /* A successful startup includes a rendered frame, not just a mounted canvas. */
   try{renderGlobe();layout();composite();frames++;}catch(error){destroy();throw error;}
   showSelection(saved&&places.find(function(mark){return mark.id===saved.selected&&mark.entry;})||null,true);
@@ -561,7 +570,7 @@ function createWorld(options){
 
 export async function start(options){
   if(!options||!options.mount||!options.registry)throw new Error("Summer Quest world requires mount + registry");
-  if(current&&current.kidId===options.kidId){current.instance.resume();current.instance.resize();return current.instance;}
+  if(current&&current.kidId===options.kidId){current.instance.resume();return current.instance;}
   if(current){current.instance.destroy();current=null;}
   var instance=createWorld(options);current={kidId:options.kidId,instance:instance};return instance;
 }

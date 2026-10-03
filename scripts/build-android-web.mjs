@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { root, offlineConfig, sourceFiles, treeHash, verifyBundle } from "./verify-android-web.mjs";
@@ -11,7 +11,14 @@ const files = sourceFiles();
 for (const file of files) if (!existsSync(resolve(root, file))) throw new Error(`Missing build input: ${file}`);
 const out = resolve(root, "dist/android-web");
 if (dirname(out) !== resolve(root, "dist")) throw new Error("Unsafe build output path");
-rmSync(out, { recursive: true, force: true });
+// Windows may keep the served output directory open. Replace its contents while
+// retaining that directory; obsolete generated files still cannot survive.
+mkdirSync(out, { recursive: true });
+for (const entry of readdirSync(out)) {
+  const target = resolve(out, entry);
+  if (dirname(target) !== out) throw new Error("Unsafe build cleanup path");
+  rmSync(target, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+}
 for (const file of files) {
   mkdirSync(dirname(resolve(out, file)), { recursive: true });
   cpSync(resolve(root, file), resolve(out, file));

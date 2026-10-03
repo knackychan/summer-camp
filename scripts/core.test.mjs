@@ -465,14 +465,15 @@ test("Color Words tot uses swatches and never a written word", () => {
   }
 });
 
-test("Number Cruncher's answer equals the real count in the field", () => {
+test("Number Bonds answer is a pair on the board that makes the target", () => {
   const rnd = SQBrainCore.mulberry32(7);
   for (const tier of ["tot", "mid", "hard"]) {
     const round = SQBrainCore.buildRound("crunch", tier, rnd);
     for (const item of round.items) {
-      const actual = item.prompt.glyphs.filter((g) => g === item.prompt.target).length;
-      assert.equal(Number(item.answer), actual);
-      assert.ok(actual >= 1, "never ask for a count of zero");
+      const pair = item.answer.split(' + ').map(Number);
+      assert.equal(pair[0] + pair[1], item.prompt.target);
+      assert.ok(pair.every(n => item.prompt.tiles.includes(n)));
+      assert.ok(item.choices.includes(item.answer), 'generic fallback remains playable');
     }
   }
 });

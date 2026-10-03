@@ -1,0 +1,14 @@
+Three.js r162 (0.162.0), MIT license: see LICENSE in this directory.
+Used only when the device can create WebGL1 but cannot create WebGL2.
+The current WebGL2 renderer remains r185.
+
+Pinned upstream source:
+https://github.com/mrdoob/three.js/tree/r162
+
+three.module.min.js: build/three.module.min.js (unmodified)
+Timer.js: examples/jsm/misc/Timer.js (unmodified)
+OrbitControls.js: examples/jsm/controls/OrbitControls.js
+  Only change: replace the bare 'three' import with './three.module.min.js'.
+
+Upstream release r163 removed WebGL1 support:
+https://github.com/mrdoob/three.js/wiki/Migration-Guide#162--r163

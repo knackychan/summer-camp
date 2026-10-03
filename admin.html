@@ -50,7 +50,7 @@
         </a>
         <a href="#stars" data-route="stars">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M8 1.9 9.9 6l4.4.5-3.3 3 .9 4.4L8 11.7 4.1 13.9l.9-4.4-3.3-3L6.1 6z" stroke-linejoin="round"/></svg>
-          <span>Stars</span>
+          <span>Points</span>
         </a>
       </div>
 
@@ -123,7 +123,7 @@
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M13.7 8a5.7 5.7 0 1 1-1.7-4"/><path d="M13.4 1.3v3h-3"/></svg>
           Refresh
         </button>
-        <button class="btn btn--primary" data-goto="stars">Grant stars</button>
+        <button class="btn btn--primary" data-goto="stars">Grant points</button>
         <button class="btn only-narrow-dock" id="dockBtn" aria-expanded="false" aria-controls="dock">
           Inbox <em class="btn__count" id="dockCount">0</em>
         </button>
@@ -175,7 +175,7 @@
         </section>
         <section class="sheet">
           <div class="sheet__head">
-            <h2>Recent stars</h2>
+            <h2>Recent points</h2>
             <div class="sheet__tools">
               <button class="btn btn--sm" data-goto="stars">Full ledger</button>
             </div>
@@ -205,16 +205,17 @@
         </section>
       </section>
 
-      <!-- ============ STARS ============ -->
+      <!-- ============ POINTS ============ -->
       <section class="view" id="view-stars" hidden>
         <div id="starTotals"></div>
+        <section class="sheet"><div class="sheet__head"><h2>Pending verification and exchanges</h2></div><div class="sheet__pad" id="pointsReviews"></div></section>
         <section class="sheet">
           <div class="sheet__head">
-            <h2>Grant stars</h2>
-            <span class="lbl">writes one ledger row · reversible</span>
+            <h2>Grant points</h2>
+            <span class="lbl">required reason · recorded history</span>
           </div>
           <div id="grants"></div>
-          <div class="sheet__foot">Totals are the sum of the ledger, never a stored counter. Undo any row below.</div>
+          <div class="sheet__foot">Totals are the sum of the ledger, never a stored counter. Corrections keep the original entry.</div>
         </section>
         <section class="sheet">
           <div class="sheet__head">
@@ -398,7 +399,7 @@
         </section>
 
         <section class="sheet sheet--danger">
-          <div class="sheet__head"><h2>Start a new season</h2><span class="lbl">erases everything · cannot be undone</span></div>
+          <div class="sheet__head"><h2>Start a new season</h2><span class="lbl">resets learning · points and exchanges stay</span></div>
           <div class="sheet__pad" id="seasonReset"></div>
         </section>
       </section>
@@ -466,6 +467,7 @@
 <script src="js/chat-core.js"></script>
 <script src="js/quest-data.js"></script>
 <script src="js/reward-data.js"></script>
+<script src="js/points.js"></script>
 <script src="js/quest-config.js"></script>
 <script src="js/admin-nav.js"></script>
 <script src="js/vendor/supabase.js"></script>

@@ -29,7 +29,8 @@
   };
 
   let client=null, session=null, today="", realtimeChannel=null, realtimeStatus="";
-  let rows={ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[],acts:[],ledger14:[],photos14:[],asks14:[]};
+  let rows={pointTotals:[],pointClaims:[],pointRequests:[],pointAssignments:[],ticks:[],totals:[],stats:[],ledger:[],asks:[],passes:[],photos:[],kids:[],history:[],helpClaims:[],familySettings:[],redos:[],acts:[],ledger14:[],photos14:[],asks14:[]};
+  let pointsReady=false;
   let answerRecord=null, answerChunks=[], answerAskId=null;
   const pinFeedback={}, adminPinFeedback={};
   let overridesRaw={}, dragState=null;
@@ -171,6 +172,7 @@
   }
   function familySettingsMap(){return Object.fromEntries(rows.familySettings.map(function(r){return [r.key,r.value];}));}
   async function saveFamilySetting(key,value){
+    if(window.SQQuestConfig&&[SQQuestConfig.KEYS.policy,SQQuestConfig.KEYS.economy,SQQuestConfig.KEYS.catalog,SQQuestConfig.KEYS.rewards].includes(key)&&!pointsReady){toast("Deploy the points migration before changing point settings");return false;}
     suppressRealtime("family_settings",{key:key});
     const stamp=new Date().toISOString();
     const {error}=await client.from("family_settings").upsert({key:key,value:String(value),updated_at:stamp});
@@ -226,6 +228,8 @@
         q.push({id:p.id,type:"pass",kidId:p.kid_id,at:p.created_at,body:blockTitle(p.block_idx)+" "+blockTz(p.block_idx),actions:["grant","deny"]});
       }
     });
+    (rows.pointClaims||[]).forEach(function(c){q.push({id:c.id,type:"points",kidId:c.kid_id,at:c.created_at,body:(SQPoints.rules[c.kind]||{label:[c.kind]}).label[0]+" · "+c.amount+" points · "+c.day,actions:["review_points"]});});
+    (rows.pointRequests||[]).filter(function(r){return r.status==="requested"&&!q.some(function(a){return a.id===r.id;});}).forEach(function(r){q.push({id:r.id,type:"reward",kidId:r.kid_id,at:r.created_at,body:(Array.isArray(r.label)?r.label[0]:r.reward_id)+" · "+r.points+" points",actions:["approve_reward","deny_reward"]});});
     q.sort(function(a,b){return (a.at||"").localeCompare(b.at||"");});
     return q;
   }
@@ -290,7 +294,7 @@
 
   async function loadAll(skipRouteRender){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts,ledger14,photos14,asks14]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts,ledger14,photos14,asks14,pointTotals,pointClaims,pointRequests,pointAssignments]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -310,16 +314,24 @@
          rows), rows.photos (80) and rows.asks (80) — recency windows, not date
          windows. On a busy fortnight those caps land well inside 14 days and
          every figure silently under-reports. These are date-bounded. */
-      client.from("stars_ledger").select("kid_id,delta,created_at").gte("created_at",start).limit(5000),
+      client.from("stars_ledger").select("*").gte("created_at",start).limit(5000),
       client.from("photos").select("kid_id,day").gte("day",start).lte("day",today).limit(5000),
-      client.from("asks").select("kid_id,created_at").gte("created_at",start).limit(5000)
+      client.from("asks").select("kid_id,created_at").gte("created_at",start).limit(5000),
+      client.from("point_totals").select("*"),
+      client.from("points_claims").select("*").eq("status","pending").order("created_at").limit(300),
+      client.from("points_requests").select("*").order("created_at",{ascending:false}).limit(100),
+      client.from("points_assignments").select("*").gte("day",SQPoints.week(today)).order("day").limit(100)
     ]);
     rows={
-      ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:ledger.data||[],asks:asks.data||[],
+      ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:(ledger.data||[]).map(pointLedgerRow),asks:asks.data||[],
       passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[],helpClaims:helpClaims.data||[],
       familySettings:familySettings.data||[],redos:redos.data||[],acts:acts.data||[],
-      ledger14:ledger14.data||[],photos14:photos14.data||[],asks14:asks14.data||[]
+      ledger14:(ledger14.data||[]).map(pointLedgerRow),photos14:photos14.data||[],asks14:asks14.data||[],
+      pointTotals:pointTotals.data||[],pointClaims:pointClaims.data||[],pointRequests:pointRequests.data||[],pointAssignments:pointAssignments.data||[]
     };
+    pointsReady=!pointTotals.error&&!pointClaims.error&&!pointRequests.error;
+    if(pointsReady)rows.totals=rows.pointTotals.map(function(r){return {kid_id:r.kid_id,stars:Number(r.total_earned)||0};});
+    else rows.totals=rows.totals.map(function(r){return {kid_id:r.kid_id,stars:(Number(r.stars)||0)*10};});
     overridesRaw={};
     (overrides.data||[]).forEach(function(r){
       (overridesRaw[r.kid_id]=overridesRaw[r.kid_id]||{})[r.block_idx]=r.t;
@@ -341,6 +353,8 @@
   var TABLE_ROUTES={
     day_ticks:["today"],
     stars_ledger:["today","stars"],
+    points_claims:["today","stars","quests"],
+    points_requests:["today","stars","quests"],
     asks:["today","inbox"],
     passes:["today"],
     photos:["inbox"],
@@ -379,6 +393,7 @@
     if(route==="stars"){
       renderStarTotals();
       renderGrants();
+      renderPointsReviews();
       renderLedger();
     }
     if(route==="kids"){
@@ -400,6 +415,62 @@
     /* Always render dock conversation and update counts */
     renderDockConversation();
     updateNavCounts();
+  }
+
+  function pointLedgerRow(row){return Object.assign({},row,{delta:Number(row.delta)*(row.unit_version===2?1:10)});}
+  function adminWallet(kid){
+    return (rows.pointTotals||[]).find(function(r){return r.kid_id===kid;})||{total_earned:0,available:0,pending:0,spent:0};
+  }
+  async function pointsRpc(name,args){
+    if(!pointsReady){toast("Deploy the points database migration before confirming earnings or exchanges.");return null;}
+    const result=await client.rpc(name,args);
+    if(result.error){writeFailed(result.error);return null;}
+    return result;
+  }
+  function renderPointsReviews(target){
+    const el=target||$("pointsReviews");if(!el)return;
+    if(!pointsReady){el.innerHTML='<p class="qs-callout">Points database migration is not available. Earnings and exchanges cannot be confirmed until it is deployed.</p>';return;}
+    const claims=rows.pointClaims||[], requests=rows.pointRequests||[];
+    el.innerHTML='<p>Confirmed funds only. Each approval and refund is recorded once. A retry keeps the same request.</p>'+claims.map(function(c){
+      const rule=SQPoints.rules[c.kind],label=rule?rule.label[0]:c.kind;
+      return '<article class="qs-row"><div class="qs-title"><b>'+esc(kidName(c.kid_id))+' · '+esc(label)+'</b><span>'+esc(c.day)+' · '+esc(c.slot)+' · '+esc(c.work_id||'')+'</span><span>'+esc(c.evidence&&c.evidence.reason||'')+'</span><span>'+esc(c.note||'')+'</span><span>'+esc(c.evidence&&c.evidence.goal?Array.isArray(c.evidence.goal)?c.evidence.goal.join(' · '):c.evidence.goal:'')+'</span></div><div class="qs-meta"><span>'+c.amount+' points pending</span></div><div class="qs-actions"><button class="btn btn--sm" data-reviewpoints="'+c.id+':no">Decline</button><button class="btn btn--sm btn--primary" data-reviewpoints="'+c.id+':yes">Confirm work</button></div></article>';
+    }).join('')+requests.filter(function(r){return ['requested','approved','refunded'].includes(r.status);}).map(function(r){
+      const label=Array.isArray(r.label)?r.label.join(' · '):String(r.reward_id||'Exchange');
+      const rate=r.currency&&r.points_per_unit?' · '+esc(r.currency)+' '+Number(r.money_value||0)+' at '+Number(r.points_per_unit)+' points/unit':'';
+      return '<article class="qs-row"><div class="qs-title"><b>'+esc(kidName(r.kid_id))+' · '+esc(label)+'</b><span>'+esc(r.status)+' · '+r.points+' points'+rate+'</span></div><div class="qs-actions">'+(r.status==='requested'?'<button class="btn btn--sm" data-declinepoints="'+r.id+'">Decline</button><button class="btn btn--sm btn--primary" data-redeempoints="'+r.id+'">Approve exchange</button>':r.status==='approved'?'<button class="btn btn--sm" data-refundpoints="'+r.id+'">Refund undelivered exchange</button>':'Refund recorded')+'</div></article>';
+    }).join('')+(!claims.length&&!requests.length?'<p>No pending earnings or exchanges.</p>':'');
+    el.querySelectorAll('[data-reviewpoints]').forEach(function(b){b.onclick=async function(){const p=b.dataset.reviewpoints.split(':');if(!await pointsRpc('points_review_claim',{p_id:p[0],p_approve:p[1]==='yes',p_note:p[1]==='yes'?'Parent confirmed':'Parent declined'}))return;await loadAll();};});
+    el.querySelectorAll('[data-redeempoints]').forEach(function(b){b.onclick=function(){approveRewardRequest(b.dataset.redeempoints);};});
+    el.querySelectorAll('[data-declinepoints]').forEach(function(b){b.onclick=function(){denyRewardRequest(b.dataset.declinepoints);};});
+    el.querySelectorAll('[data-refundpoints]').forEach(function(b){b.onclick=async function(){const reason=prompt('Why could this exchange not be delivered?','');if(!reason||!reason.trim())return;if(!await pointsRpc('points_refund_redemption',{p_id:b.dataset.refundpoints,p_reason:reason.trim()}))return;toast('Refund recorded',true);await loadAll();};});
+  }
+  function renderPointsSettings(body){
+    const fs=familySettingsMap(),economy=SQQuestConfig.economy(fs);
+    const kinds=Object.keys(SQPoints.rules).filter(function(k){return !/^balanced|^brain$/.test(k);});
+    const kidOptions=Object.keys(KIDS).map(function(k){return '<option value="'+k+'">'+esc(kidName(k))+'</option>';}).join('');
+    body.innerHTML='<div class="qs-callout">Same work earns once across every entrance. Age-appropriate goals earn the same points; help and mistakes do not reduce them. Daily limits use Asia/Taipei.</div>'+
+      '<h3>Award amounts</h3><p>Changes apply to future claims. Existing pending claims retain their agreed amount. Limits stay fixed.</p><form id="pointsPolicyForm"><div class="qs-form">'+Object.keys(SQPoints.rules).map(function(k){const r=SQPoints.rules[k];return '<div class="qs-field"><label for="pointAmount-'+k+'">'+esc(r.label[0])+'</label><input id="pointAmount-'+k+'" data-pointamount="'+k+'" type="number" min="0" max="1000" step="5" value="'+SQPoints.amount(k,fs)+'"><span>'+esc(String(r.limit||1))+' per '+(k==='project'||k==='balanced_week'?'week':'day')+'</span></div>';}).join('')+'</div><button class="btn btn--primary" type="submit">Save future awards</button></form>'+
+      '<h3>Gift and cash conversion</h3><p>Currency, points per currency unit and monthly budget are required for paid gifts and cash. Cash also requires explicit enablement and uses 100-point steps. Experience rewards need no retail price. Changing an established rate announces the previous and new conversion to children; existing requests keep their agreed rate.</p><form id="pointsEconomyForm"><div class="qs-form">'+
+      '<div class="qs-field"><label for="pointsCurrency">Currency code</label><input id="pointsCurrency" value="'+esc(economy.currency)+'" maxlength="3" placeholder="e.g. TWD"></div><div class="qs-field"><label for="pointsRate">Points per currency unit</label><input id="pointsRate" type="number" min="0.01" step="0.01" value="'+(economy.pointsPerUnit||'')+'"></div><div class="qs-field"><label for="pointsBudget">Monthly budget per child (currency)</label><input id="pointsBudget" type="number" min="0.01" step="0.01" value="'+(economy.monthlyBudget||'')+'"></div><div class="qs-field"><label for="pointsCash"><input id="pointsCash" type="checkbox"'+(economy.cashEnabled?' checked':'')+'> Enable cash redemption</label></div></div><button class="btn btn--primary" type="submit">Save conversion settings</button></form>'+
+      '<h3>Agree an activity</h3><p>Set a specific goal before starting. Reuse a work reference for the same work across learning, an outing or a project. A 50-point project tops up an earlier 20-point milestone by 30.</p><form id="pointsAssignmentForm"><div class="qs-form"><div class="qs-field"><label for="pointsAssignKid">Child</label><select id="pointsAssignKid">'+kidOptions+'</select></div><div class="qs-field"><label for="pointsAssignDay">Day (Taipei)</label><input id="pointsAssignDay" type="date" required value="'+today+'"></div><div class="qs-field"><label for="pointsAssignKind">Activity</label><select id="pointsAssignKind">'+kinds.map(function(k){return '<option value="'+k+'">'+esc(SQPoints.rules[k].label[0])+'</option>';}).join('')+'</select></div><div class="qs-field"><label for="pointsAssignSlot">Slot</label><select id="pointsAssignSlot"><option value="">Daily/default</option><option value="breakfast">Breakfast table</option><option value="lunch">Lunch table</option><option value="dinner">Dinner table</option><option value="1">Learning session 1</option><option value="2">Learning session 2</option></select></div><div class="qs-field w6"><label for="pointsAssignGoalEn">Agreed goal (English)</label><input id="pointsAssignGoalEn" required maxlength="300"></div><div class="qs-field w6"><label for="pointsAssignGoalZh">Agreed goal (Traditional Chinese)</label><input id="pointsAssignGoalZh" required maxlength="300"></div><div class="qs-field w12"><label for="pointsAssignWork">Work reference (optional; reuse for the same work)</label><input id="pointsAssignWork" maxlength="120"></div></div><button class="btn btn--primary" type="submit">Save agreed activity</button></form>'+
+      '<div class="qs-list">'+(rows.pointAssignments||[]).map(function(a){return '<article class="qs-row"><div class="qs-title"><b>'+esc(kidName(a.kid_id))+' · '+esc(a.day)+' · '+esc(a.kind)+' / '+esc(a.slot)+'</b><span>'+esc(Array.isArray(a.goal)?a.goal.join(' · '):a.goal||'')+'</span><span>Work: '+esc(a.work_id)+'</span></div></article>';}).join('')+'</div>'+
+      '<h3>Excuse an unavailable balanced-day category</h3><form id="pointsExcuseForm"><div class="qs-form"><div class="qs-field"><label for="pointsExcuseKid">Child</label><select id="pointsExcuseKid">'+kidOptions+'</select></div><div class="qs-field"><label for="pointsExcuseDay">Day (Taipei)</label><input id="pointsExcuseDay" type="date" required value="'+today+'"></div><div class="qs-field"><label for="pointsExcuseCategory">Category</label><select id="pointsExcuseCategory"><option value="learning">Learning</option><option value="helping">Helping</option><option value="movement">Movement</option></select></div><div class="qs-field w6"><label for="pointsExcuseReason">Reason</label><input id="pointsExcuseReason" required maxlength="300"></div></div><button class="btn" type="submit">Excuse category</button></form><h3>Review work and exchanges</h3><div id="pointsStudioReviews"></div>';
+    $('pointsPolicyForm').onsubmit=async function(e){e.preventDefault();const awards={};body.querySelectorAll('[data-pointamount]').forEach(function(i){awards[i.dataset.pointamount]=Number(i.value);});if(!await saveFamilySetting(SQQuestConfig.KEYS.policy,JSON.stringify({awards:awards})))return;toast('Future award amounts saved',true);renderQuestStudio();};
+    $('pointsEconomyForm').onsubmit=async function(e){
+      e.preventDefault();
+      const previous=SQQuestConfig.economy(familySettingsMap());
+      const settings={currency:$('pointsCurrency').value.trim().toUpperCase(),pointsPerUnit:Number($('pointsRate').value)||null,monthlyBudget:Number($('pointsBudget').value)||null,cashEnabled:$('pointsCash').checked};
+      if((settings.currency||settings.pointsPerUnit||settings.monthlyBudget||settings.cashEnabled)&&(!/^[A-Z]{3}$/.test(settings.currency)||!(settings.pointsPerUnit>0)||!(settings.monthlyBudget>0))){toast('Set a three-letter currency, positive rate and monthly budget together');return;}
+      if(settings.pointsPerUnit&&previous.pointsPerUnit&&previous.currency){
+        if(settings.pointsPerUnit!==previous.pointsPerUnit||settings.currency!==previous.currency)settings.rateChange={from:previous.pointsPerUnit,to:settings.pointsPerUnit,fromCurrency:previous.currency,currency:settings.currency,at:new Date().toISOString()};
+        else if(previous.rateChange)settings.rateChange=previous.rateChange;
+      }
+      if(!await saveFamilySetting(SQQuestConfig.KEYS.economy,JSON.stringify(settings)))return;
+      toast('Conversion settings saved',true);renderQuestStudio();
+    };
+    $('pointsAssignmentForm').onsubmit=async function(e){e.preventDefault();const kid=$('pointsAssignKid').value,day=$('pointsAssignDay').value,kind=$('pointsAssignKind').value;let claim;try{claim=SQPoints.claim(kid,day,kind,{slot:$('pointsAssignSlot').value||(kind==='table_helper'?'lunch':kind==='learning'?'1':undefined),work_id:$('pointsAssignWork').value.trim()||undefined},fs);}catch(error){toast(error.message);return;}if(!claim){toast('Choose a valid activity and slot');return;}if(!await pointsRpc('points_assign',{p_kid:kid,p_day:claim.day,p_kind:kind,p_slot:claim.slot,p_work_id:$('pointsAssignWork').value.trim()||claim.day+':'+kind+':'+claim.slot,p_goal:[$('pointsAssignGoalEn').value.trim(),$('pointsAssignGoalZh').value.trim()]}))return;toast('Activity agreed',true);await loadAll();};
+    $('pointsExcuseForm').onsubmit=async function(e){e.preventDefault();if(!await pointsRpc('points_excuse',{p_kid:$('pointsExcuseKid').value,p_day:$('pointsExcuseDay').value,p_category:$('pointsExcuseCategory').value,p_reason:$('pointsExcuseReason').value.trim()}))return;toast('Unavailable category excused',true);await loadAll();};
+    renderPointsReviews($('pointsStudioReviews'));
   }
 
   /* ---- Quest Studio: task rules, rewards, assistant policy ---- */
@@ -433,7 +504,7 @@
   }
   function qsTabs(){
     var el=$("questStudioTabs"); if(!el)return;
-    var tabs=[["tasks","Tasks & routines"],["rewards","Rewards"],["assistant","Summer assistant"]];
+    var tabs=[["tasks","Tasks & routines"],["rewards","Rewards"],["points","Points & assignments"],["assistant","Summer assistant"]];
     el.innerHTML=tabs.map(function(t){var on=questStudioTab===t[0];return '<button class="chip'+(on?' on':'')+'" aria-pressed="'+(on?'true':'false')+'" data-qstab="'+t[0]+'">'+t[1]+'</button>';}).join("");
     el.querySelectorAll("[data-qstab]").forEach(function(b){b.onclick=function(){questStudioTab=b.dataset.qstab;questEditId=null;rewardEditId=null;renderQuestStudio();};});
   }
@@ -441,6 +512,7 @@
     qsTabs();
     var body=$("questStudioBody"); if(!body)return;
     if(questStudioTab==="rewards")renderQuestRewards(body);
+    else if(questStudioTab==="points")renderPointsSettings(body);
     else if(questStudioTab==="assistant")renderQuestAssistant(body);
     else renderQuestTasks(body);
   }
@@ -457,7 +529,7 @@
       '<div class="qs-toolbar"><p>Kids receive only tasks that are valid for their time, rules and current context.</p><button class="btn btn--primary btn--sm" id="qsNewTask">+ New task</button></div>'+
       '<div class="qs-list">'+list.map(function(q){return '<article class="qs-row'+(q.enabled===false?' is-off':'')+'">'+
         '<div class="qs-icon">'+esc(q.icon||"✨")+'</div><div class="qs-title"><b>'+esc(q.title[0])+'</b><span>'+esc(q.title[1])+'</span></div>'+
-        '<div class="qs-meta"><span>'+esc(q.type)+'</span><span>'+esc(q.category)+'</span><span>'+q.duration+' min</span><span>'+qsClock(q.after)+'–'+qsClock(q.before)+'</span><span>'+esc(qsFreqLabel(q))+'</span><span>'+esc(qsKidsLabel(q))+'</span>'+(q.required?'<span>essential</span>':'')+(q.verification==="parent"?'<span>👀 Papa verifies</span>':'<span>self-check</span>')+'<span>+'+q.rewardStars+' coin'+(q.rewardStars===1?'':'s')+'</span></div>'+
+        '<div class="qs-meta"><span>'+esc(q.type)+'</span><span>'+esc(q.category)+'</span><span>'+q.duration+' min</span><span>'+qsClock(q.after)+'–'+qsClock(q.before)+'</span><span>'+esc(qsFreqLabel(q))+'</span><span>'+esc(qsKidsLabel(q))+'</span>'+(q.required?'<span>essential</span>':'')+(q.verification==="parent"?'<span>👀 Papa verifies</span>':'<span>self-check</span>')+'<span>+'+q.rewardPoints+' points</span></div>'+
         '<div class="qs-actions"><button class="btn btn--sm" data-qsedit="'+esc(q.id)+'">Edit</button><button class="btn btn--sm btn--quiet" data-qstoggle="'+esc(q.id)+'">'+(q.enabled===false?'Enable':'Pause')+'</button></div></article>';}).join("")+'</div>'+
       '<div id="qsEditor"></div>'+
       '<div class="qs-callout" style="margin-top:16px"><b>The schedule is now a constraint, not the child interface.</b> Fixed-time exceptions can stay in Today; recurring life rules belong here.</div>';
@@ -469,7 +541,7 @@
   function renderQuestTaskEditor(){
     var box=$("qsEditor"); if(!box)return;
     var catalog=qsCatalog(), isNew=questEditId==="__new__";
-    var q=isNew?SQQuestConfig.normalizeQuest({id:"",title:["New quest","新任務"],blurb:["",""],steps:[],after:8*60,before:20*60,rewardStars:1},catalog.length):catalog.find(function(x){return x.id===questEditId;});
+    var q=isNew?SQQuestConfig.normalizeQuest({id:"",title:["New quest","新任務"],blurb:["",""],steps:[],after:8*60,before:20*60,rewardPoints:0},catalog.length):catalog.find(function(x){return x.id===questEditId;});
     if(!q){box.innerHTML="";return;}
     var freq=(q.frequency&&q.frequency.type)||"daily";
     var every=(q.frequency&&q.frequency.every)||2;
@@ -487,7 +559,7 @@
       '<div class="qs-field"><label>Available before</label><input id="qsBefore" type="time" value="'+qsClock(q.before)+'"></div>'+
       '<div class="qs-field"><label>Repeat</label><select id="qsFrequency"><option value="daily"'+(freq==="daily"?' selected':'')+'>Daily</option><option value="weekdays"'+(freq==="weekdays"?' selected':'')+'>Weekdays</option><option value="weekends"'+(freq==="weekends"?' selected':'')+'>Weekends</option><option value="interval_days"'+(freq==="interval_days"?' selected':'')+'>Every N days</option></select></div>'+
       '<div class="qs-field"><label>Every N days</label><input id="qsEvery" type="number" min="1" max="30" value="'+every+'"></div>'+
-      '<div class="qs-field"><label>Quest Coins</label><input id="qsReward" type="number" min="0" max="3" value="'+q.rewardStars+'"></div>'+
+      '<div class="qs-field"><label for="qsAwardKind">Award identity</label><select id="qsAwardKind"><option value="">No points</option>'+Object.keys(SQPoints.rules).filter(function(k){return !/^balanced|^brain$/.test(k);}).map(function(k){return '<option value="'+k+'"'+(q.awardKind===k?' selected':'')+'>'+esc(SQPoints.rules[k].label[0])+' · '+SQPoints.amount(k,familySettingsMap())+'</option>';}).join('')+'</select></div>'+
       '<div class="qs-field"><label>Completion check</label><select id="qsVerification"><option value="self"'+(q.verification!=="parent"?' selected':'')+'>Child self-check</option><option value="parent"'+(q.verification==="parent"?' selected':'')+'>Papa verifies</option></select></div>'+
       '<div class="qs-field w12"><label>Applies to</label><div class="qs-checks" id="qsKids">'+Object.keys(KIDS).map(function(id){return '<label><input type="checkbox" value="'+id+'"'+((q.allowedKids||[]).indexOf(id)>=0?' checked':'')+'> '+esc(kidName(id))+'</label>';}).join("")+'<label><input type="checkbox" id="qsRequired"'+(q.required?' checked':'')+'> Daily essential</label><label><input type="checkbox" id="qsEnabled"'+(q.enabled!==false?' checked':'')+'> Enabled</label></div></div>'+
       '<div class="qs-field w6"><label>English description</label><textarea id="qsBlurbEn">'+esc(q.blurb[0])+'</textarea></div><div class="qs-field w6"><label>中文說明</label><textarea id="qsBlurbZh">'+esc(q.blurb[1])+'</textarea></div>'+
@@ -513,7 +585,7 @@
     var zh=$("qsStepsZh").value.split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
     var len=Math.max(en.length,zh.length), steps=[];
     for(var i=0;i<len;i++)steps.push([en[i]||zh[i]||"Do the next step.",zh[i]||en[i]||"完成下一個步驟。"]);
-    var next=Object.assign({},original,{id:id,icon:$("qsIcon").value.trim()||"✨",title:[titleEn,titleZh],blurb:[$("qsBlurbEn").value.trim(),$("qsBlurbZh").value.trim()],type:$("qsType").value,category:$("qsCategory").value,energy:$("qsEnergy").value,duration:Number($("qsDuration").value)||10,after:qsMins($("qsAfter").value,0),before:qsMins($("qsBefore").value,1439),frequency:frequency,rewardStars:Number($("qsReward").value)||0,verification:$("qsVerification").value,allowedKids:kids,required:$("qsRequired").checked,enabled:$("qsEnabled").checked,steps:steps});
+    var next=Object.assign({},original,{id:id,icon:$("qsIcon").value.trim()||"✨",title:[titleEn,titleZh],blurb:[$("qsBlurbEn").value.trim(),$("qsBlurbZh").value.trim()],type:$("qsType").value,category:$("qsCategory").value,energy:$("qsEnergy").value,duration:Number($("qsDuration").value)||10,after:qsMins($("qsAfter").value,0),before:qsMins($("qsBefore").value,1439),frequency:frequency,awardKind:$("qsAwardKind").value,verification:$("qsVerification").value,allowedKids:kids,required:$("qsRequired").checked,enabled:$("qsEnabled").checked,steps:steps});
     next=SQQuestConfig.normalizeQuest(next,catalog.length);
     if(next.before<next.after){toast("The end time must be after the start time");return;}
     if(isNew)catalog.push(next); else catalog=catalog.map(function(q){return q.id===original.id?next:q;});
@@ -528,8 +600,8 @@
   }
   function renderQuestRewards(body){
     var rewards=qsRewards(),fs=familySettingsMap();
-    var walletCards=Object.keys(KIDS).map(function(id){var t=rows.totals.find(function(x){return x.kid_id===id;})||{};var total=Number(t.stars)||0;return '<div class="qs-stat"><b>🪙 '+SQQuestConfig.wallet(total,fs,id)+'</b><span>'+esc(kidName(id))+' available · '+total+' lifetime stars</span></div>';}).join("");
-    body.innerHTML='<div class="qs-summary qs-summary--kids">'+walletCards+'</div><div class="qs-toolbar"><p>Children request these from the reward shop. Papa approval spends Quest Coins.</p><button class="btn btn--primary btn--sm" id="qsNewReward">+ New reward</button></div><div class="qs-list">'+rewards.map(function(r){return '<article class="qs-row'+(r.enabled===false?' is-off':'')+'"><div class="qs-icon">'+esc(r.icon||"🎁")+'</div><div class="qs-title"><b>'+esc(r.title[0])+'</b><span>'+esc(r.title[1])+'</span></div><div class="qs-meta"><span>'+r.cost+' coins</span><span>'+esc(r.blurb[0])+'</span></div><div class="qs-actions"><button class="btn btn--sm" data-rwedit="'+esc(r.id)+'">Edit</button><button class="btn btn--sm btn--quiet" data-rwtoggle="'+esc(r.id)+'">'+(r.enabled===false?'Enable':'Pause')+'</button></div></article>';}).join("")+'</div><div id="qsRewardEditor"></div><div class="qs-callout" style="margin-top:16px"><b>Approval is authoritative.</b> The kid app can only request a reward; it cannot spend its own coins.</div>';
+    var walletCards=Object.keys(KIDS).map(function(id){var t=rows.totals.find(function(x){return x.kid_id===id;})||{};var total=Number(t.stars)||0;return '<div class="qs-stat"><b>🪙 '+adminWallet(id).available+'</b><span>'+esc(kidName(id))+' available · '+total+' total earned</span></div>';}).join("");
+    body.innerHTML='<div class="qs-summary qs-summary--kids">'+walletCards+'</div><div class="qs-toolbar"><p>Edit the exchange labels and costs shown in the child reward shop. Papa approves each exchange.</p><button class="btn btn--primary btn--sm" id="qsNewReward">+ New reward</button></div><div class="qs-list">'+rewards.map(function(r){return '<article class="qs-row'+(r.enabled===false?' is-off':'')+'"><div class="qs-icon">'+esc(r.icon||"🎁")+'</div><div class="qs-title"><b>'+esc(r.title[0])+'</b><span>'+esc(r.title[1])+'</span></div><div class="qs-meta"><span>'+r.cost+' points</span><span>'+esc(r.blurb[0])+'</span></div><div class="qs-actions"><button class="btn btn--sm" data-rwedit="'+esc(r.id)+'">Edit</button><button class="btn btn--sm btn--quiet" data-rwtoggle="'+esc(r.id)+'">'+(r.enabled===false?'Enable':'Pause')+'</button></div></article>';}).join("")+'</div><div id="qsRewardEditor"></div><div class="qs-callout" style="margin-top:16px"><b>Approval is authoritative.</b> The kid app can only request a reward; it cannot spend its own points.</div>';
     $("qsNewReward").onclick=function(){rewardEditId="__new__";renderQuestRewardEditor();};
     body.querySelectorAll("[data-rwedit]").forEach(function(b){b.onclick=function(){rewardEditId=b.dataset.rwedit;renderQuestRewardEditor();};});
     body.querySelectorAll("[data-rwtoggle]").forEach(function(b){b.onclick=function(){toggleQuestReward(b.dataset.rwtoggle);};});
@@ -538,18 +610,28 @@
   function renderQuestRewardEditor(){
     var box=$("qsRewardEditor"); if(!box)return;
     var rewards=qsRewards(), isNew=rewardEditId==="__new__";
-    var r=isNew?SQQuestConfig.normalizeReward({id:"",icon:"🎁",cost:10,title:["New reward","新獎勵"],blurb:["",""]},rewards.length):rewards.find(function(x){return x.id===rewardEditId;});
+    const economy=SQQuestConfig.economy(familySettingsMap());
+    var r=isNew?SQQuestConfig.normalizeReward({id:"",icon:"🎁",cost:100,points_version:1,title:["New reward","新獎勵"],blurb:["",""]},rewards.length):rewards.find(function(x){return x.id===rewardEditId;});
     if(!r){box.innerHTML="";return;}
     box.innerHTML='<div class="qs-editor"><div class="qs-editor__head"><h3>'+(isNew?'New reward':'Edit '+esc(r.title[0]))+'</h3><button class="btn btn--sm btn--quiet" id="qsCloseReward">Close</button></div><div class="qs-form">'+
-      '<div class="qs-field"><label>Icon</label><input id="rwIcon" value="'+esc(r.icon)+'" maxlength="6"></div><div class="qs-field"><label>Cost (Quest Coins)</label><input id="rwCost" type="number" min="1" max="9999" value="'+r.cost+'"></div><div class="qs-field"><label>Status</label><div class="qs-checks"><label><input type="checkbox" id="rwEnabled"'+(r.enabled!==false?' checked':'')+'> Available</label></div></div>'+
-      '<div class="qs-field w6"><label>English title</label><input id="rwTitleEn" value="'+esc(r.title[0])+'"></div><div class="qs-field w6"><label>中文標題</label><input id="rwTitleZh" value="'+esc(r.title[1])+'"></div><div class="qs-field w6"><label>English description</label><textarea id="rwBlurbEn">'+esc(r.blurb[0])+'</textarea></div><div class="qs-field w6"><label>中文說明</label><textarea id="rwBlurbZh">'+esc(r.blurb[1])+'</textarea></div></div><div class="qs-editor__foot"><button class="btn" id="qsCancelReward">Cancel</button><button class="btn btn--primary" id="qsSaveReward">Save reward</button></div></div>';
+      '<div class="qs-field"><label>Icon</label><input id="rwIcon" value="'+esc(r.icon)+'" maxlength="6"></div><div class="qs-field"><label>Cost (points)</label><input id="rwCost" type="number" min="1" max="1000000" value="'+r.cost+'"></div><div class="qs-field"><label for="rwKind">Exchange type</label><select id="rwKind">'+['experience','gift','cash'].map(function(k){return '<option value="'+k+'"'+(r.kind===k?' selected':'')+'>'+k+'</option>';}).join('')+'</select></div><div class="qs-field"><label>Status</label><div class="qs-checks"><label><input type="checkbox" id="rwEnabled"'+(r.enabled!==false?' checked':'')+'> Available</label></div></div>'+
+      '<div class="qs-field w6"><label for="rwGiftValue">Optional gift price calculator ('+esc(economy.currency||'set currency first')+')</label><input id="rwGiftValue" type="number" min="0.01" step="0.01" placeholder="Currency value" aria-describedby="rwGiftHint"><span id="rwGiftHint">Rounds the calculated cost up to 5 points. A saved label change keeps the existing cost.</span></div>'+
+      '<div class="qs-field w6"><label for="rwTitleEn">Exchange label (English)</label><input id="rwTitleEn" value="'+esc(r.title[0])+'"></div><div class="qs-field w6"><label for="rwTitleZh">Exchange label (Traditional Chinese)</label><input id="rwTitleZh" value="'+esc(r.title[1])+'"></div><div class="qs-field w6"><label>English description</label><textarea id="rwBlurbEn">'+esc(r.blurb[0])+'</textarea></div><div class="qs-field w6"><label>中文說明</label><textarea id="rwBlurbZh">'+esc(r.blurb[1])+'</textarea></div></div><div class="qs-editor__foot"><button class="btn" id="qsCancelReward">Cancel</button><button class="btn btn--primary" id="qsSaveReward">Save reward</button></div></div>';
     $("qsCloseReward").onclick=$("qsCancelReward").onclick=function(){rewardEditId=null;renderQuestStudio();};
+    $("rwGiftValue").oninput=function(){
+      const value=$("rwGiftValue").value,calculated=SQQuestConfig.giftPoints(value,familySettingsMap());
+      if(!value)return;
+      if($("rwKind").value!=="gift"){$("rwGiftHint").textContent="Choose the gift exchange type to calculate its price.";return;}
+      if(calculated==null){$("rwGiftHint").textContent="Set currency, conversion rate and monthly budget in Points & assignments first.";return;}
+      $("rwCost").value=String(calculated);$("rwGiftHint").textContent=calculated+" points at "+economy.pointsPerUnit+" points/"+economy.currency+". This price is saved only when you save the reward.";
+    };
     $("qsSaveReward").onclick=function(){saveQuestReward(r,isNew);};
   }
   async function saveQuestReward(original,isNew){
     var rewards=qsRewards(), titleEn=$("rwTitleEn").value.trim()||"Reward", titleZh=$("rwTitleZh").value.trim()||"獎勵", id=original.id;
     if(isNew){var base="custom_"+qsSlug(titleEn),candidate=base,n=2;while(rewards.some(function(r){return r.id===candidate;})){candidate=base+"_"+n++;}id=candidate;}
-    var next=SQQuestConfig.normalizeReward(Object.assign({},original,{id:id,icon:$("rwIcon").value.trim()||"🎁",cost:Number($("rwCost").value)||10,title:[titleEn,titleZh],blurb:[$("rwBlurbEn").value.trim(),$("rwBlurbZh").value.trim()],enabled:$("rwEnabled").checked}),rewards.length);
+    var next=SQQuestConfig.normalizeReward(Object.assign({},original,{id:id,icon:$("rwIcon").value.trim()||"🎁",cost:Number($("rwCost").value)||100,kind:$("rwKind").value,points_version:1,title:[titleEn,titleZh],blurb:[$("rwBlurbEn").value.trim(),$("rwBlurbZh").value.trim()],enabled:$("rwEnabled").checked}),rewards.length);
+    if(next.kind==="cash"&&next.cost%100!==0){toast("Cash exchanges use 100-point steps");return;}
     if(isNew)rewards.push(next); else rewards=rewards.map(function(r){return r.id===original.id?next:r;});
     var ok=await saveFamilySetting(SQQuestConfig.KEYS.rewards,JSON.stringify(rewards)); if(!ok)return;
     rewardEditId=null; toast("Reward shop saved",true); renderQuestStudio();
@@ -592,7 +674,7 @@
     el.innerHTML='<div class="band">'+
       '<button data-goto="inbox"><span class="lbl">Needs you</span><span class="band__v"><b class="is-alert num">'+q.length+'</b><span>open</span></span><span class="band__sub">'+(q.length?q.map(function(r){return r.type;}).join(" · "):"None")+'</span></button>'+
       '<button data-goto="today"><span class="lbl">Blocks accepted</span><span class="band__v"><b class="num">'+covered+'</b><span>/ '+total+'</span></span><span class="band__sub">'+byKid+'</span></button>'+
-      '<button data-goto="stars"><span class="lbl">Stars today</span><span class="band__v"><b class="num">+'+(starsToday+revoked)+'</b><span>granted</span></span><span class="band__sub">'+Math.abs(revoked)+' revoked · net +'+starsToday+'</span></button>'+
+      '<button data-goto="stars"><span class="lbl">Points today</span><span class="band__v"><b class="num">+'+(starsToday+revoked)+'</b><span>granted</span></span><span class="band__sub">'+Math.abs(revoked)+' revoked · net +'+starsToday+'</span></button>'+
       '<button data-goto="kids"><span class="lbl">Locks active</span><span class="band__v"><b class="num">'+locksActive+'</b><span>kid'+(locksActive!==1?"s":"")+'</span></span><span class="band__sub">'+(lockDetail||"None")+'</span></button>'+
     '</div>';
   }
@@ -647,10 +729,11 @@
   }
 
   function queueActions(r){
-    if(r.type==="quest")return '<div class="acts"><button class="btn btn--sm btn--danger" data-redoquest="'+r.id+'">Redo</button><button class="btn btn--sm btn--primary" data-approvequest="'+r.id+'">Approve + coins</button></div>';
+    if(r.type==="points")return '<button class="btn btn--sm btn--primary" data-goto="stars">Review points</button>';
+    if(r.type==="quest")return '<div class="acts"><button class="btn btn--sm btn--danger" data-redoquest="'+r.id+'">Redo</button><button class="btn btn--sm btn--primary" data-approvequest="'+r.id+'">Approve points</button></div>';
     if(r.type==="reward")return '<div class="acts"><button class="btn btn--sm btn--danger" data-denyreward="'+r.id+'">Decline</button><button class="btn btn--sm btn--primary" data-approvereward="'+r.id+'">Approve</button></div>';
     if(r.type==="ask")return '<div class="acts"><button class="btn btn--sm" data-answerask="'+r.id+'">Answer</button></div>';
-    if(r.type==="claim")return '<div class="acts"><button class="btn btn--sm btn--danger" data-denyclaim="'+r.id+'">Decline</button><button class="btn btn--sm btn--primary" data-approveclaim="'+r.id+'">Approve +1</button></div>';
+    if(r.type==="claim")return '<div class="acts"><button class="btn btn--sm btn--danger" data-denyclaim="'+r.id+'">Decline</button><button class="btn btn--sm btn--primary" data-approveclaim="'+r.id+'">Approve +10 points</button></div>';
     if(r.type==="pass")return '<div class="acts"><button class="btn btn--sm btn--danger" data-denypass="'+r.id+'">Deny</button><button class="btn btn--sm btn--primary" data-grantpass="'+r.id+'">Grant</button></div>';
     return "";
   }
@@ -680,12 +763,8 @@
     var info=questVerificationInfo(ask.kind); if(!info)return;
     var quest=qsCatalog().find(function(q){return q.id===info.questId;});
     if(!quest){toast("That quest rule no longer exists");return;}
-    if(quest.rewardStars>0){
-      var starId=window.SQStarId?SQStarId.quest(ask.kid_id,info.day,quest.id):null;
-      var err=await grantStarRows([{id:starId,kid_id:ask.kid_id,delta:quest.rewardStars,
-        reason:"Quest verified · "+quest.title[0]+" "+quest.title[1]+" · "+info.day,
-        source:"admin",granted_by:session.user.id}]);
-      if(err){writeFailed(err);return;}
+    if(quest.rewardPoints>0){
+      if(!await awardParentTask(ask.kid_id,info.day,SQPoints.quest(quest),"Parent checked · "+quest.title[0]))return;
     }
     suppressRealtime("asks",{id:id});
     var answer="Approved · Quest verified · "+quest.title[0];
@@ -713,40 +792,13 @@
     return {rewardId:parts[1]};
   }
   async function approveRewardRequest(id){
-    var ask=rows.asks.find(function(a){return a.id===id;});
-    if(!ask||ask.answered_at)return;
-    var info=rewardRequestInfo(ask.kind); if(!info)return;
-    var fs=familySettingsMap();
-    var catalog=window.SQQuestConfig?SQQuestConfig.rewards(fs):[];
-    var reward=catalog.find(function(r){return r.id===info.rewardId&&r.enabled!==false;});
-    if(!reward){toast("That reward is no longer available");return;}
-    var totalRow=rows.totals.find(function(t){return t.kid_id===ask.kid_id;})||{};
-    var total=Math.max(0,Number(totalRow.stars)||0);
-    var state=SQQuestConfig.spendState(fs,ask.kid_id);
-    var already=state.requests.indexOf(String(id))>=0;
-    var available=Math.max(0,total-state.total);
-    if(!already&&available<reward.cost){toast(kidName(ask.kid_id)+" needs more Quest Coins");return;}
-    if(!already){
-      state.total+=reward.cost;
-      state.requests.push(String(id));
-      var saved=await saveFamilySetting(SQQuestConfig.KEYS.spendPrefix+ask.kid_id,JSON.stringify(state));
-      if(!saved)return;
-    }
-    suppressRealtime("asks",{id:id});
-    var answer="Approved · "+reward.title[0]+" · "+reward.cost+" Quest Coins";
-    const {error}=await client.from("asks").update({answer:answer,answered_at:new Date().toISOString()}).eq("id",id);
-    if(error){writeFailed(error);return;}
-    toast("Reward approved for "+kidName(ask.kid_id),true);
-    await loadAll();
+    if(!await pointsRpc("points_approve_redemption",{p_id:id}))return;
+    toast("Exchange approved",true); await loadAll();
   }
+
   async function denyRewardRequest(id){
-    var ask=rows.asks.find(function(a){return a.id===id;});
-    if(!ask||ask.answered_at)return;
-    suppressRealtime("asks",{id:id});
-    const {error}=await client.from("asks").update({answer:"Not this time · Ask Papa again later",answered_at:new Date().toISOString()}).eq("id",id);
-    if(error){writeFailed(error);return;}
-    toast("Reward request declined",true);
-    await loadAll();
+    if(!await pointsRpc("points_deny_redemption",{p_id:id}))return;
+    toast("Exchange declined",true); await loadAll();
   }
 
   /* ---- Overview / Day board ---- */
@@ -773,7 +825,7 @@
       Object.keys(KIDS).map(function(id){
         var k=KIDS[id];
         var stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
-        return '<div class="board__h"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span><span class="star">'+stars+' ⭐</span></div>';
+        return '<div class="board__h"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span><span class="star">'+stars+' points</span></div>';
       }).join("")+
       SQTime.displayOrder(DAY,eff).map(function(i){
         var rowsHtml=boardTime(i,eff,info);
@@ -1165,45 +1217,17 @@
     return result;
   }
 
-  /* Revoking a block star is a delete of the one row that block can own, never a
-     -1 insert. A -1 was wrong twice over: it fired whether or not a +1 had ever
-     been granted (the kid's own tick grants directly from the tablet, so most
-     blocks Papa sees were never granted here), and it matched on the block's
-     CURRENT kind and title, so replacing a block between accept and undo
-     refunded the wrong thing. Deleting the id is exact and a no-op when there is
-     nothing to take back. See js/star-id.js. */
-  async function dropStars(ids){
-    var real=ids.filter(Boolean);
-    if(!real.length)return null;
-    const {error}=await client.from("stars_ledger").delete().in("id",real);
-    return error||null;
-  }
-
-  /* 23505 means someone already granted this exact star — the kid's tablet on
-     tick, or Papa a moment ago. Same star, not a second one. */
-  async function grantStarRows(grants){
-    var real=grants.filter(Boolean);
-    if(!real.length)return null;
-    const {error}=await client.from("stars_ledger").upsert(real,{onConflict:"id",ignoreDuplicates:true});
-    return error||null;
-  }
-
-  function blockStarGrant(kid,i,reason){
-    var b=effectiveBlock(kid,i);
-    if(!SQStarId.blockDelta(b))return null;
-    return {id:SQStarId.block(kid,today,i),kid_id:kid,delta:SQStarId.blockDelta(b),
-      reason:reason||`Admin accepted: ${b.title}`,source:"admin",granted_by:session.user.id};
-  }
-
-  /* The day-complete bonus is a fact about the covered set, not an event. Every
-     path that changes what is covered re-derives it here, so it can neither
-     survive the day falling apart nor stay missing after the last block lands —
-     and because it is keyed by id, re-deriving it twice is still one star. */
-  async function syncDayBonus(kid,covered){
-    return covered.size>=DAY.length
-      ? grantStarRows([{id:SQStarId.bonus(kid,today),kid_id:kid,delta:SQStarId.BONUS_DELTA,
-          reason:"Day-complete bonus",source:"admin",granted_by:session.user.id}])
-      : dropStars([SQStarId.bonus(kid,today)]);
+  /* Parent checks use the same task identity as every child entrance. */
+  async function awardParentTask(kid,day,award,note){
+    if(!award)return true;
+    const assignment=(rows.pointAssignments||[]).find(function(a){return a.kid_id===kid&&a.day===(SQPoints.rules[award.kind].weekly?SQPoints.week(day):day)&&a.kind===award.kind&&a.slot===award.slot;});
+    const claim=SQPoints.claim(kid,day,award.kind,{slot:award.slot,work_id:assignment&&assignment.work_id,evidence:{parent_note:note}},familySettingsMap());
+    const result=await pointsRpc("points_claim",{p_claim:claim});
+    if(!result)return false;
+    const row=Array.isArray(result.data)?result.data[0]:result.data;
+    if(!row||!row.id){toast("No award confirmation returned; please refresh and review points.");return false;}
+    if(row.status!=="confirmed")return !!await pointsRpc("points_review_claim",{p_id:row.id,p_approve:true,p_note:note});
+    return true;
   }
 
   async function acceptBlock(kid,i){
@@ -1215,11 +1239,11 @@
     const {error}=await client.from("day_ticks").upsert({kid_id:kid,day:today,block_idx:i});
     if(error){writeFailed(error);return;}
     await client.from("day_redos").delete().eq("kid_id",kid).eq("day",today).eq("block_idx",i);
-    var err=await grantStarRows([blockStarGrant(kid,i)]);
-    if(err){writeFailed(err);return;}
-    err=await syncDayBonus(kid,new Set([...coveredSet(kid),i]));
-    if(err){writeFailed(err);return;}
-    toast(`Accepted ✓ ${kidName(kid)} — ${effectiveBlock(kid,i).title}`,true);
+    const source=replacementSource(kid,i);
+    const awardSource=source==null?i:source;
+    const awards=awardSource===12?[]:SQPoints.block(awardSource);
+    for(const award of awards){if(!await awardParentTask(kid,today,award,"Parent checked · "+effectiveBlock(kid,i).title))return;}
+    toast(awardSource===12?"Schedule accepted. Review the completed chore in Points.":`Accepted ✓ ${kidName(kid)} — ${effectiveBlock(kid,i).title}`,true);
     await loadAll();
   }
 
@@ -1231,13 +1255,7 @@
     suppressRealtime("day_ticks",{kid_id:kid,day:today,block_idx:i});
     const {error}=await client.from("day_ticks").delete().eq("kid_id",kid).eq("day",today).eq("block_idx",i);
     if(error){writeFailed(error);return;}
-    var err=await dropStars([SQStarId.block(kid,today,i)]);
-    if(err){writeFailed(err);return;}
-    var after=coveredSet(kid);
-    after.delete(i);
-    if(rows.passes.some(function(p){return p.kid_id===kid&&p.day===today&&p.block_idx===i&&["granted","spent"].includes(p.status);}))after.add(i);
-    err=await syncDayBonus(kid,after);
-    if(err){writeFailed(err);return;}
+    // A redo changes learning state. Earned points remain; duplicate corrections use the ledger.
     if(sentBack){
       const r=await client.from("day_redos").upsert({kid_id:kid,day:today,block_idx:i,note:redoNote});
       if(r.error){writeFailed(r.error);return;}
@@ -1253,22 +1271,10 @@
 
   async function removeBlock(kid,i){
     if(passFor(kid,i,"outing"))return;
-    var credited=localStorage.getItem("sq-removed-credited")!=="0";
+    var credited=false;
     const pass={kid_id:kid,kind:"outing",status:"granted",day:today,block_idx:i,reason:"Removed from today's schedule",credited,granted_by:session.user.id};
     const r1=await client.from("passes").insert(pass);
     if(r1.error){writeFailed(r1.error);return;}
-    if(credited){
-      /* Same id and same amount as the block's own star: "removed but still
-         counts" is that block's one star, so removing twice — or removing a
-         block the kid had already ticked — cannot stack a second one, and a
-         routine block stays worth what Accept says it is worth. */
-      const err=await grantStarRows([blockStarGrant(kid,i,`Removed block counts: ${effectiveBlock(kid,i).title}`)]);
-      if(err){writeFailed(err);return;}
-    }
-    /* An outing pass covers the block whether or not it was credited, so the
-       day can complete on a removal — reconcile either way. */
-    const errB=await syncDayBonus(kid,new Set([...coveredSet(kid),i]));
-    if(errB){writeFailed(errB);return;}
     toast(`Removed — ${kidName(kid)} ${effectiveBlock(kid,i).title}`,true);
     await loadAll();
   }
@@ -1276,29 +1282,12 @@
   async function addBackBlock(passId,kid,i,credited){
     const r1=await client.from("passes").delete().eq("id",passId);
     if(r1.error){writeFailed(r1.error);return;}
-    /* Only take the star back if the pass is the only thing holding it. A kid
-       who ticked the block while it was removed earned that same id honestly. */
-    if(credited&&!tickFor(kid,i)){
-      const err=await dropStars([SQStarId.block(kid,today,i)]);
-      if(err){writeFailed(err);return;}
-    }
-    var after=coveredSet(kid);
-    if(!tickFor(kid,i))after.delete(i);
-    const errB=await syncDayBonus(kid,after);
-    if(errB){writeFailed(errB);return;}
     toast(`Added back — ${kidName(kid)} ${effectiveBlock(kid,i).title}`,true);
     await loadAll();
   }
 
   async function resetAcceptedDay(){
     const ticks=rows.ticks.filter(function(t){return t.day===today;});
-    var drop=[];
-    Object.keys(KIDS).forEach(function(kid){
-      ticks.filter(function(t){return t.kid_id===kid;})
-        .forEach(function(t){drop.push(SQStarId.block(kid,today,t.block_idx));});
-      var passOnly=new Set(rows.passes.filter(function(p){return p.kid_id===kid&&p.day===today&&["granted","spent"].includes(p.status);}).map(function(p){return p.block_idx;}));
-      if(passOnly.size<DAY.length)drop.push(SQStarId.bonus(kid,today));
-    });
     if(ticks.length){
       const r1=await client.from("day_ticks").delete().eq("day",today);
       if(r1.error){writeFailed(r1.error);return;}
@@ -1314,31 +1303,14 @@
     ]);
     const resetError=resetResults.find(function(r){return r.error;});
     if(resetError){writeFailed(resetError.error);return;}
-    {
-      const err=await dropStars(drop);
-      if(err){writeFailed(err);return;}
-    }
     toast("Day reset — original activities and times restored",true);
     await loadAll();
   }
 
   /* ---- Star totals band ---- */
   function renderStarTotals(){
-    var el=$("starTotals");
-    if(!el)return;
-    var todayStr=today;
-    el.innerHTML='<div class="band band--3">'+Object.entries(KIDS).map(function(e){
-      var id=e[0], k=e[1];
-      /* Still the sum of the ledger — read off the star_totals view, never a
-         counter we keep ourselves. */
-      var stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
-      var todayRows=rows.ledger.filter(function(r){return r.kid_id===id&&String(r.created_at||"").slice(0,10)===todayStr;});
-      var gained=todayRows.filter(function(r){return r.delta>0;}).reduce(function(s,r){return s+r.delta;},0);
-      var lost=todayRows.filter(function(r){return r.delta<0;}).reduce(function(s,r){return s+r.delta;},0);
-      return '<div class="k-'+id+'"><span class="lbl"><span class="who__m">'+esc(k.name[0])+'</span> '+esc(k.name)+'</span>'+
-        '<span class="band__v"><b class="num star">'+stars+'</b><span>⭐ total</span></span>'+
-        '<span class="band__sub">'+(gained?"+"+gained:"0")+' today'+(lost?" · "+lost+" revoked":"")+' · '+todayRows.length+' row'+(todayRows.length===1?"":"s")+'</span></div>';
-    }).join("")+'</div>';
+    const el=$("starTotals");if(!el)return;
+    el.innerHTML='<div class="band band--3">'+Object.keys(KIDS).map(function(id){const w=adminWallet(id);return '<div class="k-'+id+'"><span class="lbl">'+esc(kidName(id))+'</span><span class="band__v"><b class="num">'+Number(w.available)+'</b><span>available points</span></span><span class="band__sub">'+Number(w.total_earned)+' total earned · '+Number(w.pending)+' pending verification</span></div>';}).join('')+'</div>';
   }
 
   /* ---- Grants (per-kid reason) ---- */
@@ -1350,18 +1322,17 @@
       var stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
       return '<div class="grant k-'+id+'">'+
         '<span class="grant__who"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span>'+
-        '<b class="star num grant__total">'+stars+' ⭐</b></span>'+
+        '<b class="star num grant__total">'+stars+' points</b></span>'+
         '<label><span class="lbl" style="display:block;margin-bottom:4px">Reason (goes in the ledger)</span>'+
         '<input class="inp" id="grantReason-'+id+'" placeholder="e.g. helped with the dishes"></label>'+
         '<span class="grant__n">'+
-          '<button class="btn btn--danger btn--sm" data-grant="'+id+'" data-delta="-1">−1</button>'+
-          '<button class="btn btn--sm btn--primary" data-grant="'+id+'" data-delta="1">+1</button>'+
-          '<button class="btn btn--sm" data-grant="'+id+'" data-delta="2">+2</button>'+
-          '<button class="btn btn--sm" data-grant="'+id+'" data-delta="3">+3</button>'+
+          '<button class="btn btn--sm btn--primary" data-grant="'+id+'" data-delta="5">+5</button>'+
+          '<button class="btn btn--sm" data-grant="'+id+'" data-delta="10">+10</button>'+
+          '<button class="btn btn--sm" data-grant="'+id+'" data-delta="20">+20</button>'+
           /* Custom amount is per-kid, like the reason. The old shared
              #grantAmount meant typing a number for one kid and tapping ±
              on another applied it to whoever you tapped. */
-          '<input class="inp num grant__amt" id="grantAmount-'+id+'" type="number" min="-20" max="20" step="1" placeholder="±" aria-label="Custom amount for '+esc(k.name)+'">'+
+          '<input class="inp num grant__amt" id="grantAmount-'+id+'" type="number" min="1" max="10000" step="1" placeholder="+" aria-label="Custom amount for '+esc(k.name)+'">'+
           '<button class="btn btn--sm" data-grantcustom="'+id+'" title="Grant the custom amount">Apply</button>'+
         '</span></div>';
     }).join("");
@@ -1374,7 +1345,7 @@
         var field=$("grantAmount-"+id);
         var v=Math.round(+(field&&field.value)||0);
         if(!v){toast("Type a custom amount first",false);return;}
-        if(v<-20||v>20){toast("Custom amount must be between −20 and 20",false);return;}
+        if(v<1||v>10000){toast("Custom award must be between 1 and 10,000 points",false);return;}
         grantStars(id,v);
       };
     });
@@ -1383,10 +1354,11 @@
   async function grantStars(kid,delta){
     var input=$("grantReason-"+kid);
     var reason=input?input.value.trim():"";
-    if(!reason)reason=delta>0?"Admin grant":"Admin correction";
-    const {error}=await client.from("stars_ledger").insert({kid_id:kid,delta,reason,source:"admin",granted_by:session.user.id});
-    if(error){writeFailed(error);return;}
-    toast(`${delta>0?"+":""}${delta} ⭐ ${kidName(kid)} — saved`,true);
+    if(!reason){toast("Add a reason for this distinct contribution or correction");if(input)input.focus();return;}
+    const id=input.dataset.awardId||(input.dataset.awardId=SQStarId.random());
+    if(!await pointsRpc("points_manual_award",{p_id:id,p_kid:kid,p_amount:delta,p_reason:reason}))return;
+    delete input.dataset.awardId;
+    toast(`${delta>0?"+":""}${delta} points ${kidName(kid)} — saved`,true);
     if(input)input.value="";
     var amt=$("grantAmount-"+kid);
     if(amt)amt.value="";
@@ -1462,7 +1434,7 @@
     var foot=$("ledgerFoot");
     if(foot){
       var totals=Object.keys(KIDS).map(function(id){
-        return kidName(id)+" "+((rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0)+" ⭐";
+        return kidName(id)+" "+((rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0)+" points";
       }).join(" · ");
       foot.textContent=visible.length+" of "+rows.ledger.length+" rows · "+totals;
     }
@@ -1471,52 +1443,15 @@
   }
 
   function ledgerActionsHtml(r){
-    if(scheduleStarInfo(r))return '<button class="btn btn--sm btn--danger" data-dropstar="'+r.id+'" title="Revoke schedule star">Undo</button>';
-    if(r.source==="admin")return '<button class="btn btn--sm btn--danger" data-delstar="'+r.id+'" title="Undo">Undo</button>';
-    return r.delta>0?'<button class="btn btn--sm btn--danger" data-revokestar="'+r.id+'" title="Revoke">Undo</button>':"";
+    return r.delta>0?'<button class="btn btn--sm btn--danger" data-correctpoints="'+r.id+'">Correct duplicate</button>':"";
   }
-
   function bindLedgerActions(){
-    document.querySelectorAll("[data-dropstar]").forEach(function(b){
-      b.onclick=async function(){
-        /* A block's star and its tick are one fact. Deleting only the ledger row
-           left the block still reading "Accepted" with nothing behind it, no way
-           to re-earn it (Accept is not offered on an accepted block) and the
-           block's own Undo standing by to take a second star. Same operation,
-           whichever screen Papa reaches for. Only today's board is loaded, so an
-           older day's star is still a plain delete. */
-        var info=SQStarId.parse(b.dataset.dropstar);
-        if(info&&info.kind==="block"&&info.day===today){
-          await unacceptBlock(info.kid,info.slot,null);
-          return;
-        }
-        const {error}=await client.from("stars_ledger").delete().eq("id",b.dataset.dropstar);
-        if(error){writeFailed(error);return;}
-        toast("Schedule star revoked",true);
-        await loadAll();
-      };
-    });
-    document.querySelectorAll("[data-delstar]").forEach(function(b){
-      b.onclick=async function(){
-        const {error}=await client.from("stars_ledger").delete().eq("id",b.dataset.delstar);
-        if(error){writeFailed(error);return;}
-        toast("Grant undone",true);
-        await loadAll();
-      };
-    });
-    document.querySelectorAll("[data-revokestar]").forEach(function(b){
-      b.onclick=async function(){
-        var r=rows.ledger.find(function(x){return x.id===b.dataset.revokestar;});
-        if(!r)return;
-        const {error}=await client.from("stars_ledger").insert({
-          kid_id:r.kid_id,delta:-r.delta,reason:`Revoked · ${r.reason}`,
-          source:"admin",granted_by:session.user.id
-        });
-        if(error){writeFailed(error);return;}
-        toast(`−${r.delta} ⭐ ${kidName(r.kid_id)} — revoked`,true);
-        await loadAll();
-      };
-    });
+    document.querySelectorAll("[data-correctpoints]").forEach(function(b){b.onclick=async function(){
+      const reason=prompt("Reason for correcting this accidental award (required)","");
+      if(!reason||!reason.trim())return;
+      if(!await pointsRpc("points_correct_award",{p_id:b.dataset.correctpoints,p_reason:reason.trim()}))return;
+      toast("Correction recorded; original history kept",true);await loadAll();
+    };});
   }
 
   function bindLedgerFilters(){
@@ -1540,7 +1475,7 @@
       var blob=new Blob([csv],{type:"text/csv"});
       var a=document.createElement("a");
       a.href=URL.createObjectURL(blob);
-      a.download="stars-ledger-"+today+".csv";
+      a.download="points-ledger-"+today+".csv";
       a.click();
       toast("Exported ledger.csv",true);
     };
@@ -1559,7 +1494,7 @@
           '<td data-l="Reason">'+esc(r.reason)+'</td>'+
           '<td data-l="Source"><span class="tag tag--off">'+esc(r.source)+'</span></td>'+
           '<td data-l="" style="text-align:right"><div class="acts">'+ledgerActionsHtml(r)+'</div></td></tr>';
-      }).join("")+'</tbody></table>':"<p>No stars yet today</p>";
+      }).join("")+'</tbody></table>':"<p>No points yet today</p>";
     bindLedgerActions();
   }
 
@@ -1757,7 +1692,7 @@
     var when=timeOnly(row.at);
     if(row.type==="system"){
       var label=row.meta.event==="tick"?"✓ "+blockTitle(row.meta.blockIdx)+" "+blockTz(row.meta.blockIdx)
-        :row.meta.event==="star"?(row.meta.delta>0?"+":"")+row.meta.delta+" ⭐ "+row.body
+        :row.meta.event==="star"?(row.meta.delta>0?"+":"")+row.meta.delta+" points "+row.body
         :"↩ "+blockTitle(row.meta.blockIdx)+" "+blockTz(row.meta.blockIdx)+" — redo";
       return '<p class="sys">'+when+' · '+esc(k.name)+' '+esc(label)+'</p>';
     }
@@ -1777,7 +1712,7 @@
         '<div class="msg__b"><p class="msg__t">Helped <b>'+esc(kidName(row.meta.helped))+'</b> — '+esc(row.body||"no note")+'</p>'+
         (done
           ?resolvedTag(row.meta.status==="approved",row.meta.status==="approved"?"Approved":"Declined")
-          :actsHtml('<button class="btn btn--sm btn--primary" data-helpok="'+row.srcId+'">Approve +1</button>'+
+          :actsHtml('<button class="btn btn--sm btn--primary" data-helpok="'+row.srcId+'">Approve +10 points</button>'+
                     '<button class="btn btn--sm btn--danger" data-helpno="'+row.srcId+'">Decline</button>'))+
         '</div></div>';
     }
@@ -1924,16 +1859,24 @@
   }
 
   async function startAnswerRecord(id){
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    answerAskId=id; answerChunks=[];
-    answerRecord=new MediaRecorder(stream);
-    answerRecord.ondataavailable=function(e){if(e.data.size) answerChunks.push(e.data);};
-    answerRecord.onstop=function(){stream.getTracks().forEach(function(t){t.stop();});};
-    answerRecord.start();
-    document.querySelector('[data-rec="'+id+'"]').disabled=true;
-    document.querySelector('[data-stop="'+id+'"]').disabled=false;
-    var st=$("recstatus-"+id);
-    if(st)st.textContent="Recording";
+    let stream;
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      answerAskId=id; answerChunks=[];
+      answerRecord=new MediaRecorder(stream);
+      answerRecord.ondataavailable=function(e){if(e.data.size) answerChunks.push(e.data);};
+      answerRecord.onstop=function(){stream.getTracks().forEach(function(t){t.stop();});};
+      answerRecord.start();
+      document.querySelector('[data-rec="'+id+'"]').disabled=true;
+      document.querySelector('[data-stop="'+id+'"]').disabled=false;
+      var st=$("recstatus-"+id);
+      if(st)st.textContent="Recording";
+    }catch(e){
+      if(stream)stream.getTracks().forEach(function(t){t.stop();});
+      answerRecord=null;
+      var status=$("recstatus-"+id);
+      if(status)status.textContent="Microphone is not available";
+    }
   }
 
   function stopAnswerRecord(id){
@@ -1977,22 +1920,14 @@
   }
 
   async function setHelpClaim(id,status){
-    var claim=rows.helpClaims.find(function(c){return c.id===id;});
-    if(!claim)return;
-    suppressRealtime("help_claims",{id:id});
-    const reviewed_at=new Date().toISOString();
-    const {error}=await client.from("help_claims").update({
-      status,reviewed_by:session.user.id,reviewed_at
-    }).eq("id",id);
-    if(error){writeFailed(error);return;}
+    const claim=rows.helpClaims.find(function(c){return c.id===id;});if(!claim)return;
     if(status==="approved"){
-      const reason=`captain help: ${kidName(claim.helped_kid_id)} — ${claim.body}`;
-      const grant=await client.from("stars_ledger").insert({
-        kid_id:claim.captain_id,delta:1,reason,source:"admin",granted_by:session.user.id
-      });
-      if(grant.error){writeFailed(grant.error);return;}
+      const day=claim.created_at?SQ_DAY.iso(new Date(claim.created_at)):today;
+      if(!await awardParentTask(claim.captain_id,day,{kind:"sibling_help",slot:"default"},"Captain help · "+claim.body))return;
     }
-    await loadAll();
+    suppressRealtime("help_claims",{id:id});
+    const {error}=await client.from("help_claims").update({status:status,reviewed_by:session.user.id,reviewed_at:new Date().toISOString()}).eq("id",id);
+    if(error){writeFailed(error);return;}await loadAll();
   }
 
   async function setPass(id,status){
@@ -2069,14 +2004,14 @@
       }
       return '<tr><td data-l="Kid"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span></td>'+
         '<td data-l="Blocks" class="r num">'+totalBlocks+' / '+(14*DAY.length)+'</td>'+
-        '<td data-l="Stars" class="r num">'+totalStars+'</td>'+
+        '<td data-l="Points" class="r num">'+totalStars+'</td>'+
         '<td data-l="Photos" class="r num">'+rows.photos14.filter(function(p){return p.kid_id===id&&daysList.includes(p.day);}).length+'</td>'+
         '<td data-l="Asks" class="r num">'+rows.asks14.filter(function(a){return a.kid_id===id&&daysList.includes(String(a.created_at||"").slice(0,10));}).length+'</td>'+
         '<td data-l="Best" class="r num">'+bestDay+'</td>'+
         '<td data-l="Streak" class="r num">'+streak+' d</td></tr>';
     }).join("");
     el.innerHTML='<table class="tbl"><thead><tr>'+
-      '<th style="width:150px">Kid</th><th class="r">Blocks</th><th class="r">Stars</th><th class="r">Photos</th><th class="r">Asks</th><th class="r">Best day</th><th class="r">Streak</th>'+
+      '<th style="width:150px">Kid</th><th class="r">Blocks</th><th class="r">Points</th><th class="r">Photos</th><th class="r">Asks</th><th class="r">Best day</th><th class="r">Streak</th>'+
     '</tr></thead><tbody>'+kidRows+'</tbody></table>';
     if(window.SQLearningTelemetryAdmin&&window.SQLearningTelemetryAdmin.render)window.SQLearningTelemetryAdmin.render();
   }
@@ -2087,7 +2022,7 @@
     if(!el)return;
     var fs=Object.fromEntries(rows.familySettings.map(function(r){return [r.key,r.value];}));
     el.innerHTML='<table class="tbl"><thead><tr>'+
-      '<th style="width:150px">Kid</th><th style="width:90px" class="r">Stars</th><th style="width:110px">Day</th><th style="width:130px">App</th><th>Category locks</th><th style="width:96px">PIN</th><th style="width:110px"></th>'+
+      '<th style="width:150px">Kid</th><th style="width:90px" class="r">Points</th><th style="width:110px">Day</th><th style="width:130px">App</th><th>Category locks</th><th style="width:96px">PIN</th><th style="width:110px"></th>'+
     '</tr></thead><tbody>'+
     Object.entries(KIDS).map(function(e){
       var id=e[0], k=e[1];
@@ -2101,7 +2036,7 @@
       var hasPin=pinRow&&pinRow.pin;
       return '<tr>'+
         '<td data-l="Kid"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span></td>'+
-        '<td data-l="Stars" class="r"><span class="star num">'+stars+'</span></td>'+
+        '<td data-l="Points" class="r"><span class="star num">'+stars+'</span></td>'+
         '<td data-l="Day" class="num">'+covered+' / '+DAY.length+'</td>'+
         '<td data-l="App"><span class="tag '+(paused?"tag--late":"tag--done")+'">'+(paused?"Paused":"Running")+'</span></td>'+
         '<td data-l="Locks">'+lockSummary+'</td>'+
@@ -2205,16 +2140,11 @@
 
   async function resetBrainDay(kid){
     if(!confirm("Reset today's Brain Gym for "+kidName(kid)+"?"))return;
-    const ledger=await client.from("stars_ledger").select("delta,reason")
-      .eq("kid_id",kid).ilike("reason","%Brain Gym%"+today+"%");
-    if(ledger.error){writeFailed(ledger.error);return;}
-    var net=(ledger.data||[]).reduce(function(s,r){return s+(r.delta||0);},0);
     suppressRealtime("family_settings",{key:"braingate_"+kid});
     const results=await Promise.all([
       client.from("brain_done").delete().eq("kid_id",kid).eq("day",today),
       client.from("family_settings").upsert({key:"braingate_"+kid,value:"",updated_at:new Date().toISOString()}),
-      client.from("family_settings").upsert({key:"brain_enabled_"+kid,value:"1",updated_at:new Date().toISOString()}),
-      net>0?client.from("stars_ledger").insert({kid_id:kid,delta:-net,reason:"Brain Gym day reset · "+today,source:"admin",granted_by:session.user.id}):Promise.resolve({error:null})
+      client.from("family_settings").upsert({key:"brain_enabled_"+kid,value:"1",updated_at:new Date().toISOString()})
     ]);
     const failed=results.find(function(r){return r.error;});
     if(failed){writeFailed(failed.error);return;}
@@ -2307,7 +2237,7 @@
       '<p class="message pin-message '+(fb.type==="ok"?"message--ok":fb.type==="error"?"message--error":"")+'" id="adminPinStatus" aria-live="polite">'+(fb.text||"")+'</p>'+
       '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-hairline)">'+
       '<span class="lbl" style="display:block;margin-bottom:6px">Preview &amp; test</span>'+
-      '<p class="field__hint" style="margin-bottom:8px">Open the kid app to try every function yourself: pick any kid profile, tap 🔧 Papa (enter the Papa PIN above), then 🧪 Test mode — every time-lock and app-pause is off for the rest of today. Turn it off from the same menu when done. Testing writes real stars/ticks like a normal play session; use Danger Zone below to reset a kid\'s day or stars afterward if needed.</p>'+
+      '<p class="field__hint" style="margin-bottom:8px">Open the kid app to try every function yourself: pick any kid profile, tap 🔧 Papa (enter the Papa PIN above), then 🧪 Test mode — every time-lock and app-pause is off for the rest of today. Turn it off from the same menu when done. Testing writes real progress and pending point claims. Use a separate test profile when possible.</p>'+
       '<a class="btn" href="index.html" target="_blank" rel="noopener">🧪 Open kid app ↗</a>'+
       '</div>';
     $("saveAdminPinBtn").onclick=saveAdminPin;
@@ -2360,12 +2290,7 @@
   function renderBehaviourPanel(){
     var el=$("behaviourPanel");
     if(!el)return;
-    var credited=(localStorage.getItem("sq-removed-credited")||"1")==="1";
-    el.innerHTML='<label class="field" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px">'+
-      '<input type="checkbox" id="removedCredited" '+(credited?"checked":"")+' style="margin-top:2px;width:16px;height:16px">'+
-      '<span><b style="font-weight:650">Removed blocks still earn stars</b>'+
-      '<span class="field__hint" style="margin-top:2px">When you remove a block for an outing, the kid keeps the star for it.</span></span></label>'+
-      '<label class="field" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px">'+
+    el.innerHTML=      '<label class="field" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px">'+
       '<input type="checkbox" id="ttsEnabled" '+(ttsEnabledValue()?"checked":"")+' style="margin-top:2px;width:16px;height:16px">'+
       '<span><b style="font-weight:650">Text-to-speech on kid tablets</b>'+
       '<span class="field__hint" style="margin-top:2px">Off by default. Enables spoken prompts and announcements across the kid app.</span></span></label>'+
@@ -2373,7 +2298,6 @@
       '<input type="checkbox" id="notifyCheck" '+(browserNotifyEnabled?"checked":"")+' style="margin-top:2px;width:16px;height:16px">'+
       '<span><b style="font-weight:650">Desktop notifications for asks and claims</b>'+
       '<span class="field__hint" style="margin-top:2px">Only things waiting on you. System events never notify.</span></span></label>';
-    $("removedCredited").onchange=function(){localStorage.setItem("sq-removed-credited",$("removedCredited").checked?"1":"0");};
     $("ttsEnabled").onchange=function(){saveTtsEnabled($("ttsEnabled").checked);};
     $("notifyCheck").onchange=function(){toggleBrowserNotifications();};
   }
@@ -2382,17 +2306,12 @@
     var el=$("dangerZone");
     if(!el)return;
     el.innerHTML='<table class="tbl"><tbody>'+
-      '<tr><td data-l="Action"><b>Reset today\'s day</b><div class="tbl__note">Un-accepts every block for all three kids and refunds the stars.</div></td>'+
+      '<tr><td data-l="Action"><b>Reset today\'s day</b><div class="tbl__note">Resets today’s schedule for all three kids. Points remain saved.</div></td>'+
       '<td data-l="" class="r" style="width:170px"><div class="acts"><button class="btn btn--sm btn--danger" id="dangerResetDay">Reset day</button></div></td></tr>'+
-      '<tr><td data-l="Action"><b>Reset a kid\'s stars to zero</b><div class="tbl__note">Adds one negative ledger row. The history stays readable.</div></td>'+
-      '<td data-l="" class="r"><div class="acts">'+Object.entries(KIDS).map(function(e){
-        return '<button class="btn btn--sm btn--danger" data-resetstars="'+e[0]+'">Reset '+esc(e[1].name)+'</button>';
-      }).join("")+'</div></td></tr>'+
       '<tr><td data-l="Action"><b>Pause every app</b><div class="tbl__note">All three tablets keep My Day, guides, Learn and Ask. Everything else stops.</div></td>'+
       '<td data-l="" class="r"><div class="acts"><button class="btn btn--sm btn--danger" id="dangerPauseAll">Pause all</button></div></td></tr>'+
     '</tbody></table>';
     $("dangerResetDay").onclick=resetAcceptedDay;
-    document.querySelectorAll("[data-resetstars]").forEach(function(b){b.onclick=function(){resetStars(b.dataset.resetstars);};});
     $("dangerPauseAll").onclick=async function(){
       var jobs=Object.keys(KIDS).map(function(id){
         return client.from("family_settings").upsert({key:"applock_"+id,value:"1",updated_at:new Date().toISOString()});
@@ -2405,22 +2324,19 @@
     };
   }
 
-  /* Whole-database reset. One RPC (supabase/migrations/20260802_season_reset.sql)
-     so the wipe is atomic — sixteen chained deletes from here would leave a
-     half-erased season on the first network blip. Typed confirmation because
-     nothing on this page undoes it. The RPC checks auth.uid() against the
-     `admins` table, so a signed-in stranger gets "not an admin", not a wipe. */
+  /* Learning resets run in one authenticated database transaction and preserve
+     point balances, award history, exchanges and family configuration. */
   function renderSeasonReset(){
     var el=$("seasonReset");
     if(!el)return;
     el.innerHTML='<div class="note note--error" style="margin-bottom:14px">'+
       '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M8 2.2 14.6 13H1.4z"/><path d="M8 6.4v3M8 11.3v.1"/></svg>'+
-      '<div><b>This erases every kid’s whole history</b>'+
-      'Stars and the entire ledger, day ticks, missions, activities, Brain Gym, word mastery, game best scores, asks, passes, photo records, Papa’s notes and help claims. The Papa PIN and the three kid PINs are cleared, every app pause lifts, and the schedule goes back to the times in the day template. Tablets drop their local copy the next time they sync.</div></div>'+
+      '<div><b>This starts a new learning season</b>'+
+      'Day ticks, activities, Brain Gym, word mastery and game best scores reset. Points, earnings history, approved spending, requests, refunds, settings and PINs remain saved. Tablets refresh their learning state on the next sync.</div></div>'+
       '<label class="field" style="max-width:260px;margin-bottom:0"><span class="lbl">Type RESET to confirm</span>'+
       '<input class="inp" id="seasonResetConfirm" autocomplete="off" placeholder="RESET" aria-describedby="seasonResetStatus"></label>'+
       '<div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">'+
-      '<button class="btn btn--danger" id="seasonResetBtn" disabled>Reset the whole database</button>'+
+      '<button class="btn btn--danger" id="seasonResetBtn" disabled>Start the new season</button>'+
       '<span class="tbl__note" id="seasonResetStatus" aria-live="polite"></span></div>'+
       '<p class="field__hint" style="margin-top:10px">Photo and voice files already uploaded to Storage are left in place — the rows pointing at them are gone, so nothing in the app shows them.</p>';
     var input=$("seasonResetConfirm"),btn=$("seasonResetBtn");
@@ -2432,6 +2348,7 @@
     var btn=$("seasonResetBtn"),status=$("seasonResetStatus");
     btn.disabled=true;
     status.textContent="Resetting…";
+    if(!pointsReady){status.textContent="Deploy the points migration before resetting a season.";return;}
     const {error}=await client.rpc("reset_season");
     if(error){
       status.textContent=error.message||"Could not reset";
@@ -2439,21 +2356,7 @@
       btn.disabled=false;
       return;
     }
-    /* The PIN editor keeps its own copy of the old value; drop it or the field
-       repaints last season's PIN over an empty table. */
-    adminPinFeedback.type=""; adminPinFeedback.text=""; adminPinFeedback.value=undefined;
-    toast("New season — database reset",true);
-    await loadAll();
-  }
-
-  async function resetStars(kid){
-    var total=(rows.totals.find(function(t){return t.kid_id===kid;})||{}).stars||0;
-    if(!total){toast(kidName(kid)+" already has 0 stars",true);return;}
-    const {error}=await client.from("stars_ledger").insert({
-      kid_id:kid,delta:-total,reason:"Star reset",source:"admin",granted_by:session.user.id
-    });
-    if(error){writeFailed(error);return;}
-    toast(kidName(kid)+" stars reset to 0",true);
+    toast("New season started; points kept",true);
     await loadAll();
   }
 
@@ -2541,7 +2444,7 @@
     if(table==="photos")return {kind:"photo",title:kidName(row.kid_id)+" uploaded proof",body:blockTitle(row.block_idx)+" "+blockTz(row.block_idx)};
     if(table==="help_claims"&&row.status==="requested")return {kind:"claim",title:kidName(row.captain_id)+" sent a captain claim",body:"Helped "+kidName(row.helped_kid_id)};
     if(table==="day_ticks"&&row.day===today)return {kind:"done",title:kidName(row.kid_id)+" completed a block",body:blockTitle(row.block_idx)+" "+blockTz(row.block_idx)};
-    if(table==="stars_ledger"&&row.source==="app")return {kind:"star",title:kidName(row.kid_id)+" earned "+row.delta+" star"+(row.delta===1?"":"s"),body:row.reason||"App activity"};
+    if(table==="stars_ledger"&&row.source==="app")return {kind:"star",title:kidName(row.kid_id)+" earned "+row.delta+" points",body:row.reason||"App activity"};
     return null;
   }
 
@@ -2582,6 +2485,8 @@
     realtimeChannel=client.channel("p1-admin")
       .on("postgres_changes",{event:"*",schema:"public",table:"day_ticks"},live("day_ticks"))
       .on("postgres_changes",{event:"*",schema:"public",table:"stars_ledger"},live("stars_ledger"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"points_claims"},live("points_claims"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"points_requests"},live("points_requests"))
       .on("postgres_changes",{event:"*",schema:"public",table:"asks"},live("asks"))
       .on("postgres_changes",{event:"*",schema:"public",table:"passes"},live("passes"))
       .on("postgres_changes",{event:"*",schema:"public",table:"photos"},live("photos"))

@@ -36,7 +36,7 @@ test("world is a pixel planet on a 2D canvas and launches content through the re
 test("world exposes physical destinations and featured real content", () => {
   const map = read("js/world/planet-map.js");
   for (const id of ["section:quests","section:games","section:acts","section:learn","section:books","section:music","section:day","section:rewards",
-    "game:monster-truck","game:solar","book:space","game:paint"]) {
+    "game:monster-truck","game:solar","book:space","game:paint","game:kitchen"]) {
     assert.match(map, new RegExp(`"${id.replace(":", "\\:")}"`));
   }
 });

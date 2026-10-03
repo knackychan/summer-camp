@@ -130,6 +130,7 @@ test("native overlay registers a bounded Capacitor plugin before BridgeActivity 
   assert.match(plugin, /notifyListeners\("lifecycleChanged"/);
   assert.match(plugin, /notifyListeners\("audioFocusChanged"/);
   assert.match(plugin, /Build\.VERSION_CODES\.O/);
+  assert.doesNotMatch(plugin, /\.isBlank\(/, "native helpers must not require the Android 13 String.isBlank API");
   assert.match(plugin, /vibrator\.vibrate\(pattern, -1\)/, "API 24-25 must not call VibrationEffect");
   assert.match(overlay, /SummerQuestNativePlugin\.java/);
   assert.match(manifest, /android\.permission\.INTERNET/);

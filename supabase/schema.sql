@@ -1,6 +1,8 @@
 -- ============================================================
 -- SUMMER QUEST — Supabase schema (free tier)
 -- Paste into Supabase SQL Editor. Idempotent-ish: run once.
+-- Points installations also require migrations/20261003_points_system.sql.
+-- Existing Points projects should run versioned migrations, not this base file.
 -- ============================================================
 
 -- 1. Kid profiles (seeded, not user-managed)
@@ -630,11 +632,12 @@ begin
   end if;
 
   truncate table
-    day_ticks, day_rolls, stars_ledger, act_done, vocab_mastery, game_stats,
-    papa_notes, asks, passes, photos, search_log, help_claims,
-    day_overrides, day_redos, brain_done, family_settings;
-  update kids set pin = null where pin is not null;
-  insert into family_settings (key, value) values ('season_reset_at', now()::text);
+    day_ticks, day_rolls, act_done, vocab_mastery, game_stats,
+    papa_notes, passes, photos, search_log, help_claims,
+    day_overrides, day_redos, brain_done;
+  -- Wallet history, reward requests, family settings and PINs survive a season.
+  insert into family_settings (key, value) values ('season_reset_at', now()::text)
+    on conflict (key) do update set value=excluded.value,updated_at=now();
 end;
 $$;
 

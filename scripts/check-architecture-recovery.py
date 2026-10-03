@@ -72,7 +72,7 @@ def wait_screen(page, screen):
 
 
 def ready(page):
-    page.wait_for_function("window.SummerQuest && window.SQContentRegistry && window.SQManifest && SQManifest.length === 24")
+    page.wait_for_function("window.SummerQuest && window.SQContentRegistry && window.SQManifest && SQManifest.some(entry => entry.id === 'kitchen')")
     page.evaluate("SQContentRegistry.ready()")
 
 
@@ -319,9 +319,11 @@ def knowledge_interaction(page):
 def catalog_sweep(page, origin):
     outcomes = []
     catalog = page.evaluate("SQContentRegistry.list()")
-    for kind, count in {"section": 8, "game": 21, "music": 3, "book": 8, "activity": 11,
-                        "guide": 3, "lesson": 18, "learning": 2, "quest": 12, "reward": 4}.items():
+    for kind, count in {"section": 8, "game": 29, "music": 3, "book": 8, "activity": 11,
+                        "guide": 3, "lesson": 18, "learning": 2, "reward": 4}.items():
         assert sum(entry["kind"] == kind for entry in catalog) == count, (kind, count)
+    # Daily quests vary with the child's plan and today's weekday.
+    assert any(entry["kind"] == "quest" for entry in catalog)
     assert len({entry["id"] for entry in catalog}) == len(catalog)
     for entry in catalog:
         item = {"id": entry["id"], "available": entry["available"]}
@@ -361,6 +363,7 @@ def catalog_sweep(page, origin):
 
 def book_assets(page):
     return page.evaluate(r"""async () => {
+        await Promise.all(BOOK_SHELF.map(book => loadBook(book)));
         const paths = new Set();
         function walk(value) {
             if (typeof value === 'string') {

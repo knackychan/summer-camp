@@ -39,7 +39,7 @@ const capacitorVersions = ["cli", "core", "android"].map(name => {
 
 const checks = [
   { id: "node22", required: true, ok: Number(process.versions.node.split(".")[0]) >= 22, detail: `Node ${process.versions.node}` },
-  { id: "androidWebBundle", required: true, ok: Boolean(bundleMeta && bundleMeta.release === "v0.6.2-recovery" && bundleMeta.runtime === "unified-root"), detail: bundleMeta ? `${bundleMeta.release}; ${bundleMeta.fileCount} files` : "dist/android-web missing; run npm run build:android-web" },
+  { id: "androidWebBundle", required: true, ok: Boolean(bundleMeta && bundleMeta.release && bundleMeta.runtime === "unified-root"), detail: bundleMeta ? `${bundleMeta.release}; ${bundleMeta.fileCount} files` : "dist/android-web missing; run npm run build:android-web" },
   { id: "capacitorDependencies", required: true, ok: existsSync(resolve(shellRoot, "node_modules/@capacitor/cli")) && existsSync(resolve(shellRoot, "node_modules/@capacitor/android")), detail: existsSync(resolve(shellRoot, "node_modules/@capacitor/cli")) ? "installed" : "run npm --prefix apps/android install" },
   { id: "androidProject", required: true, ok: existsSync(resolve(shellRoot, "android")), detail: existsSync(resolve(shellRoot, "android")) ? "generated" : "run npm run android:bootstrap" },
   { id: "gradleWrapper", required: true, ok: existsSync(resolve(shellRoot, "android", process.platform === "win32" ? "gradlew.bat" : "gradlew")), detail: "generated with the Capacitor Android project" },

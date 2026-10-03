@@ -108,9 +108,13 @@ test("root projection covers real catalogs, stable aliases and shared lock excep
   `, context);
   const registry = context.SQContentRegistry;
   await registry.ready();
-  const counts = { game: 21, music: 3, book: 8, activity: 11, guide: 3, lesson: 18, learning: 2, quest: 12, reward: 4, section: 8 };
+  const counts = { game: MANIFEST.filter(entry => !entry.music).length, music: MANIFEST.filter(entry => entry.music).length, book: 8, activity: 11, guide: 3, lesson: 18, learning: 2, quest: 15, reward: 4, section: 8 };
   for (const [kind, count] of Object.entries(counts)) assert.equal(registry.list({ kind }).length, count, kind);
-  assert.equal(new Set(registry.list().map((row) => row.id)).size, 90);
+  assert.equal(new Set(registry.list().map((row) => row.id)).size, Object.values(counts).reduce((sum, count) => sum + count, 0));
+  for (const id of ["dressing", "table_helper", "table_helper_breakfast", "table_helper_dinner"]) assert.ok(registry.get("quest:" + id), id);
+  assert.equal(registry.get("game:kitchen").title[1], "廚房冒險");
+  assert.equal(registry.get("game:city"), null);
+  assert.equal((await registry.open("game:city")).reason, "content_not_found");
   for (let index = 0; index < 11; index++) assert.equal(registry.get("activity:" + index).meta.activityIndex, index);
   for (const [key, index] of [["know", 1000], ["doskill", 1001], ["askai", 1002]]) assert.equal(registry.get("guide:" + key).meta.activityIndex, index);
   const olderLesson = registry.list({ kind: "lesson" }).find((row) => row.meta.minAge > 5);
@@ -119,6 +123,7 @@ test("root projection covers real catalogs, stable aliases and shared lock excep
   gamesLocked = true;
   for (const id of ["calc", "paint"]) assert.equal(registry.get("game:" + id).available, true, id);
   assert.equal(registry.get("game:solar").available, false);
+  assert.equal(registry.get("game:kitchen").available, false);
   assert.equal((await registry.open("game:solar")).reason, "category_locked");
   assert.equal(context.contentEntryAccess(registry.get("game:vocab"), { learningDirector: {} }).ok, true);
   paused = true;

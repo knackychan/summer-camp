@@ -314,9 +314,10 @@ test('v0.5.6 Check help stays useful offline, cycles locally, and resets for the
 });
 
 test('v0.5.6 late Check help cannot apply after the child answers',async()=>{
- let release;const f=await fixture({request:req=>new Promise(r=>{release=()=>r({kind:'knowledge_help',cueId:'strategy:eliminate'});})},'geography','check');
+ let release,started;const requestStarted=new Promise(resolve=>{started=resolve;});
+ const f=await fixture({request:req=>new Promise(r=>{release=()=>r({kind:'knowledge_help',cueId:'strategy:eliminate'});started();})},'geography','check');
  const input={...f.input,expectedPhase:'question',expectedQuestionId:f.snap.currentQuestion.id};
- await f.help.open(input);const pending=f.help.adapt(input);await pause();
+ await f.help.open(input);const pending=f.help.adapt(input);await requestStarted;
  const answered=await f.bridge.answer({...input,selectedOptionId:f.snap.currentQuestion.correctOptionId,responseMs:42});release();
  assert.equal(await pending,null);const after=await f.bridge.snapshot({...f.input,expectedPhase:'question'});assert.deepEqual(after.session.answers,answered.session.answers);assert.equal(after.help,undefined);
 });

@@ -62,13 +62,16 @@ function createRound(opts) {
      (not regenerated) so `answers` still lines up; only a shape mismatch —
      different tier, different item count — falls back to starting fresh. */
   var resume = opts.resume;
+  var restored = false;
   if (resume && resume.gameId === gameId && resume.tier === tier &&
       (!opts.mathSkill || resume.mathSkill === opts.mathSkill) &&
       Array.isArray(resume.items) && resume.items.length === round.items.length &&
-      Number.isInteger(resume.idx) && resume.idx > 0 && resume.idx < round.items.length) {
+      (gameId !== 'crunch' || resume.items.every(function (item) { return item && item.prompt && item.prompt.type === 'numberbonds'; })) &&
+      Number.isInteger(resume.idx) && resume.idx >= 0 && resume.idx < round.items.length) {
     round.items = resume.items;
     idx = resume.idx;
     answers = resume.answers ? resume.answers.slice() : [];
+    restored = true;
   }
   var state = "loading";
   var destroyed = false;
@@ -76,7 +79,7 @@ function createRound(opts) {
   var sceneModule = null;
   var sceneInstance = null;
   var pendingSubmitAccepted = false;
-  var activeMsAccum = resume && idx > 0 ? (resume.ms || 0) : 0;
+  var activeMsAccum = restored ? (resume.ms || 0) : 0;
   var activeStartedAt = 0;
   var clockCancel = null;
   var audioUnlockedOnce = false;
@@ -112,8 +115,10 @@ function createRound(opts) {
     '</header>' +
     '<div class="brain-round__status">' +
       '<div class="brain-progress"></div>' +
+      '<span class="brain-round__feedback" aria-live="polite"></span>' +
       '<output class="brain-clock"></output>' +
     '</div>' +
+    '<div class="brain-lesson" hidden><div class="brain-lesson__topic"></div><button class="brain-button" type="button" data-lesson-clue>Clue<span class="zhs">小提示</span></button></div>' +
     '<main class="brain-scene" aria-live="off"></main>' +
     '<section class="brain-learning-support" hidden aria-live="polite"></section>' +
     '<div class="brain-announcer sr-only" aria-live="polite"></div>';
@@ -126,9 +131,61 @@ function createRound(opts) {
   var muteBtn = overlay.querySelector(".brain-round__mute");
   var progressEl = overlay.querySelector(".brain-progress");
   var clockEl = overlay.querySelector(".brain-clock");
+  var feedbackEl = overlay.querySelector('.brain-round__feedback');
   var sceneMount = overlay.querySelector(".brain-scene");
   var supportEl = overlay.querySelector(".brain-learning-support");
   var announcerEl = overlay.querySelector(".brain-announcer");
+  var lessonEl = overlay.querySelector('.brain-lesson');
+  var clueBtn = overlay.querySelector('[data-lesson-clue]');
+  var lessonHintUsed = false;
+
+  function renderLesson() {
+    var lesson = round.items[idx].lesson;
+    lessonEl.hidden = !lesson;
+    clueBtn.disabled = true;
+    if (!lesson) return;
+    lessonEl.querySelector('.brain-lesson__topic').innerHTML = escapeHtml(lesson.topic[0]) + '<span class="zhs">' + escapeHtml(lesson.topic[1]) + '</span>';
+  }
+  function lessonCopy(pair) {
+    return '<div class="brain-learning-support__copy"><b>' + escapeHtml(pair[0]) + '</b><span>' + escapeHtml(pair[1]) + '</span></div>';
+  }
+  clueBtn.onclick = function () {
+    if (state !== 'active' || destroyed || !round.items[idx].lesson) return;
+    lessonHintUsed = true;
+    stopActiveClock(true);
+    state = 'lesson-clue';
+    scheduler.pause();
+    if (sceneInstance.setInputEnabled) sceneInstance.setInputEnabled(false);
+    clueBtn.disabled = true;
+    supportEl.hidden = false;
+    supportEl.innerHTML = lessonCopy(round.items[idx].lesson.hint) + '<div class="brain-learning-support__actions"><button type="button" data-learning-action="resume"><b>Back to exercise</b><span>回到練習</span></button></div>';
+    var resume = supportEl.querySelector('[data-learning-action="resume"]');
+    resume.onclick = function () {
+      if (destroyed || state !== 'lesson-clue') return;
+      hideLearningSupport();
+      state = 'active';
+      if (!document.hidden) scheduler.resume();
+      if (sceneInstance.setInputEnabled) sceneInstance.setInputEnabled(true);
+      clueBtn.disabled = false;
+      if (!guidedRetry) startActiveClock();
+      clueBtn.focus({ preventScroll: true });
+    };
+    resume.focus({ preventScroll: true });
+  };
+  function showLessonReview(meta) {
+    if (destroyed) return;
+    state = 'lesson-review';
+    clueBtn.disabled = true;
+    notifyLearningAttempt(meta, lessonHintUsed ? 1 : 0);
+    supportEl.hidden = false;
+    supportEl.innerHTML = '<h3>Let’s work it out<span class="zhs">一起看懂</span></h3>' + lessonCopy(round.items[idx].lesson.explanation) +
+      '<div class="brain-learning-support__actions"><button type="button" data-learning-action="retry"><b>Practise again</b><span>再練一次</span></button><button type="button" data-learning-action="next"><b>Next</b><span>下一題</span></button></div>' +
+      '<p class="brain-lesson__practice-note">Practice keeps your first score.<span class="zhs">再練一次會保留第一次的分數。</span></p>';
+    supportEl.querySelector('[data-learning-action="retry"]').onclick = function () { if (state === 'lesson-review') beginGuidedRetry(meta); };
+    var next = supportEl.querySelector('[data-learning-action="next"]');
+    next.onclick = function () { if (state === 'lesson-review') transition(); };
+    next.focus({ preventScroll: true });
+  }
 
   identityEl.innerHTML = (game.icon || "") + " " + game.title[0] + '<span class="zht">' + game.title[1] + "</span>";
 
@@ -203,7 +260,7 @@ function createRound(opts) {
   function notifyLearningAttempt(meta, hintsUsed) {
     if (!opts.onLearningAttempt || learningAttemptRecorded) return;
     learningAttemptRecorded = true;
-    Promise.resolve(opts.onLearningAttempt(Object.assign({}, meta, { hintsUsed: hintsUsed || 0 })))
+    Promise.resolve(opts.onLearningAttempt(Object.assign({}, meta, { hintsUsed: hintsUsed || (lessonHintUsed ? 1 : 0) })))
       .catch(function (err) { console.warn("brain learning attempt was not stored", err); });
   }
 
@@ -294,11 +351,14 @@ function createRound(opts) {
   function beginGuidedRetry(meta) {
     if (destroyed || !sceneInstance) { transition(); return; }
     hideLearningSupport();
+    overlay.removeAttribute('data-feedback');
+    feedbackEl.textContent = '';
     guidedRetry = true;
     guidedRetryMeta = meta;
     pendingSubmitAccepted = false;
     state = "presenting-guided-retry";
     var item = round.items[idx];
+    clueBtn.disabled = true;
     var result;
     try {
       result = sceneInstance.present(item, { index: idx, count: round.items.length, isFirst: idx === 0, clocked: !!round.clock, guidedRetry: true });
@@ -313,6 +373,7 @@ function createRound(opts) {
       state = "active";
       attemptStartedAt = now();
       if (sceneInstance.setInputEnabled) sceneInstance.setInputEnabled(true);
+      clueBtn.disabled = false;
       announce(["Try that one again.", "再試一次這一題。"]);
     }).catch(function () { transition(); });
     void meta;
@@ -461,6 +522,7 @@ function createRound(opts) {
   }
 
   function maybeOfferLearningSupport(meta) {
+    if (round.items[idx].lesson) { showLessonReview(meta); return; }
     if (!opts.canLearningSupport || !opts.getLearningHint) {
       notifyLearningAttempt(meta, 0);
       transition();
@@ -488,6 +550,10 @@ function createRound(opts) {
   }
   overlay.addEventListener("pointerdown", unlockAudioOnce, { once: true, passive: true });
   overlay.addEventListener("keydown", unlockAudioOnce, { once: true });
+  // Preserve native Space activation before the legacy typing-game listener.
+  overlay.addEventListener("keydown", function (event) {
+    if (event.key === " " && event.target && event.target.tagName === "BUTTON") event.stopPropagation();
+  });
 
   quitBtn.onclick = function () { destroy(true); if (opts.onQuit) opts.onQuit(); };
   muteBtn.onclick = function () {
@@ -501,7 +567,7 @@ function createRound(opts) {
   };
 
   function startActiveClock() {
-    if (!round.clock) return;
+    if (!round.clock || scheduler.paused || clockCancel) return;
     activeStartedAt = now();
     clockCancel = scheduler.every(250, renderClock);
   }
@@ -518,11 +584,12 @@ function createRound(opts) {
       if (state === "active") stopActiveClock(true);
       scheduler.pause();
     } else {
-      scheduler.resume();
-      if (state === "active") startActiveClock();
+      if (state !== 'lesson-clue') scheduler.resume();
+      if (state === "active" && !guidedRetry) startActiveClock();
     }
   }
   if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVisibilityChange);
+  onVisibilityChange();
 
   function sceneCtx() {
     return Object.freeze({
@@ -553,12 +620,16 @@ function createRound(opts) {
 
   function present() {
     if (destroyed) return Promise.resolve();
+    overlay.removeAttribute('data-feedback');
+    feedbackEl.textContent = '';
     state = "presenting";
     pendingSubmitAccepted = false;
     guidedRetry = false;
     guidedRetryMeta = null;
     activeLearningIntervention = null;
     learningAttemptRecorded = false;
+    lessonHintUsed = false;
+    renderLesson();
     hideLearningSupport();
     renderProgress();
     var item = round.items[idx];
@@ -575,10 +646,20 @@ function createRound(opts) {
     var wait = (result && typeof result.then === "function") ? result : Promise.resolve();
     return wait.then(function () {
       if (destroyed) return;
+      if (item.lesson && answers[idx]) {
+        var savedAnswer = answers[idx];
+        pendingSubmitAccepted = true;
+        learningAttemptRecorded = true;
+        state = savedAnswer.correct ? 'feedback-correct' : 'feedback-corrective';
+        if (sceneInstance.setInputEnabled) sceneInstance.setInputEnabled(false);
+        runFeedback(Object.freeze({ correct: savedAnswer.correct, got: savedAnswer.got, worth: savedAnswer.worth, given: savedAnswer.given, answer: item.answer }), savedAnswer.correct ? transition : function () { showLessonReview(learningMeta(savedAnswer.given, 0)); });
+        return;
+      }
       if (item.say && opts.say) opts.say(item.say);
       state = "active";
       attemptStartedAt = now();
       if (sceneInstance.setInputEnabled) sceneInstance.setInputEnabled(true);
+      clueBtn.disabled = false;
       startActiveClock();
     }).catch(function (err) {
       console.error("brain scene present() failed: " + gameId, err);
@@ -629,11 +710,18 @@ function createRound(opts) {
       state = graded.correct ? "feedback-correct" : "feedback-corrective";
       renderProgress();
       if (graded.correct) audioSvc.play("success", {});
-      runFeedback(guidedFeedback, transition);
+      runFeedback(guidedFeedback, function () {
+        if (item.lesson && !graded.correct) showLessonReview(learningMeta(given, responseMs));
+        else transition();
+      });
       return;
     }
 
     answers[idx] = { given: given, got: graded.got, worth: graded.worth, correct: graded.correct };
+    if (item.lesson) {
+      notifyLearningAttempt(learningMeta(given, responseMs), lessonHintUsed ? 1 : 0);
+      saveProgress();
+    }
 
     /* Math Recall's first "just remember it" item (worth 0) has no correct answer
        to grade against — the old UI advanced silently with no feedback overlay,
@@ -661,6 +749,9 @@ function createRound(opts) {
   }
 
   function runFeedback(feedback, after) {
+    clueBtn.disabled = true;
+    overlay.setAttribute('data-feedback', feedback.correct ? 'correct' : 'corrective');
+    feedbackEl.textContent = feedback.correct ? 'Nice! 很棒！' : 'Keep going 繼續試試';
     var settled = false;
     var result;
     try {
