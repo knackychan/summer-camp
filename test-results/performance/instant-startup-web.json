@@ -1,0 +1,49 @@
+{
+  "target": "web",
+  "network": "100ms latency, 1Mbps download",
+  "cpuSlowdown": 4,
+  "checks": [
+    {
+      "stalled": false,
+      "savedChild": false,
+      "ok": true,
+      "firstContentfulPaintMs": 360,
+      "firstScreenMs": 517,
+      "clickFeedbackMs": 49.2
+    },
+    {
+      "stalled": true,
+      "savedChild": false,
+      "ok": true,
+      "firstContentfulPaintMs": 320,
+      "firstScreenMs": 466.6,
+      "clickFeedbackMs": 35.7,
+      "heldRequests": [
+        "/css/app.css",
+        "/css/brain-shell.css",
+        "/css/brain-sprites.css",
+        "/css/brain-scenes.css",
+        "/css/quest-shell.css",
+        "/css/world-explorer.css",
+        "/js/config.js"
+      ]
+    },
+    {
+      "stalled": true,
+      "savedChild": true,
+      "ok": true,
+      "firstContentfulPaintMs": 328,
+      "firstScreenMs": 471.8,
+      "heldRequests": [
+        "/css/app.css",
+        "/css/brain-shell.css",
+        "/css/brain-sprites.css",
+        "/css/brain-scenes.css",
+        "/css/quest-shell.css",
+        "/css/world-explorer.css",
+        "/js/config.js"
+      ]
+    }
+  ],
+  "ok": true
+}

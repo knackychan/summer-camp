@@ -1,4 +1,6 @@
-"""Kitchen Quest v0.7: real cooking, saved progression, cookbook and prep planner.
+"""SUPERSEDED for the Kitchen UI by check-kitchen-counter-ui.py (v0.8 counter, 2026-10-03);
+this harness drives the retired v0.7 tab layout. Its fixture() is still reused.
+Kitchen Quest v0.7: real cooking, saved progression, cookbook and prep planner.
 
 Requires Python Playwright and Edge. Uses isolated synthetic local saves and the
 recovery harness's offline config/server. Game snapshots are read only; cooking

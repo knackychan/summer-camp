@@ -13,6 +13,10 @@ Full rationale: `docs/plans/2026-07-26-game-platform/design.md` §2–§4. This 
 
 Adding a game means an `index.js` entry *and* an `<id>.js` module. The manifest entry alone renders a tile that opens nothing.
 
+## Games vs Practice
+
+A manifest entry with `brain: true` or `practice: true` is **Practice**: it is listed in the Practice tab and keeps the game-switcher rail. Every other entry is a **Game**: Games tab, full screen (`body.game-fs`), no rail — leave the top-left corner of the stage for Back and put settings in `settings(bar, ctx)` so they share that top row. See `docs/plans/2026-10-03-games-practice-split/design.md`.
+
 ## The game object
 
 ```js

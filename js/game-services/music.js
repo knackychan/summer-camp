@@ -52,73 +52,101 @@ export function calibrate(host, onDone) {
   var audio = getSharedAudio();
   host = host || {};
   var onResult = host.onResult || (onDone || function () {});
-
-  var clock = audio.clock();
-  if (!clock || !clock.now) {
-    onResult({ offsetMs: null, confident: false });
-    return;
-  }
-
   var sched = createScheduler();
-  var bpm = 100;
-  var beatInterval = 60 / bpm; /* seconds */
+  var beatInterval = 0.6; /* 100 BPM */
   var totalBeats = 8;
-  var leadTime = 1.5; /* seconds before first click */
-
   var beats = [];
   var taps = [];
-  var startTime = clock.now + leadTime;
+  var sounds = [];
+  var ctx = null;
+  var startTime = null;
   var beatIdx = 0;
-  var cancelled = false;
+  var tapCount = 0;
+  var finished = false;
 
-  function lookaheadTick() {
-    if (cancelled) return;
-    var nowTime = clock.now;
-    while (beatIdx < totalBeats) {
-      var beatTime = startTime + beatIdx * beatInterval;
-      if (beatTime > nowTime + 0.1) break;
-      beats.push(beatTime * 1000); /* store in ms */
-      audio.play("ui-tap", { when: beatTime - nowTime, volume: 0.5 });
-      beatIdx++;
-    }
-    if (beatIdx >= totalBeats) {
-      var extra = 0.5; /* wait for last beat to be heard */
-      sched.after(extra * 1000, function () {
-        finish();
-      });
-    }
-  }
-
-  function onTap() {
-    if (cancelled) return;
-    taps.push(clock.now * 1000);
-  }
-
-  function finish() {
+  function cancel() {
+    finished = true;
     sched.cancelAll();
-    var result = computeOffset(taps, beats);
-    if (!result.offsetMs && result.offsetMs !== 0) {
-      onResult({ offsetMs: null, confident: false });
-      return;
-    }
-    /* Round to nearest ms for storage */
-    result.offsetMs = Math.round(result.offsetMs);
+    sounds.forEach(function (sound) { sound.stop(); });
+    sounds = [];
+  }
+
+  function finish(reason) {
+    if (finished) return;
+    cancel();
+    if (!reason && tapCount !== totalBeats) reason = "not_enough_taps";
+    var result = reason
+      ? { offsetMs: null, confident: false, reason: reason }
+      : computeOffset(taps, beats);
+    if (result.offsetMs !== null) result.offsetMs = Math.round(result.offsetMs);
     if (result.confident) {
       try {
-        var data = { offsetMs: result.offsetMs, at: Date.now(), confident: true };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          offsetMs: result.offsetMs, at: Date.now(), confident: true
+        }));
       } catch (e) {}
     }
     onResult(result);
   }
 
-  /* Arm the lookahead loop */
-  sched.every(25, lookaheadTick);
+  function lookaheadTick() {
+    if (finished) return;
+    if (audio.muted || ctx.state !== "running") { finish("interrupted"); return; }
+    var nowTime = ctx.currentTime;
+    /* A backgrounded or stalled page must not play a burst of overdue clicks. */
+    if (beatIdx < totalBeats && beats[beatIdx] / 1000 < nowTime) {
+      finish("interrupted"); return;
+    }
+    while (beatIdx < totalBeats) {
+      var beatTime = beats[beatIdx] / 1000;
+      if (beatTime > nowTime + 0.1) break;
+      sounds.push(audio.play("ui-tap", { when: Math.max(0, beatTime - ctx.currentTime), volume: 0.5 }));
+      beatIdx++;
+      if (host.onBeat) {
+        (function (number, time) {
+          sched.after(Math.max(0, time - ctx.currentTime) * 1000, function () {
+            if (!finished) host.onBeat(number, totalBeats);
+          });
+        })(beatIdx, beatTime);
+      }
+    }
+    if (nowTime >= startTime + (totalBeats - 1) * beatInterval + 0.5) finish();
+  }
 
-  return {
-    onTap: onTap,
-    cancel: function () { cancelled = true; sched.cancelAll(); }
-  };
+  function onTap() {
+    if (finished || startTime === null || ctx.state !== "running") return false;
+    var nowTime = ctx.currentTime;
+    /* ponytail: nearest-beat pairing covers offsets under 300 ms; slower clicks
+       are needed if a device requires a wider measurement window. */
+    var index = Math.round((nowTime - startTime) / beatInterval);
+    if (index < 0 || index >= totalBeats || taps[index] !== undefined) return false;
+    taps[index] = nowTime * 1000;
+    tapCount++;
+    if (host.onTap) host.onTap(tapCount, totalBeats);
+    return true;
+  }
+
+  function start() {
+    if (finished) return;
+    if (!ctx || ctx.state !== "running") { finish("audio_unavailable"); return; }
+    startTime = ctx.currentTime + 1.5;
+    for (var i = 0; i < totalBeats; i++) beats.push((startTime + i * beatInterval) * 1000);
+    sched.every(25, lookaheadTick);
+  }
+
+  /* Unlock during the gesture, then wait for a suspended context to resume.
+     Deferring results also lets callers retain the returned cancellation handle. */
+  try {
+    if (audio.muted) sched.after(0, function () { finish("muted"); });
+    else {
+      audio.unlock();
+      ctx = audio.graph().ctx;
+      var resumed = ctx && ctx.state !== "running" && ctx.resume ? ctx.resume() : null;
+      Promise.resolve(resumed).then(start, function () { finish("audio_unavailable"); });
+    }
+  } catch (e) { sched.after(0, function () { finish("audio_unavailable"); }); }
+
+  return { onTap: onTap, cancel: cancel };
 }
 
 export function offset() {
@@ -194,7 +222,7 @@ export function createTransport(deps) {
   var startTime = 0;
   var cursor = 0;
   var running = false;
-  var pauseOffset = 0;
+  var pauseOffset = null;
   var loopCancel = null;
 
   function beatToTime(beat) {
@@ -203,7 +231,7 @@ export function createTransport(deps) {
   }
 
   function positionOf(note) {
-    return beatToTime(note.beat) - clock.now;
+    return beatToTime(note.beat) - (pauseOffset === null ? clock.now : pauseOffset);
   }
 
   function tick() {
@@ -238,7 +266,7 @@ export function createTransport(deps) {
     chart = ch;
     cursor = 0;
     running = true;
-    pauseOffset = 0;
+    pauseOffset = null;
     startTime = clock.now + (leadSeconds !== undefined ? leadSeconds : 0.15);
     if (loopCancel) loopCancel();
     loopCancel = sched.every(25, tick);
@@ -256,17 +284,13 @@ export function createTransport(deps) {
 
   function resume() {
     if (running || !chart) return;
-    if (pauseOffset > 0) {
+    if (pauseOffset !== null) {
       var gap = clock.now - pauseOffset;
       startTime += gap;
-      while (cursor < chart.notes.length) {
-        var noteTime = beatToTime(chart.notes[cursor].beat);
-        if (noteTime > clock.now + 0.10) break;
-        cursor++;
-      }
     }
-    pauseOffset = 0;
+    pauseOffset = null;
     running = true;
+    tick();
     if (loopCancel) loopCancel();
     loopCancel = sched.every(25, tick);
   }
@@ -275,7 +299,7 @@ export function createTransport(deps) {
     running = false;
     chart = null;
     cursor = 0;
-    pauseOffset = 0;
+    pauseOffset = null;
     if (loopCancel) {
       loopCancel();
       loopCancel = null;
@@ -294,19 +318,17 @@ export function createTransport(deps) {
   };
 }
 
-/* judge(tapTime, noteAbsTime, offsetMs, judgeState)
+/* judge(tapTime, noteAbsTime, offsetMs)
    tapTime:      audio clock time in seconds of the tap
    noteAbsTime:  absolute audio time in seconds the note should have fired
    offsetMs:     calibration offset in milliseconds (subtracted from tap judgement)
-   judgeState:   array of {note, judged:boolean} — one entry per note
-   
-   Marks the first unjudged matching note; returns "perfect"|"good"|"ok"|"miss". */
+   Returns "perfect"|"good"|"ok"|"miss" without changing note state. */
 
-var PERFECT_MS = 50;
-var GOOD_MS = 100;
-var OK_MS = 180;
+var PERFECT_MS = 80;
+var GOOD_MS = 140;
+export var HIT_WINDOW_MS = 240;
 
-export function judge(tapTime, noteAbsTime, offsetMs, judgeState) {
+export function judge(tapTime, noteAbsTime, offsetMs) {
   offsetMs = offsetMs || 0;
   var diffSec = tapTime - noteAbsTime;
   var diffMs = Math.abs(diffSec * 1000 - offsetMs);
@@ -314,7 +336,7 @@ export function judge(tapTime, noteAbsTime, offsetMs, judgeState) {
   var result;
   if (diffMs <= PERFECT_MS) result = "perfect";
   else if (diffMs <= GOOD_MS) result = "good";
-  else if (diffMs <= OK_MS) result = "ok";
+  else if (diffMs <= HIT_WINDOW_MS) result = "ok";
   else result = "miss";
 
   return result;

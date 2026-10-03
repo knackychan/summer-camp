@@ -69,6 +69,14 @@ body.game-mode .wrap{max-width:none;width:100%}
   box-shadow:0 4px 0 rgba(0,0,0,.25);transition:transform .1s}
 .btn:hover{filter:brightness(1.08)} .btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
 .btn.small{padding:8px 12px;font-size:14px}
+.music-timing{margin-top:18px;padding-top:10px;border-top:1px solid var(--line);text-align:left}
+.music-timing summary{cursor:pointer;min-height:44px;padding:10px 0;font-weight:800}
+.music-timing p{margin:10px 0;line-height:1.5}
+.music-timing .vrow{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.music-timing button{min-height:48px;font-family:inherit}
+.music-timing button:disabled{opacity:.55;cursor:default}
+#calibPad{width:100%;min-height:110px;margin:10px 0;background:var(--gold);color:var(--bg);touch-action:none;user-select:none}
+#calibOut{min-height:1.5em}
 #bootStatus{text-align:center;padding:40px 16px;min-height:220px;font-weight:800;color:var(--muted)}
 #bootStatus b{display:block;color:var(--ink);font-size:25px;margin:14px 0 8px}
 #bootStatus .boot-avatar{display:block;font-size:64px;line-height:1.2;animation:boot-breathe 1.2s ease-in-out infinite alternate}
@@ -242,6 +250,9 @@ const KIDS = {
     <div id="tab-games" class="hidden">
       <div class="gamerow" id="gameRow"></div>
     </div>
+    <div id="tab-practice" class="hidden">
+      <div class="gamerow" id="practiceRow"></div>
+    </div>
     <div id="tab-acts" class="hidden">
       <div class="bankgrid" id="actGrid"></div>
       <div class="tipline">✓ Pick something fun. Agreed activities earn points after Papa checks. · 挑一件好玩的事，約定的活動經爸爸確認後可獲得點數。</div>
@@ -356,10 +367,19 @@ const KIDS = {
         <h3>🎵 Music Room <span class="zhs" style="font-size:14px">音樂室——選一種樂器</span></h3>
         <div class="bankgrid" id="musicGrid"></div>
         <div class="tipline">Instruments fill the screen — turn the tablet sideways · 樂器會佔滿螢幕——把平板轉成橫的</div>
-      </div>
-      <div class="bigcard">
-        <h3>🎚️ Tap Test <span class="zhs" style="font-size:14px">敲擊測試——量這台平板的延遲</span></h3>
-        <div id="calibBody"></div>
+        <details class="music-timing" id="musicTiming">
+          <summary>Adjust rhythm timing <span class="zhs">調整節奏時間</span></summary>
+          <p>Optional: use this if Drum Pads practice feels early or late.<br><span class="zhs">選用：如果打鼓練習的節奏判定感覺太早或太晚，可以在這裡調整。</span></p>
+          <p id="calibHelp">Listen to 8 clicks and tap the big button once with each click. Use the speakers or headphones you play with.<br><span class="zhs">聽到每一聲就點一下大按鈕，共 8 聲。請使用平常玩的喇叭或耳機。</span></p>
+          <div class="vrow">
+            <button type="button" class="btn" id="calibStart" disabled>Start 8-click check 開始 8 聲測試</button>
+            <button type="button" class="btn hidden" id="calibCancel">Stop 停止</button>
+            <button type="button" class="btn" id="calibReset" disabled>Use automatic timing 使用自動設定</button>
+          </div>
+          <div id="calibCount" class="hidden"></div>
+          <button type="button" class="btn hidden" id="calibPad" aria-describedby="calibHelp">Tap with each click<br><span class="zhs">聽到每聲就點一下</span></button>
+          <p id="calibOut" role="status">Preparing sound… 準備聲音中…</p>
+        </details>
       </div>
     </div>
   </section>
@@ -493,7 +513,6 @@ if(window.SQSummerAgent&&window.SQAgentProvider){
 
 const LEVELS = {
   machines:{icon:"🚜", title:"Big Machines", tz:"大機器",   blurb:"Race, dig & fly"},
-  dig:    {icon:"⛏️", title:"Dig Site", tz:"挖土工地",      blurb:"Dig the right rocks"},
   balloon:{icon:"🎈", title:"Balloon Pop", tz:"戳氣球",     blurb:"Pop balloons with keys"},
   hunt:   {icon:"🔎", title:"Key Hunt", tz:"找按鍵",        blurb:"Find the glowing key"},
   home:   {icon:"🎯", title:"Home Row", tz:"基準鍵",        blurb:"Learn your fingers"},
@@ -507,7 +526,6 @@ const LEVELS = {
   stroop: {icon:"🎨", title:"Color Words", tz:"顏色字",   blurb:"Say the ink, not the word", brain:true},
   crunch: {icon:"🧩", title:"Number Bonds", tz:"數字好朋友", blurb:"Find a pair to make the target", brain:true},
   clock:  {icon:"🕐", title:"Time Lapse", tz:"時鐘",      blurb:"Read the clock",        brain:true},
-  change: {icon:"💱", title:"Change Maker", tz:"找零錢",  blurb:"Count the change",      brain:true},
   wordmem:{icon:"🧠", title:"Word Memory", tz:"記單字",   blurb:"Remember the words",    brain:true},
   recall: {icon:"🔁", title:"Math Recall", tz:"記憶計算", blurb:"Answer the one before", brain:true},
   fractions: {icon:"🥪", title:"Fraction Picnic", tz:"分數野餐", blurb:"Share equal pieces · 平分每一份", brain:true},
@@ -545,8 +563,19 @@ function allGameIds(){
 function musicIds(){
   return (window.SQManifest||[]).filter(e=>e.music).map(e=>e.id);
 }
+/* Games and Practice are two Adventure categories (games-practice-split design.md).
+   Practice = Brain Gym exercises + the manifest's practice:true drills; only those
+   keep the game-switcher rail. Every other game opens full screen. */
+function isPracticeGame(id){
+  const e=(window.SQManifest||[]).find(x=>x.id===id);
+  if(e)return !!(e.brain||e.practice);
+  const m=gameMeta(id);return !!(m&&m.brain);
+}
+function practiceGameIds(){return allGameIds().filter(isPracticeGame);}
+function arcadeGameIds(){return allGameIds().filter(id=>!isPracticeGame(id));}
 function renderGameSwitcher(id,lvl){
-  document.getElementById("levelChips").innerHTML=allGameIds().map(k=>{
+  const ids=isPracticeGame(lvl)?practiceGameIds():[];
+  document.getElementById("levelChips").innerHTML=ids.map(k=>{
     const m=gameMeta(k); if(!m) return "";
     return `<button class="chip ${k===lvl?'on':''}" data-l="${k}"
       style="${k===lvl?`background:${KIDS[id].raw}`:''}">
@@ -1151,8 +1180,11 @@ async function startGame(id,lvl,options){
   const token=gameLaunchToken;
   document.getElementById("setbar").classList.add("hidden");
   kid=id; level=lvl;
-  hubKid=id; hubTab="games"; saveAppPlace("hub");
+  hubKid=id; hubTab=isPracticeGame(lvl)?"practice":"games"; saveAppPlace("hub");
   showOnly("game");
+  /* Games own the whole screen (no rail); practice keeps the switcher. */
+  document.body.classList.toggle("game-fs",!isPracticeGame(lvl));
+  hud([]);
   if(window.SQActivityRouter){const gm=gameMeta(lvl)||{};SQActivityRouter.setCurrent("game",lvl,{title:gm.title||lvl,icon:gm.icon||"🎮"});}
   if(typeof updateSummerCompanion==="function")updateSummerCompanion();
   document.getElementById("back").textContent="← "+KIDS[id].name;
@@ -1200,6 +1232,7 @@ function gameCtx(mountEl,game,kidId){
     hud:hud, say:say, sayPair:sayPair, sfx:H.sfx, keys:H.keys, fx:H.fx,
     settings:settings, rand:rand, shuffle:shuffle,
     isOverlayOpen:function(){return !!document.querySelector("body > .overlay:not(.hidden)");},
+    isMuted:function(){return !sound;},
     kids:KIDS, best:bestOf(kidId,game.bestKey||""),
     stars:starsOf(kidId),
     words:{easy:WORDS_EASY, hard:ALL_WORDS, all:ALL_WORDS, sentences:SENT, letters:LETTERS,
@@ -1811,12 +1844,13 @@ function showOnly(id){
   if(id!=="music"&&!document.getElementById("music").classList.contains("hidden"))closeInstrument(true);
   if(id!=="act")stopActTimer();
   if(id!=="world")worldOpenToken++;
-  if(id!=="hub"&&calibRun){calibRun.cancel();calibRun=null;}
   document.querySelectorAll(".book-zoom").forEach(function(el){el.remove();});
   if(id!=="hub")invalidateLearningSessionView();
+  if(id!=="hub")cancelCalibration();
   ["home","world","game","hub","act","book","music"].forEach(x=>
     document.getElementById(x).classList.toggle("hidden",x!==id));
   setGameMode(id==="game");
+  if(id!=="game")document.body.classList.remove("game-fs");
   document.body.classList.toggle("world-mode",id==="world");
   if(worldExplorerModule&&id!=="world"&&worldExplorerModule.pause)worldExplorerModule.pause();
   if(window.SQActivityRouter&&(id==="home"||id==="world"||id==="hub"))SQActivityRouter.clearCurrent();
@@ -2155,14 +2189,14 @@ function startTimelineWatcher(){
       goHome(); showLockOverlay(ls);
     }
     refreshAppLock();
-    if(hubKid&&hubTab==="games")refreshLockUI();
+    if(hubKid&&(hubTab==="games"||hubTab==="practice"))refreshLockUI();
   };
   tick(); setInterval(tick,5000);
 }
 function renderHubHead(){
   const k=KIDS[hubKid];
   const sub=hubTab==="quests"?"What fits right now? · 現在適合做什麼？":
-    hubTab==="adventure"||["games","acts","learn","books","music"].includes(hubTab)?"Pick an adventure · 選一個冒險":
+    hubTab==="adventure"||["games","practice","acts","learn","books","music"].includes(hubTab)?"Pick an adventure · 選一個冒險":
     hubTab==="day"?"Today's routines · 今天的日常":hubTab==="captain"?"Captain board 隊長看板 👑":"What do you want to do?";
   document.getElementById("hubStars").innerHTML=`<span class="starpill">${questCoins(hubKid)} available 可用點數</span><span class="starpill">${starsOf(hubKid)} earned 累積獲得</span><span class="starpill">${pointsOf(hubKid).pending} pending 待確認</span>`;
   document.getElementById("hubHead").innerHTML=
@@ -2231,10 +2265,10 @@ function bindPointChoices(root){
 function renderPointTasks(){
   if(!hubKid)return;
   const surface=document.getElementById("tab-"+hubTab);
-  if(!surface||!["day","games","books","music","learn","acts"].includes(hubTab))return;
+  if(!surface||!["day","games","practice","books","music","learn","acts"].includes(hubTab))return;
   let panel=surface.querySelector(".point-tasks");
   if(!panel){panel=document.createElement("div");panel.className="bigcard point-tasks";surface.prepend(panel);}
-  const kinds={books:["reading"],music:["music"],learn:["learning"],games:["learning","creative","music"]}[hubTab];
+  const kinds={books:["reading"],music:["music"],learn:["learning"],games:["creative","music"],practice:["learning"]}[hubTab];
   const tasks=(store&&store.pointAssignments||[]).filter(a=>a.kid_id===hubKid&&(a.day===todayStr()||(a.kind==="project"&&a.day===SQPoints.week(todayStr())))&&(!kinds||kinds.includes(a.kind)));
   panel.hidden=!tasks.length;
   panel.innerHTML=tasks.length?`<h3>Agreed activities · 約定的活動</h3><p>Finish your goal, then ask Papa to check. Help and retries count. · 完成目標後請爸爸確認，幫助和重試都算數。</p>`+tasks.map((a,i)=>{
@@ -2412,14 +2446,15 @@ function renderQuestHome(){
 }
 function renderAdventure(){
   const items=[
-    ["games","🎮","Games","遊戲","Arcade, Brain Gym and game worlds"],
+    ["games","🎮","Games","遊戲","Arcade, cooking and 3D worlds"],
+    ["practice","🧠","Practice","練習","Brain Gym, typing and words"],
     ["acts","🏕️","Activities","活動","Creative, movement and house activities"],
     ["learn","🧭","Learn","學習","Questions, guides and practice"],
     ["books","📚","Books","書籍","Quiet reading and picture books"],
     ["music","🎵","Music","音樂","Piano, pads and instruments"]
   ];
   const grid=document.getElementById("adventureGrid"); if(!grid)return;
-  grid.innerHTML=items.map(x=>{const locked=x[0]!=="games"&&tabLocked(x[0]);return `<button class="adventure-card" data-adventure="${x[0]}" ${locked?"disabled":""}><span class="ai">${x[1]}</span><strong>${x[2]}</strong><span class="zhs">${x[3]}</span><small>${locked?"🔒 Papa locked this for now · 爸爸暫時鎖定":x[4]}</small></button>`;}).join("");
+  grid.innerHTML=items.map(x=>{const locked=x[0]!=="games"&&x[0]!=="practice"&&tabLocked(x[0]);return `<button class="adventure-card" data-adventure="${x[0]}" ${locked?"disabled":""}><span class="ai">${x[1]}</span><strong>${x[2]}</strong><span class="zhs">${x[3]}</span><small>${locked?"🔒 Papa locked this for now · 爸爸暫時鎖定":x[4]}</small></button>`;}).join("");
   grid.querySelectorAll("[data-adventure]").forEach(b=>b.onclick=()=>{SQPlatform.haptic("tap");SummerQuest.navigate(b.dataset.adventure);});
 }
 function routeQuestAction(q){
@@ -2607,12 +2642,13 @@ function renderHub(){
   if(hubTab!=="learn")invalidateLearningSessionView();
   const k=KIDS[hubKid], done=actsToday(hubKid);
   if(hubKid!=="luis"&&hubTab==="captain") hubTab="quests";
-  if(hubTab!=="games"&&tabLocked(hubTab)) hubTab="quests";
+  if(hubTab!=="games"&&hubTab!=="practice"&&tabLocked(hubTab)) hubTab="quests";
+  if(hubTab!=="music")cancelCalibration();
   document.getElementById("captainTab").classList.toggle("hidden",hubKid!=="luis");
   renderHubHead();
   /* tabs */
   document.querySelectorAll("#hubTabs .chip").forEach(c=>{
-    const on=c.dataset.t===hubTab||(c.dataset.t==="adventure"&&["games","acts","learn","books","music"].includes(hubTab));
+    const on=c.dataset.t===hubTab||(c.dataset.t==="adventure"&&["games","practice","acts","learn","books","music"].includes(hubTab));
     const locked=c.dataset.t!=="games"&&tabLocked(c.dataset.t);
     c.classList.toggle("on",on);
     c.classList.toggle("locked",locked);
@@ -2625,6 +2661,7 @@ function renderHub(){
   document.getElementById("tab-adventure").classList.toggle("hidden",hubTab!=="adventure");
   document.getElementById("tab-day").classList.toggle("hidden",hubTab!=="day");
   document.getElementById("tab-games").classList.toggle("hidden",hubTab!=="games");
+  document.getElementById("tab-practice").classList.toggle("hidden",hubTab!=="practice");
   document.getElementById("tab-acts").classList.toggle("hidden",hubTab!=="acts");
   document.getElementById("tab-learn").classList.toggle("hidden",hubTab!=="learn");
   document.getElementById("tab-ask").classList.toggle("hidden",hubTab!=="ask");
@@ -2646,25 +2683,26 @@ function renderHub(){
   if(hubTab==="captain") renderCaptain();
   if(hubTab==="books") renderBooks();
   if(hubTab==="music") renderMusic();
-  /* games — today's Brain Gym trio first (it is the door), then the kid's own game.
-     Source-of-truth for the row is now the manifest (allGameIds), so a
-     registry-native game like solar — which has no inline LEVELS entry — still
-     renders. gameMeta() returns one shape that works for both inline and
+  /* Practice — today's Brain Gym trio first (it is the door); Games — the kid's
+     own game first. Source-of-truth for both rows is the manifest (allGameIds),
+     so a registry-native game like solar — which has no inline LEVELS entry —
+     still renders. gameMeta() returns one shape that works for both inline and
      manifest-only ids; if it ever doesn't find one, the tile is skipped rather
      than throwing on undefined.icon. */
   const trio=brainTrio(hubKid), bdone=brainToday(hubKid);
-  const order=trio.concat([k.level],allGameIds().filter(l=>trio.indexOf(l)<0&&l!==k.level))
-    .filter((l,i,a)=>a.indexOf(l)===i)
-    .filter(l=>gameMeta(l));
-  document.getElementById("gameRow").innerHTML=order.map(l=>{
+  const gameTiles=l=>{
     const m=gameMeta(l);
     return `<button class="gamecard ${l===k.level?'fav':''}${m.brain?' brain':''}" data-l="${l}"
       style="${l===k.level?`border-color:${k.raw}`:''}">
       <span class="gi">${m.icon}</span><b>${m.title}</b>
       <small>${m.blurb}<span class="zhs">${m.tz}</span></small>${l===k.level?'<span class="favtag">MY GAME</span>':''}${
       trio.indexOf(l)>=0?`<span class="todaytag${bdone[l]?" done":""}">${bdone[l]?"✓ done 完成":"today 今天"}</span>`:""}</button>`;
-  }).join("");
-  document.querySelectorAll("#gameRow .gamecard").forEach(c=>{
+  };
+  const tileOrder=(first,ids)=>first.concat(ids.filter(l=>first.indexOf(l)<0))
+    .filter((l,i,a)=>a.indexOf(l)===i&&ids.indexOf(l)>=0&&gameMeta(l));
+  document.getElementById("gameRow").innerHTML=tileOrder([k.level],arcadeGameIds()).map(gameTiles).join("");
+  document.getElementById("practiceRow").innerHTML=tileOrder(trio.concat([k.level]),practiceGameIds()).map(gameTiles).join("");
+  document.querySelectorAll("#gameRow .gamecard,#practiceRow .gamecard").forEach(c=>{
     const access=gameLaunchAccess(hubKid,c.dataset.l);
     c.disabled=!access.ok;c.classList.toggle("locked",!access.ok);
     c.onclick=()=>SummerQuest.openGame(c.dataset.l);
@@ -2682,31 +2720,38 @@ function renderHub(){
   updateSummerCompanion();
 }
 function refreshLockUI(){
-  const tab=document.getElementById("tab-games");
-  if(!tab)return;
+  const games=document.getElementById("tab-games"),practice=document.getElementById("tab-practice");
+  if(!games||!practice)return;
   const ls=gameLockState();
   let card=document.getElementById("gamesLockCard");
-  if(ls.locked&&hubTab==="games"){
-    if(!card){
+  const tab=hubTab==="practice"?practice:games;
+  if(ls.locked&&(hubTab==="games"||hubTab==="practice")){
+    if(!card||card.parentNode!==tab){
+      if(card)card.remove();
       card=document.createElement("div");
       card.id="gamesLockCard"; card.className="dayhero";
       tab.insertBefore(card,tab.firstChild);
     }
     if(ls.reason==="brain"){
-      const g=brainGate(hubKid);
-      card.innerHTML=`🧠 Brain Gym first! 先做頭腦體操！ ${g.doneCount}/${g.doneCount+g.remaining.length} today 今天 — tap a 🧠 game below to start! 點下面的頭腦遊戲開始！`;
+      const g=brainGate(hubKid),count=`${g.doneCount}/${g.doneCount+g.remaining.length} today 今天`;
+      /* The trio lives in Practice now, so the Games tab points there. */
+      card.innerHTML=hubTab==="practice"
+        ?`🧠 Brain Gym first! 先做頭腦體操！ ${count} — tap a "today" exercise below to start! 點下面標著「今天」的練習開始！`
+        :`🧠 Brain Gym first! 先做頭腦體操！ ${count} — games open after today's three. 完成今天的三個練習，遊戲就會打開。 <button class="btn small" id="lockToPractice">🧠 Go to Practice 去練習</button>`;
+      const go=document.getElementById("lockToPractice");
+      if(go)go.onclick=()=>SummerQuest.navigate("practice");
     }else{
       const b=blockFor(hubKid,ls.blockIdx);
       card.innerHTML=`${b.icon} Papa asked for a redo 爸爸請你再做一次: ${b.title.split("—")[0].trim()} — tick it in My Day to open games! 在「我的一天」打勾就能玩遊戲！`+brainAlsoWaiting();
     }
-    /* the brain lock must leave the brain games reachable — hiding the whole row
-       would lock the kid out of the very thing that opens the door */
-    tab.classList.toggle("gameslocked",ls.reason!=="brain");
-    tab.classList.toggle("brainlocked",ls.reason==="brain");
+    /* the brain lock must leave the brain games reachable — dimming the whole
+       Practice row would lock the kid out of the very thing that opens the door */
+    games.classList.toggle("gameslocked",true);
+    practice.classList.toggle("gameslocked",ls.reason!=="brain");
+    practice.classList.toggle("brainlocked",ls.reason==="brain");
   }else{
     if(card)card.remove();
-    tab.classList.remove("gameslocked");
-    tab.classList.remove("brainlocked");
+    [games,practice].forEach(t=>{t.classList.remove("gameslocked");t.classList.remove("brainlocked");});
   }
 }
 function openAct(i){
@@ -3481,7 +3526,7 @@ function renderBooks(){
    Instruments are still registry games loaded through SQLoadGame; only the shell
    differs. The arcade stage cannot satisfy D13 — it spends 229px on the game
    switcher and caps the stage height — so the Music Room hosts them full-bleed. */
-let currentInstrument=null,instrumentLaunchToken=0;
+let currentInstrument=null,instrumentLaunchToken=0,calibRun=null;
 function renderMusic(){
   var g=document.getElementById("musicGrid");
   g.innerHTML=musicIds().map(function(id){
@@ -3536,50 +3581,66 @@ function closeInstrument(quiet){
   returnAfterContent("music");
 }
 
-/* Slice 38's tap test — the gate the plan says must be measured before the
-   trainer is built. calibrate() was headless with no caller; this is the caller. */
-let calibRun=null;
+function cancelCalibration(){
+  if(calibRun){calibRun.cancel();calibRun=null;}
+}
+document.addEventListener("visibilitychange",function(){if(document.hidden)cancelCalibration();});
 function renderCalib(){
-  var body=document.getElementById("calibBody");
-  var known=null;
-  try{
-    var raw=localStorage.getItem("sq.music.latency");
-    if(raw)known=JSON.parse(raw);
-  }catch(e){}
-  body.innerHTML=
-    '<div class="tipline">Tap the pad on every click — 8 clicks. 每一聲都敲一下——共 8 聲。</div>'+
-    '<button class="btn" id="calibStart" style="min-height:56px;width:100%">▶️ Start tap test 開始測試</button>'+
-    '<div id="calibPad" class="hidden" style="height:120px;border-radius:14px;border:3px solid var(--line);'+
-      'background:var(--panel);display:flex;align-items:center;justify-content:center;font-family:Fredoka;'+
-      'font-weight:700;font-size:18px;touch-action:none;user-select:none;margin-top:8px">TAP 敲這裡</div>'+
-    '<div class="tipline" id="calibOut">'+
-      (known&&typeof known.offsetMs==="number"
-        ? 'This tablet: <b>'+known.offsetMs+' ms</b> · 這台平板：'+known.offsetMs+' 毫秒'
-        : 'Not measured yet · 還沒測過')+
-    '</div>';
-  var out=document.getElementById("calibOut"), pad=document.getElementById("calibPad");
-  document.getElementById("calibStart").onpointerdown=function(){
-    import("./js/game-services/music.js").then(function(mod){
-      pad.classList.remove("hidden");
-      out.textContent="Listening… 聽聲音…";
-      if(calibRun)calibRun.cancel();
-      calibRun=mod.calibrate({onResult:function(res){
-        pad.classList.add("hidden");
-        calibRun=null;
-        if(res.offsetMs===null){ out.textContent="Could not measure — try again 量不到，再試一次"; return; }
-        var slow=res.offsetMs>250;
-        out.innerHTML='<b>'+res.offsetMs+' ms</b> '+
-          (!res.confident ? '· spread too wide, run it again 差距太大，再測一次'
-           : slow ? '· too slow for rhythm games on this tablet 這台平板太慢，不適合節奏遊戲'
-           : '· good 很好') +
-          ' · 延遲 '+res.offsetMs+' 毫秒';
-      }});
-      pad.onpointerdown=function(){ if(calibRun)calibRun.onTap(); };
-    }).catch(function(err){
-      console.error("calibration failed to load",err);
-      out.textContent="Could not load the tap test 無法載入測試";
-    });
-  };
+  cancelCalibration();
+  var details=document.getElementById("musicTiming"),start=document.getElementById("calibStart");
+  var pad=document.getElementById("calibPad"),out=document.getElementById("calibOut");
+  var cancel=document.getElementById("calibCancel"),reset=document.getElementById("calibReset"),count=document.getElementById("calibCount");
+  start.disabled=true;reset.disabled=true;
+  details.ontoggle=function(){if(!details.open)cancelCalibration();};
+  Promise.all([import("./js/game-services/music.js"),import("./js/game-services/audio.js")]).then(function(modules){
+    var mod=modules[0],audio=modules[1].getSharedAudio();
+    function idle(){
+      start.disabled=false;reset.disabled=false;
+      start.textContent=(!sound||audio.muted)?"Turn on sound & start 開啟聲音並開始":"Start 8-click check 開始 8 聲測試";
+      out.textContent=mod.calibrationExists()?"Saved timing is active on this tablet. 已套用這台平板儲存的設定。":"Automatic timing is active. 目前使用自動設定。";
+    }
+    idle();
+    reset.onclick=function(){mod.clearCalibration();idle();};
+    start.onclick=function(){
+      audio.setMuted(false);
+      if(!sound)toggleMute();
+      start.disabled=true;reset.disabled=true;
+      cancel.classList.remove("hidden");pad.classList.remove("hidden");count.classList.remove("hidden");
+      out.textContent="Listen for the first click, then tap along. 等第一聲響起，再跟著每聲點一下。";
+      pad.focus();
+      var clicks=0,taps=0,handle=null,finished=false;
+      function progress(){count.textContent="Clicks 聲音 "+clicks+" / 8 · Taps 點擊 "+taps+" / 8";}
+      function finish(message){
+        if(finished)return;
+        finished=true;calibRun=null;
+        var restoreFocus=document.activeElement===pad||document.activeElement===cancel;
+        cancel.classList.add("hidden");pad.classList.add("hidden");count.classList.add("hidden");
+        idle();out.textContent=message;
+        if(restoreFocus)(details.open?start:details.querySelector("summary")).focus();
+      }
+      calibRun={cancel:function(){if(handle)handle.cancel();finish("Stopped. Start again when you’re ready. 已停止，準備好再開始。");}};
+      cancel.onclick=cancelCalibration;
+      function tap(){if(handle&&!finished)handle.onTap();}
+      pad.onpointerdown=function(e){if(e.isPrimary===false)return;e.preventDefault();tap();};
+      pad.onkeydown=function(e){if(e.key!=="Enter"&&e.key!==" ")return;e.preventDefault();e.stopPropagation();if(!e.repeat)tap();};
+      pad.onclick=function(e){if(e.detail===0)tap();};
+      progress();
+      handle=mod.calibrate({
+        onBeat:function(beat){clicks=beat;progress();},
+        onTap:function(n){taps=n;progress();},
+        onResult:function(result){
+          if(result.confident){finish("Timing saved. Drum Pads practice will use it on this tablet. 已儲存，這台平板的打鼓練習會使用新設定。");return;}
+          var messages={
+            muted:"Sound is off. Turn on sound and try again. 聲音已關閉，請開啟聲音再試一次。",
+            audio_unavailable:"Sound could not start. Try again or reopen the app. 無法播放聲音，請重試或重新開啟程式。",
+            interrupted:"Sound was interrupted. Start again when you’re ready. 聲音中斷了，準備好再開始。",
+            not_enough_taps:"Try once more: one tap with each of the 8 clicks. 再試一次：每一聲點一下，共 8 聲。"
+          };
+          finish(messages[result.reason]||"Let’s try again with steadier taps. 跟著聲音穩穩地點，再試一次。");
+        }
+      });
+    };
+  }).catch(function(){out.textContent="Sound tools could not load. Reopen Music Room to try again. 無法載入聲音工具，請重新開啟音樂室再試一次。";});
 }
 
 async function openBook(id){
@@ -4278,7 +4339,7 @@ async function setupRealtime(){
     if(store.persistLocal)store.persistLocal();
     if(row.kid_id!==hubKid)return;
     if(hubTab==="day")renderMyDay();
-    else if(hubTab==="games")renderHub();
+    else if(hubTab==="games"||hubTab==="practice")renderHub();
     refreshLockUI();
   });
   store.onHelpClaims(async row=>{
@@ -4398,7 +4459,7 @@ function contentEntryAccess(entry,options){
   const value=entry.id.slice(entry.id.indexOf(":")+1),meta=entry.meta||{};
   if(entry.kind==="game")return gameLaunchAccess(hubKid,value,options);
   const category=entry.kind==="section"?value:({activity:"acts",guide:"learn",lesson:"learn",learning:"learn",music:"music",book:"books",reward:"rewards"})[entry.kind];
-  if(category&&!(entry.kind==="section"&&value==="games")&&tabLocked(category))return {ok:false,reason:"category_locked"};
+  if(category&&!(entry.kind==="section"&&(value==="games"||value==="practice"))&&tabLocked(category))return {ok:false,reason:"category_locked"};
   if(entry.kind==="book"&&!canOpenBook(BOOK_SHELF.find(function(book){return book.id===value;})))return {ok:false,reason:"missing_content"};
   if(entry.kind==="lesson"&&KIDS[hubKid].age<meta.minAge)return {ok:false,reason:"age_restricted"};
   if((entry.kind==="lesson"||entry.kind==="learning")&&!window.SQLearningRuntime)return {ok:false,reason:"missing_module"};
@@ -4410,7 +4471,7 @@ function contentEntryAccess(entry,options){
   return {ok:true};
 }
 function openContentSection(value){
-  if(!["quests","day","rewards","games","acts","learn","books","music"].includes(value))return {ok:false,reason:"content_not_found"};
+  if(!["quests","day","rewards","games","practice","acts","learn","books","music"].includes(value))return {ok:false,reason:"content_not_found"};
   if(worldVisible()||contentReturnSurface==="world")hubReturnSurface="world";
   contentReturnSurface=null;
   hubTab=value;showOnly("hub");saveAppPlace("hub");renderHub();
@@ -4467,7 +4528,8 @@ if(window.SQContentRegistry){
         {id:"section:quests",kind:"section",zone:"plaza",icon:"🧭",title:["Quests","任務"],blurb:["What fits right now?","現在適合做什麼？"],available:true,capabilities:["quests"]},
         {id:"section:day",kind:"section",zone:"plaza",icon:"☀️",title:["Today","今天"],blurb:["Daily routines","今天的日常"],available:true,capabilities:["routine"]},
         {id:"section:rewards",kind:"section",zone:"plaza",icon:"🏆",title:["Rewards","獎勵"],blurb:["Points and progress","點數與紀錄"],available:true,capabilities:["rewards"]},
-        {id:"section:games",kind:"section",zone:"arcade",icon:"🎮",title:["Games","遊戲"],blurb:["Arcade and Brain Gym","遊戲與頭腦體操"],available:!tabLocked("games"),capabilities:["play"]},
+        {id:"section:games",kind:"section",zone:"arcade",icon:"🎮",title:["Games","遊戲"],blurb:["Arcade, cooking and 3D worlds","遊戲、料理與3D世界"],available:!tabLocked("games"),capabilities:["play"]},
+        {id:"section:practice",kind:"section",zone:"learn",icon:"🧠",title:["Practice","練習"],blurb:["Brain Gym, typing and words","頭腦體操、打字與單字"],available:true,capabilities:["learning","brain"]},
         {id:"section:acts",kind:"section",zone:"explore",icon:"🛠️",title:["Activities","活動"],blurb:["Hands-on missions","動手做任務"],available:!tabLocked("acts"),capabilities:["creative","play"]},
         {id:"section:learn",kind:"section",zone:"learn",icon:"🧠",title:["Learning","學習"],blurb:["Math, language and knowledge","數學、語言與知識"],available:!tabLocked("learn"),capabilities:["learning"]},
         {id:"section:books",kind:"section",zone:"library",icon:"📚",title:["Books","書籍"],blurb:["Reading world","閱讀世界"],available:!tabLocked("books"),capabilities:["books","learning"]},
@@ -4672,7 +4734,7 @@ if(window.SQAgentTools){
     activityContext:function(){return window.SQActivityRouter?SQActivityRouter.context():null;},
     openAssistant:function(){return openSummerCompanion();},
     openActivity:function(area){
-      if(!["games","acts","learn","books","music"].includes(area)||tabLocked(area))return {ok:false,reason:"not_available"};
+      if(!["games","practice","acts","learn","books","music"].includes(area)||tabLocked(area))return {ok:false,reason:"not_available"};
       if(window.SQActivityRouter)return SQActivityRouter.open({type:"tab",tab:area});
       hubTab=area;saveAppPlace("hub");renderHub();return {ok:true};
     },

@@ -1000,8 +1000,11 @@
         hard:{items:10,clock:true, pad:"choice",gen:function(r){return clockItem(r,5,pick(r,[20,40,45,90]));}}
       }
     },
+    /* Retired by Papa 2026-10-03: never picked for a trio and gone from the
+       Practice grid. Kept (not deleted) because the host tests drive their fake
+       scene through this entry and its generators. */
     change:{
-      id:"change", icon:"💱", skill:"money",
+      id:"change", icon:"💱", skill:"money", retired:true,
       title:["Change Maker","找零錢"], blurb:["Count the change","算找零"],
       tiers:{
         tot :{items:8, clock:false,pad:"choice",gen:changeTot},

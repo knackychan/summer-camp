@@ -1,0 +1,124 @@
+{
+  "browser": "138.0.7204.183",
+  "target": "source",
+  "scope": "Desktop Chromium engine, emulated Android 8 identity and 2GB memory, real WebGL rendering; no Android 8 hardware attached.",
+  "cases": [
+    {
+      "mode": "webgl2",
+      "offline": false,
+      "games": [
+        {
+          "id": "solar",
+          "kind": "webgl2",
+          "draws": 390,
+          "width": 820,
+          "cssWidth": 820.171875,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        },
+        {
+          "id": "monster-truck",
+          "kind": "webgl2",
+          "draws": 91,
+          "width": 816,
+          "cssWidth": 816.171875,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        }
+      ],
+      "pageErrors": [],
+      "legacyDownloaded": false,
+      "ok": true
+    },
+    {
+      "mode": "webgl1",
+      "offline": false,
+      "games": [
+        {
+          "id": "solar",
+          "kind": "webgl",
+          "draws": 234,
+          "width": 820,
+          "cssWidth": 820.171875,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        },
+        {
+          "id": "monster-truck",
+          "kind": "webgl",
+          "draws": 120,
+          "width": 816,
+          "cssWidth": 816.171875,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        }
+      ],
+      "pageErrors": [],
+      "legacyDownloaded": true,
+      "ok": true
+    },
+    {
+      "mode": "none",
+      "offline": false,
+      "games": [
+        {
+          "id": "solar",
+          "kind": "webgl",
+          "draws": 312,
+          "width": 820,
+          "cssWidth": 820.171875,
+          "antialias": false,
+          "glError": 0,
+          "retryRecovered": true
+        },
+        {
+          "id": "monster-truck",
+          "kind": "webgl",
+          "draws": 97,
+          "width": 816,
+          "cssWidth": 816.171875,
+          "antialias": false,
+          "glError": 0,
+          "retryRecovered": true
+        }
+      ],
+      "pageErrors": [],
+      "legacyDownloaded": true,
+      "ok": true
+    },
+    {
+      "mode": "webgl1",
+      "offline": true,
+      "games": [
+        {
+          "id": "solar",
+          "kind": "webgl",
+          "draws": 234,
+          "width": 820,
+          "cssWidth": 820.171875,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        },
+        {
+          "id": "monster-truck",
+          "kind": "webgl",
+          "draws": 179,
+          "width": 816,
+          "cssWidth": 816.171875,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        }
+      ],
+      "pageErrors": [],
+      "legacyDownloaded": true,
+      "ok": true
+    }
+  ],
+  "ok": true
+}

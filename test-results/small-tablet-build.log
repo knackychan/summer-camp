@@ -1,0 +1,7 @@
+
+> build:android-web
+> node scripts/build-android-web.mjs
+
+Version 5.9.3
+Summer Quest modules built to D:\WORK\10 - AI\SUMMER CAMP\summer-quest\dist\mobile
+Summer Quest web bundle: 478 files, 6e45e12a1e9e6f80911e6b2084c4ece051a5035047934e9ec25373c6debc1d28

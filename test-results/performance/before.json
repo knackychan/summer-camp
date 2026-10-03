@@ -1,0 +1,602 @@
+[
+  {
+    "throttled": false,
+    "homeSeconds": 0.275,
+    "worldSeconds": 0.7,
+    "startup": {
+      "requests": 57,
+      "bytes": 722127,
+      "longTasks": [
+        58
+      ]
+    },
+    "world": {
+      "kidId": "lucien",
+      "running": true,
+      "frames": 3,
+      "contextLost": false,
+      "error": null,
+      "selected": null,
+      "minigame": null,
+      "camera": {
+        "position": [
+          0,
+          5.067878707749138,
+          15.597326867240517
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "distance": 16.4,
+        "minDistance": 8.2,
+        "maxDistance": 16.4,
+        "rotation": [
+          0.15643446504023087,
+          0,
+          0,
+          0.9876883405951378
+        ],
+        "zoom": 1
+      },
+      "landmarks": [
+        {
+          "id": "section:quests",
+          "x": 513,
+          "y": 420,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "game:kitchen",
+          "x": 633,
+          "y": 438,
+          "visible": true,
+          "available": false
+        },
+        {
+          "id": "section:games",
+          "x": 756,
+          "y": 237,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "game:monster-truck",
+          "x": 816,
+          "y": 294,
+          "visible": true,
+          "available": false
+        },
+        {
+          "id": "game:paint",
+          "x": 756,
+          "y": 180,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "section:acts",
+          "x": 714,
+          "y": 591,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "section:learn",
+          "x": 297,
+          "y": 189,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "game:solar",
+          "x": 231,
+          "y": 231,
+          "visible": true,
+          "available": false
+        },
+        {
+          "id": "section:books",
+          "x": 288,
+          "y": 567,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "book:space",
+          "x": 336,
+          "y": 543,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "section:music",
+          "x": null,
+          "y": null,
+          "visible": false,
+          "available": true
+        },
+        {
+          "id": "section:day",
+          "x": null,
+          "y": null,
+          "visible": false,
+          "available": true
+        },
+        {
+          "id": "section:rewards",
+          "x": null,
+          "y": null,
+          "visible": false,
+          "available": true
+        }
+      ],
+      "toys": [
+        {
+          "id": "toy:apple-tree",
+          "x": 441,
+          "y": 372,
+          "visible": true
+        },
+        {
+          "id": "toy:chicken",
+          "x": 447,
+          "y": 510,
+          "visible": true
+        },
+        {
+          "id": "toy:windmill",
+          "x": 579,
+          "y": 363,
+          "visible": true
+        },
+        {
+          "id": "toy:cat",
+          "x": 582,
+          "y": 516,
+          "visible": true
+        },
+        {
+          "id": "toy:robot",
+          "x": 690,
+          "y": 234,
+          "visible": true
+        },
+        {
+          "id": "toy:gumball",
+          "x": 738,
+          "y": 318,
+          "visible": true
+        },
+        {
+          "id": "toy:lava-vent",
+          "x": 720,
+          "y": 645,
+          "visible": true
+        },
+        {
+          "id": "toy:rock-buddy",
+          "x": 678,
+          "y": 567,
+          "visible": true
+        },
+        {
+          "id": "toy:snowman",
+          "x": 369,
+          "y": 156,
+          "visible": true
+        },
+        {
+          "id": "toy:penguin",
+          "x": 321,
+          "y": 261,
+          "visible": true
+        },
+        {
+          "id": "toy:owl",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:bush",
+          "x": 222,
+          "y": 516,
+          "visible": true
+        },
+        {
+          "id": "toy:mushroom",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:crystal-c",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:crystal-e",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:crystal-g",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:frog",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:echo-stone",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:sunflower",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:cow",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:beehive",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:molehill",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:crab",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:palm",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:whale",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:fish",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:boat",
+          "x": 360,
+          "y": 375,
+          "visible": true
+        }
+      ]
+    }
+  },
+  {
+    "throttled": true,
+    "homeSeconds": 9.857,
+    "worldSeconds": 4.689,
+    "startup": {
+      "requests": 56,
+      "bytes": 721424,
+      "longTasks": [
+        191
+      ]
+    },
+    "world": {
+      "kidId": "lucien",
+      "running": true,
+      "frames": 2,
+      "contextLost": false,
+      "error": null,
+      "selected": null,
+      "minigame": null,
+      "camera": {
+        "position": [
+          0,
+          5.067878707749138,
+          15.597326867240517
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "distance": 16.4,
+        "minDistance": 8.2,
+        "maxDistance": 16.4,
+        "rotation": [
+          0.15643446504023087,
+          0,
+          0,
+          0.9876883405951378
+        ],
+        "zoom": 1
+      },
+      "landmarks": [
+        {
+          "id": "section:quests",
+          "x": 513,
+          "y": 420,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "game:kitchen",
+          "x": 633,
+          "y": 438,
+          "visible": true,
+          "available": false
+        },
+        {
+          "id": "section:games",
+          "x": 756,
+          "y": 237,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "game:monster-truck",
+          "x": 816,
+          "y": 294,
+          "visible": true,
+          "available": false
+        },
+        {
+          "id": "game:paint",
+          "x": 756,
+          "y": 180,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "section:acts",
+          "x": 714,
+          "y": 591,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "section:learn",
+          "x": 297,
+          "y": 189,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "game:solar",
+          "x": 231,
+          "y": 231,
+          "visible": true,
+          "available": false
+        },
+        {
+          "id": "section:books",
+          "x": 288,
+          "y": 567,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "book:space",
+          "x": 336,
+          "y": 543,
+          "visible": true,
+          "available": true
+        },
+        {
+          "id": "section:music",
+          "x": null,
+          "y": null,
+          "visible": false,
+          "available": true
+        },
+        {
+          "id": "section:day",
+          "x": null,
+          "y": null,
+          "visible": false,
+          "available": true
+        },
+        {
+          "id": "section:rewards",
+          "x": null,
+          "y": null,
+          "visible": false,
+          "available": true
+        }
+      ],
+      "toys": [
+        {
+          "id": "toy:apple-tree",
+          "x": 441,
+          "y": 372,
+          "visible": true
+        },
+        {
+          "id": "toy:chicken",
+          "x": 447,
+          "y": 510,
+          "visible": true
+        },
+        {
+          "id": "toy:windmill",
+          "x": 579,
+          "y": 363,
+          "visible": true
+        },
+        {
+          "id": "toy:cat",
+          "x": 582,
+          "y": 516,
+          "visible": true
+        },
+        {
+          "id": "toy:robot",
+          "x": 690,
+          "y": 234,
+          "visible": true
+        },
+        {
+          "id": "toy:gumball",
+          "x": 738,
+          "y": 318,
+          "visible": true
+        },
+        {
+          "id": "toy:lava-vent",
+          "x": 720,
+          "y": 645,
+          "visible": true
+        },
+        {
+          "id": "toy:rock-buddy",
+          "x": 678,
+          "y": 567,
+          "visible": true
+        },
+        {
+          "id": "toy:snowman",
+          "x": 369,
+          "y": 156,
+          "visible": true
+        },
+        {
+          "id": "toy:penguin",
+          "x": 321,
+          "y": 261,
+          "visible": true
+        },
+        {
+          "id": "toy:owl",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:bush",
+          "x": 222,
+          "y": 516,
+          "visible": true
+        },
+        {
+          "id": "toy:mushroom",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:crystal-c",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:crystal-e",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:crystal-g",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:frog",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:echo-stone",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:sunflower",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:cow",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:beehive",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:molehill",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:crab",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:palm",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:whale",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:fish",
+          "x": null,
+          "y": null,
+          "visible": false
+        },
+        {
+          "id": "toy:boat",
+          "x": 360,
+          "y": 375,
+          "visible": true
+        }
+      ]
+    }
+  }
+]

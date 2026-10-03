@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v126-kitchen-tablet";
+const CACHE_NAME = "summer-quest-v135-kitchen-guide";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -170,7 +170,6 @@ const APP_SHELL = [
   "./js/games/solar-sim.js",
   "./js/games/solar-quiz.js",
   "./js/games/solar.js",
-  "./js/games/dig.js",
   "./js/games/kitchen.js",
   "./js/games/kitchen/model.js",
   "./js/games/kitchen/ingredients.js",
@@ -181,6 +180,10 @@ const APP_SHELL = [
   "./js/games/kitchen/strings.js",
   "./js/games/kitchen/progression.js",
   "./js/games/kitchen/prep-plan.js",
+  "./js/games/kitchen/sprites.js",
+  "./js/games/kitchen/scene.js",
+  "./js/games/kitchen/audio.js",
+  "./js/games/kitchen/customers.js",
   "./js/games/monster-truck.js",
   "./js/games/hunt.js",
   "./js/games/home.js",

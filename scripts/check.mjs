@@ -372,7 +372,8 @@ try {
       }
     }
     if (g.tiers.tot && g.tiers.tot.clock !== false) fail("BRAIN", `${id}: tot tier must be unclocked`);
-    if (!new RegExp(`\\b${id}\\s*:\\s*\\{[^}]*brain\\s*:\\s*true`).test(indexHtml)) {
+    /* Retired exercises (Papa, 2026-10-03) keep their data but leave the app. */
+    if (!g.retired && !new RegExp(`\\b${id}\\s*:\\s*\\{[^}]*brain\\s*:\\s*true`).test(indexHtml)) {
       fail("BRAIN", `${id}: missing a LEVELS entry with brain:true in index.html`);
     }
   }
@@ -597,7 +598,7 @@ if (!/!brainGate\(savedKid\)\.open/.test(indexHtml)) {
 }
 // the gate hides the rest of the row; hiding the brain games too would deadlock the kid
 const gateStyles = indexHtml + (indexHtml.includes('href="css/app.css"') ? readFileSync(new URL("css/app.css", root), "utf8") : "");
-if (!gateStyles.includes(".brainlocked #gameRow .gamecard:not(.brain)")) {
+if (!gateStyles.includes(".brainlocked #practiceRow .gamecard:not(.brain)")) {
   fail("brain gate", "brain games are not exempt from the locked-row rule");
 }
 if (!/先做頭腦體操/.test(indexHtml)) {

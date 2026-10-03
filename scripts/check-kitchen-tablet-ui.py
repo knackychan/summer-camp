@@ -1,4 +1,6 @@
-"""Kitchen Quest at 1280 x 600 with Chromium touch input.
+"""SUPERSEDED for the Kitchen UI by check-kitchen-counter-ui.py (v0.8 counter, 2026-10-03);
+this harness drives the retired v0.7 tab layout.
+Kitchen Quest at 1280 x 600 with Chromium touch input.
 
 Uses the recovery harness's isolated save and server. Gameplay uses touchscreen
 taps without auto-scroll, and CDP touch gestures exercise native scrolling.

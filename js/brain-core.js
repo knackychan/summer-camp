@@ -32,7 +32,7 @@
     const data=cat(override), tier=tierForIn(kid,settings,data);
     return Object.keys(data.GAMES).filter(function(id){
       const g=data.GAMES[id];
-      return !!(g&&g.tiers&&g.tiers[tier]);
+      return !!(g&&!g.retired&&g.tiers&&g.tiers[tier]);
     });
   }
 

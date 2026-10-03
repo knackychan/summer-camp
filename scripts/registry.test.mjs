@@ -113,7 +113,7 @@ test("manifest bestKeys are unique where present", function () {
 
 test("brain games are flagged and carry no arcade bestKey", function () {
   var brain = MANIFEST.filter(function (e) { return e.brain; });
-  assert.equal(brain.length, 17);
+  assert.equal(brain.length, 16);  // Change Maker retired 2026-10-03
   for (var i = 0; i < brain.length; i++) {
     assert.equal(brain[i].bestKey, null, brain[i].id + ": brain games score via brain_*");
   }

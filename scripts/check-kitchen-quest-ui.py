@@ -1,4 +1,6 @@
-"""Kitchen Quest browser check: real UI, isolated save, normal-time cooking.
+"""SUPERSEDED for the Kitchen UI by check-kitchen-counter-ui.py (v0.8 counter, 2026-10-03);
+this harness drives the retired v0.7 tab layout.
+Kitchen Quest browser check: real UI, isolated save, normal-time cooking.
 
 Requires Python Playwright. --target web checks dist/android-web after a build.
 No game model state is changed by the test; snapshots are read-only assertions.

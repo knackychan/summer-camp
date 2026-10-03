@@ -9,8 +9,8 @@ window.SQManifest = MANIFEST;
 /* sync.js cannot import us, so hand it the predicate (design.md §5). */
 if (window.SyncStore && window.SyncStore.setBestStatCheck) {
   window.SyncStore.setBestStatCheck(function (key) {
-    /* City Drive is retired; keep previously earned scores available to sync. */
-    return key === "city" || SQGames.isBest(key) || MANIFEST.some(function (e) { return e.bestKey === key; });
+    /* City Drive and Dig Site are retired; keep previously earned scores available to sync. */
+    return key === "city" || key === "dig" || SQGames.isBest(key) || MANIFEST.some(function (e) { return e.bestKey === key; });
   });
 }
 

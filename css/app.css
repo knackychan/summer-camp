@@ -738,9 +738,9 @@ body.music-mode{overflow:hidden}
 .pinkey{font-size:1.3em;min-height:52px}
 .shake{animation:pinshake .4s}
 @keyframes pinshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
-.gameslocked #gameRow .gamecard{opacity:.58;filter:saturate(.7)}
+.gameslocked .gamerow .gamecard{opacity:.58;filter:saturate(.7)}
 /* Brain gate: the trio stays tappable; the rest stays visible and opens the nudge. */
-.brainlocked #gameRow .gamecard:not(.brain){opacity:.58;filter:saturate(.7)}
+.brainlocked #practiceRow .gamecard:not(.brain){opacity:.58;filter:saturate(.7)}
 .brainnudge{display:block;width:100%;text-align:left;font:inherit;color:inherit;border:none;cursor:pointer;
   background:linear-gradient(135deg,#3D5E8C,#5B7FB8)}
 .brainnudge:active{transform:translateY(2px)}
@@ -760,3 +760,34 @@ body.music-mode{overflow:hidden}
 .knowledge-help{margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow-wrap:anywhere}
 .knowledge-help__clue p{margin:8px 0;color:var(--ink)}.knowledge-help__clue .zhs{display:block;margin-top:6px}
 .knowledge-help .btn{min-height:44px;white-space:normal}.is-help-focus{outline:3px solid var(--accent,var(--gold));outline-offset:3px}
+
+/* Games own the whole screen (games-practice-split design.md): no game-switcher
+   rail. One slim row holds Back · the game's settings · its stats · sound, and
+   the stage takes everything else. Practice keeps the rail (rules above). */
+body.game-mode.game-fs{overflow:hidden}
+body.game-mode.game-fs .wrap{height:100vh;height:100dvh;max-width:none;width:100%;
+  padding:max(6px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+body.game-fs #game:not(.hidden){display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;
+  grid-template-rows:auto minmax(0,1fr) auto;gap:6px 8px;height:100%;max-height:100%;min-height:0}
+body.game-fs #game>.topbar{display:contents}
+body.game-fs #levelChips,body.game-fs #game>.topbar .spacer{display:none}
+body.game-fs #game #back{grid-column:1;grid-row:1;align-self:center;width:auto;min-height:44px;margin:0;padding:8px 14px;white-space:nowrap}
+body.game-fs #game>.setbar{grid-column:2;grid-row:1;align-self:center;min-width:0;margin:0;padding:4px 8px}
+body.game-fs #game>.hud{grid-column:3;grid-row:1;align-self:center;margin:0;flex-wrap:nowrap;gap:6px}
+body.game-fs #game>.hud .stat{padding:4px 10px}
+body.game-fs #game #mute{grid-column:4;grid-row:1;align-self:center;width:auto;min-height:44px;margin:0 54px 0 0}
+body.game-fs #game>.stage{grid-column:1/-1;grid-row:2;height:100%;min-height:0;margin:0;border-radius:14px}
+body.game-fs #game>.stage.arena{height:100%;min-height:0}
+body.game-fs #game>.kbwrap{grid-column:1/-1;grid-row:3;margin:0;min-height:0}
+body.game-mode.game-fs .summer-companion{top:max(6px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));bottom:auto;left:auto;
+  width:44px;height:44px;border-radius:14px;animation:none}
+body.game-mode.game-fs .summer-companion__face{font-size:26px}
+body.game-mode.game-fs .summer-companion::before{display:none}
+@media(max-width:599px){
+  body.game-fs #game:not(.hidden){grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto auto minmax(0,1fr) auto}
+  body.game-fs #game #mute{grid-column:3}
+  body.game-fs #game>.setbar{grid-column:1/-1;grid-row:2}
+  body.game-fs #game>.hud{grid-column:1/-1;grid-row:3;flex-wrap:wrap}
+  body.game-fs #game>.stage{grid-row:4}
+  body.game-fs #game>.kbwrap{grid-row:5}
+}
