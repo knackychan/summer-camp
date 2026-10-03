@@ -2692,7 +2692,8 @@ function renderHub(){
   const trio=brainTrio(hubKid), bdone=brainToday(hubKid);
   const gameTiles=l=>{
     const m=gameMeta(l);
-    return `<button class="gamecard ${l===k.level?'fav':''}${m.brain?' brain':''}" data-l="${l}"
+    const inTrio=trio.indexOf(l)>=0;
+    return `<button class="gamecard ${l===k.level?'fav':''}${m.brain?' brain':''}${inTrio?(bdone[l]?' intrio trio-done':' intrio'):''}" data-l="${l}"
       style="${l===k.level?`border-color:${k.raw}`:''}">
       <span class="gi">${m.icon}</span><b>${m.title}</b>
       <small>${m.blurb}<span class="zhs">${m.tz}</span></small>${l===k.level?'<span class="favtag">MY GAME</span>':''}${
