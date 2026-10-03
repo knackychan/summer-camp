@@ -46,7 +46,7 @@ test("an unchanged world size preserves the rendered globe and backing buffers",
     mount: { clientWidth: 1024, clientHeight: 768 },
     canvas: { width: 171, height: 128, style: {} }, globeCanvas: {},
     globeImage: {}, globeData: null, scale: 6, bw: 171, bh: 128, cx: 85, cy: 66,
-    dirty: false, ctx: {}, minigame: null,
+    dirty: false, ctx: {}, minigame: null, window: { devicePixelRatio: 1 },
     gctx: { createImageData: (w, h) => { allocations++; return { data: new Uint8ClampedArray(w * h * 4) }; } }
   };
   vm.createContext(context);
@@ -90,10 +90,10 @@ test("reduced-motion worlds skip unchanged frames and still redraw interactions"
   let draws = 0, scheduled = 0;
   const context = {
     active: true, last: 0, clock: 0, dirty: false, reduced: true, particles: [], confetti: [],
-    minigame: null, moon: {}, surface: [], cloudOffset: 0, cloudDrawn: 0, MAP_W: 256,
+    minigame: null, focus: null, moon: {}, surface: [], cloudOffset: 0, cloudDrawn: 0, MAP_W: 256,
     frames: 0, raf: 0, clamp: (v, min, max) => Math.max(min, Math.min(max, v)),
     requestAnimationFrame: () => ++scheduled, updateMotion() {},
-    renderGlobe() { context.dirty = false; }, layout() {}, stepReactions() {}, ambient() {}, stepMinigame() {},
+    renderGlobe() { context.dirty = false; }, layout() {}, stepReactions() {}, stepFocus() {}, ambient() {}, stepMinigame() {},
     composite() { draws++; }, pause() { assert.fail("frame should not fail"); }, console, options: {}
   };
   vm.createContext(context);
@@ -101,8 +101,8 @@ test("reduced-motion worlds skip unchanged frames and still redraw interactions"
   context.frame(16);
   assert.equal(draws, 0);
   assert.equal(scheduled, 1, "input can still wake the next animation frame");
-  for (const changes of [{ dirty: true }, { particles: [{}] }, { confetti: [{}] }, { surface: [{ react: {} }] }, { moon: { react: {} } }, { minigame: {} }, { reduced: false }]) {
-    Object.assign(context, { dirty: false, particles: [], confetti: [], surface: [], moon: {}, minigame: null, reduced: true }, changes);
+  for (const changes of [{ dirty: true }, { particles: [{}] }, { confetti: [{}] }, { surface: [{ react: {} }] }, { moon: { react: {} } }, { minigame: {} }, { focus: {} }, { reduced: false }]) {
+    Object.assign(context, { dirty: false, particles: [], confetti: [], surface: [], moon: {}, minigame: null, focus: null, reduced: true }, changes);
     const before = draws;
     context.frame(context.last + 16);
     assert.equal(draws, before + 1, JSON.stringify(changes));

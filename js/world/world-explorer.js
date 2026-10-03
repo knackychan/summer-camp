@@ -67,7 +67,7 @@ function easeOut(t){return 1-Math.pow(1-t,3);}
 function createWorld(options){
   var mount=options.mount, registry=options.registry;
   var selectionEl=options.selectionEl,titleEl=options.titleEl,subtitleEl=options.subtitleEl,iconEl=options.iconEl,goEl=options.goEl;
-  var goText=goEl.textContent;
+  var goText=goEl.textContent,shell=selectionEl.parentElement;
   var reduced=!!(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   var coarse=!!(window.matchMedia&&window.matchMedia("(pointer: coarse)").matches);
   var heroIndex=nearestIndex((options.kid&&(options.kid.raw||options.kid.color))||"#4EA8FF");
@@ -86,7 +86,8 @@ function createWorld(options){
   var starField=[];
   for(var s=0;s<150;s++)starField.push({x:rand(),y:rand(),layer:rand()<0.35?1:0,twinkle:rand()<0.3,color:rand()<0.2?C.yellow:C.white});
 
-  var scale=4,bw=1,bh=1,cx=0,cy=0,globeImage=null,globeData=null;
+  var scale=4,dpr=1,bw=1,bh=1,cx=0,cy=0,globeImage=null,globeData=null;
+  var focus=null,dim=0,cardKey="",silhouettes=new WeakMap();
   var rotation=DEFAULT_VIEW.slice(),zoom=1,dirty=true,viewDirty=false;
   var cloudOffset=0,cloudDrawn=0,starShift=[0,0],clock=0,tick=0;
   var pointers=new Map(),gesture=null,pinch=null,momentum=null,easing=null,lastInput=performance.now();
@@ -120,12 +121,87 @@ function createWorld(options){
   }
   function showSelection(item,quiet){
     selected=item||null;
-    if(!item){selectionEl.classList.add("hidden");return;}
+    if(!item){focus=null;dockCard();selectionEl.classList.add("hidden");dirty=true;return;}
     var entry=cardFor(item);
     iconEl.textContent=entry.icon||"✨";titleEl.textContent=(entry.title&&entry.title[0])||item.id;
     subtitleEl.textContent=selectionSubtitle(entry);
     goEl.textContent=goText;goEl.disabled=entry.available===false;selectionEl.classList.remove("hidden");
+    selectionEl.classList.toggle("is-locked",goEl.disabled);
     if(!quiet)haptic("tap");
+  }
+
+  /* ---------- focus mode (design 2026-10-03-planet-focus-readability D3–D8) ---------- */
+  /* The chosen thing pops to 2× over a dimmed scene and the card hangs off it. Any press
+     outside the card and the sprite leaves focus; a second tap on the sprite goes. */
+  function enterFocus(item,quiet){
+    showSelection(item,quiet);
+    focus={item:item,t:reduced?1:0};cardKey="";dirty=true;
+    shell.classList.add("is-focus");selectionEl.classList.add("is-anchored");
+    placeCard();
+  }
+  function dockCard(){
+    shell.classList.remove("is-focus");selectionEl.classList.remove("is-anchored","is-above");
+    selectionEl.style.left=selectionEl.style.top="";cardKey="";
+  }
+  function focusScale(){
+    var t=focus.t;
+    if(t>=1)return 2;
+    var c=1.70158,u=t-1;
+    return 1+(1+(c+1)*u*u*u+c*u*u);
+  }
+  function focusBox(){
+    var item=focus.item,img=atlas[item.sprite].normal[0],k=focusScale(),pose=reactionPose(item);
+    var w=img.width*k,h=img.height*k;
+    var top=item.kind==="moon"?item.y-h/2:item.y-(img.height-2)*k+pose.dy*k;
+    return {left:item.x-w/2,top:top,w:w,h:h,k:k};
+  }
+  function inFocus(x,y){
+    var box=focusBox(),pad=coarse?Math.max(0,(44/scale-Math.min(box.w,box.h))/2):0;
+    return x>=box.left-pad&&x<=box.left+box.w+pad&&y>=box.top-pad&&y<=box.top+box.h+pad;
+  }
+  function silhouette(img){
+    var white=silhouettes.get(img);
+    if(white)return white;
+    white=document.createElement("canvas");white.width=img.width;white.height=img.height;
+    var c=white.getContext("2d");c.drawImage(img,0,0);c.globalCompositeOperation="source-in";c.fillStyle=HEX[C.white];c.fillRect(0,0,white.width,white.height);
+    silhouettes.set(img,white);return white;
+  }
+  function drawFocus(){
+    var item=focus.item,box=focusBox(),frames=atlas[item.sprite][item.kind==="place"&&item.entry&&item.entry.available===false?"sleep":"normal"];
+    var idle=item.kind==="place"&&frames.length>1&&!reduced?(Math.floor(clock*2)%2):0;
+    var img=frames[Math.min(frames.length-1,idle)];
+    var x=Math.round(box.left),y=Math.round(box.top),w=Math.round(box.w),h=Math.round(box.h);
+    if(item.kind!=="moon"){
+      var half=Math.max(3,Math.round(img.width*0.4*box.k));
+      ctx.globalAlpha=0.5;ctx.fillStyle=HEX[C.outline];
+      ctx.fillRect(item.x-half,item.y+1,half*2,1);ctx.fillRect(item.x-half+2,item.y+2,half*2-4,1);
+      ctx.globalAlpha=1;
+    }
+    var white=silhouette(img);
+    ctx.drawImage(white,x-1,y,w,h);ctx.drawImage(white,x+1,y,w,h);ctx.drawImage(white,x,y-1,w,h);ctx.drawImage(white,x,y+1,w,h);
+    ctx.drawImage(img,x,y,w,h);
+  }
+  /* The card hangs below the sprite, tail pointing up, or above it when the bottom is too close.
+     The mount fills the shell from its top-left, so buffer × scale is shell coordinates. */
+  function placeCard(){
+    if(!focus||minigame)return;
+    var box=focusBox(),cw=selectionEl.offsetWidth,ch=selectionEl.offsetHeight,W=shell.clientWidth,H=shell.clientHeight;
+    var gap=16,margin=12,ax=(box.left+box.w/2)*scale;
+    var below=(box.top+box.h)*scale+gap,above=box.top*scale-gap-ch;
+    var up=below+ch>H-margin&&above>=margin;
+    var top=up?above:Math.max(margin,Math.min(below,H-margin-ch));
+    var left=clamp(ax-cw/2,margin,Math.max(margin,W-margin-cw)),tail=clamp(ax-left,24,cw-24);
+    var key=Math.round(left)+","+Math.round(top)+","+Math.round(tail)+","+up;
+    if(key===cardKey)return;
+    cardKey=key;
+    selectionEl.style.left=Math.round(left)+"px";selectionEl.style.top=Math.round(top)+"px";
+    selectionEl.style.setProperty("--tail-x",Math.round(tail)+"px");selectionEl.classList.toggle("is-above",up);
+  }
+  function stepFocus(dt){
+    var target=focus&&!minigame?1:0;
+    dim=reduced?target:dim+(target-dim)*Math.min(1,dt*12);
+    if(Math.abs(dim-target)<0.01)dim=target;
+    if(focus){if(focus.t<1)focus.t=Math.min(1,focus.t+dt/0.24);placeCard();}
   }
   function refreshRegistry(){
     // One catalog snapshot: get(id) otherwise rebuilds every entry for each landmark.
@@ -154,11 +230,6 @@ function createWorld(options){
     var target=clamp(zoom,MIN_ZOOM,MAX_ZOOM);
     if(Math.abs(target-zoom)<0.0005){if(zoom!==target){zoom=target;dirty=true;}return;}
     zoom+=(target-zoom)*Math.min(1,dt*12);dirty=true;viewDirty=true;
-  }
-  function rubber(raw){
-    if(raw>MAX_ZOOM)return MAX_ZOOM+(raw-MAX_ZOOM)*0.15;
-    if(raw<MIN_ZOOM)return MIN_ZOOM-(MIN_ZOOM-raw)*0.15;
-    return raw;
   }
   function uprightError(){
     var north=quatRotate(rotation,[0,1,0]);
@@ -293,7 +364,7 @@ function createWorld(options){
   function tap(clientX,clientY){
     var hit=hitAt(clientX,clientY);
     if(hit.kind==="place"){
-      showSelection(hit);react(hit,"hop");focusOn(hit);
+      enterFocus(hit);react(hit,"hop");focusOn(hit);
       hero.react=null;react(hero,"hop");hero.flip=hit.x<hero.x;playSound("pop");
       return;
     }
@@ -301,7 +372,7 @@ function createWorld(options){
       var toy=hit.toy;
       react(hit,toy.react);playSound(toy.sound);haptic("tap");
       if(toy.fx)spawn(toy.fx,hit.x,hit.kind==="moon"?hit.y:hit.top+2,toy.count);
-      if(toy.game)showSelection(hit,true);
+      if(toy.game){enterFocus(hit,true);if(hit.kind==="toy")focusOn(hit);}
       return;
     }
     if(hit.kind==="hero"){react(hero,"hop");spawn("heart",hero.x,hero.top,2);playSound("whee");haptic("tap");return;}
@@ -319,7 +390,7 @@ function createWorld(options){
     gameEnv.floor=cardTop>canvasTop?Math.min(bh-4,Math.floor((cardTop-canvasTop)/scale)-4):bh-28;
   }
   function startMinigame(kind){
-    updateGameEnv();
+    focus=null;dockCard();updateGameEnv();
     minigame=createMinigame(kind,gameEnv);momentum=null;easing=null;
     goEl.textContent="Done 完成";goEl.disabled=false;hudTimer=0;updateGameHud();
     haptic("tap");
@@ -357,17 +428,27 @@ function createWorld(options){
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
     try{canvas.setPointerCapture(e.pointerId);}catch(error){}
     if(minigame){var b=toBuffer(e.clientX,e.clientY);minigame.pointer("down",b.x,b.y);return;}
-    if(pointers.size===1){gesture={x0:e.clientX,y0:e.clientY,t0:performance.now(),lastX:e.clientX,lastY:e.clientY,lastT:performance.now(),vx:0,vy:0,multi:false};momentum=null;easing=null;}
-    else if(pointers.size===2&&gesture){gesture.multi=true;pinch={distance:pinchDistance(),zoom:zoom};}
+    if(pointers.size===1){
+      gesture={x0:e.clientX,y0:e.clientY,t0:performance.now(),lastX:e.clientX,lastY:e.clientY,lastT:performance.now(),vx:0,vy:0,multi:false};momentum=null;
+      if(focus){
+        var at=toBuffer(e.clientX,e.clientY);
+        // A press away from the focused sprite leaves focus and is spent: it never also taps what it landed on.
+        if(inFocus(at.x,at.y))gesture.focusTap=true;else{gesture.spent=true;showSelection(null);}
+      }
+      if(!gesture.focusTap)easing=null;
+    }
+    else if(pointers.size===2&&gesture){gesture.multi=true;pinch={distance:pinchDistance(),zoom:zoom};if(focus)showSelection(null);}
   }
   function onPointerMove(e){
     if(!pointers.has(e.pointerId))return;
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(minigame){var b=toBuffer(e.clientX,e.clientY);minigame.pointer("move",b.x,b.y);return;}
     if(!gesture)return;
-    if(pointers.size>=2&&pinch){zoom=rubber(pinch.zoom*pinchDistance()/pinch.distance);dirty=true;viewDirty=true;return;}
+    // Hard clamp, no rubber band: the zoom under the fingers is the zoom that stays on release (D2).
+    if(pointers.size>=2&&pinch){zoom=clamp(pinch.zoom*pinchDistance()/pinch.distance,MIN_ZOOM,MAX_ZOOM);dirty=true;viewDirty=true;return;}
     if(gesture.multi)return;
     var now=performance.now(),dx=(e.clientX-gesture.lastX)/scale,dy=(e.clientY-gesture.lastY)/scale,dt=Math.max(1,now-gesture.lastT)/1000;
+    if(focus&&Math.hypot(e.clientX-gesture.x0,e.clientY-gesture.y0)>11){gesture.focusTap=false;easing=null;showSelection(null);}
     rotateBy(dx,dy);
     gesture.vx=gesture.vx*0.6+(dx/dt)*0.4;gesture.vy=gesture.vy*0.6+(dy/dt)*0.4;
     gesture.lastX=e.clientX;gesture.lastY=e.clientY;gesture.lastT=now;
@@ -381,7 +462,11 @@ function createWorld(options){
     if(pointers.size)return;
     var g=gesture;gesture=null;pinch=null;
     var moved=Math.hypot(e.clientX-g.x0,e.clientY-g.y0),elapsed=performance.now()-g.t0;
-    if(e.type==="pointerup"&&!g.multi&&moved<=11&&elapsed<700){tap(e.clientX,e.clientY);return;}
+    if(e.type==="pointerup"&&!g.multi&&moved<=11&&elapsed<700){
+      if(g.spent)return;
+      if(g.focusTap&&focus){go();return;}
+      tap(e.clientX,e.clientY);return;
+    }
     if(!g.multi&&performance.now()-g.lastT<80&&Math.abs(g.vx)+Math.abs(g.vy)>20)momentum={x:g.vx,y:g.vy};
   }
   function onWheel(e){
@@ -409,7 +494,7 @@ function createWorld(options){
   canvas.addEventListener("contextlost",onContextLost);canvas.addEventListener("contextrestored",onContextRestored);
   globeCanvas.addEventListener("contextlost",onContextLost);globeCanvas.addEventListener("contextrestored",onContextRestored);
 
-  goEl.onclick=async function(){
+  async function go(){
     if(minigame){endMinigame();return;}
     if(!selected)return;
     if(selected.kind!=="place"){startMinigame(selected.toy.game);return;}
@@ -418,28 +503,33 @@ function createWorld(options){
     var id=selected.id;goEl.disabled=true;
     try{
       var result=await registry.open(selected.id,{origin:"world"});
-      if(result&&result.ok){haptic("success");}
+      // Focus is a moment, not saved state: coming back shows the plain planet (D7).
+      if(result&&result.ok){haptic("success");if(!destroyed&&selected&&selected.id===id)showSelection(null);}
       else if(selected&&selected.id===id)subtitleEl.textContent="Could not open. Try again or choose Classic. · 暫時無法開啟，請重試或選經典介面。";
     }catch(error){
       console.error("World content launch failed",error);
       if(selected&&selected.id===id)subtitleEl.textContent="Could not open. Try again or choose Classic. · 暫時無法開啟，請重試或選經典介面。";
     }finally{if(!destroyed&&selected&&selected.kind==="place"){var entry=registry.get(selected.id);goEl.disabled=!entry||entry.available===false;}}
-  };
+  }
+  goEl.onclick=go;
 
   /* ---------- rendering ---------- */
   function resize(){
     var w=Math.max(1,mount.clientWidth),h=Math.max(1,mount.clientHeight);
     var previousScale=scale;
-    scale=Math.min(w,h)<600?4.5:6;
+    /* 6 CSS px per art px (4.5 on small screens), rounded to whole device pixels so every art
+       pixel is equally wide on 1.5×/2.25×/2.625× tablets instead of beating 6,7,6,7 (D1). */
+    dpr=window.devicePixelRatio||1;
+    scale=Math.max(1,Math.round((Math.min(w,h)<600?4.5:6)*dpr))/dpr;
     bw=Math.ceil(w/scale);bh=Math.ceil(h/scale);
-    if(globeImage&&canvas.width===bw&&canvas.height===bh&&previousScale===scale){if(minigame)updateGameEnv();return;}
+    if(globeImage&&canvas.width===bw&&canvas.height===bh&&previousScale===scale){if(minigame)updateGameEnv();cardKey="";return;}
     if(canvas.width!==bw||canvas.height!==bh){
       canvas.width=globeCanvas.width=bw;canvas.height=globeCanvas.height=bh;
       globeImage=gctx.createImageData(bw,bh);globeData=new Uint32Array(globeImage.data.buffer);
     }
     canvas.style.width=(bw*scale)+"px";canvas.style.height=(bh*scale)+"px";
     cx=Math.floor(bw/2);cy=Math.floor(bh*0.52);
-    ctx.imageSmoothingEnabled=false;dirty=true;
+    ctx.imageSmoothingEnabled=false;dirty=true;cardKey="";
     if(minigame)updateGameEnv();
   }
   function renderGlobe(){
@@ -487,6 +577,8 @@ function createWorld(options){
     surface.filter(function(item){return item.z>0.08;}).sort(function(a,b){return a.z-b.z;}).forEach(drawItem);
     if(moon.z>0)drawItem(moon);
     drawParticles();
+    if(dim>0&&!minigame){ctx.globalAlpha=0.68*dim;ctx.fillStyle=HEX[C.space];ctx.fillRect(0,0,bw,bh);ctx.globalAlpha=1;}
+    if(focus&&!minigame)drawFocus();
     if(minigame){ctx.globalAlpha=0.62;ctx.fillStyle=HEX[C.space];ctx.fillRect(0,0,bw,bh);ctx.globalAlpha=1;minigame.draw(ctx);}
     drawConfetti();
   }
@@ -496,13 +588,13 @@ function createWorld(options){
     var dt=clamp((now-last)/1000,0,0.05);last=now;clock+=dt;
     try{
       if(!minigame)updateMotion(dt);
-      if(reduced&&!dirty&&!particles.length&&!confetti.length&&!minigame&&!moon.react&&!surface.some(function(item){return item.react;})){
+      if(reduced&&!dirty&&!focus&&!particles.length&&!confetti.length&&!minigame&&!moon.react&&!surface.some(function(item){return item.react;})){
         raf=requestAnimationFrame(frame);return;
       }
       if(!reduced)cloudOffset+=dt*0.012;
       if(Math.abs(cloudOffset-cloudDrawn)>Math.PI*2/MAP_W)dirty=true;
       if(dirty)renderGlobe();
-      layout();stepReactions(dt);ambient(dt);stepMinigame(dt);
+      layout();stepReactions(dt);stepFocus(dt);ambient(dt);stepMinigame(dt);
       composite();frames++;
       raf=requestAnimationFrame(frame);
     }catch(error){
@@ -532,8 +624,9 @@ function createWorld(options){
     goEl.onclick=null;goEl.textContent=goText;minigame=null;mount.innerHTML="";
   }
   function back(){
-    if(!minigame)return false;
-    endMinigame();return true;
+    if(minigame){endMinigame();return true;}
+    if(focus){showSelection(null);return true;}
+    return false;
   }
   function onVisibility(){if(document.hidden)pause();else if(!mount.closest(".hidden"))resume();}
   function onNativePause(){nativePaused=true;pause();}
@@ -547,7 +640,8 @@ function createWorld(options){
   refreshRegistry();resize();
   /* A successful startup includes a rendered frame, not just a mounted canvas. */
   try{renderGlobe();layout();composite();frames++;}catch(error){destroy();throw error;}
-  showSelection(saved&&places.find(function(mark){return mark.id===saved.selected&&mark.entry;})||null,true);
+  // The world opens unfocused; the saved selection is no longer restored (D7).
+  showSelection(null,true);
   resume();
 
   function snapshot(){

@@ -126,7 +126,8 @@ test("a mini-game hides the planet's ambient sparks: they stay under the dim ove
   const body = (name) => { const at = source.indexOf(`function ${name}(`); return source.slice(at, source.indexOf("\n  function ", at + 1)); };
   const log = [];
   const context = {
-    log, HEX: [], C: { space: 0 }, bw: 10, bh: 10, moon: { z: 0 }, surface: [], globeCanvas: {},
+    log, HEX: [], C: { space: 0 }, bw: 10, bh: 10, moon: { z: 0 }, surface: [], globeCanvas: {}, dim: 1, focus: { item: {} },
+    drawFocus: () => log.push("focus"),
     minigame: { draw: () => log.push("game") },
     ctx: { set fillStyle(v) {}, set globalAlpha(v) {}, drawImage: () => log.push("globe"), fillRect: () => log.push("fill") },
     drawStars: () => log.push("stars"), drawItem: () => {}, drawParticles: () => log.push("sparks"), drawConfetti: () => log.push("confetti")
@@ -137,6 +138,7 @@ test("a mini-game hides the planet's ambient sparks: they stay under the dim ove
   assert.equal(log.filter((x) => x === "sparks").length, 1, "sparks drawn once");
   assert.ok(log.indexOf("sparks") < log.lastIndexOf("fill"), "sparks sit under the dim overlay");
   assert.ok(log.indexOf("game") < log.indexOf("confetti"), "the win confetti still lands on top of the game");
+  assert.ok(!log.includes("focus"), "a mini-game replaces focus mode, never stacks on it");
   assert.match(body("ambient"), /if\(reduced\|\|minigame\)return;/, "no new landmark sparks during a game");
 });
 
@@ -219,6 +221,51 @@ test("on narrow screens the selection card stops short of the floating companion
 
 test("planet art is drawn 50% bigger than the original 4/3-pixel scale (design amendment 2026-10-03)", () => {
   const source = read("js/world/world-explorer.js");
-  assert.ok(source.includes("scale=Math.min(w,h)<600?4.5:6;"), "6 screen px per art px, 4.5 on small screens");
+  const line = source.match(/scale=Math\.max\(1,Math\.round\(\(Math\.min\(w,h\)<600\?4\.5:6\)\*dpr\)\)\/dpr;/);
+  assert.ok(line, "6 screen px per art px, 4.5 on small screens, rounded to whole device pixels");
+  for (const dpr of [1, 1.333, 1.5, 2, 2.25, 2.625, 3]) for (const short of [480, 800]) {
+    const context = { dpr, w: short * 1.6, h: short, scale: 0 };
+    vm.createContext(context); vm.runInContext(line[0], context);
+    const device = context.scale * dpr;
+    assert.ok(Math.abs(device - Math.round(device)) < 1e-9, `whole device px at dpr ${dpr}`);
+    assert.ok(Math.abs(context.scale - (short < 600 ? 4.5 : 6)) <= 0.5 / dpr + 1e-9, `CSS size kept at dpr ${dpr}`);
+  }
   assert.ok(source.includes("Math.min(bw,bh)*0.45*zoom"), "planet grows with the pixels so sprites do not crowd it");
+});
+
+test("a released pinch keeps its zoom: clamped while the fingers are down, no rubber band to spring back", () => {
+  const source = read("js/world/world-explorer.js");
+  assert.match(source, /zoom=clamp\(pinch\.zoom\*pinchDistance\(\)\/pinch\.distance,MIN_ZOOM,MAX_ZOOM\)/);
+  assert.doesNotMatch(source, /rubber\(/);
+});
+
+test("focus mode hangs the card off the chosen sprite, below it, or above when the bottom is too close", () => {
+  const source = read("js/world/world-explorer.js");
+  const body = (name) => { const at = source.indexOf(`function ${name}(`); return source.slice(at, source.indexOf("\n  function ", at + 1)); };
+  const props = {}, classes = new Set();
+  const selectionEl = { offsetWidth: 300, offsetHeight: 100, style: { setProperty: (k, v) => { props[k] = v; } },
+    classList: { toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)) } };
+  const context = {
+    selectionEl, shell: { clientWidth: 1280, clientHeight: 800 }, scale: 6, minigame: null, cardKey: "",
+    atlas: { house: { normal: [{ width: 14, height: 16 }] } }, reactionPose: () => ({ dy: 0 }), clamp: (v, a, b) => Math.max(a, Math.min(b, v)),
+    focus: { item: { kind: "place", sprite: "house", x: 107, y: 70 }, t: 1 }
+  };
+  vm.createContext(context);
+  for (const name of ["focusScale", "focusBox", "placeCard"]) vm.runInContext(body(name), context);
+  vm.runInContext("placeCard()", context);
+  // 2× sprite: 28 wide centred on x=107 (642 CSS px); bottom at 70+4 → 444 CSS px, card 16 px under it.
+  assert.equal(selectionEl.style.left, "492px"); assert.equal(selectionEl.style.top, "460px");
+  assert.equal(props["--tail-x"], "150px"); assert.equal(classes.has("is-above"), false);
+  context.focus.item.y = 118; context.cardKey = "";
+  vm.runInContext("placeCard()", context);
+  assert.equal(classes.has("is-above"), true, "no room below: card flips above the sprite");
+  assert.ok(parseInt(selectionEl.style.top) + 100 <= (118 - 28) * 6, "card sits above the 2× sprite top");
+});
+
+test("a press outside the focused sprite leaves focus without also tapping; Back leaves focus too", () => {
+  const source = read("js/world/world-explorer.js");
+  assert.match(source, /if\(inFocus\(at\.x,at\.y\)\)gesture\.focusTap=true;else\{gesture\.spent=true;showSelection\(null\);\}/);
+  assert.match(source, /if\(g\.spent\)return;\s*if\(g\.focusTap&&focus\)\{go\(\);return;\}/);
+  assert.match(source, /if\(focus\)\{showSelection\(null\);return true;\}/);
+  assert.match(read("index.html"), /Tap GO or tap it again · 點「出發」或再點一次/);
 });
