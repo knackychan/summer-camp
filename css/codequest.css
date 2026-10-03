@@ -200,15 +200,21 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
   .cq-scene{min-height:0}
 }
 @media (min-width:901px) and (orientation:landscape) and (max-height:700px){
-  .cq{padding:6px;gap:6px}.cq-play{gap:6px}
-  .cq-dock{padding:6px;gap:6px 8px}
-  .cq-strip{min-height:84px;padding:11px 6px 6px 12px}
-  .cq .cq-card,.cq .cq-bracket-head,.cq-slot{width:62px;height:68px}
-  .cq-card .cq-ico,.cq-bracket-head .cq-ico{width:26px;height:26px}
-  .cq .cq-cmd{width:78px;min-height:58px}
-  .cq-library{min-height:60px}
-  .cq-runbox{width:136px}.cq .cq-run{min-height:80px;font-size:18px}
-  .cq .cq-goal{font-size:14px;min-height:44px}
+  /* 1280×600 class: the dock gives up height so the room keeps ≥ 55 % of the screen. */
+  .cq{padding:4px;gap:4px}.cq-play{gap:4px}
+  .cq-dock{padding:5px;gap:5px 8px}
+  .cq-program{padding:2px}
+  .cq-strip{min-height:72px;padding:10px 4px 4px 11px}
+  .cq .cq-card,.cq .cq-bracket-head,.cq-slot{width:56px;height:60px;font-size:11px}
+  .cq-card .cq-ico,.cq-bracket-head .cq-ico{width:24px;height:24px}
+  .cq-card .cq-spr,.cq-bracket-head .cq-spr{width:28px;height:28px}
+  .cq-mini{width:32px;height:36px}
+  .cq .cq-cmd{width:76px;min-height:50px;padding:3px 4px;font-size:11px}
+  .cq-cmd .cq-ico{width:22px;height:22px}.cq-cmd .cq-spr{width:24px;height:24px}
+  .cq-library{min-height:52px;padding:1px 2px 3px}
+  .cq-runbox{width:132px;gap:6px}.cq .cq-run{min-height:72px;font-size:18px}
+  .cq-hud{top:8px;left:8px;right:8px}
+  .cq .cq-goal{font-size:14px}
 }
 @media (max-width:900px){
   .cq-dock{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
