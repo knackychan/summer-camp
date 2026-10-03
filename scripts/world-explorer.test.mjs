@@ -175,3 +175,35 @@ test("switching kids reuses the planet map, clouds and each hero colour's sprite
   assert.equal(a.map, b.map); assert.equal(a.atlas, c.atlas); assert.notEqual(a.atlas, b.atlas);
   assert.match(source, /var art=worldArt\(heroIndex\),map=art\.map,clouds=art\.clouds,atlas=art\.atlas;/);
 });
+
+test("a lost 2D canvas is reported and fully redrawn, crisp, when the browser restores it", () => {
+  const source = read("js/world/world-explorer.js");
+  const at = source.indexOf("/* ---------- canvas context loss ---------- */");
+  assert.ok(at > 0, "context-loss block exists");
+  const block = source.slice(at, source.indexOf("\n\n", at));
+  const on = { addEventListener() {} }, canvas = { id: "main", ...on }, globeCanvas = { id: "globe", ...on }, rebuilt = [];
+  const context = {
+    canvas, globeCanvas, heroIndex: 21, dirty: false, atlas: "old", gameEnv: { atlas: "old" },
+    ctx: { imageSmoothingEnabled: true }, atlases: new Map([[21, "old"]]),
+    worldArt: (hero) => { rebuilt.push(hero); return { atlas: "new" }; }
+  };
+  vm.createContext(context);
+  vm.runInContext(block, context);
+  context.onContextLost({ target: canvas });
+  context.onContextLost({ target: globeCanvas });
+  assert.equal(vm.runInContext("lostCanvases.size", context), 2, "both losses reported");
+  context.onContextRestored({ target: globeCanvas });
+  assert.equal(context.dirty, true, "globe repainted");
+  assert.deepEqual(rebuilt, [], "atlas rebuilt only for the main canvas");
+  context.onContextRestored({ target: canvas });
+  assert.equal(vm.runInContext("lostCanvases.size", context), 0);
+  assert.equal(context.ctx.imageSmoothingEnabled, false, "pixels stay crisp after restore");
+  assert.equal(context.atlases.has(21), false, "stale cached atlas dropped");
+  assert.equal(context.atlas, "new"); assert.equal(context.gameEnv.atlas, "new");
+  assert.match(source, /contextLost:lostCanvases\.size>0/);
+  for (const name of ["contextlost", "contextrestored"]) {
+    assert.ok(source.includes(`globeCanvas.addEventListener("${name}"`), `globe canvas listens for ${name}`);
+    assert.equal(source.split(`anvas.addEventListener("${name}"`).length, 3, `main and globe canvas both listen for ${name}`);
+    assert.ok(source.includes(`globeCanvas.removeEventListener("${name}"`), `${name} listener removed on destroy`);
+  }
+});

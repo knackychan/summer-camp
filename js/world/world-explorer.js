@@ -391,6 +391,20 @@ function createWorld(options){
   canvas.addEventListener("pointercancel",onPointerUp);
   canvas.addEventListener("wheel",onWheel,{passive:false});
 
+  /* ---------- canvas context loss ---------- */
+  /* Android Chrome can drop a 2D canvas backing store; on restore the context comes back blank,
+     with smoothing on. Sprite canvases may be blank too, so the hero-colour atlas is rebuilt. */
+  var lostCanvases=new Set();
+  function onContextLost(e){lostCanvases.add(e.target);}
+  function onContextRestored(e){
+    lostCanvases.delete(e.target);dirty=true;
+    if(e.target!==canvas)return;
+    ctx.imageSmoothingEnabled=false;
+    atlases.delete(heroIndex);atlas=gameEnv.atlas=worldArt(heroIndex).atlas;
+  }
+  canvas.addEventListener("contextlost",onContextLost);canvas.addEventListener("contextrestored",onContextRestored);
+  globeCanvas.addEventListener("contextlost",onContextLost);globeCanvas.addEventListener("contextrestored",onContextRestored);
+
   goEl.onclick=async function(){
     if(minigame){endMinigame();return;}
     if(!selected)return;
@@ -504,6 +518,8 @@ function createWorld(options){
     if(resizeObserver)resizeObserver.disconnect();else window.removeEventListener("resize",resize);
     canvas.removeEventListener("pointerdown",onPointerDown);canvas.removeEventListener("pointermove",onPointerMove);
     canvas.removeEventListener("pointerup",onPointerUp);canvas.removeEventListener("pointercancel",onPointerUp);canvas.removeEventListener("wheel",onWheel);
+    canvas.removeEventListener("contextlost",onContextLost);canvas.removeEventListener("contextrestored",onContextRestored);
+    globeCanvas.removeEventListener("contextlost",onContextLost);globeCanvas.removeEventListener("contextrestored",onContextRestored);
     goEl.onclick=null;goEl.textContent=goText;minigame=null;mount.innerHTML="";
   }
   function back(){
@@ -534,7 +550,7 @@ function createWorld(options){
       if(x<rect.left||y<rect.top||x>rect.right||y>rect.bottom)return null;
       return hitAt(x,y)===item?{x:x,y:y}:null;
     }
-    return {running:active,frames:frames,contextLost:false,error:lastError,selected:selected&&selected.id,minigame:minigame&&minigame.kind,
+    return {running:active,frames:frames,contextLost:lostCanvases.size>0,error:lastError,selected:selected&&selected.id,minigame:minigame&&minigame.kind,
       camera:{position:quatRotate(quatConj(rotation),[0,0,distance]),target:[0,0,0],distance:distance,minDistance:BASE_DISTANCE/MAX_ZOOM,maxDistance:BASE_DISTANCE/MIN_ZOOM,rotation:rotation.slice(),zoom:zoom},
       landmarks:places.map(function(mark){var at=point(mark);return {id:mark.id,x:at&&at.x,y:at&&at.y,visible:!!at,available:!!mark.entry&&mark.entry.available!==false};}),
       toys:toys.map(function(toy){var at=point(toy);return {id:toy.id,x:at&&at.x,y:at&&at.y,visible:!!at};})};
