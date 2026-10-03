@@ -53,7 +53,7 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
 /* v0.2 — angled dungeon-crawler presentation. The logical map is intentionally
    hidden; the canvas projects it as a side/three-quarter pixel diorama. */
 .cq-scene{aspect-ratio:16/9;min-height:0;flex:none;background:radial-gradient(circle at 50% 28%,#3b355f 0,#17153b 56%,#0b0a1f 100%);box-shadow:inset 0 0 0 2px #54506d,5px 5px 0 #0b0a1f}
-.cq-scene canvas{object-fit:contain;background:#0b0a1f}
+.cq-scene canvas{object-fit:fill;background:#14132a}
 .cq-world{justify-content:flex-start}
 .cq-stats{top:8px;left:8px;right:8px}.cq-stats>span{border-color:#8f88a7;background:#0b0a1fe6;box-shadow:2px 2px 0 #0b0a1f}
 .cq-quest{border-color:#6b4528;background:linear-gradient(#f6e2a4,#e3b770);position:relative;overflow:hidden}

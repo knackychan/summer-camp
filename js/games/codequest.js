@@ -7,7 +7,7 @@ import { runAlchemyCode, recipeToAlchemyCode, recipeById } from './codequest/alc
 import { normalizeProfile, recordLevelComplete, recordEndlessClear, modeFor, equipmentDescriptor, equipmentFor, weaponFor, combatStatsFor, brewLab, equip, claimLoot, consumePotion, scoreForProfile, setActiveDungeonRun, finishDungeonRun, abandonDungeonRun, saveRuneLibrary, loadRuneLibrary, saveBehaviorSource, setBehaviorEnabled, behaviorFor, CODEQUEST_EQUIPMENT, RECIPES, ALCHEMY_STEPS } from './codequest/progression.js';
 import { createDungeonRun, normalizeDungeonRun, roomMeta, roomGraph, nextRooms, enterDungeonRoom, resolveRunChoice, completeCombatRoom, failDungeonRun, expeditionLevel, dungeonRunSummary, hazardInfo, sigilsRequired, saveRunLoadout, activateRunLoadout } from './codequest/run.js';
 import { spriteURL } from './codequest/pixel-art.js';
-import { drawDungeonWorld, WIDTH, HEIGHT } from './codequest/dungeon-view.js';
+import { drawRoom } from './codequest/room-view.js';
 import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, ALCHEMY_LABELS, MESSAGES, pairHTML } from './codequest/strings.js';
 
 let S = null;
@@ -343,7 +343,10 @@ function render() {
 function draw(time = performance.now()) {
   if (!S) return;
   if (S.heroStateUntil && time > S.heroStateUntil) S.heroState = 'idle';
-  drawDungeonWorld(S.canvas, S.model.snapshot(), { time: time / 1000, now: time, kidColor: kidColor(), heroState: S.heroState, heroMotion: S.heroMotion, enemyMotions: S.enemyMotions, fx: S.fx, paused: S.paused || !!S.dialog });
+  const box = S.canvas.getBoundingClientRect();
+  if (!box.width || !box.height) return;
+  const view = drawRoom(S.canvas, S.model.snapshot(), { time: time / 1000, now: time, cssWidth: box.width, cssHeight: box.height, dpr: window.devicePixelRatio || 1, reducedMotion: S.reducedMotion, kidColor: kidColor(), heroState: S.heroState, heroMotion: S.heroMotion, enemyMotions: S.enemyMotions, fx: S.fx, paused: S.paused || !!S.dialog });
+  if (view) S.anchors = view.anchors;
 }
 
 function addAction(op) {
@@ -1050,7 +1053,7 @@ function init(ctx) {
   const root = document.createElement('div'); root.className = 'cq';
   root.innerHTML = '<link rel="stylesheet" href="' + new URL('../../css/codequest.css', import.meta.url).href + '">' +
     (barReady() ? '' : '<header class="cq-top"><div class="cq-brand"><h2>' + label(UI.title) + '</h2><span>' + label(UI.subtitle) + '</span></div><div class="cq-profile"></div>' + topActionsHTML() + '</header>') +
-    '<main class="cq-main"><section class="cq-world"><div class="cq-scene"><canvas width="' + WIDTH + '" height="' + HEIGHT + '" role="img" aria-label="2.5D pixel dungeon RPG room 2.5D 像素地下城房間"></canvas><div class="cq-stats"></div></div><aside class="cq-quest"></aside></section><section class="cq-editor"><nav class="cq-tabs" aria-label="Programming views 程式編輯模式">' + button('tab:main', label(UI.program)) + button('tab:rune', label(UI.rune)) + button('tab:code', label(UI.code)) + '</nav><div class="cq-editor-body"></div></section></main>' +
+    '<main class="cq-main"><section class="cq-world"><div class="cq-scene"><canvas width="480" height="270" role="img" aria-label="Pixel dungeon room 像素地下城房間"></canvas><div class="cq-stats"></div></div><aside class="cq-quest"></aside></section><section class="cq-editor"><nav class="cq-tabs" aria-label="Programming views 程式編輯模式">' + button('tab:main', label(UI.program)) + button('tab:rune', label(UI.rune)) + button('tab:code', label(UI.code)) + '</nav><div class="cq-editor-body"></div></section></main>' +
     '<footer class="cq-bottom"><div class="cq-edit-actions">' + button('undo', label(UI.undo)) + button('clear', label(UI.clear)) + button('reset', label(UI.reset)) + '</div><div class="cq-run-actions">' + button('step', label(UI.step)) + button('run', label(UI.run), 'class="cq-primary"') + '</div></footer><p class="cq-notice" role="status" aria-live="polite"></p><dialog class="cq-dialog"></dialog>';
 
   const saved = ctx.settings.codequest && ctx.settings.codequest.profiles && ctx.settings.codequest.profiles[ctx.kid];
@@ -1095,6 +1098,9 @@ function init(ctx) {
   window.addEventListener('pointermove', dragMove, true); window.addEventListener('pointerup', dragEnd, true); window.addEventListener('pointercancel', dragEnd, true);
   document.addEventListener('keydown', keydown, true); document.addEventListener('visibilitychange', visibility);
   window.addEventListener('blur', pause); window.addEventListener('summerquest:native-pause', pause);
+  S.reducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  // The canvas backing store follows its box in device pixels (room-view fits the room at a whole-number scale).
+  if (typeof ResizeObserver === 'function') { S.resize = new ResizeObserver(() => { if (S) draw(); }); S.resize.observe(root.querySelector('.cq-scene')); }
   S.scheduler.frame(time => { if (!S || S.paused || S.dialog) return; if (time - S.lastDraw > 48) { S.lastDraw = time; draw(time); } });
   render(); notify(MESSAGES.intro);
   if (S.run) openDialog('expedition', expeditionHTML());
@@ -1103,6 +1109,7 @@ function init(ctx) {
 function stop() {
   if (!S) return;
   S.scheduler.cancelAll();
+  if (S.resize) S.resize.disconnect();
   window.removeEventListener('pointermove', dragMove, true); window.removeEventListener('pointerup', dragEnd, true); window.removeEventListener('pointercancel', dragEnd, true);
   document.removeEventListener('keydown', keydown, true); document.removeEventListener('visibilitychange', visibility);
   window.removeEventListener('blur', pause); window.removeEventListener('summerquest:native-pause', pause);

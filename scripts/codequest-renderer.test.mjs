@@ -176,3 +176,27 @@ for (const id of CODEQUEST_SPRITE_IDS) {
   for (const row of spriteBitmap(id)) for (const ch of row) assert.ok(ch === '.' || ch === 'A' || ch === 'a' || ch in chars, id + ' uses unknown colour key ' + ch);
 }
 console.log('Code Quest redesign atlas: palette + world sprite sizes verified.');
+
+// ---- Redesign slice 02: high 3/4 top-down room renderer ----
+import { drawRoom, fitRoom, TILE } from '../js/games/codequest/room-view.js';
+for (const dpr of [1, 1.5, 2, 2.625]) {
+  const fit = fitRoom({ width: 9, height: 7 }, 1240, 500, dpr);
+  assert.equal(fit.device, Math.round(fit.device), 'whole device pixels per art pixel at dpr ' + dpr);
+  assert.ok(Math.abs(fit.scale * dpr - fit.device) < 1e-9);
+  assert.ok(fit.scale * TILE >= 48, '9×7 room tiles must be ≥ 48 CSS px at dpr ' + dpr + ' (got ' + fit.scale * TILE + ')');
+}
+assert.ok(fitRoom({ width: 9, height: 7 }, 100, 80, 1).device >= 1, 'tiny boxes still draw at 1×');
+class RoomContext extends FakeContext { setTransform(){ this.ops++; } drawImage(){ this.ops++; } }
+class RoomCanvas extends FakeCanvas { constructor(){ super(); this.ctx = new RoomContext(); } }
+const roomCases = [new CodeQuestModel(LEVELS.find(l => l.id === 'q01')), new CodeQuestModel(LEVELS.find(l => l.id === 'q20')), new CodeQuestModel(LEVELS.find(l => l.id === 'q42')), runBossModel];
+for (const m of roomCases) {
+  const rc = new RoomCanvas();
+  const out = drawRoom(rc, m.snapshot(), { time: 1.5, now: 1500, cssWidth: 900, cssHeight: 420, dpr: 2, kidColor: '#ff5fa2', heroState: 'walk', fx: { kind: 'attack', target: 'hero', start: 1400, duration: 300 }, preview: [{ x: 1, y: 1, dir: 'E' }, { x: 2, y: 1, dir: 'E' }] });
+  assert.equal(rc.width, 1800); assert.equal(rc.height, 840);
+  assert.ok(rc.ctx.ops > 200, m.level.id + ' room should paint a substantial scene');
+  assert.ok(out.anchors.has('hero'), m.level.id + ' hero anchor');
+  const h = out.anchors.get('hero');
+  assert.ok(h.x > 0 && h.x < 900 && h.y > 0 && h.y < 420, m.level.id + ' hero anchor inside the canvas box');
+}
+drawRoom(new RoomCanvas(), signal.snapshot(), { time: 2, now: 2000, cssWidth: 640, cssHeight: 360, dpr: 1, reducedMotion: true, paused: true });
+console.log('Code Quest redesign room view: fit + projection verified.');
