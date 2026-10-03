@@ -18,3 +18,11 @@
 - New assertion: every authored, Tower and expedition map is ≤ 9 wide × 7 tall with ≥ 3 walkable rows.
 - New assertion: the frozen per-level snapshot is unchanged.
 - `node scripts/check.mjs` green.
+
+## Amendment (Papa, 2026-10-03): new par
+
+Analysis before starting: 37 of 72 quests were solved by walking one straight 8–13-tile line (most used a single row), so "≤ 9×7 with par unchanged" was impossible. Papa chose **real 2D rooms with recomputed par**:
+
+- Unchanged per quest: `concept`, `objective`, `objectiveText`, `available`, `requires`, `reward`, region, title, entity kinds.
+- Re-authored: `map`, `heroDir`, `reference`; `parBlocks` = block count of the new reference; `maxBlocks` = new par + the quest's old slack (`maxBlocks − parBlocks`).
+- The frozen-snapshot assertion covers the unchanged fields only. Every room must need at least one turn unless its lesson is a single action.
