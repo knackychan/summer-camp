@@ -96,3 +96,17 @@ test("world persistence accepts a unit quaternion + zoom and rejects corrupt or 
     assert.equal(context.readView("lucien"), null, value);
   }
 });
+
+test("the selection card subtitle carries the Chinese blurb, not only the English one", () => {
+  const source = read("js/world/world-explorer.js");
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(source.slice(source.indexOf("function selectionSubtitle("), source.indexOf("function readView(")), context);
+  assert.equal(context.selectionSubtitle({ title: ["Star Catch", "接星星"], blurb: ["Catch the falling stars!", "接住掉下來的星星！"] }),
+    "Catch the falling stars!\n接星星 · 接住掉下來的星星！");
+  assert.equal(context.selectionSubtitle({ title: ["Paint", ""], blurb: ["", ""] }), "");
+  assert.equal(context.selectionSubtitle({ title: ["Paint", "畫畫"], blurb: ["Make art", ""] }), "Make art\n畫畫");
+  assert.equal(context.selectionSubtitle({ available: false, title: ["Books", "書籍"], blurb: ["Reading world", "閱讀世界"] }),
+    "Not available right now · 現在暫時無法開啟");
+  assert.match(read("css/world-explorer.css"), /\.world-selection__copy span\{[^}]*white-space:pre[;}]/, "subtitle keeps its two lines");
+});

@@ -11,6 +11,12 @@ import { createMinigame } from "./planet-minigames.js";
 var current = null;
 var savedViews = new Map();
 
+function selectionSubtitle(entry){
+  if(entry.available===false)return "Not available right now · 現在暫時無法開啟";
+  var title=entry.title||[],blurb=entry.blurb||[];
+  return [blurb[0],[title[1],blurb[1]].filter(Boolean).join(" · ")].filter(Boolean).join("\n");
+}
+
 function readView(kidId){
   var view=savedViews.get(kidId);
   try{if(!view)view=JSON.parse(window.localStorage.getItem("sq:world-view:"+kidId)||"null");}catch(error){}
@@ -108,7 +114,7 @@ function createWorld(options){
     if(!item){selectionEl.classList.add("hidden");return;}
     var entry=cardFor(item);
     iconEl.textContent=entry.icon||"✨";titleEl.textContent=(entry.title&&entry.title[0])||item.id;
-    subtitleEl.textContent=entry.available===false?"Not available right now · 現在暫時無法開啟":(entry.title&&entry.title[1]?entry.title[1]+" · ":"")+((entry.blurb&&entry.blurb[0])||"");
+    subtitleEl.textContent=selectionSubtitle(entry);
     goEl.textContent=goText;goEl.disabled=entry.available===false;selectionEl.classList.remove("hidden");
     if(!quiet)haptic("tap");
   }
