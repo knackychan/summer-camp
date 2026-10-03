@@ -19,3 +19,10 @@
 - At 1280×800 and 1280×600: no page scroll; scene canvas ≥ 55 % of viewport height; every button ≥ 48×48 CSS px.
 - EN mode: no CJK text inside `.cq` except the switch; ZH mode: no English except the switch and JavaScript code. The choice persists per kid.
 - `node scripts/check.mjs` green.
+
+## Implementation notes (2026-10-03)
+
+- Typed-code rooms do **not** auto-open the Code sheet (a modal on room start fought the bubble and the host); the `</>` button is highlighted and the bubble says "This room is solved in code. Tap Code to write it."
+- Win / Map / Camp dialogs dim the room; only Pause draws pause bars.
+- The event debugger for advanced rooms is a non-modal side panel toggled by a 🐞 button on the scene (it must stay visible while a program runs); the Code sheet also shows it.
+- Strip and library rows act on tap-release (`click`) so a finger can pan them; every other control still acts on press.

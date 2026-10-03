@@ -427,9 +427,11 @@ export function drawRoom(canvas, snapshot, options = {}) {
   }
   drawFx(ctx, fx, anchors, now);
 
-  if (options.paused) {
+  if (options.paused || options.dim) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     alpha(ctx, .65, () => { ctx.fillStyle = CQ_HEX[Q.outline]; ctx.fillRect(0, 0, fit.canvasW, fit.canvasH); });
+  }
+  if (options.paused) {
     const u = Math.max(2, fit.device * 2), cx = Math.round(fit.canvasW / 2), cy = Math.round(fit.canvasH / 2);
     ctx.fillStyle = CQ_HEX[Q.sandLit];
     ctx.fillRect(cx - u * 4, cy - u * 6, u * 3, u * 12); ctx.fillRect(cx + u, cy - u * 6, u * 3, u * 12);

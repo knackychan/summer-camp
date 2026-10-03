@@ -17,3 +17,9 @@
 - Unit tests: `previewPath` for q01's reference returns exactly the tiles a real run visits; a wall bump stops the path; the live model is never mutated.
 - Browser: q01's reference built by tapping cards only, Run wins; a Builder-stage profile shows no preview.
 - `node scripts/check.mjs` and `node scripts/codequest.test.mjs` green.
+
+## Implementation notes (2026-10-03)
+
+- The Rune routine is a **Main / ƒ Rune tab** on the one strip rather than a second strip, so the dock stays two rows on 1280×600.
+- Card tools are a fixed tray at the strip's end (◀ ✕ ▶ ↶ 🗑, 48 px each) instead of a floating per-card toolbar; ◀ ▶ need exactly one selected card, ✕ removes every selected card.
+- The preview runs only on a fresh room (`turn === 1`): after a partial run the live room no longer matches a fresh model, and Reset brings the preview back.

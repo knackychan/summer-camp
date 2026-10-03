@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v139-codequest-redesign-02";
+const CACHE_NAME = "summer-quest-v141-origami-atelier";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -194,6 +194,7 @@ const APP_SHELL = [
   "./js/games/codequest/run.js",
   "./js/games/codequest/model.js",
   "./js/games/codequest/palette.js",
+  "./js/games/codequest/preview.js",
   "./js/games/codequest/room-view.js",
   "./js/games/codequest/sprites-world.js",
   "./js/games/codequest/levels.js",
@@ -201,6 +202,7 @@ const APP_SHELL = [
   "./js/games/codequest/strings.js",
   "./js/games/codequest/pixel-art.js",
   "./js/games/codequest/dungeon-view.js",
+  "./js/games/origami.js",
   "./js/games/monster-truck.js",
   "./js/games/hunt.js",
   "./js/games/home.js",
@@ -226,6 +228,11 @@ const APP_SHELL = [
   "./js/vendor/three-legacy/OrbitControls.js",
   "./js/vendor/three-legacy/Timer.js",
   "./js/vendor/supabase.js",
+  "./js/vendor/origami-atelier/origami-atelier.js",
+  "./js/vendor/origami-atelier/origami-atelier.css",
+  "./js/vendor/origami-atelier/origami-data.js",
+  "./js/vendor/origami-atelier/origami-engine.js",
+  "./js/vendor/origami-atelier/origami-storage.js",
   "./assets/solar/sun.jpg",
   "./assets/solar/mercury.jpg",
   "./assets/solar/venus.jpg",

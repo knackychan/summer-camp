@@ -124,6 +124,25 @@ export const MESSAGES = Object.freeze({
   equipped: ['Loadout changed.', '裝備配置已更換。'], lockedLevel: ['Clear the previous quest to unlock this one.', '先完成上一關，就能解鎖這一關。'], towerLocked: ['Clear eight quests to unlock the Infinite Tower.', '完成八個關卡，就能解鎖無限高塔。'], paused: ['Paused.', '已暫停。']
 });
 
+/* Short one-word card labels for the program strip and command library (redesign D4). */
+export const SHORT = Object.freeze({
+  move: ['Move', '前進'], turnLeft: ['Left', '左轉'], turnRight: ['Right', '右轉'], attack: ['Attack', '攻擊'], heavyAttack: ['Heavy', '重擊'],
+  guard: ['Guard', '防禦'], open: ['Open', '打開'], disarm: ['Disarm', '拆除'], usePotion: ['Heal', '治療'], useAntidote: ['Antidote', '解毒'],
+  useWard: ['Ward', '守護'], wait: ['Wait', '等待'], targetNearest: ['Nearest', '最近'], targetWeakest: ['Weakest', '最弱'],
+  targetArmored: ['Armored', '裝甲'], targetElementWeak: ['Weakness', '弱點'], cast: ['Cast', '施法'], interact: ['Use', '互動'],
+  smash: ['Smash', '擊破'], push: ['Push', '推'], take: ['Take', '拿起'], throw: ['Throw', '投擲'],
+  companionFollow: ['Follow', '跟隨'], companionHold: ['Hold', '待命'], companionGuard: ['Guard', '守護'], companionAssist: ['Assist', '協助'],
+  companionMove: ['Move', '前進'], companionTurnLeft: ['Left', '左轉'], companionTurnRight: ['Right', '右轉'], companionInteract: ['Use', '互動'],
+  companionPush: ['Push', '推'], companionTake: ['Take', '拿起'], companionThrow: ['Throw', '投擲'],
+  repeat: ['Repeat', '重複'], if: ['If', '如果'], call: ['Rune', '符文'], else: ['else', '否則']
+});
+
+/* One language on screen at a time (redesign D5, Kitchen Quest pattern). Every string
+   still ships EN + 中文; the host-bar switch picks which one is shown, saved per kid. */
+let LANG = 'en';
+export function setLanguage(lang) { LANG = lang === 'zh' ? 'zh' : 'en'; return LANG; }
+export function language() { return LANG; }
+export function t([en, zh]) { return LANG === 'zh' ? zh : en; }
 export function pairHTML([en, zh]) {
-  return '<span>' + en + '</span><small lang="zh-Hant">' + zh + '</small>';
+  return LANG === 'zh' ? '<span lang="zh-Hant">' + zh + '</span>' : '<span lang="en">' + en + '</span>';
 }

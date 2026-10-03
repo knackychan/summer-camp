@@ -250,7 +250,7 @@ export function spriteURL(id, accentHex = '#39d0c8') {
   canvas.width = 32; canvas.height = 32;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
-  const scale = Math.max(1, Math.floor(Math.min(30 / (bitmap[0] || '').length, 30 / bitmap.length)));
+  const scale = Math.max(1, Math.floor(Math.min(32 / (bitmap[0] || '').length, 32 / bitmap.length)));
   const x = Math.floor((32 - (bitmap[0] || '').length * scale) / 2), y = Math.floor((32 - bitmap.length * scale) / 2);
   drawBitmap(ctx, bitmap, x, y, scale, { accent: nearestIndex(accentHex) }, charsFor(key));
   const url = canvas.toDataURL(); iconCache.set(cacheKey, url); return url;

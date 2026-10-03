@@ -6,6 +6,7 @@ import { LEVELS, generateEndless } from '../js/games/codequest/levels.js';
 import { normalizeProfile, recordLevelComplete, recordEndlessClear, brew, brewLab, equip, claimLoot, equipmentFor, weaponFor, combatStatsFor, consumePotion, scoreForProfile, modeFor, setActiveDungeonRun, finishDungeonRun, abandonDungeonRun, saveRuneLibrary, loadRuneLibrary, saveBehaviorSource, setBehaviorEnabled, behaviorFor } from '../js/games/codequest/progression.js';
 import { createDungeonRun, normalizeDungeonRun, roomMeta, roomGraph, nextRooms, enterDungeonRoom, resolveRunChoice, completeCombatRoom, failDungeonRun, expeditionLevel, dungeonRunSummary, hazardInfo, sigilsRequired, saveRunLoadout, activateRunLoadout } from '../js/games/codequest/run.js';
 import { parseJavaScript } from '../js/games/codequest/parser.js';
+import { previewPath } from '../js/games/codequest/preview.js';
 import { parseAlchemyCode, runAlchemyCode, recipeToAlchemyCode, recipeById } from '../js/games/codequest/alchemy-code.js';
 
 // AST sanitation is bounded, immutable and preserves real structure.
@@ -945,3 +946,29 @@ for (const floor of [29,30,31,32,61,62,63,64]) {
 
 console.log('Code Quest v0.14: 72 authored quests, bounded actor state/FIFO protocols, split persistent behaviors and 1536 endless floors verified.');
 
+
+// ---- Redesign slice 04: Explorer path preview ----
+{
+  const level = LEVELS.find(entry => entry.id === 'q01');
+  const live = new CodeQuestModel(level);
+  const before = JSON.stringify(live.snapshot());
+  const path = previewPath(new CodeQuestModel(level), level.reference.main, level.reference.functions || {});
+  // The preview visits exactly the tiles a real run visits.
+  const real = new CodeQuestModel(level), visited = [{ x: real.hero.x, y: real.hero.y }];
+  assert.equal(real.begin(level.reference.main, level.reference.functions || {}).ok, true);
+  for (let i = 0; i < 256 && real.phase === 'executing'; i++) {
+    const event = real.step();
+    if (event.type === 'world-turn') break;
+    const last = visited[visited.length - 1];
+    if (real.hero.x !== last.x || real.hero.y !== last.y) visited.push({ x: real.hero.x, y: real.hero.y });
+  }
+  assert.deepEqual(path.map(p => ({ x: p.x, y: p.y })), visited, 'preview must match the real run');
+  assert.ok(path.length > 1);
+  assert.equal(JSON.stringify(live.snapshot()), before, 'preview never touches the live model');
+  // A wall bump stops the path where the hero stops.
+  const bump = previewPath(new CodeQuestModel(LEVELS.find(entry => entry.id === 'q02')), [A('move'), A('move'), A('move'), A('move'), A('move'), A('move')]);
+  const q02 = new CodeQuestModel(LEVELS.find(entry => entry.id === 'q02'));
+  assert.ok(bump.length >= 1 && bump.every(p => !q02._wall(p.x, p.y)), 'preview never walks into a wall');
+  assert.deepEqual(previewPath(new CodeQuestModel(level), []), [{ x: live.hero.x, y: live.hero.y, dir: live.hero.dir }]);
+  console.log('Code Quest redesign: Explorer path preview verified.');
+}

@@ -7,8 +7,9 @@ import { runAlchemyCode, recipeToAlchemyCode, recipeById } from './codequest/alc
 import { normalizeProfile, recordLevelComplete, recordEndlessClear, modeFor, equipmentDescriptor, equipmentFor, weaponFor, combatStatsFor, brewLab, equip, claimLoot, consumePotion, scoreForProfile, setActiveDungeonRun, finishDungeonRun, abandonDungeonRun, saveRuneLibrary, loadRuneLibrary, saveBehaviorSource, setBehaviorEnabled, behaviorFor, CODEQUEST_EQUIPMENT, RECIPES, ALCHEMY_STEPS } from './codequest/progression.js';
 import { createDungeonRun, normalizeDungeonRun, roomMeta, roomGraph, nextRooms, enterDungeonRoom, resolveRunChoice, completeCombatRoom, failDungeonRun, expeditionLevel, dungeonRunSummary, hazardInfo, sigilsRequired, saveRunLoadout, activateRunLoadout } from './codequest/run.js';
 import { spriteURL } from './codequest/pixel-art.js';
+import { previewPath } from './codequest/preview.js';
 import { drawRoom } from './codequest/room-view.js';
-import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, ALCHEMY_LABELS, MESSAGES, pairHTML } from './codequest/strings.js';
+import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, ALCHEMY_LABELS, MESSAGES, SHORT, pairHTML, setLanguage, language, t } from './codequest/strings.js';
 
 let S = null;
 // Host settings bar (game-fs top row, beside Back). Kept across stop(): the host renders the bar before init().
@@ -111,38 +112,85 @@ function restoreUndo() {
 function notify(message, zh) {
   if (!S) return;
   const text = Array.isArray(message) ? message : [message, zh || message];
-  S.notice = text;
+  S.notice = text; S.noticeAt = performance.now();
   const node = S.root.querySelector('.cq-notice');
+  if (node) node.innerHTML = label(text);
+  if (S.bubble) { S.bubble.innerHTML = label(text); S.bubble.hidden = !!(S.dialog || S.paused); }
+}
+/** Screen-reader only: routine edits should not pop a bubble over the hero. */
+function announce(text) {
+  const node = S && S.root.querySelector('.cq-notice');
   if (node) node.innerHTML = label(text);
 }
 
 function modeLabel() { return UI[modeFor(S.profile)] || UI.explorer; }
 function kidColor() { return S.ctx.kids && S.ctx.kids[S.ctx.kid] && S.ctx.kids[S.ctx.kid].color || '#39d0c8'; }
 
-function actionIcon(op) {
-  if (op === 'attack' || op === 'heavyAttack') { const gear = weaponFor(S.profile); return '<img src="' + spriteURL(gear.spriteId || gear.id, kidColor()) + '" alt="">'; }
-  if (op === 'guard') return '<img src="' + spriteURL('guardCape', kidColor()) + '" alt="">';
-  if (op === 'open') return '<img src="' + spriteURL('chest-closed', kidColor()) + '" alt="">';
-  if (op === 'usePotion') return '<img src="' + spriteURL('potion', kidColor()) + '" alt="">';
-  if (op === 'useAntidote') return '<img src="' + spriteURL('antidote', kidColor()) + '" alt="">';
-  if (op === 'useWard') return '<img src="' + spriteURL('ward', kidColor()) + '" alt="">';
-  if (op === 'disarm') return '<img src="' + spriteURL('trap-active', kidColor()) + '" alt="">';
-  if (op === 'interact') return '<img src="' + spriteURL('lever-off', kidColor()) + '" alt="">';
-  if (op === 'smash') return '<img src="' + spriteURL('crate', kidColor()) + '" alt="">';
-  if (op === 'push') return '<img src="' + spriteURL('push-block', kidColor()) + '" alt="">';
-  if (op === 'take' || op === 'throw') return '<img src="' + spriteURL('rune-core', kidColor()) + '" alt="">';
-  if (op.startsWith('companion')) return '<img src="' + spriteURL('companion', kidColor()) + '" alt="">';
-  if (op === 'cast') { const gear = weaponFor(S.profile); return '<img src="' + spriteURL(gear.spriteId || gear.id, kidColor()) + '" alt="">'; }
-  if (op.startsWith('target')) return '<b class="cq-glyph" aria-hidden="true">◎</b>';
-  const glyph = { move:'→', turnLeft:'↶', turnRight:'↷', wait:'…' }[op] || '◆';
-  return '<b class="cq-glyph" aria-hidden="true">' + glyph + '</b>';
-}
+/* ---------- card art: pixel sprites for things, small vector glyphs for motion and logic ---------- */
+const GLYPHS = {
+  move: '<path d="M12 2 L21 12 H15.5 V22 H8.5 V12 H3 Z"/>',
+  turnLeft: '<path d="M9 3 L2 9.5 L9 16 V12 H14 Q17 12 17 15 V22 H21.5 V14.5 Q21.5 7.5 14 7.5 H9 Z"/>',
+  turnRight: '<path d="M15 3 L22 9.5 L15 16 V12 H10 Q7 12 7 15 V22 H2.5 V14.5 Q2.5 7.5 10 7.5 H15 Z"/>',
+  wait: '<path d="M5 2 H19 V7 L14 12 L19 17 V22 H5 V17 L10 12 L5 7 Z M8 4.5 V6 L12 10 L16 6 V4.5 Z"/>',
+  repeat: '<path d="M3 11 Q3 5 10 5 H15 V1.5 L21 7 L15 12.5 V9 H10 Q7 9 7 12 Z M21 13 Q21 19 14 19 H9 V22.5 L3 17 L9 11.5 V15 H14 Q17 15 17 12 Z"/>',
+  if: '<path d="M7 8 Q7 2.5 12 2.5 Q17 2.5 17 7.5 Q17 11 13.5 12.5 V15 H10.5 V10.5 Q14 9.5 14 7.5 Q14 5.5 12 5.5 Q10 5.5 10 8 Z M10.5 17.5 H13.5 V21 H10.5 Z"/>',
+  call: '<path d="M15.5 2.5 Q11 2.5 10.5 7 L10.2 9 H7 V12 H9.8 L8.6 19 Q8.3 21 6.5 21 H5 V23.5 H7 Q11 23.5 11.6 19 L12.8 12 H16 V9 H13.2 L13.5 7.2 Q13.8 5.3 15.5 5.3 H18 V2.5 Z"/>',
+  target: '<path d="M11 1 H13 V7 H11 Z M11 17 H13 V23 H11 Z M1 11 H7 V13 H1 Z M17 11 H23 V13 H17 Z M12 8 A4 4 0 1 1 11.99 8 Z M12 10.5 A1.5 1.5 0 1 0 12.01 10.5 Z"/>',
+  data: '<path d="M4 4 H10 V7 H7 V17 H10 V20 H4 Z M14 4 H20 V20 H14 V17 H17 V7 H14 Z"/>',
+  play: '<path d="M6 3 L21 12 L6 21 Z"/>',
+  step: '<path d="M3 4 L13 12 L3 20 Z M15 4 H20 V20 H15 Z"/>',
+  reset: '<path d="M12 3 Q20.5 3 20.5 12 Q20.5 21 12 21 Q5.5 21 3.8 15 H7.2 Q8.6 17.8 12 17.8 Q17.3 17.8 17.3 12 Q17.3 6.2 12 6.2 Q9.3 6.2 7.9 8.2 L11 11 H2.5 V2.5 L5.6 5.6 Q8 3 12 3 Z"/>',
+  undo: '<path d="M9 3 L2 9.5 L9 16 V12 H14 Q17.5 12 17.5 15.5 Q17.5 19 14 19 H11 V22.5 H14 Q21.5 22.5 21.5 15.5 Q21.5 8 14 8 H9 Z"/>',
+  left: '<path d="M15 3 L6 12 L15 21 Z"/>', right: '<path d="M9 3 L18 12 L9 21 Z"/>',
+  remove: '<path d="M5 3 L12 10 L19 3 L21 5 L14 12 L21 19 L19 21 L12 14 L5 21 L3 19 L10 12 L3 5 Z"/>',
+  trash: '<path d="M8 2 H16 V4 H21 V7 H3 V4 H8 Z M5 8 H19 L18 22 H6 Z M9 10 V20 H11 V10 Z M13 10 V20 H15 V10 Z"/>',
+  flag: '<path d="M4 2 H7 V23 H4 Z M8 3 H20 L17 8 L20 13 H8 Z"/>',
+  bug: '<path d="M9 3 H15 V6 H9 Z M6 7 H18 V18 Q18 22 12 22 Q6 22 6 18 Z M2 9 H5 V11 H2 Z M19 9 H22 V11 H19 Z M2 15 H5 V17 H2 Z M19 15 H22 V17 H19 Z M11 9 V20 H13 V9 Z"/>'
+};
+const glyph = name => '<svg class="cq-ico" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">' + (GLYPHS[name] || GLYPHS.data) + '</svg>';
+const sprite = id => '<img class="cq-spr" src="' + spriteURL(id, kidColor()) + '" alt="">';
 
-function logicIcon(id) {
-  if (id.startsWith('repeat')) return '<b class="cq-glyph">↻</b>';
-  if (id.startsWith('if')) return '<b class="cq-glyph">?</b>';
-  return '<b class="cq-glyph">ƒ</b>';
+function actionIcon(op) {
+  if (op === 'move' || op === 'companionMove') return glyph('move');
+  if (op === 'turnLeft' || op === 'companionTurnLeft') return glyph('turnLeft');
+  if (op === 'turnRight' || op === 'companionTurnRight') return glyph('turnRight');
+  if (op === 'wait') return glyph('wait');
+  if (op.startsWith('target')) return glyph('target');
+  if (op === 'attack' || op === 'heavyAttack' || op === 'cast') { const gear = weaponFor(S.profile); return sprite(gear.spriteId || gear.id); }
+  if (op === 'guard') return sprite('guardCape');
+  if (op === 'open') return sprite('chest-closed');
+  if (op === 'usePotion') return sprite('potion');
+  if (op === 'useAntidote') return sprite('antidote');
+  if (op === 'useWard') return sprite('ward');
+  if (op === 'disarm') return sprite('trap-active');
+  if (op === 'interact' || op === 'companionInteract') return sprite('lever-off');
+  if (op === 'smash') return sprite('crate');
+  if (op === 'push' || op === 'companionPush') return sprite('push-block');
+  if (op === 'take' || op === 'throw' || op === 'companionTake' || op === 'companionThrow') return sprite('rune-core');
+  if (op.startsWith('companion')) return sprite('companion');
+  return glyph('data');
 }
+function logicIcon(id) { return glyph(id.startsWith('repeat') ? 'repeat' : id.startsWith('if') ? 'if' : 'call'); }
+
+/** Colour family of a card (redesign design.md, Screen): move blue, turn purple, attack red,
+    interact gold, care green, companion teal, loops/logic violet, functions magenta. */
+function opCategory(op) {
+  if (op === 'move') return 'move';
+  if (op === 'turnLeft' || op === 'turnRight') return 'turn';
+  if (op.startsWith('companion')) return 'ally';
+  if (['attack', 'heavyAttack', 'cast', 'smash'].includes(op) || op.startsWith('target')) return 'attack';
+  if (['open', 'interact', 'disarm', 'take', 'throw', 'push'].includes(op)) return 'use';
+  return 'care';
+}
+function nodeCategory(node) {
+  if (node.type === 'action') return opCategory(node.op);
+  if (node.type === 'target') return 'attack';
+  if (node.type === 'repeat' || node.type === 'forOf') return 'loop';
+  if (node.type === 'if') return 'logic';
+  if (node.type === 'call' || node.type === 'on') return 'func';
+  return 'data';
+}
+function logicCategory(id) { return id.startsWith('repeat') ? 'loop' : id.startsWith('if') ? 'logic' : 'func'; }
 
 function nodeTitle(node) {
   if (node.type === 'action') return COMMANDS[node.op] || [node.op, node.op];
@@ -155,42 +203,30 @@ function nodeTitle(node) {
   if (node.type === 'on') return ['On ' + node.event + ' → ' + node.name, '當 ' + node.event + ' → ' + node.name];
   return ['Program block', '程式積木'];
 }
-
-function renderNested(nodes, depth = 0) {
-  if (!nodes.length) return '<span class="cq-empty-nest">' + pair('empty', '空的') + '</span>';
-  return '<div class="cq-nested" style="--depth:' + depth + '">' + nodes.map(node => {
-    const cls = 'cq-mini cq-mini-' + node.type + (node.uid && node.uid === S.activeUid ? ' executing' : '');
-    let body = '<span>' + label(nodeTitle(node)) + '</span>';
-    if (node.type === 'repeat' || node.type === 'forOf') body += renderNested(node.body, depth + 1);
-    else if (node.type === 'if') {
-      body += '<div class="cq-branch"><em>' + label(['THEN', '就做']) + '</em>' + renderNested(node.then, depth + 1) + '</div>';
-      if (node.else.length) body += '<div class="cq-branch"><em>' + label(['ELSE', '否則']) + '</em>' + renderNested(node.else, depth + 1) + '</div>';
-    }
-    return '<div class="' + cls + '">' + body + '</div>';
-  }).join('') + '</div>';
+/** The one or two words printed on a card. */
+function nodeShort(node) {
+  if (node.type === 'action') return SHORT[node.op] || COMMANDS[node.op] || [node.op, node.op];
+  if (node.type === 'repeat') { const n = typeof node.times === 'number' ? node.times : '?'; return ['×' + n, '×' + n]; }
+  if (node.type === 'forOf') return ['each', '每個'];
+  if (node.type === 'if') return typeof node.test === 'string' && CONDITIONS[node.test] ? CONDITIONS[node.test] : ['test', '條件'];
+  if (node.type === 'call') return node.name === 'rune' ? SHORT.call : [node.name, node.name];
+  return nodeTitle(node);
 }
-
-function renderProgramCards() {
-  const nodes = currentProgram(), selected = currentSelection();
-  if (!nodes.length) return '<div class="cq-empty-program">' + pair('Your program is empty. Add an action card below.', '主程式還是空的，從下面加入一張動作卡。') + '</div>';
-  return '<div class="cq-program-list">' + nodes.map((node, index) => {
-    const isSelected = selected.has(index), title = nodeTitle(node);
-    let interior = node.type === 'action' ? actionIcon(node.op) + label(title) : node.type === 'call' ? logicIcon('callRune') + label(title) : logicIcon(node.type) + label(title);
-    if (node.type === 'repeat' || node.type === 'forOf') interior += renderNested(node.body, 1);
-    if (node.type === 'if') interior += '<div class="cq-branch"><em>' + label(['THEN', '就做']) + '</em>' + renderNested(node.then, 1) + '</div>' + (node.else.length ? '<div class="cq-branch"><em>' + label(['ELSE', '否則']) + '</em>' + renderNested(node.else, 1) + '</div>' : '');
-    const running = node.uid && node.uid === S.activeUid;
-    return '<article class="cq-program-card ' + (isSelected ? 'selected ' : '') + (running ? 'executing' : '') + '" data-index="' + index + '">' +
-      button('select:' + index, '<span class="cq-card-index">' + (index + 1) + '</span><span class="cq-card-main">' + interior + '</span>', 'class="cq-card-select" aria-pressed="' + isSelected + '"') +
-      '<div class="cq-card-tools">' + button('up:' + index, '↑', 'aria-label="Move up 上移" ' + (index === 0 ? 'disabled' : '')) + button('down:' + index, '↓', 'aria-label="Move down 下移" ' + (index === nodes.length - 1 ? 'disabled' : '')) + button('remove:' + index, '×', 'aria-label="Remove 移除"') + '</div></article>';
-  }).join('') + '</div>';
+function nodeIcon(node) {
+  if (node.type === 'action') return actionIcon(node.op);
+  if (node.type === 'target') return glyph('target');
+  if (node.type === 'repeat' || node.type === 'forOf') return glyph('repeat');
+  if (node.type === 'if') return glyph('if');
+  if (node.type === 'call' || node.type === 'on') return glyph('call');
+  return glyph('data');
 }
+const running = node => !!(node.uid && node.uid === S.activeUid);
 
 function codeUnlocked() { return modeFor(S.profile) === 'architect'; }
 function allowedRepresentations() {
   const mode = modeFor(S.profile);
   if (mode === 'explorer') return ['picture'];
   if (mode === 'builder') return ['picture', 'blocks'];
-  if (mode === 'coder') return ['picture', 'blocks', 'hybrid'];
   return ['picture', 'blocks', 'hybrid'];
 }
 function defaultRepresentation() {
@@ -199,22 +235,58 @@ function defaultRepresentation() {
   if (mode === 'builder') return 'blocks';
   return 'hybrid';
 }
-function representationSwitcher() {
-  const names = { picture: UI.picture, blocks: UI.blocksView, hybrid: UI.hybrid };
-  return '<div class="cq-representation" role="group" aria-label="Coding abstraction level 程式抽象層級">' + allowedRepresentations().map(id => button('view:' + id, label(names[id]), 'aria-pressed="' + (S.representation === id) + '"')).join('') + '</div>';
+
+/* ---------- program strip (redesign slice 04) ---------- */
+function miniCards(nodes) {
+  if (!nodes.length) return '<span class="cq-mini empty">' + glyph('data') + '</span>';
+  return nodes.map(node => {
+    const cls = 'cat-' + nodeCategory(node) + (running(node) ? ' executing' : '');
+    if (node.type === 'repeat' || node.type === 'forOf') return '<span class="cq-mini-bracket ' + cls + '"><i>' + label(nodeShort(node)) + '</i>' + miniCards(node.body) + '</span>';
+    if (node.type === 'if') return '<span class="cq-mini-bracket ' + cls + '"><i>?</i>' + miniCards(node.then) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else) : '') + '</span>';
+    return '<span class="cq-mini ' + cls + '" title="' + esc(t(nodeTitle(node))) + '">' + nodeIcon(node) + '</span>';
+  }).join('');
 }
-function visualBuilderHTML() {
-  const level = S.level, current = currentProgram();
-  const picture = S.representation === 'picture';
-  const actions = level.available.actions.map(op => button('add:' + op, actionIcon(op) + (picture ? '<span class="cq-picture-label">' + label(COMMANDS[op]) + '</span>' : label(COMMANDS[op])), 'class="cq-palette-card"')).join('');
-  const logic = level.available.logic.map(id => button('logic:' + id, logicIcon(id) + label(LOGIC[id]), 'class="cq-palette-card cq-logic-card"')).join('');
-  const hint = S.editor === 'rune' ? UI.functionHint : UI.selectHint;
-  const mirror = S.representation === 'hybrid' ? '<aside class="cq-hybrid-code"><div class="cq-code-note">' + pair('Same program · real JavaScript form', '同一個程式・JavaScript 形式') + '</div><pre><code>' + esc(sourceFromAst()) + '</code></pre></aside>' : '';
-  return '<section class="cq-builder cq-mode-' + S.representation + '">' + representationSwitcher() + '<div class="cq-builder-grid"><div class="cq-builder-main"><div class="cq-builder-head"><div><b>' + (S.editor === 'rune' ? label(UI.rune) : label(UI.program)) + '</b><span>' + label(hint) + '</span></div><span class="cq-count">' + combinedBlockCount(S.program, functions()) + ' / ' + S.level.maxBlocks + ' ' + label(UI.blocks) + '</span></div>' +
-    '<div class="cq-program-tray">' + renderProgramCards() + '</div>' +
-    '<div class="cq-palette"><h3>' + label(UI.actions) + '</h3><div class="cq-palette-grid">' + actions + '</div>' + (logic && !picture ? '<h3>' + label(UI.logic) + '</h3><div class="cq-palette-grid">' + logic + '</div>' : '') + '</div>' +
-    (S.editor === 'rune' && !current.length ? '<p class="cq-rune-tip">' + pair('Build one reusable routine here, then call it from the turn program.', '在這裡建立一個可重複使用的函式，再從回合程式呼叫它。') + '</p>' : '') + '</div>' + mirror + '</div></section>';
+function stripCard(node, index, selected) {
+  const cls = 'cat-' + nodeCategory(node) + (selected ? ' selected' : '') + (running(node) ? ' executing' : '');
+  const head = '<i class="cq-num">' + (index + 1) + '</i>' + nodeIcon(node) + '<b>' + label(nodeShort(node)) + '</b>';
+  const attrs = 'aria-pressed="' + selected + '" aria-label="' + esc((index + 1) + '. ' + t(nodeTitle(node))) + '"';
+  if (node.type === 'repeat' || node.type === 'forOf' || node.type === 'if') {
+    const body = node.type === 'if' ? miniCards(node.then) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else) : '') : miniCards(node.body);
+    return '<div class="cq-bracket ' + cls + '">' + button('select:' + index, head, 'class="cq-bracket-head" ' + attrs) + '<div class="cq-bracket-body">' + body + '</div></div>';
+  }
+  return button('select:' + index, head, 'class="cq-card ' + cls + '" ' + attrs);
 }
+function stripHTML() {
+  const nodes = currentProgram(), selected = currentSelection();
+  const free = Math.max(0, S.level.maxBlocks - combinedBlockCount(S.program, functions()));
+  const shown = Math.min(free, 6);
+  const slots = Array.from({ length: shown }, (_, i) => '<span class="cq-slot" aria-hidden="true">' + (i === 0 ? '+' : '') + '</span>').join('') + (free > shown ? '<span class="cq-slot more" aria-hidden="true">+' + (free - shown) + '</span>' : '');
+  return nodes.map((node, i) => stripCard(node, i, selected.has(i))).join('') + slots;
+}
+function stripTabsHTML() {
+  if (!S.level.available.logic.includes('callRune')) return '';
+  return '<div class="cq-strip-tabs" role="group">' + button('strip:main', glyph('play') + '<b>' + label(['Main', '主程式']) + '</b>', 'aria-pressed="' + (S.editor !== 'rune') + '"') +
+    button('strip:rune', glyph('call') + '<b>' + label(SHORT.call) + '</b>', 'aria-pressed="' + (S.editor === 'rune') + '"') + '</div>';
+}
+function toolsHTML() {
+  const none = !currentSelection().size, one = currentSelection().size === 1;
+  return button('nudge:-1', glyph('left'), 'class="cq-tool" aria-label="' + esc(t(['Move card left', '卡片左移'])) + '" ' + (one ? '' : 'disabled')) +
+    button('delete', glyph('remove'), 'class="cq-tool" aria-label="' + esc(t(['Remove card', '移除卡片'])) + '" ' + (none ? 'disabled' : '')) +
+    button('nudge:1', glyph('right'), 'class="cq-tool" aria-label="' + esc(t(['Move card right', '卡片右移'])) + '" ' + (one ? '' : 'disabled')) +
+    button('undo', glyph('undo'), 'class="cq-tool" aria-label="' + esc(t(UI.undo)) + '" ' + (S.undo.length ? '' : 'disabled')) +
+    button('clear', glyph('trash'), 'class="cq-tool" aria-label="' + esc(t(UI.clear)) + '" ' + (currentProgram().length ? '' : 'disabled'));
+}
+function libraryHTML() {
+  const level = S.level;
+  const actions = level.available.actions.map(op => button('add:' + op, actionIcon(op) + '<b>' + label(SHORT[op] || COMMANDS[op]) + '</b>', 'class="cq-cmd cat-' + opCategory(op) + '" aria-label="' + esc(t(COMMANDS[op])) + '"')).join('');
+  const logic = level.available.logic.map(id => {
+    const n = Number(id.replace('repeat', '')) || 2;
+    const words = id.startsWith('repeat') ? ['×' + n, '×' + n] : id === 'callRune' ? SHORT.call : LOGIC[id];
+    return button('logic:' + id, logicIcon(id) + '<b>' + label(words) + '</b>', 'class="cq-cmd cat-' + logicCategory(id) + '" aria-label="' + esc(t(LOGIC[id])) + '"');
+  }).join('');
+  return actions + logic;
+}
+
 function runeLibraryHTML() {
   const slots=(S.profile.runeLibrary||[]).map((source,index)=>'<div class="cq-library-slot"><b>LIB '+(index+1)+'</b>'+button('library:save:'+index,pair('Save','儲存'))+button('library:load:'+index,pair('Load','載入'),source&&source.trim()?'':'disabled')+'</div>').join('');
   const behaviorRow = owner => {
@@ -256,12 +328,15 @@ function debuggerHTML() {
   }).join('');
   return '<section class="cq-event-debugger"><div class="cq-debug-head"><b>'+pair('Event Debugger','事件除錯器')+'</b><span>'+pair('Current actor: '+String(snap.callbackOwner||'main').toUpperCase(),'目前角色：'+(snap.callbackOwner==='companion'?'夥伴':snap.callbackOwner==='hero'?'英雄':'主程式'))+'</span></div><div class="cq-debug-queues"><div><b>'+pair('MESSAGE QUEUE','訊息佇列')+' · '+(snap.messageQueue||[]).length+'</b>'+(queue||'<em>'+pair('empty','空')+'</em>')+'</div><div><b>'+pair('CALLBACK QUEUE','回呼佇列')+' · '+(snap.callbackQueue||[]).length+'</b>'+(callbacks||'<em>'+pair('empty','空')+'</em>')+'</div></div><ol>'+ (traceRows || '<li><span>'+pair('Run or Step to build a trace.','執行或單步以建立追蹤。')+'</span></li>') +'</ol></section>';
 }
-function editorHTML() {
-  const editor = S.editor === 'code' ? codeEditorHTML() : visualBuilderHTML();
-  return editor + debuggerHTML();
+/* The </> Code sheet: written JavaScript, the hybrid mirror and the event debugger live
+   here instead of on the main screen (redesign D4). */
+function codeSheetHTML() {
+  const head = '<div class="cq-dialog-head"><h2>' + label(['Code', '程式碼']) + '</h2>' + button('dialog:close', label(UI.close)) + '</div>';
+  const body = codeUnlocked() ? codeEditorHTML() : '<section class="cq-code-view"><p class="cq-code-note">' + pair('Your cards, written as real JavaScript.', '你的卡片，寫成真正的 JavaScript。') + '</p><pre><code>' + esc(sourceFromAst()) + '</code></pre></section>';
+  return head + '<div class="cq-sheet-body">' + body + debuggerHTML() + '</div>';
 }
 
-function objectiveChecks() {
+function objectives() {
   const snap = S.model.snapshot(), o = S.level.objective || {}, checks = [];
   if (o.reachExit) checks.push([snap.exit && snap.hero.x === snap.exit.x && snap.hero.y === snap.exit.y, 'Reach exit', '走到出口']);
   if (o.defeatAll) checks.push([!snap.enemies.some(e => e.hp > 0), 'Defeat enemies', '打敗敵人']);
@@ -290,54 +365,109 @@ function objectiveChecks() {
   if (o.messageSequence) checks.push([(snap.deliveredSignals||[]).slice(0,o.messageSequence.length).every((value,index)=>value===o.messageSequence[index]), 'Messages · ' + o.messageSequence.join(' → ').toUpperCase(), '訊息・' + o.messageSequence.join(' → ').toUpperCase()]);
   if (o.minHp) checks.push([snap.hero.hp >= o.minHp, 'Finish with HP ' + o.minHp + '+', '完成時生命值至少 ' + o.minHp]);
   if (o.finishUnpoisoned) checks.push([!(snap.hero.statuses && snap.hero.statuses.poison > 0), 'Finish without poison', '完成時沒有中毒']);
-  return '<ul class="cq-checks">' + checks.map(([done, en, zh]) => '<li class="' + (done ? 'done' : '') + '"><b>' + (done ? '◆' : '◇') + '</b>' + pair(en, zh) + '</li>').join('') + '</ul>';
+  return checks;
+}
+function goalHTML() {
+  const checks = objectives(), done = checks.filter(check => check[0]).length;
+  return glyph('flag') + '<span class="cq-goal-text">' + label(S.level.objectiveText) + '</span>' + (checks.length > 1 ? '<i>' + done + '/' + checks.length + '</i>' : '');
+}
+function goalPopHTML() {
+  const l = S.level, best = S.profile.bestBlocks[l.id] || 0;
+  return '<b>' + label(l.title) + '</b><small>' + label(l.region.label) + ' · ' + label(l.concept) + '</small><p>' + label(l.objectiveText) + '</p>' +
+    '<ul class="cq-checks">' + objectives().map(([done, en, zh]) => '<li class="' + (done ? 'done' : '') + '"><b>' + (done ? '◆' : '◇') + '</b>' + pair(en, zh) + '</li>').join('') + '</ul>' +
+    '<small>' + pair('Par ' + l.parBlocks + ' blocks' + (best ? ' · your best ' + best : ''), '目標 ' + l.parBlocks + ' 個積木' + (best ? '・你的最佳 ' + best : '')) + '</small>';
 }
 
-function questHTML() {
-  const l = S.level, snap = S.model.snapshot(), best = S.profile.bestBlocks[l.id] || 0;
-  return '<div class="cq-quest-heading"><span>' + label(l.region.label) + '</span><b>' + label(l.concept) + '</b></div><h2>' + label(l.title) + '</h2><p>' + label(l.objectiveText) + '</p>' + objectiveChecks() +
-    '<div class="cq-quest-metrics"><span>' + pair('Turn ' + snap.turn, '第 ' + snap.turn + ' 回合') + '</span><span>' + pair('Par ' + l.parBlocks, '目標 ' + l.parBlocks) + '</span><span>' + (best ? pair('Best ' + best, '最佳 ' + best) : pair('Not cleared yet', '尚未完成')) + '</span></div>';
+const HEART = '<svg viewBox="0 0 7 6" aria-hidden="true"><path d="M1 0H3V1H4V0H6V1H7V3H6V4H5V5H4V6H3V5H2V4H1V3H0V1H1Z"/></svg>';
+function chip(content, cls = '') { return '<span class="cq-chip' + (cls ? ' ' + cls : '') + '">' + content + '</span>'; }
+/** Hearts always; keys, potions, coins and status only when this room uses them. */
+function vitalsHTML() {
+  const snap = S.model.snapshot(), hero = snap.hero, out = [], bag = hero.consumables || {};
+  const hearts = Array.from({ length: Math.min(12, hero.maxHp) }, (_, i) => '<span class="cq-heart' + (i < hero.hp ? '' : ' empty') + '">' + HEART + '</span>').join('');
+  out.push('<span class="cq-hearts" role="img" aria-label="' + esc(t(['Health ' + hero.hp + ' of ' + hero.maxHp, '生命 ' + hero.hp + '/' + hero.maxHp])) + '">' + hearts + '</span>');
+  if ((snap.keys || []).length || (snap.doors || []).length || hero.keys) out.push(chip(sprite('key') + '<b>' + (hero.keys || 0) + '</b>'));
+  if (bag.healing) out.push(chip(sprite('potion') + '<b>' + bag.healing + '</b>'));
+  if (bag.antidote) out.push(chip(sprite('antidote') + '<b>' + bag.antidote + '</b>'));
+  if (bag.ward) out.push(chip(sprite('ward') + '<b>' + bag.ward + '</b>'));
+  if (S.run && S.level.expedition) out.push(chip('<b>◆ ' + S.run.coins + '</b>'));
+  if (hero.statuses && hero.statuses.poison > 0) out.push(chip(label(['Poisoned', '中毒']), 'status'));
+  if (hero.statuses && hero.statuses.ward > 0) out.push(chip(label(['Warded', '守護中']), 'status'));
+  if (hero.guarding) out.push(chip(label(['Guarding', '防禦中']), 'status'));
+  if (snap.enemies.some(enemy => enemy.hp > 0 && enemy.intent === 'shot')) out.push(chip(label(['Watch out!', '小心！']), 'status'));
+  return out.join('');
 }
 
-function statsHTML() {
-  const snap = S.model.snapshot(), weapon = weaponFor(S.profile), stats = S.level && S.level.expedition ? snap.combat : combatStatsFor(S.profile), status = [];
-  if (snap.hero.guarding) status.push(pair('GUARD', '防禦'));
-  if (snap.hero.statuses && snap.hero.statuses.poison > 0) status.push(pair('POISON ' + snap.hero.statuses.poison, '中毒 ' + snap.hero.statuses.poison));
-  if (snap.hero.statuses && snap.hero.statuses.ward > 0) status.push(pair('WARD ' + snap.hero.statuses.ward, '守護 ' + snap.hero.statuses.ward));
-  if (snap.enemies.some(enemy => enemy.intent === 'shot')) status.push(pair('SHOT!', '射擊預告！'));
-  if (stats.setBonusCount > 0) status.push(pair('CIRCUIT ×' + stats.setBonusCount, '套裝 ×' + stats.setBonusCount));
-  if (S.run && S.level && S.level.expedition) status.push(pair('COINS ' + S.run.coins, '金幣 ' + S.run.coins));
-  if ((snap.levers && snap.levers.length) || (snap.plates && snap.plates.length)) status.push(pair('CIRCUIT ' + (snap.levers.filter(x=>x.active).length + snap.plates.filter(x=>x.active).length) + '/' + S.model.switchesRequired, '迴路 ' + (snap.levers.filter(x=>x.active).length + snap.plates.filter(x=>x.active).length) + '/' + S.model.switchesRequired));
-  if (snap.cycleTraps && snap.cycleTraps.length) status.push(pair('CLOCK ' + snap.clockPhase, '時鐘 ' + snap.clockPhase));
-  if (snap.hero.carrying) status.push(pair('CORE CARRIED', '攜帶核心'));
-  if (snap.lastSignal && snap.lastSignal.channel !== 'none') status.push(pair('SIGNAL '+snap.lastSignal.channel.toUpperCase()+' · '+snap.lastSignal.from.toUpperCase()+'→'+String(snap.lastSignal.to||'dungeon').toUpperCase(), '訊號 '+snap.lastSignal.channel.toUpperCase()+'・'+(snap.lastSignal.from==='companion'?'夥伴':'英雄')+'→'+(snap.lastSignal.to==='companion'?'夥伴':snap.lastSignal.to==='hero'?'英雄':'地下城')));
-  status.push(pair('HERO STATE '+String(snap.hero.state||'explore').toUpperCase(), '英雄狀態 '+String(snap.hero.state||'explore').toUpperCase()));
-  if ((snap.messageQueue||[]).length) status.push(pair('MAIL '+snap.messageQueue.length, '訊息 '+snap.messageQueue.length));
-  if (snap.companion) status.push(pair('ALLY ' + String(snap.companion.mode).toUpperCase() + ' · STATE ' + String(snap.companion.state||'wait').toUpperCase() + (snap.companion.carrying ? ' · CORE' : ''), '夥伴 ' + (snap.companion.mode === 'follow' ? '跟隨' : '待命') + '・狀態 ' + String(snap.companion.state||'wait').toUpperCase() + (snap.companion.carrying ? '・核心' : '')));
-  if (snap.questTokens && snap.questTokens.length) status.push(pair('RUNES ' + snap.questTokens.filter(x=>x.collected).length + '/' + snap.questTokens.length, '符記 ' + snap.questTokens.filter(x=>x.collected).length + '/' + snap.questTokens.length));
-  const living = snap.enemies.filter(enemy => enemy.hp > 0), selected = snap.hero.targetId && living.find(enemy => enemy.id === snap.hero.targetId);
-  const weaponMeta = [weapon.rarity ? weapon.rarity.toUpperCase() : '', stats.weaponDamage + ' ' + UI.damage[0], stats.spellDamage ? stats.spellDamage + ' SPELL' : '', stats.weaponRange > 1 ? 'R' + stats.weaponRange : '', stats.weaponElement !== 'neutral' ? stats.weaponElement.toUpperCase() : '', weapon.affixLabels ? weapon.affixLabels.map(entry=>entry[0]).join('+') : ''].filter(Boolean).join(' · ');
-  return '<span>' + pair('HP ' + snap.hero.hp + '/' + snap.hero.maxHp, '生命 ' + snap.hero.hp + '/' + snap.hero.maxHp) + '</span><span>' + pair('DEF ' + stats.defense, '防禦 ' + stats.defense) + '</span><span>' + pair('Enemies ' + living.length, '敵人 ' + living.length) + '</span><span>' + pair('Keys ' + (snap.hero.keys || 0), '鑰匙 ' + (snap.hero.keys || 0)) + '</span><span>' + label(weapon.label) + ' · ' + esc(weaponMeta) + '</span>' + (selected ? '<span class="cq-status-chip">' + pair('TARGET ' + selected.id.replace('enemy-',''), '目標 ' + selected.id.replace('enemy-','')) + '</span>' : '') + (status.length ? '<span class="cq-status-chip">' + status.join(' · ') + '</span>' : '');
+function html(selector, value) {
+  const el = S.root.querySelector(selector);
+  if (el && el.dataset.cqHtml !== String(value.length) + ':' + hashText(value)) { el.innerHTML = value; el.dataset.cqHtml = String(value.length) + ':' + hashText(value); }
+}
+function hashText(text) { let h = 0; for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0; return h; }
+
+function setbarHTML() {
+  const codeHint = !!(S && S.level && (S.level.codingView === 'hybrid' || S.level.codingView === 'code'));
+  const zh = language() === 'zh';
+  return '<div class="cq-setbar" role="group" aria-label="' + esc(t(['Code Quest controls', '程式冒險控制'])) + '">' +
+    button('map', glyph('flag') + label(UI.questMap)) + button('camp', label(UI.inventory)) +
+    button('code', glyph('data') + label(['Code', '程式碼']), codeHint ? 'class="cq-attn"' : '') +
+    // The switch is written in the language it switches to, so a child who reads only that one can find it.
+    button('lang', zh ? '<span lang="en">English</span>' : '<span lang="zh-Hant">中文</span>', 'class="cq-lang" aria-label="' + (zh ? 'Switch to English' : '切換成中文') + '"') +
+    button('pause', label(UI.pause)) + '</div>';
+}
+function renderBar() {
+  if (barReady()) BAR.innerHTML = setbarHTML();
+  else if (S && S.root.querySelector('.cq-top')) S.root.querySelector('.cq-top').innerHTML = setbarHTML();
+}
+function savedLang(ctx) {
+  const langs = ctx.settings.codequest && ctx.settings.codequest.lang;
+  return langs && typeof langs === 'object' && langs[ctx.kid] === 'zh' ? 'zh' : 'en';
+}
+function setLang(next) {
+  setLanguage(next);
+  settingsRoot(S.ctx);
+  const cq = S.ctx.settings.codequest;
+  if (!cq.lang || typeof cq.lang !== 'object' || Array.isArray(cq.lang)) cq.lang = {};
+  cq.lang[S.ctx.kid] = language(); S.ctx.saveSettings();
+  renderBar(); notify(S.notice || MESSAGES.intro);
+  render();
 }
 
 function render() {
   if (!S) return;
-  S.root.dataset.editor = S.editor; S.root.dataset.representation = S.representation;
-  const profileEl = (barReady() ? BAR : S.root).querySelector('.cq-profile');
-  if (profileEl) profileEl.innerHTML = '<b>' + label(modeLabel()) + '</b><span>' + pair(S.profile.completed.length + ' quests cleared', '已完成 ' + S.profile.completed.length + ' 關') + '</span>';
-  S.root.querySelector('.cq-quest').innerHTML = questHTML();
-  S.root.querySelector('.cq-stats').innerHTML = statsHTML();
-  S.root.querySelector('.cq-editor-body').innerHTML = editorHTML();
-  S.root.querySelectorAll('.cq-tabs button').forEach(btn => {
-    btn.setAttribute('aria-pressed', String(btn.dataset.action === 'tab:' + S.editor));
-    if (btn.dataset.action === 'tab:code') btn.disabled = !codeUnlocked();
-  });
-  const executing = S.model.phase === 'executing', codePending = S.editor === 'code' && S.codeDirty;
-  S.root.querySelector('[data-action="run"]').disabled = S.paused || S.dialog || codePending || S.model.phase === 'won' || S.model.phase === 'resting';
-  S.root.querySelector('[data-action="step"]').disabled = S.paused || S.dialog || codePending || S.model.phase === 'won' || S.model.phase === 'resting';
-  S.root.querySelector('[data-action="run"]').classList.toggle('running', executing && S.autoRun);
-  S.root.querySelector('.cq-notice').innerHTML = label(S.notice || MESSAGES.intro);
+  const root = S.root;
+  root.dataset.lang = language(); root.dataset.editor = S.editor;
+  html('.cq-goal', goalHTML());
+  root.querySelector('.cq-goal').setAttribute('aria-expanded', String(!!S.goalOpen));
+  const pop = root.querySelector('.cq-goal-pop'); pop.hidden = !S.goalOpen; if (S.goalOpen) html('.cq-goal-pop', goalPopHTML());
+  html('.cq-vitals', vitalsHTML());
+  const debugAllowed = behaviorAllowedForLevel();
+  root.querySelector('[data-action="debug"]').hidden = !debugAllowed;
+  const panel = root.querySelector('.cq-debug'); panel.hidden = !(debugAllowed && S.debugOpen); if (!panel.hidden) panel.innerHTML = debuggerHTML();
+  html('.cq-strip-tabs-slot', stripTabsHTML());
+  html('.cq-strip', stripHTML());
+  html('.cq-tools', toolsHTML());
+  html('.cq-library', libraryHTML());
+  root.querySelector('.cq-strip').setAttribute('aria-label', t(S.editor === 'rune' ? UI.rune : UI.program));
+  html('.cq-runbox', button('run', glyph('play') + '<b>' + label(['Run', '執行']) + '</b>', 'class="cq-run"') +
+    '<div>' + button('step', glyph('step') + '<b>' + label(UI.step) + '</b>', 'class="cq-small"') + button('reset', glyph('reset') + '<b>' + label(['Reset', '重設']) + '</b>', 'class="cq-small"') + '</div>');
+  root.querySelector('.cq-debug-toggle').setAttribute('aria-label', t(['Event debugger', '事件除錯器']));
+  const blocked = S.paused || !!S.dialog || S.codeDirty || S.model.phase === 'won' || S.model.phase === 'resting';
+  const run = root.querySelector('[data-action="run"]');
+  run.disabled = blocked; root.querySelector('[data-action="step"]').disabled = blocked;
+  run.classList.toggle('running', S.model.phase === 'executing' && S.autoRun);
+  root.querySelector('.cq-notice').innerHTML = label(S.notice || MESSAGES.intro);
+  if (S.bubble) { S.bubble.innerHTML = label(S.notice || MESSAGES.intro); if (S.dialog || S.paused) S.bubble.hidden = true; }
+  if (S.dialog === 'code') root.querySelector('.cq-dialog').innerHTML = codeSheetHTML();
+  const executing = root.querySelector('.cq-strip .executing');
+  if (executing && executing.scrollIntoView) executing.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  S.preview = previewFor();
   draw();
+}
+/* Path preview (redesign D7): Explorer stage only, on a fresh room, while building. It runs
+   the program on a throw-away model, so it always shows exactly what Run will do. */
+function previewFor() {
+  if (modeFor(S.profile) !== 'explorer' || S.model.phase !== 'programming' || S.model.turn !== 1 || !S.program.length) return null;
+  const path = previewPath(createModel(S.level), S.program, functions());
+  return path.length > 1 ? path : null;
 }
 
 function draw(time = performance.now()) {
@@ -345,14 +475,33 @@ function draw(time = performance.now()) {
   if (S.heroStateUntil && time > S.heroStateUntil) S.heroState = 'idle';
   const box = S.canvas.getBoundingClientRect();
   if (!box.width || !box.height) return;
-  const view = drawRoom(S.canvas, S.model.snapshot(), { time: time / 1000, now: time, cssWidth: box.width, cssHeight: box.height, dpr: window.devicePixelRatio || 1, reducedMotion: S.reducedMotion, kidColor: kidColor(), heroState: S.heroState, heroMotion: S.heroMotion, enemyMotions: S.enemyMotions, fx: S.fx, paused: S.paused || !!S.dialog });
+  const view = drawRoom(S.canvas, S.model.snapshot(), { time: time / 1000, now: time, cssWidth: box.width, cssHeight: box.height, dpr: window.devicePixelRatio || 1, reducedMotion: S.reducedMotion, kidColor: kidColor(), heroState: S.heroState, heroMotion: S.heroMotion, enemyMotions: S.enemyMotions, fx: S.fx, paused: S.paused, dim: !!S.dialog && !S.paused, preview: S.preview });
   if (view) S.anchors = view.anchors;
+  placeBubble(time, box);
+}
+/* The speech bubble replaces the old notice bar: it pops over the hero for a few
+   seconds when something happens, then steps aside (coach, not cop). */
+const BUBBLE_MS = 3200;
+function placeBubble(time, box) {
+  const bubble = S.bubble;
+  if (!bubble) return;
+  const visible = !!S.noticeAt && time - S.noticeAt < BUBBLE_MS && !S.dialog && !S.paused;
+  if (bubble.hidden === visible) bubble.hidden = !visible;
+  if (!visible || !S.anchors) return;
+  const head = S.anchors.get('hero-head') || S.anchors.get('hero');
+  if (!head) return;
+  const w = bubble.offsetWidth, h = bubble.offsetHeight;
+  const x = Math.max(8, Math.min(box.width - w - 8, head.x - w / 2));
+  const above = head.y - h - 12, y = above >= 8 ? above : Math.min(box.height - h - 8, head.y + 56);
+  bubble.classList.toggle('below', above < 8);
+  bubble.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+  bubble.style.setProperty('--tail', Math.round(Math.max(14, Math.min(w - 14, head.x - x))) + 'px');
 }
 
 function addAction(op) {
   if (!S.level.available.actions.includes(op)) return;
   pushUndo(); setCurrentProgram(currentProgram().concat(action(op, uid('a'))));
-  notify(['Card added.', '已加入卡片。']); render();
+  currentSelection().clear(); announce(['Card added.', '已加入卡片。']); render();
 }
 
 function selectedRange() {
@@ -379,7 +528,7 @@ function wrap(kind, value) {
 function logic(id) {
   if (!S.level.available.logic.includes(id)) return;
   if (id === 'callRune') {
-    if (!S.runeProgram.length) { notify(MESSAGES.missingFunction); S.editor = 'rune'; render(); return; }
+    if (!S.runeProgram.length) { S.editor = 'rune'; notify(MESSAGES.missingFunction); render(); return; }
     pushUndo(); setCurrentProgram(currentProgram().concat(call('rune', uid('c')))); notify(['Rune call added.', '已加入符文呼叫。']); render(); return;
   }
   if (id.startsWith('repeat')) wrap('repeat', Number(id.replace('repeat', '')) || 2);
@@ -424,12 +573,14 @@ function selectIndex(index) {
 }
 function removeIndex(index) {
   const list = currentProgram(); if (index < 0 || index >= list.length) return;
-  pushUndo(); setCurrentProgram(list.slice(0, index).concat(list.slice(index + 1))); render();
+  pushUndo(); setCurrentProgram(list.slice(0, index).concat(list.slice(index + 1))); currentSelection().clear(); render();
 }
 function moveIndex(index, delta) {
   const list = currentProgram().slice(), target = index + delta;
   if (index < 0 || target < 0 || index >= list.length || target >= list.length) return;
-  pushUndo(); [list[index], list[target]] = [list[target], list[index]]; setCurrentProgram(list); render();
+  pushUndo(); [list[index], list[target]] = [list[target], list[index]]; setCurrentProgram(list);
+  const selection = currentSelection(); if (selection.has(index)) { selection.clear(); selection.add(target); }
+  render();
 }
 
 function applyCodeDraft() {
@@ -492,7 +643,7 @@ function insertCodeSnippet(kind) {
 }
 
 function beginIfNeeded() {
-  if (S.editor === 'code' && S.codeDirty) { notify(MESSAGES.codeChanged); return false; }
+  if (S.codeDirty) { notify(MESSAGES.codeChanged); return false; }
   if (S.model.phase === 'executing') return true;
   if (S.model.phase !== 'programming') return false;
   const result = S.model.begin(S.program, functions(), persistentBehaviors());
@@ -711,15 +862,17 @@ function startLevel(level, options = {}) {
   S.level = level; S.model = createModel(level);
   if (!preserveProgram) { S.program = []; S.runeProgram = []; S.extraFunctions = {}; S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
   else { S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
-  S.editor = level.codingView === 'code' && codeUnlocked() ? 'code' : 'main';
+  S.editor = 'main'; S.goalOpen = false; S.debugOpen = false;
   S.representation = level.codingView === 'hybrid' && allowedRepresentations().includes('hybrid') ? 'hybrid' : defaultRepresentation();
   S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false;
   const activeBehaviors=behaviorAllowedForLevel(level)&&['hero','companion'].some(owner=>{const saved=behaviorFor(S.profile,owner);return saved.enabled&&saved.source.trim();});
   S.notice = activeBehaviors ? ['Hero/Companion persistent behaviors are armed for this advanced room.', '此進階房間已載入英雄／夥伴持續行為。'] : level.expedition ? ['Your Rune library travels with this expedition.', '你的符文函式會跟著這趟遠征。'] : MESSAGES.intro;
   syncCodeFromAst();
   if (S.dialog) closeDialog(false);
-  render();
+  if (level.codingView === 'code' && codeUnlocked() && !level.expedition) S.notice = CODE_ROOM;
+  renderBar(); render(); notify(S.notice);
 }
+const CODE_ROOM = ['This room is solved in code. Tap Code to write it.', '這個房間要用程式碼解決。點「程式碼」來寫。'];
 
 function startAuthored(index) {
   if (index < 0 || index >= LEVELS.length) return;
@@ -879,7 +1032,9 @@ function openDialog(kind, html) {
   S.dialog = kind; S.scheduler.pause();
   const dialog = S.root.querySelector('.cq-dialog');
   dialog.innerHTML = html || (kind === 'map' ? mapHTML() : kind === 'camp' ? campHTML() : '<h2>' + label(UI.pausedTitle) + '</h2><p>' + label(UI.pausedBody) + '</p><div class="cq-dialog-actions">' + button('pause', label(UI.resume), 'class="cq-primary" autofocus') + '</div>');
-  dialog.setAttribute('aria-label', kind === 'map' ? 'Quest map 冒險地圖' : kind === 'camp' ? 'Pixel camp 像素營地' : kind === 'expedition' ? 'Connected dungeon expedition 相連地下城遠征' : 'Code Quest paused 程式冒險暫停');
+  dialog.setAttribute('aria-label', kind === 'map' ? 'Quest map 冒險地圖' : kind === 'camp' ? 'Pixel camp 像素營地' : kind === 'expedition' ? 'Connected dungeon expedition 相連地下城遠征' : kind === 'code' ? 'Code 程式碼' : 'Code Quest paused 程式冒險暫停');
+  dialog.classList.toggle('cq-sheet', kind === 'code');
+  if (S.bubble) S.bubble.hidden = true;
   if (!dialog.open) dialog.showModal();
 }
 function closeDialog(resume = true) {
@@ -934,8 +1089,13 @@ function brewPotionCode() {
 
 function perform(actionId) {
   if (!S || !actionId) return;
-  if (actionId.startsWith('tab:')) { const target = actionId.slice(4); if (target === 'code' && !codeUnlocked()) { notify(UI.codeLocked); return; } S.editor = target; currentSelection().clear(); if (target === 'code' && !S.codeDraft) syncCodeFromAst(); render(); return; }
-  if (actionId.startsWith('view:')) { const view = actionId.slice(5); if (allowedRepresentations().includes(view)) { S.representation = view; render(); } return; }
+  if (actionId === 'strip:main' || actionId === 'strip:rune') { S.editor = actionId === 'strip:rune' ? 'rune' : 'main'; currentSelection().clear(); if (S.editor === 'rune' && !S.runeProgram.length) notify(UI.functionHint); render(); return; }
+  if (actionId.startsWith('nudge:')) { const selected = [...currentSelection()]; if (selected.length === 1) moveIndex(selected[0], Number(actionId.slice(6))); return; }
+  if (actionId === 'delete') { const selected = [...currentSelection()].sort((a, b) => b - a); if (!selected.length) return; pushUndo(); let list = currentProgram().slice(); for (const i of selected) list.splice(i, 1); setCurrentProgram(list); currentSelection().clear(); render(); return; }
+  if (actionId === 'goal') { S.goalOpen = !S.goalOpen; render(); return; }
+  if (actionId === 'debug') { S.debugOpen = !S.debugOpen; render(); return; }
+  if (actionId === 'code') { if (!S.codeDraft) syncCodeFromAst(); openDialog('code', codeSheetHTML()); return; }
+  if (actionId === 'lang') { setLang(language() === 'zh' ? 'en' : 'zh'); return; }
   if (actionId === 'code:apply') { applyCodeDraft(); return; }
   if (actionId === 'code:reset') { resetCodeDraft(); return; }
   if (actionId.startsWith('snippet:')) { insertCodeSnippet(actionId.slice(8)); return; }
@@ -958,7 +1118,7 @@ function perform(actionId) {
   if (actionId.startsWith('up:')) { moveIndex(Number(actionId.slice(3)), -1); return; }
   if (actionId.startsWith('down:')) { moveIndex(Number(actionId.slice(5)), 1); return; }
   if (actionId === 'undo') { if (restoreUndo()) render(); return; }
-  if (actionId === 'clear') { if (currentProgram().length) { pushUndo(); setCurrentProgram([]); render(); } return; }
+  if (actionId === 'clear') { if (currentProgram().length) { pushUndo(); setCurrentProgram([]); currentSelection().clear(); render(); } return; }
   if (actionId === 'run') { executeOne(true); return; }
   if (actionId === 'step') { executeOne(false); return; }
   if (actionId === 'reset') { S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']); render(); return; }
@@ -1030,13 +1190,11 @@ function keydown(e) {
 function visibility() { if (document.hidden) pause(); }
 
 function barReady() { return !!(BAR && BAR.isConnected); }
-function topActionsHTML() { return '<div class="cq-top-actions">' + button('map', label(UI.questMap)) + button('camp', label(UI.inventory)) + button('pause', label(UI.pause)) + '</div>'; }
-
-/* Quest map / Camp / Pause and the rank badge live in the host bar next to Back,
-   like Kitchen Quest, so the stage keeps its full height on short landscape tablets. */
+/* Map / Camp / Code / language / Pause live in the host bar next to Back, like Kitchen
+   Quest, so the stage keeps its full height on short landscape tablets. */
 function settings(bar) {
   BAR = bar;
-  bar.innerHTML = '<div class="cq-setbar" role="group" aria-label="Code Quest controls 程式冒險控制"><div class="cq-profile"></div>' + topActionsHTML() + '</div>';
+  bar.innerHTML = setbarHTML();
   bar.addEventListener('pointerdown', e => {
     const target = e.target.closest('button[data-action]');
     if (!S || !target || target.disabled || e.button !== 0) return;
@@ -1051,10 +1209,17 @@ function settings(bar) {
 function init(ctx) {
   stop();
   const root = document.createElement('div'); root.className = 'cq';
+  setLanguage(savedLang(ctx));
   root.innerHTML = '<link rel="stylesheet" href="' + new URL('../../css/codequest.css', import.meta.url).href + '">' +
-    (barReady() ? '' : '<header class="cq-top"><div class="cq-brand"><h2>' + label(UI.title) + '</h2><span>' + label(UI.subtitle) + '</span></div><div class="cq-profile"></div>' + topActionsHTML() + '</header>') +
-    '<main class="cq-main"><section class="cq-world"><div class="cq-scene"><canvas width="480" height="270" role="img" aria-label="Pixel dungeon room 像素地下城房間"></canvas><div class="cq-stats"></div></div><aside class="cq-quest"></aside></section><section class="cq-editor"><nav class="cq-tabs" aria-label="Programming views 程式編輯模式">' + button('tab:main', label(UI.program)) + button('tab:rune', label(UI.rune)) + button('tab:code', label(UI.code)) + '</nav><div class="cq-editor-body"></div></section></main>' +
-    '<footer class="cq-bottom"><div class="cq-edit-actions">' + button('undo', label(UI.undo)) + button('clear', label(UI.clear)) + button('reset', label(UI.reset)) + '</div><div class="cq-run-actions">' + button('step', label(UI.step)) + button('run', label(UI.run), 'class="cq-primary"') + '</div></footer><p class="cq-notice" role="status" aria-live="polite"></p><dialog class="cq-dialog"></dialog>';
+    (barReady() ? '' : '<header class="cq-top"></header>') +
+    '<main class="cq-play"><section class="cq-scene"><canvas width="480" height="270" role="img" aria-label="Pixel dungeon room 像素地下城房間"></canvas>' +
+    '<div class="cq-hud"><div class="cq-hud-left"><button type="button" class="cq-goal" data-action="goal" aria-expanded="false"></button><div class="cq-goal-pop" hidden></div></div><div class="cq-vitals"></div></div>' +
+    '<button type="button" class="cq-debug-toggle" data-action="debug" aria-label="Event debugger 事件除錯器" hidden>' + glyph('bug') + '</button><aside class="cq-debug" hidden></aside>' +
+    '<div class="cq-bubble" hidden></div></section>' +
+    '<section class="cq-dock"><div class="cq-program"><div class="cq-strip-tabs-slot"></div><div class="cq-strip cq-scroll" role="group"></div><div class="cq-tools"></div></div>' +
+    '<div class="cq-library cq-scroll" role="group" aria-label="Command cards 指令卡"></div>' +
+    '<div class="cq-runbox"></div></section></main>' +
+    '<p class="cq-notice cq-sr" role="status" aria-live="polite"></p><dialog class="cq-dialog"></dialog>';
 
   const saved = ctx.settings.codequest && ctx.settings.codequest.profiles && ctx.settings.codequest.profiles[ctx.kid];
   const profile = normalizeProfile(saved, ctx.best);
@@ -1064,10 +1229,10 @@ function init(ctx) {
   const initialRepresentation = initial.codingView === 'hybrid' && (initialMode === 'coder' || initialMode === 'architect') ? 'hybrid' : initialMode === 'explorer' ? 'picture' : initialMode === 'builder' ? 'blocks' : 'hybrid';
   S = {
     root, ctx, profile, level: initial, model: null, program: [], runeProgram: [], extraFunctions: {}, selectedMain: new Set(), selectedRune: new Set(),
-    editor: initial.codingView === 'code' && initialMode === 'architect' ? 'code' : 'main', representation: initialRepresentation,
+    editor: 'main', representation: initialRepresentation, goalOpen: false, debugOpen: false, noticeAt: 0, preview: null, anchors: null,
     codeDraft: '', codeDirty: false, codeError: null,
     undo: [], serial: 0, scheduler: createScheduler(), paused: false, dialog: null, autoRun: false,
-    canvas: root.querySelector('canvas'), best: Number(ctx.best) || 0, notice: MESSAGES.intro, heroState: 'idle', heroStateUntil: 0, heroMotion: null, enemyMotions: {}, fx: null, activeUid: null,
+    canvas: root.querySelector('canvas'), bubble: root.querySelector('.cq-bubble'), best: Number(ctx.best) || 0, notice: MESSAGES.intro, heroState: 'idle', heroStateUntil: 0, heroMotion: null, enemyMotions: {}, fx: null, activeUid: null,
     bench: [], benchProcess: [], labCode: '', labCodeError: null, campNotice: null, drag: null, completing: false, lastDraw: 0, run: normalizeDungeonRun(profile.activeRun)
   };
   S.model = createModel(initial); syncCodeFromAst();
@@ -1088,11 +1253,12 @@ function init(ctx) {
     if (ingredient) { startIngredientDrag(e, ingredient); return; }
     const target = e.target.closest('button[data-action]');
     if (!target || target.disabled || e.button !== 0) return;
+    if (target.closest('.cq-scroll')) return;
     e.preventDefault(); target.focus({ preventScroll: true }); perform(target.dataset.action);
   });
   root.addEventListener('click', e => {
     const target = e.target.closest('button[data-action]');
-    if (e.detail === 0 && target && !target.disabled) perform(target.dataset.action);
+    if (target && !target.disabled && (e.detail === 0 || target.closest('.cq-scroll'))) perform(target.dataset.action);
   });
   root.querySelector('.cq-dialog').addEventListener('cancel', e => { e.preventDefault(); if (S.dialog === 'win') return; if (S.paused) resume(); else closeDialog(); });
   window.addEventListener('pointermove', dragMove, true); window.addEventListener('pointerup', dragEnd, true); window.addEventListener('pointercancel', dragEnd, true);
@@ -1102,7 +1268,7 @@ function init(ctx) {
   // The canvas backing store follows its box in device pixels (room-view fits the room at a whole-number scale).
   if (typeof ResizeObserver === 'function') { S.resize = new ResizeObserver(() => { if (S) draw(); }); S.resize.observe(root.querySelector('.cq-scene')); }
   S.scheduler.frame(time => { if (!S || S.paused || S.dialog) return; if (time - S.lastDraw > 48) { S.lastDraw = time; draw(time); } });
-  render(); notify(MESSAGES.intro);
+  renderBar(); render(); notify(initial.codingView === 'code' && initialMode === 'architect' ? CODE_ROOM : MESSAGES.intro);
   if (S.run) openDialog('expedition', expeditionHTML());
 }
 
@@ -1122,5 +1288,5 @@ export default {
   id: 'codequest', version: '0.14.0', keyboard: false, bestKey: 'codequest',
   meta: { icon: '🏰', title: 'Code Quest', tz: '程式冒險', blurb: 'Program the hero · 編程闖關' },
   settings, init, stop,
-  snapshot() { return S ? { level: S.level.id, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog } : null; }
+  snapshot() { return S ? { level: S.level.id, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog, lang: language(), goalOpen: !!S.goalOpen, preview: S.preview, notice: S.notice } : null; }
 };
