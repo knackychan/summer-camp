@@ -149,3 +149,30 @@ assert.equal(stateBoss.snapshot().companion.state,'wait');
 assert.ok(canvas.ctx.ops > 1450, 'v0.14 state-machine boss should render with actor state FX');
 
 console.log('Code Quest v0.14: 2.5D renderer covers state transitions, signal pulses and all inherited cooperative dungeon systems.');
+
+// ---- Redesign slice 01: Code Quest palette + 16 px world atlas ----
+import { HEX as PLANET_HEX } from '../js/world/planet-palette.js';
+import { CQ_HEX, Q } from '../js/games/codequest/palette.js';
+import { spriteSize, spriteBitmap, spriteChars } from '../js/games/codequest/pixel-art.js';
+PLANET_HEX.forEach((hex, i) => assert.equal(CQ_HEX[i], hex, 'planet palette index ' + i + ' must not move'));
+for (const k of ['deep','stoneDark','stone','stoneMid','stoneLit','warmDark','warm','warmLit','skin','skinShade']) assert.ok(/^#[0-9a-f]{6}$/.test(CQ_HEX[Q[k]]), 'palette key ' + k);
+const SIZES = {
+  '16x24': ['hero-s-idle','hero-s-walk-1','hero-s-walk-2','hero-s-attack','hero-s-hurt','hero-n-idle','hero-n-walk-1','hero-n-walk-2','hero-n-attack','hero-n-hurt','hero-e-idle','hero-e-walk-1','hero-e-walk-2','hero-e-attack','hero-e-hurt','hero-idle','goblin-0','goblin-1','archer-0','archer-1','bulwark-0','bulwark-1','emberImp-0','emberImp-1','frostMite-0','frostMite-1','companion','npc','npc-helped','door-closed','door-open','rune-gate-closed','rune-gate-open'],
+  '16x16': ['slime-0','slime-1','viper-0','viper-1','chest-closed','chest-open','key','trap-active','trap-safe','cycle-trap-active','cycle-trap-safe','lever-off','lever-on','plate-off','plate-on','crate','crate-broken','push-block','moving-platform','quest-token','rune-core','exit','stairs','rubble','skull'],
+  '24x24': ['golem-0','golem-1','runeWarden-0','runeWarden-1','circuitGuardian-0','circuitGuardian-1'],
+  '32x24': ['relicHydra-0','relicHydra-1'],
+  '8x16': ['torch','torch-1','banner']
+};
+for (const [size, ids] of Object.entries(SIZES)) {
+  const [width, height] = size.split('x').map(Number);
+  for (const id of ids) {
+    assert.ok(CODEQUEST_SPRITE_IDS.includes(id), 'missing world sprite ' + id);
+    assert.deepEqual(spriteSize(id), { width, height }, id + ' must be ' + size);
+    assert.ok(spriteBitmap(id).every(row => row.length === width), id + ' has a ragged row');
+  }
+}
+for (const id of CODEQUEST_SPRITE_IDS) {
+  const chars = spriteChars(id);
+  for (const row of spriteBitmap(id)) for (const ch of row) assert.ok(ch === '.' || ch === 'A' || ch === 'a' || ch in chars, id + ' uses unknown colour key ' + ch);
+}
+console.log('Code Quest redesign atlas: palette + world sprite sizes verified.');

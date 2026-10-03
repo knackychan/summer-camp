@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v137-codequest-v14";
+const CACHE_NAME = "summer-quest-v138-codequest-redesign-01";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -193,6 +193,8 @@ const APP_SHELL = [
   "./js/games/codequest/loot.js",
   "./js/games/codequest/run.js",
   "./js/games/codequest/model.js",
+  "./js/games/codequest/palette.js",
+  "./js/games/codequest/sprites-world.js",
   "./js/games/codequest/levels.js",
   "./js/games/codequest/progression.js",
   "./js/games/codequest/strings.js",

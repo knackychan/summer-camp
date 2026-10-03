@@ -1,7 +1,9 @@
 /* Code Quest pixel-sprite atlas. The RPG model never depends on these frames.
    Final Summer Quest sprite sheets can replace this atlas without touching the
    AST, interpreter, quests, saves, combat or dungeon projection. */
-import { HEX, C, nearestIndex } from '../../world/planet-palette.js';
+import { C, DARK, nearestIndex } from '../../world/planet-palette.js';
+import { CQ_HEX } from './palette.js';
+import { WORLD_SPRITES, WORLD_CHARS } from './sprites-world.js';
 
 const P = Object.freeze({
   K: C.outline, D: C.rockDark, R: C.red, F: C.lava, S: C.sand, L: C.sandLit,
@@ -10,7 +12,7 @@ const P = Object.freeze({
   O: C.woodDark, X: C.steel, Z: C.grey, N: C.snowShade, V: C.rock, J: C.rockLit
 });
 
-const SPRITES = Object.freeze({
+const LEGACY = Object.freeze({
   'hero-idle': [
     '....KK....','...KSSK...','..KSSSSK..','..KSKSKK..','..KSSSSK..','...KSSK...','..KKAAKK..','.KAAAAAAK.','KAAAKKAAAK','...KAAK...','...K..K...','..KK..KK..'
   ],
@@ -196,20 +198,25 @@ const SPRITES = Object.freeze({
   ]
 });
 
+// World frames (redesign slice 01) win over legacy frames of the same id; item icons stay legacy.
+const SPRITES = Object.freeze({ ...LEGACY, ...WORLD_SPRITES });
+const charsFor = id => Object.prototype.hasOwnProperty.call(WORLD_SPRITES, id) ? WORLD_CHARS : P;
+
 function rect(ctx, color, x, y, w, h) {
-  ctx.fillStyle = HEX[color];
+  ctx.fillStyle = CQ_HEX[color];
   ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 }
 
-function drawBitmap(ctx, bitmap, x, y, scale, options = {}) {
+function drawBitmap(ctx, bitmap, x, y, scale, options = {}, chars = P) {
   const accent = options.accent == null ? C.cyan : options.accent;
+  const accentDark = DARK[accent] == null ? accent : DARK[accent];
   const flip = !!options.flip;
   for (let row = 0; row < bitmap.length; row++) {
     const line = bitmap[row];
     for (let col = 0; col < line.length; col++) {
       const char = line[col];
       if (char === '.' || char === ' ') continue;
-      const color = char === 'A' ? accent : P[char];
+      const color = char === 'A' ? accent : char === 'a' && chars === WORLD_CHARS ? accentDark : chars[char];
       if (color == null) continue;
       const px = flip ? line.length - 1 - col : col;
       rect(ctx, color, x + px * scale, y + row * scale, scale, scale);
@@ -217,14 +224,18 @@ function drawBitmap(ctx, bitmap, x, y, scale, options = {}) {
   }
 }
 
+export function spriteBitmap(id) { return SPRITES[id] || SPRITES['hero-idle']; }
+/** The palette-key map a frame is drawn with ('A' accent and, for world frames, 'a' accent shade, are extra). */
+export function spriteChars(id) { return charsFor(SPRITES[id] ? id : 'hero-idle'); }
+
 export function spriteSize(id, scale = 1) {
-  const bitmap = SPRITES[id] || SPRITES['hero-idle'];
+  const bitmap = spriteBitmap(id);
   return { width: (bitmap[0] || '').length * scale, height: bitmap.length * scale };
 }
 
 export function drawSprite(ctx, id, x, y, scale = 2, options = {}) {
-  const sprite = SPRITES[id] || SPRITES['hero-idle'];
-  drawBitmap(ctx, sprite, x, y, scale, options);
+  const key = SPRITES[id] ? id : 'hero-idle';
+  drawBitmap(ctx, SPRITES[key], x, y, scale, options, charsFor(key));
 }
 
 const iconCache = new Map();
@@ -233,14 +244,15 @@ export function spriteURL(id, accentHex = '#39d0c8') {
   const cacheKey = mapped + ':' + accentHex;
   if (iconCache.has(cacheKey)) return iconCache.get(cacheKey);
   if (typeof document === 'undefined') return '';
-  const bitmap = SPRITES[mapped] || SPRITES.potion;
+  const key = SPRITES[mapped] ? mapped : 'potion';
+  const bitmap = SPRITES[key];
   const canvas = document.createElement('canvas');
   canvas.width = 32; canvas.height = 32;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   const scale = Math.max(1, Math.floor(Math.min(30 / (bitmap[0] || '').length, 30 / bitmap.length)));
   const x = Math.floor((32 - (bitmap[0] || '').length * scale) / 2), y = Math.floor((32 - bitmap.length * scale) / 2);
-  drawBitmap(ctx, bitmap, x, y, scale, { accent: nearestIndex(accentHex) });
+  drawBitmap(ctx, bitmap, x, y, scale, { accent: nearestIndex(accentHex) }, charsFor(key));
   const url = canvas.toDataURL(); iconCache.set(cacheKey, url); return url;
 }
 
