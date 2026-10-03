@@ -157,3 +157,21 @@ test("a view saved mid-pinch past the zoom limit is still accepted on the next l
   assert.ok(view, "saved view survives");
   assert.equal(view.zoom, 2);
 });
+
+test("switching kids reuses the planet map, clouds and each hero colour's sprite atlas", () => {
+  const source = read("js/world/world-explorer.js");
+  const built = { map: 0, clouds: 0, atlas: [] };
+  const context = {
+    DEFAULT_SEED: 7,
+    buildPlanetMap: () => { built.map++; return { color: [] }; },
+    buildCloudMap: () => { built.clouds++; return []; },
+    buildAtlas: (hero) => { built.atlas.push(hero); return { hero }; }
+  };
+  vm.createContext(context);
+  vm.runInContext(source.slice(source.indexOf("var planetArt="), source.indexOf("var MIN_ZOOM=")), context);
+  const a = context.worldArt(21), b = context.worldArt(6), c = context.worldArt(21);
+  assert.equal(built.map, 1); assert.equal(built.clouds, 1);
+  assert.deepEqual(built.atlas, [21, 6]);
+  assert.equal(a.map, b.map); assert.equal(a.atlas, c.atlas); assert.notEqual(a.atlas, b.atlas);
+  assert.match(source, /var art=worldArt\(heroIndex\),map=art\.map,clouds=art\.clouds,atlas=art\.atlas;/);
+});

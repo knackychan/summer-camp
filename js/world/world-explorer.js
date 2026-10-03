@@ -29,6 +29,15 @@ function readView(kidId){
 
 function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
 
+/* The map and clouds are fixed by the seed and the atlas only varies by hero colour,
+   so a kid switch reuses them instead of rebuilding before the first frame. All read-only. */
+var planetArt=null,atlases=new Map();
+function worldArt(heroIndex){
+  if(!planetArt)planetArt={map:buildPlanetMap(DEFAULT_SEED),clouds:buildCloudMap(DEFAULT_SEED)};
+  if(!atlases.has(heroIndex))atlases.set(heroIndex,buildAtlas(heroIndex));
+  return {map:planetArt.map,clouds:planetArt.clouds,atlas:atlases.get(heroIndex)};
+}
+
 var MIN_ZOOM=1, MAX_ZOOM=2, BASE_DISTANCE=16.4;
 var DEFAULT_VIEW=facingQuat(18,0);
 var HERO_SITE={lat:0,lon:-6};
@@ -69,7 +78,7 @@ function createWorld(options){
   var ctx=canvas.getContext("2d");
   if(!ctx){mount.innerHTML="";throw new Error("2D canvas unavailable for the planet world");}
   var globeCanvas=document.createElement("canvas"),gctx=globeCanvas.getContext("2d");
-  var map=buildPlanetMap(DEFAULT_SEED),clouds=buildCloudMap(DEFAULT_SEED),atlas=buildAtlas(heroIndex);
+  var art=worldArt(heroIndex),map=art.map,clouds=art.clouds,atlas=art.atlas;
 
   var seed=11;
   function rand(){seed=(seed*16807)%2147483647;return (seed-1)/2147483646;}
