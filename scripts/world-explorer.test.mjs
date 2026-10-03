@@ -110,3 +110,12 @@ test("the selection card subtitle carries the Chinese blurb, not only the Englis
     "Not available right now · 現在暫時無法開啟");
   assert.match(read("css/world-explorer.css"), /\.world-selection__copy span\{[^}]*white-space:pre[;}]/, "subtitle keeps its two lines");
 });
+
+test("each kid's hero takes that kid's own colour, snapped to the palette", async () => {
+  const { nearestIndex } = await import("../js/world/planet-palette.js");
+  const raws = [...read("index.html").matchAll(/^\s*(lucien|lili|luis):\s*\{[^}]*raw:"(#[0-9A-Fa-f]{6})"/gm)].map((m) => m[2]);
+  assert.equal(raws.length, 3, "three kids with a hex raw colour");
+  assert.equal(new Set(raws.map(nearestIndex)).size, 3, "three distinct hero colours");
+  assert.ok(/nearestIndex\(\(options\.kid&&\(options\.kid\.raw\|\|options\.kid\.color\)\)/.test(read("js/world/world-explorer.js")),
+    "hero colour reads kid.raw (kid.color is a CSS var the palette cannot snap)");
+});

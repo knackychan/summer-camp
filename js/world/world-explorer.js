@@ -61,7 +61,7 @@ function createWorld(options){
   var goText=goEl.textContent;
   var reduced=!!(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   var coarse=!!(window.matchMedia&&window.matchMedia("(pointer: coarse)").matches);
-  var heroIndex=nearestIndex((options.kid&&options.kid.color)||"#4EA8FF");
+  var heroIndex=nearestIndex((options.kid&&(options.kid.raw||options.kid.color))||"#4EA8FF");
 
   var canvas=document.createElement("canvas");
   canvas.dataset.sqWorld="planet";
