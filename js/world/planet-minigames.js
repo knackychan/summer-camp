@@ -23,15 +23,15 @@ var IMPL = {
       var basketY = env.floor - 6;
       game.items = game.items.filter(function(item){
         item.y += item.vy*dt;
-        if (item.y >= basketY - 3 && item.y <= basketY + 3 && Math.abs(item.x - game.basketX) <= 6) {
+        if (item.y >= basketY - 4 && item.y <= basketY + 4 && Math.abs(item.x - game.basketX) <= 10) {
           game.score++; env.sound("tick"); sparkle(game, env, item.x, basketY - 2, 3); return false;
         }
         return item.y < env.floor + 6;
       });
     },
     draw:function(game, env, ctx){
-      game.items.forEach(function(item){blit(ctx, env, "gStar", item.x, item.y);});
-      blit(ctx, env, "gBasket", game.basketX, env.floor - 4);
+      game.items.forEach(function(item){blit(ctx, env, "gStar", item.x, item.y, 0, 2);});
+      blit(ctx, env, "gBasket", game.basketX, env.floor - 4, 0, 2);
     },
     pointer:function(game, env, type, x){if (type !== "up") game.targetX = Math.max(6, Math.min(env.width - 6, x));}
   },
@@ -44,12 +44,12 @@ var IMPL = {
       game.items = game.items.filter(function(item){item.y -= item.vy*dt; item.phase += dt*3; return item.y > env.top;});
     },
     draw:function(game, env, ctx){
-      game.items.forEach(function(item){blit(ctx, env, "gBubble", item.x + Math.round(Math.sin(item.phase)*2), item.y);});
-      blit(ctx, env, "whale", env.width/2, env.floor - 4);
+      game.items.forEach(function(item){blit(ctx, env, "gBubble", item.x + Math.round(Math.sin(item.phase)*2), item.y, 0, 2);});
+      blit(ctx, env, "whale", env.width/2, env.floor - 4, 0, 2);
     },
     pointer:function(game, env, type, x, y){
       if (type !== "down") return;
-      var reach = env.coarse ? 8 : 5;
+      var reach = env.coarse ? 12 : 8;
       for (var i = game.items.length - 1; i >= 0; i--) {
         var item = game.items[i], bx = item.x + Math.round(Math.sin(item.phase)*2);
         if (Math.abs(bx - x) <= reach && Math.abs(item.y - y) <= reach) {
@@ -67,7 +67,7 @@ var IMPL = {
     },
     holeAt:function(env, hole){
       var mid = (env.top + env.floor)/2;
-      return {x:env.width/2 + (hole.col - 1)*22, y:mid + (hole.row ? 12 : -12)};
+      return {x:env.width/2 + (hole.col - 1)*30, y:mid + (hole.row ? 16 : -16)};
     },
     step:function(game, env, dt){
       game.spawn -= dt;
@@ -81,13 +81,13 @@ var IMPL = {
     draw:function(game, env, ctx){
       game.holes.forEach(function(hole){
         var at = IMPL.moles.holeAt(env, hole);
-        blit(ctx, env, "gHole", at.x, at.y + 2);
-        if (hole.up > 0) blit(ctx, env, "gMole", at.x, at.y - 2 + (hole.up < 0.15 || hole.up > 1.05 ? 2 : 0));
+        blit(ctx, env, "gHole", at.x, at.y + 2, 0, 2);
+        if (hole.up > 0) blit(ctx, env, "gMole", at.x, at.y - 2 + (hole.up < 0.15 || hole.up > 1.05 ? 2 : 0), 0, 2);
       });
     },
     pointer:function(game, env, type, x, y){
       if (type !== "down") return;
-      var reach = env.coarse ? 9 : 6;
+      var reach = env.coarse ? 13 : 9;
       game.holes.forEach(function(hole){
         var at = IMPL.moles.holeAt(env, hole);
         if (hole.up > 0 && Math.abs(at.x - x) <= reach && Math.abs(at.y - 2 - y) <= reach) {
