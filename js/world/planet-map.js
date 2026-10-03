@@ -54,13 +54,13 @@ function hash3(x, y, z, seed){
   return (h >>> 0) / 4294967296;
 }
 function smooth(t){return t*t*(3-2*t);}
+function lerp(a, b, t){return a+(b-a)*t;}
+/* Runs ~200k times while the planet is built: no per-call closures. */
 function valueNoise(x, y, z, seed){
-  var xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  var xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), x1 = xi+1, y1 = yi+1, z1 = zi+1;
   var tx = smooth(x-xi), ty = smooth(y-yi), tz = smooth(z-zi);
-  function corner(dx, dy, dz){return hash3(xi+dx, yi+dy, zi+dz, seed);}
-  function lerp(a, b, t){return a+(b-a)*t;}
-  var x00 = lerp(corner(0,0,0), corner(1,0,0), tx), x10 = lerp(corner(0,1,0), corner(1,1,0), tx);
-  var x01 = lerp(corner(0,0,1), corner(1,0,1), tx), x11 = lerp(corner(0,1,1), corner(1,1,1), tx);
+  var x00 = lerp(hash3(xi,yi,zi,seed), hash3(x1,yi,zi,seed), tx), x10 = lerp(hash3(xi,y1,zi,seed), hash3(x1,y1,zi,seed), tx);
+  var x01 = lerp(hash3(xi,yi,z1,seed), hash3(x1,yi,z1,seed), tx), x11 = lerp(hash3(xi,y1,z1,seed), hash3(x1,y1,z1,seed), tx);
   return lerp(lerp(x00, x10, ty), lerp(x01, x11, ty), tz);
 }
 export function fbm(v, scale, seed){
