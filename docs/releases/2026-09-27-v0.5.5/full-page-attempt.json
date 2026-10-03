@@ -1,0 +1,7 @@
+{
+  "scope": "Full root page launch only; no live provider, tablet or offline lifecycle claim.",
+  "url_type": "loopback HTTP",
+  "page_errors": [],
+  "result": "navigation_failed",
+  "error": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at <loopback>/\nCall log:\n  - navigating to \"<loopback>/\", waiting until \"domcontentloaded\"\n"
+}

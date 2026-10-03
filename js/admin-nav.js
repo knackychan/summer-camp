@@ -2,7 +2,7 @@
 (function(){
   const $ = function(id) { return document.getElementById(id); };
 
-  var TITLES = { today:"Today", inbox:"Inbox", stars:"Stars", kids:"Kids", content:"Content", reports:"Reports", settings:"Settings" };
+  var TITLES = { today:"Today", inbox:"Inbox", stars:"Points", kids:"Kids", quests:"Quests", content:"Content", reports:"Reports", ai:"AI Lab", settings:"Settings" };
   var lastRoute = "today";
 
   function go(route) {

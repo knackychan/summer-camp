@@ -1,0 +1,151 @@
+
+> test:guided-session
+> npm run build:mobile && node --experimental-default-type=module scripts/guided-learning-session.test.mjs
+
+
+> build:mobile
+> node scripts/build-mobile.mjs
+
+Summer Quest mobile modules built to dist/mobile
+TAP version 13
+# Subtest: guided math: available existing runtime, run-bound result and no automatic next launch
+ok 1 - guided math: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 6.714222
+  type: 'test'
+  ...
+# Subtest: guided language: available existing runtime, run-bound result and no automatic next launch
+ok 2 - guided language: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 2.05051
+  type: 'test'
+  ...
+# Subtest: guided science: available existing runtime, run-bound result and no automatic next launch
+ok 3 - guided science: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 2.950401
+  type: 'test'
+  ...
+# Subtest: guided geography: available existing runtime, run-bound result and no automatic next launch
+ok 4 - guided geography: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 1.388089
+  type: 'test'
+  ...
+# Subtest: guided history: available existing runtime, run-bound result and no automatic next launch
+ok 5 - guided history: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 1.376421
+  type: 'test'
+  ...
+# Subtest: free practice, another learner, wrong skill and duplicate events cannot complete a guided step
+ok 6 - free practice, another learner, wrong skill and duplicate events cannot complete a guided step
+  ---
+  duration_ms: 1.703516
+  type: 'test'
+  ...
+# Subtest: pause closes the old run; refresh/resume keeps committed progress even after telemetry pruning
+ok 7 - pause closes the old run; refresh/resume keeps committed progress even after telemetry pruning
+  ---
+  duration_ms: 1.339966
+  type: 'test'
+  ...
+# Subtest: another choice persists across rendering, retains completed prefix and ignores old run
+ok 8 - another choice persists across rendering, retains completed prefix and ignores old run
+  ---
+  duration_ms: 1.322129
+  type: 'test'
+  ...
+# Subtest: finish is not successful completion and stale reset/start cannot reopen a finished session
+ok 9 - finish is not successful completion and stale reset/start cannot reopen a finished session
+  ---
+  duration_ms: 1.635242
+  type: 'test'
+  ...
+# Subtest: an empty available-runtime set returns a supported no-candidate finish, never an invented exercise
+ok 10 - an empty available-runtime set returns a supported no-candidate finish, never an invented exercise
+  ---
+  duration_ms: 0.544413
+  type: 'test'
+  ...
+# Subtest: double start is compare-and-set; child scopes and stale revisions are isolated
+ok 11 - double start is compare-and-set; child scopes and stale revisions are isolated
+  ---
+  duration_ms: 1.741694
+  type: 'test'
+  ...
+# Subtest: v11 additive migration retains committed progress; v10 rebuild does not erase learning telemetry
+ok 12 - v11 additive migration retains committed progress; v10 rebuild does not erase learning telemetry
+  ---
+  duration_ms: 1.505928
+  type: 'test'
+  ...
+# Subtest: math duplicate callbacks remain idempotent after reloading the learning engine
+ok 13 - math duplicate callbacks remain idempotent after reloading the learning engine
+  ---
+  duration_ms: 1.519438
+  type: 'test'
+  ...
+# Subtest: vocabulary duplicate callbacks neither inflate mastery evidence nor replay support outcomes
+ok 14 - vocabulary duplicate callbacks neither inflate mastery evidence nor replay support outcomes
+  ---
+  duration_ms: 1.128787
+  type: 'test'
+  ...
+# Subtest: simultaneous telemetry writes are serialized instead of silently losing sibling/subject evidence
+ok 15 - simultaneous telemetry writes are serialized instead of silently losing sibling/subject evidence
+  ---
+  duration_ms: 3.256233
+  type: 'test'
+  ...
+# Subtest: late knowledge AI cannot undo advance
+ok 16 - late knowledge AI cannot undo advance
+  ---
+  duration_ms: 7.297544
+  type: 'test'
+  ...
+# Subtest: late knowledge AI cannot undo reset
+ok 17 - late knowledge AI cannot undo reset
+  ---
+  duration_ms: 1.619829
+  type: 'test'
+  ...
+# Subtest: late knowledge AI cannot undo replace
+ok 18 - late knowledge AI cannot undo replace
+  ---
+  duration_ms: 0.599207
+  type: 'test'
+  ...
+# Subtest: Check mode never calls AI; concurrent answers and stale item callbacks cannot double-grade or skip
+ok 19 - Check mode never calls AI; concurrent answers and stale item callbacks cannot double-grade or skip
+  ---
+  duration_ms: 0.534278
+  type: 'test'
+  ...
+# Subtest: directed knowledge resume retains its answer and question position, while rebinding its new run
+ok 20 - directed knowledge resume retains its answer and question position, while rebinding its new run
+  ---
+  duration_ms: 0.47602
+  type: 'test'
+  ...
+# Subtest: an unavailable saved activity offers a valid replacement without starting or crediting it
+ok 21 - an unavailable saved activity offers a valid replacement without starting or crediting it
+  ---
+  duration_ms: 0.827562
+  type: 'test'
+  ...
+# Subtest: the full guided plan reaches genuine completion only through every current step
+ok 22 - the full guided plan reaches genuine completion only through every current step
+  ---
+  duration_ms: 3.413151
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 51.094229

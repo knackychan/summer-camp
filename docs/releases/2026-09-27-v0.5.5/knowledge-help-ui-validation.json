@@ -1,0 +1,15 @@
+{
+  "scope": "Actual rendered components + real compiled bridges; deterministic fixture provider and audio/navigation doubles. Not full-app, service worker, physical tablet or live model acceptance.",
+  "checks": [
+    "science: local bilingual clue, Listen action and Another clue work without a provider.",
+    "geography: local bilingual clue, Listen action and Another clue work without a provider.",
+    "history: local bilingual clue, Listen action and Another clue work without a provider.",
+    "Explicit remote selection is applied once; rerender, bridge reload and local next do not repeat it.",
+    "768px tablet and 390px mobile: no horizontal overflow; new touch controls are at least 44px high.",
+    "A delayed response cannot restore help after the child begins and answers a question.",
+    "Switching children cancels pending help and does not display the previous child’s result.",
+    "Science, Geography and History Check screens expose no help controls and make no help request.",
+    "No page-level JavaScript errors in the exercised component flows."
+  ],
+  "count": 9
+}

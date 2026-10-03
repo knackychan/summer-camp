@@ -1,0 +1,145 @@
+{
+  "remoteServices": "blocked; synthetic config also served to service workers",
+  "world": "2D canvas pixel planet; desktop Chromium is not Android hardware evidence",
+  "targets": [
+    {
+      "target": "source",
+      "path": "D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest",
+      "cases": [
+        {
+          "scenario": "normal",
+          "steps": [
+            {
+              "name": "fresh Hero -> rendered world",
+              "ok": true,
+              "detail": null
+            },
+            {
+              "name": "Classic clicks and repeated UI/native Back",
+              "ok": true,
+              "detail": {
+                "rounds": 2,
+                "launches": 10,
+                "back": "UI buttons and shared native handler"
+              }
+            },
+            {
+              "name": "keyboard book cards, grid, zoom and single Escape",
+              "ok": true,
+              "detail": {
+                "books": [
+                  "space",
+                  "minecraft"
+                ],
+                "input": "Tab, Enter, Space, Escape and ArrowRight",
+                "focus": "reachable cards, page selection and zoom return"
+              }
+            },
+            {
+              "name": "instrument keyboard input and audio stops on exit",
+              "ok": true,
+              "detail": {
+                "signalPeaks": {
+                  "piano": 0.18644456565380096,
+                  "moog": 0.3761489689350128,
+                  "pads": 0.5880171060562134
+                },
+                "exitSilence": true,
+                "keyboard": "Piano/Synth Enter, Space, keyup and blur",
+                "audio": "WebAudio waveform; not a human listening check"
+              }
+            },
+            {
+              "name": "knowledge visual clue, local help and two answers",
+              "ok": true,
+              "detail": {
+                "lesson": "science-plants-parts",
+                "visualClue": true,
+                "localHelp": true,
+                "correctAnswers": 2
+              }
+            },
+            {
+              "name": "world camera/pinch/tap/lifecycle/resize redraw",
+              "ok": true,
+              "detail": {
+                "dragDelta": 18.732205383455128,
+                "pinchDistances": [
+                  8.091463883216761,
+                  16.56229336295788
+                ],
+                "raycastSelection": "section:quests",
+                "resizeRedraw": true,
+                "simulatedNativeLifecycle": true,
+                "cameraReload": true,
+                "childSwitches": 2
+              }
+            },
+            {
+              "name": "world every catalog entry",
+              "ok": false,
+              "error": "('quest', 12)",
+              "trace": "Traceback (most recent call last):\n  File \"D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\scripts\\check-architecture-recovery.py\", line 141, in step\n    detail = action()\n  File \"D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\scripts\\check-architecture-recovery.py\", line 616, in <lambda>\n    step(result, origin + \" every catalog entry\", lambda origin=origin: catalog_sweep(page, origin))\n                                                                        ~~~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\scripts\\check-architecture-recovery.py\", line 324, in catalog_sweep\n    assert sum(entry[\"kind\"] == kind for entry in catalog) == count, (kind, count)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ('quest', 12)\n"
+            },
+            {
+              "name": "classic every catalog entry",
+              "ok": false,
+              "error": "('quest', 12)",
+              "trace": "Traceback (most recent call last):\n  File \"D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\scripts\\check-architecture-recovery.py\", line 141, in step\n    detail = action()\n  File \"D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\scripts\\check-architecture-recovery.py\", line 616, in <lambda>\n    step(result, origin + \" every catalog entry\", lambda origin=origin: catalog_sweep(page, origin))\n                                                                        ~~~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"D:\\WORK\\10 - AI\\SUMMER CAMP\\summer-quest\\scripts\\check-architecture-recovery.py\", line 324, in catalog_sweep\n    assert sum(entry[\"kind\"] == kind for entry in catalog) == count, (kind, count)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ('quest', 12)\n"
+            },
+            {
+              "name": "all integrated book-data images decode",
+              "ok": true,
+              "detail": {
+                "decoded": 178,
+                "failures": []
+              }
+            },
+            {
+              "name": "invalid content returns a truthful failure",
+              "ok": true,
+              "detail": {
+                "ok": false,
+                "reason": "content_not_found"
+              }
+            },
+            {
+              "name": "retired entry absent or redirects to root",
+              "ok": true,
+              "detail": {
+                "prototype": "compatibility entry redirects to authoritative root"
+              }
+            }
+          ],
+          "pageErrors": [],
+          "consoleErrors": [
+            "Failed to load resource: net::ERR_FAILED",
+            "Failed to load resource: net::ERR_FAILED",
+            "Failed to load resource: net::ERR_FAILED"
+          ],
+          "httpFailures": [],
+          "requestFailures": [
+            {
+              "url": "https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap",
+              "error": "net::ERR_FAILED"
+            },
+            {
+              "url": "https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap",
+              "error": "net::ERR_FAILED"
+            },
+            {
+              "url": "https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap",
+              "error": "net::ERR_FAILED"
+            }
+          ],
+          "shellImports": [],
+          "unexpectedConsoleErrors": [],
+          "ok": false
+        }
+      ]
+    }
+  ],
+  "unavailable": [],
+  "browser": "138.0.7204.183",
+  "ok": false
+}

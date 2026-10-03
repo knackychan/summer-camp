@@ -9,6 +9,8 @@ FIRST VIEWPORT: Full-stage 3D arena with the truck centered, controls at the
 bottom, mission prompt at top, and rolling cars already moving in view.
 FORM: Existing Summer Quest arcade extension; no new visual identity. */
 
+import { loadThree, createRenderer, releaseContext, firstFrame, observeResize } from "./three-runtime.js";
+
 var R = null;
 var initToken = 0;
 
@@ -521,6 +523,7 @@ function updateCamera(dt) {
 
 function tick() {
   if (!R || !R.running) return;
+  if(R.renderer.getContext().isContextLost()||R.renderer.sqGraphicsError){R.raf=requestAnimationFrame(tick);return;}
   R.timer.update();
   var dt = Math.min(R.timer.getDelta(), 0.05);
   updateTruck(dt);
@@ -631,15 +634,15 @@ function onVisibility() {
   }
 }
 
-function initScene(THREE, ctx, mount) {
-  var canvas = document.createElement("canvas");
+function initScene(THREE, ctx, mount, runtime) {
+  var canvas = runtime.canvas;
   canvas.className = "mt-canvas";
   mount.appendChild(canvas);
 
-  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  var renderer = createRenderer(runtime,1.5);
+  R.renderer = renderer;
   renderer.setClearColor(0x8ED1E8);
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = !renderer.sqReducedQuality;
   renderer.shadowMap.type = THREE.BasicShadowMap;
 
   var scene = new THREE.Scene();
@@ -688,7 +691,6 @@ function initScene(THREE, ctx, mount) {
 
   R.scene = scene;
   R.camera = camera;
-  R.renderer = renderer;
   R.canvas = canvas;
   R.mats = mats;
   R.sky = sky;
@@ -704,8 +706,7 @@ function initScene(THREE, ctx, mount) {
     camera.updateProjectionMatrix();
   };
   R.resize();
-  R.ro = new ResizeObserver(function () { if (R && R.resize) R.resize(); });
-  R.ro.observe(mount);
+  R.ro = observeResize(mount,R.resize);
 }
 
 var MT_CSS = [
@@ -737,8 +738,11 @@ export default {
 
   async init(ctx) {
     var token = ++initToken;
-    var THREE = await import("../vendor/three.module.min.js");
+    await Promise.resolve();
     if (token !== initToken) return;
+    var runtime = await loadThree(document.createElement("canvas"));
+    if (token !== initToken) { releaseContext(runtime); return; }
+    var THREE = runtime.THREE;
     var mount = ctx.mount;
     if (!mount.style.position || mount.style.position === "static") {
       mount.style.position = "relative";
@@ -764,7 +768,7 @@ export default {
     mount.appendChild(R.root);
     R.ui = buildUi();
     R.root.appendChild(R.ui);
-    initScene(THREE, ctx, R.root);
+    initScene(THREE, ctx, R.root, runtime);
     R.root.appendChild(R.ui);
 
     hold("mtLeft", "l");
@@ -778,6 +782,7 @@ export default {
 
     if (ctx.sayPair) ctx.sayPair("Crush cars and jump!", "\u58d3\u8eca\u548c\u98db\u8d8a\u5c0f\u5c71!");
     updateHud();
+    firstFrame(R.renderer,R.scene,R.camera);
     R.raf = requestAnimationFrame(tick);
   },
 

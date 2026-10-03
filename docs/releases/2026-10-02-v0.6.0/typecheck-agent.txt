@@ -1,0 +1,3 @@
+
+> typecheck:agent
+> tsc -p tsconfig.agent-proxy.json --noEmit

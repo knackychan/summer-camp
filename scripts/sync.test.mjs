@@ -2,8 +2,10 @@
 // Runs in plain Node with stubbed browser globals; no dependencies.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 
 const src = readFileSync(new URL("../js/sync.js", import.meta.url), "utf8");
+const SQStarId = createRequire(import.meta.url)("../js/star-id.js");
 
 function taipeiToday() {
   const p = new Intl.DateTimeFormat("en-CA", {
@@ -25,7 +27,7 @@ function makeLocalStorage(seed = {}) {
 
 // Minimal thenable query builder: every chained call returns itself,
 // awaiting it resolves {data, error:null}; writes record themselves.
-function fakeSupabase(tables, writes) {
+function fakeSupabase(tables, writes, readBarrier = Promise.resolve()) {
   return {
     from(table) {
       const rows = tables[table] || [];
@@ -33,12 +35,14 @@ function fakeSupabase(tables, writes) {
       for (const m of ["select", "eq", "or", "order", "gte", "lte", "limit", "delete"]) {
         builder[m] = () => builder;
       }
-      builder.maybeSingle = () => Promise.resolve({ data: rows[0] || null, error: null });
-      builder.then = (ok, bad) => Promise.resolve({ data: rows, error: null }).then(ok, bad);
+      builder.maybeSingle = () => readBarrier.then(() => ({ data: rows[0] || null, error: null }));
+      builder.then = (ok, bad) => readBarrier.then(() => ({ data: rows, error: null })).then(ok, bad);
       for (const m of ["upsert", "insert", "update"]) {
         builder[m] = payload => {
           writes.push({ table, op: m, payload });
-          return Promise.resolve({ error: null });
+          const result = Promise.resolve({ error: null });
+          result.eq = () => result;
+          return result;
         };
       }
       return builder;
@@ -48,7 +52,7 @@ function fakeSupabase(tables, writes) {
 }
 
 function loadSyncStore(localStorage) {
-  const windowObj = {};
+  const windowObj = { SQStarId };
   const run = new Function("window", "localStorage", "navigator", "addEventListener", "document", src);
   run(windowObj, localStorage, { onLine: true }, () => {}, {});
   return windowObj.SyncStore;
@@ -339,7 +343,7 @@ const seedProgress = () => ({});
     "sq:queue": JSON.stringify([{ id:"op-x", type:"stars", kid:"lili", delta:1, reason:"offline win" }])
   });
 
-  const windowObj = {};
+  const windowObj = { SQStarId };
   windowObj.SQ_CONFIG = { SUPABASE_URL: "https://test", SUPABASE_ANON_KEY: "test-key" };
   windowObj.supabase = { createClient: () => fakeFailingSupabase() };
   const run2 = new Function("window", "localStorage", "navigator", "addEventListener", "document", src);
@@ -353,6 +357,7 @@ const seedProgress = () => ({});
     assert.fail("init must not reject when hydrate fails");
   }
   assert.ok(store, "init returns a store even when hydrate fails");
+  await store.ready;
   assert.equal(store.queue.length, 1, "pending queue op not dropped");
   assert.equal(store.mode, "supabase", "mode stays supabase even when server unreachable");
   console.log("ok - init survives a failed hydrate");
@@ -361,7 +366,7 @@ const seedProgress = () => ({});
 // --- Test: configured but offline still queues (slice 51) ---
 {
   const ls = makeLocalStorage();
-  const windowObj = {};
+  const windowObj = { SQStarId };
   windowObj.SQ_CONFIG = { SUPABASE_URL: "https://test.supabase.co", SUPABASE_ANON_KEY: "test" };
   windowObj.supabase = { createClient: () => fakeSupabase({}, []) };
   const run2 = new Function("window", "localStorage", "navigator", "addEventListener", "document", src);
@@ -495,6 +500,172 @@ const seedProgress = () => ({});
   await store2.hydrate();
   assert.equal(store2.starsFor("lili"), 0, "new season starts at zero and hydrate completed");
   console.log("ok - a season reset wipes the tablet once");
+}
+
+// Startup and local actions must not wait for the first remote snapshot.
+{
+  let finishRead;
+  const readBarrier = new Promise(resolve => { finishRead = resolve; });
+  const ls = makeLocalStorage({
+    "sq:kidPins": JSON.stringify({ lili: "1234" }),
+    "sq:serverStars": JSON.stringify({ lili: 4 })
+  });
+  const writes = [];
+  const client = fakeSupabase({
+    kids: [{ id: "lili", pin: "1234" }],
+    day_ticks: [{ kid_id: "lili", block_idx: 1 }],
+    get star_totals() { return [{ kid_id: "lili", stars: writes.some(write => write.table === "stars_ledger") ? 6 : 4 }]; },
+    family_settings: [{ key: "applock_lili", value: "old lock" }]
+  }, writes, readBarrier);
+  const windowObj = {
+    SQStarId,
+    SQ_CONFIG: { SUPABASE_URL: "https://test", SUPABASE_ANON_KEY: "test" },
+    supabase: { createClient: () => client }
+  };
+  new Function("window", "localStorage", "navigator", "addEventListener", "document", src)(windowObj, ls, { onLine: true }, () => {}, {});
+  const store = windowObj.SyncStore.init({ progress: {}, settings: {} });
+  assert.equal(store.starsFor("lili"), 4, "cached store is returned before the first network await");
+  assert.equal(store.pinsReady, true, "cached PIN protection is available immediately");
+  let ready = false;
+  store.ready.then(() => { ready = true; });
+  const progress = structuredClone(store.progress);
+  progress.lili.day = { d: TODAY, done: { 7: true }, rr: {} };
+  await store.save(progress, {});
+  await store.addStars("lili", 2, "during startup");
+  await store.setFamilySetting("applock_lili", "");
+  await store.setOverride(TODAY, 2, "09:30", "lili");
+  assert.equal(ready, false, "local actions resolve while the remote read remains blocked");
+  assert.equal(store.starsFor("lili"), 6, "local stars appear before sync is ready");
+  assert.equal(writes.length, 0, "queued writes cannot overtake the initial season-reset check");
+  assert.equal(JSON.parse(ls.getItem("sq:queue")).length, 4, "actions are durable before they resolve");
+  finishRead();
+  await store.ready;
+  assert.equal(store.hydrated, true);
+  assert.equal(store.progress, progress, "hydrate applies to the latest saved progress object");
+  assert.equal(progress.lili.day.done[1], true, "server tick is retained");
+  assert.equal(progress.lili.day.done[7], true, "local action during startup survives the snapshot");
+  assert.equal(store.familySettings.applock_lili, "", "pending family-setting changes survive hydration");
+  assert.equal(store.dayOverridesRaw.lili[2], "09:30", "pending schedule edits survive hydration");
+  await store.flush();
+  assert.equal(store.starsFor("lili"), 6, "queue drainage preserves the confirmed star count");
+  assert.equal(store.queue.length, 0);
+  clearInterval(store.flushTimer);
+  console.log("ok - local startup and actions complete before delayed sync, with no lost edits");
+}
+
+// PostgREST failures return {error}, rather than rejecting: keep the usable cache.
+{
+  const ls = makeLocalStorage({ "sq:kidPins": JSON.stringify({ lili: "1234" }) });
+  const SyncStore = loadSyncStore(ls);
+  const client = fakeSupabase({ kids: [{ id: "lili", pin: "5678" }] }, []);
+  const from = client.from.bind(client);
+  client.from = table => table === "kids" ? {
+    select: () => Promise.resolve({ data: null, error: new Error("offline") })
+  } : from(table);
+  const store = new SyncStore({ progress: {}, settings: {} }, client);
+  store.progress.lili.day = { d: TODAY, done: { 3: true }, rr: {} };
+  await assert.rejects(store.hydrate(), /offline/);
+  assert.equal(store.kidPins.lili, "1234", "a failed read cannot clear PIN protection");
+  assert.equal(store.progress.lili.day.done[3], true, "a failed read cannot clear the cached day");
+  assert.equal(store.hydrated, false);
+  client.from = table => {
+    const builder = from(table);
+    if (table === "photos") builder.then = (ok, bad) => Promise.resolve({ data: null, error: new Error("photos offline") }).then(ok, bad);
+    return builder;
+  };
+  await assert.rejects(store.hydrate(), /photos offline/);
+  assert.equal(store.kidPins.lili, "5678", "a successful PIN query applies even when another table fails");
+  assert.equal(store.pinsReady, true);
+  console.log("ok - failed snapshot preserves cached progress and PINs");
+}
+
+// Several realtime callbacks share a read; events during it get a fresh follow-up.
+{
+  let finishRead;
+  const barrier = new Promise(resolve => { finishRead = resolve; });
+  const SyncStore = loadSyncStore(makeLocalStorage());
+  const client = fakeSupabase({}, [], barrier);
+  const from = client.from.bind(client);
+  let reads = 0;
+  client.from = table => { reads++; return from(table); };
+  const store = new SyncStore({ progress: {}, settings: {} }, client);
+  const first = store.hydrate();
+  assert.equal(store.hydrate(), first, "callbacks in one burst share the pending hydrate");
+  await Promise.resolve();
+  assert.equal(reads, 15);
+  const trailing = store.hydrate();
+  assert.notEqual(trailing, first, "an event during an active read gets a fresh snapshot");
+  assert.equal(store.hydrate(), trailing, "later callbacks share that follow-up read");
+  finishRead();
+  await Promise.all([first, trailing]);
+  assert.equal(reads, 30, "four callbacks issue two snapshot batches, rather than four");
+  console.log("ok - realtime bursts coalesce without dropping later updates");
+}
+
+// The SDK is loaded from the packaged app and both network waits are bounded.
+for (const fails of [false, true]) {
+  let script, expire, options, removed = 0;
+  const windowObj = { SQStarId, SQ_CONFIG: { SUPABASE_URL: "https://test", SUPABASE_ANON_KEY: "test" } };
+  const document = {
+    currentScript: { src: "https://app.test/subpath/js/sync.js" },
+    querySelector: () => null,
+    createElement: () => ({ remove() { removed++; } }),
+    head: { appendChild: element => { script = element; } }
+  };
+  new Function("window", "localStorage", "navigator", "addEventListener", "document", "setTimeout", "clearTimeout", src)(
+    windowObj, makeLocalStorage(), { onLine: false }, () => {}, document,
+    (callback, delay) => { assert.equal(delay, 8000); expire = callback; }, () => {}
+  );
+  const store = windowObj.SyncStore.init({ progress: {}, settings: {} });
+  assert.equal(store.pinsReady, false, "a fresh device has not checked the children's PINs");
+  await Promise.resolve();
+  assert.equal(script.src, "https://app.test/subpath/js/vendor/supabase.js");
+  if (fails) expire();
+  else {
+    windowObj.supabase = { createClient: (url, key, config) => { options = config; return {}; } };
+    script.onload();
+  }
+  await store.ready;
+  if (!fails) assert.equal(options.db.timeout, 10000, "use the installed client's built-in database timeout");
+  else {
+    assert.equal(store.supabase, null, "SDK timeout leaves the cached app usable");
+    assert.equal(removed, 1, "failed SDK element is removed so a retry can load it again");
+    const failedScript = script;
+    let connected = 0;
+    let appended;
+    const nextScript = new Promise(resolve => { appended = resolve; });
+    document.head.appendChild = element => { script = element; appended(); };
+    store.onConnected = () => { connected++; };
+    const reconnect = store.connect();
+    assert.equal(store.connect(), reconnect, "concurrent reconnect attempts share the same work");
+    await nextScript;
+    assert.notEqual(script, failedScript, "reconnect creates a new packaged SDK request");
+    windowObj.supabase = { createClient: () => ({}) };
+    script.onload();
+    await reconnect;
+    assert.equal(store.mode, "supabase");
+    assert.equal(connected, 1, "new client notifies the app to attach realtime subscriptions");
+    await store.connect();
+    assert.equal(connected, 1, "an existing client does not attach realtime twice");
+  }
+  clearInterval(store.flushTimer);
+}
+console.log("ok - packaged SDK loading and database requests have deadlines");
+
+// A later failed op must not skip refreshing stars that were already committed.
+{
+  const SyncStore = loadSyncStore(makeLocalStorage());
+  const store = new SyncStore({ progress: {}, settings: {} }, fakeSupabase({
+    star_totals: [{ kid_id: "lili", stars: 6 }]
+  }, []));
+  store.applyStarTotals([{ kid_id: "lili", stars: 4 }]);
+  store.enqueue({ type: "stars", kid: "lili", delta: 2 });
+  store.enqueue({ type: "tick", kid: "lili", day: TODAY, blockIdx: 1, ticked: true });
+  store.applyOp = async op => { if (op.type === "tick") throw new Error("offline"); };
+  await store.flush();
+  assert.equal(store.starsFor("lili"), 6);
+  assert.equal(store.queue.length, 1, "failed write remains durable for the next attempt");
+  console.log("ok - a partially failed flush still refreshes committed stars");
 }
 
 console.log("sync tests passed");

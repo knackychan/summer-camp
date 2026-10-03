@@ -1,0 +1,5 @@
+
+> build:mobile
+> node scripts/build-mobile.mjs
+
+Summer Quest mobile modules built to dist/mobile

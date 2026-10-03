@@ -13,6 +13,20 @@ const DAY = "2026-08-03";
 // Postgres accepts any 32 hex digits in 8-4-4-4-12 shape.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+// LAN HTTP and older WebViews expose getRandomValues without randomUUID.
+{
+  const module = { exports: {} };
+  const cryptoWithoutUUID = { getRandomValues: values => crypto.getRandomValues(values) };
+  new Function("module", "crypto", readFileSync(new URL("../js/star-id.js", import.meta.url), "utf8"))(module, cryptoWithoutUUID);
+  const ids = Array.from({ length: 64 }, () => module.exports.random());
+  assert.equal(new Set(ids).size, ids.length);
+  ids.forEach(id => assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/));
+  const nativeId = crypto.randomUUID();
+  cryptoWithoutUUID.randomUUID = () => nativeId;
+  assert.equal(module.exports.random(), nativeId, "use native randomUUID when available");
+  console.log("ok - shared random IDs work without secure-context randomUUID");
+}
+
 // --- 1: every id is a legal uuid, and ids never collide ---
 {
   const seen = new Map();
@@ -138,7 +152,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
     setItem: (k, v) => store.set(k, String(v)),
     removeItem: k => store.delete(k)
   };
-  const windowObj = {};
+  const windowObj = { SQStarId };
   new Function("window", "localStorage", "navigator", "addEventListener", "document", src)(
     windowObj, localStorage, { onLine: false }, () => {}, {}
   );

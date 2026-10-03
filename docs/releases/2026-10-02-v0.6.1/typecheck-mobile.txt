@@ -1,0 +1,4 @@
+
+> typecheck:mobile
+> tsc -p tsconfig.mobile.json --noEmit
+

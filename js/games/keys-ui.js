@@ -48,6 +48,7 @@ export function createKeybed(opts) {
     styleEl.textContent =
       ".sq-key-white.sq-key-active{background:#5AD1C4!important;color:#14131A!important}" +
       ".sq-key-black.sq-key-active{background:#3AB0A3!important}" +
+      ".sq-key:focus-visible{outline:3px solid #FFB13C!important;outline-offset:-3px}" +
       ".sq-key-highlight{box-shadow:inset 0 0 14px #FFB13C!important}";
     document.head.appendChild(styleEl);
   }
@@ -128,22 +129,29 @@ export function createKeybed(opts) {
     positionBlackKeys();
   }
 
-  function activateKey(el, pointerId) {
+  function isHeld(midi) {
+    return Array.from(keyMap.values()).indexOf(midi) !== -1;
+  }
+
+  function activateKey(el, pointerId, capture) {
     if (destroyed) return;
     var midi = parseInt(el.dataset.midi, 10);
+    if (keyMap.get(pointerId) === midi) return;
+    releasePointer(pointerId);
+    var alreadyHeld = isHeld(midi);
     keyMap.set(pointerId, midi);
-    if (el.setPointerCapture) {
+    if (capture !== false && typeof pointerId === "number" && el.setPointerCapture) {
       try { el.setPointerCapture(pointerId); } catch (e) {}
     }
     el.classList.add("sq-key-active");
-    onNoteOn(midi);
+    if (!alreadyHeld) onNoteOn(midi);
   }
 
   function releasePointer(pointerId) {
     if (destroyed) return;
     var midi = keyMap.get(pointerId);
     keyMap.delete(pointerId);
-    if (midi === undefined) return;
+    if (midi === undefined || isHeld(midi)) return;
     var el = keyElements.get(midi);
     if (el) el.classList.remove("sq-key-active");
     onNoteOff(midi);
@@ -156,19 +164,24 @@ export function createKeybed(opts) {
     var target = document.elementFromPoint(e.clientX, e.clientY);
     if (target && target.dataset && target.dataset.midi) {
       var newMidi = parseInt(target.dataset.midi, 10);
-      if (newMidi !== oldMidi) {
-        keyMap.set(e.pointerId, newMidi);
-        onNoteOff(oldMidi);
-        onNoteOn(newMidi);
-        var oldEl = keyElements.get(oldMidi);
-        if (oldEl) oldEl.classList.remove("sq-key-active");
-        var newEl = keyElements.get(newMidi);
-        if (newEl) newEl.classList.add("sq-key-active");
+      if (newMidi !== oldMidi && keyElements.get(newMidi) === target) {
+        activateKey(target, e.pointerId, false);
       }
     }
   }
 
   function attachPointerHandlers(key) {
+    key.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      if (!keyMap.has("keyboard")) activateKey(this, "keyboard");
+    });
+    key.addEventListener("keyup", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      releasePointer("keyboard");
+    });
+    key.addEventListener("blur", function () { releasePointer("keyboard"); });
     key.addEventListener("pointerdown", function (e) {
       activateKey(this, e.pointerId);
     });
@@ -212,10 +225,9 @@ export function createKeybed(opts) {
   window.addEventListener("resize", positionBlackKeys);
 
   function allNotesOff() {
-    keyMap.forEach(function (midi, ptrId) {
-      onNoteOff(midi);
-    });
+    var notes = new Set(keyMap.values());
     keyMap.clear();
+    notes.forEach(function (midi) { onNoteOff(midi); });
     keyElements.forEach(function (el) {
       el.classList.remove("sq-key-active");
     });

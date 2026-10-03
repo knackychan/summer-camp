@@ -16,9 +16,9 @@ function css() {
   return '<style>'
     + '.pa{display:flex;flex-direction:column;gap:6px;height:100%;font-family:Fredoka,system-ui,sans-serif}'
     + '.pa__bar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;justify-content:center;padding:2px}'
-    + '.pa__sw{width:34px;height:34px;border-radius:50%;border:3px solid #6b5a99;padding:0;flex:0 0 auto}'
+    + '.pa__sw{width:44px;height:44px;border-radius:50%;border:3px solid #6b5a99;padding:0;flex:0 0 auto}'
     + '.pa__sw.on{border-color:#fff;box-shadow:0 0 0 3px #000}'
-    + '.pa__btn{min-height:40px;padding:0 10px;border-radius:12px;border:2px solid #6b5a99;'
+    + '.pa__btn{min-width:44px;min-height:44px;padding:0 10px;border-radius:12px;border:2px solid #6b5a99;'
     + 'background:#241a44;color:#fff;font-family:inherit;font-weight:700;font-size:14px;flex:0 0 auto}'
     + '.pa__btn.on{background:#ffe119;color:#1c1436;border-color:#fff}'
     /* container units fit the 4:3 sheet inside whatever the host gives us — the
@@ -181,7 +181,7 @@ function loadSheet(id) {
     });
   });
   C.hud([{ k: "Sheet 圖", v: sheet.icon + " " + sheet.name[0], c: C.kids[C.kid].raw },
-         { k: "Stars", v: C.stars }]);
+         { k: "Points 點數", v: C.stars }]);
   C.sayPair("Tap a part to fill it with colour!", "點一個地方就會上色！");
 }
 

@@ -1,0 +1,4 @@
+
+> build:agent
+> tsc -p tsconfig.agent-proxy.json
+

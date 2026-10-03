@@ -1,0 +1,206 @@
+
+> android:build:debug
+> npm --prefix apps/android run build:debug
+
+
+> summer-quest-android-shell@0.6.2 build:debug
+> node scripts/build.mjs debug
+
+OK      node22                 Node 26.2.0
+OK      androidWebBundle       v0.6.3-desktop; 478 files
+OK      capacitorDependencies  installed
+OK      androidProject         generated
+OK      gradleWrapper          generated with the Capacitor Android project
+OK      pinnedBuildVersions    Gradle 8.14.3; AGP 8.13.0; Capacitor 8.5.2/8.5.2/8.5.2; expected 8.14.3 / 8.13.0 / 8.5.2
+OK      java21to24             C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot\bin\java.exe; major 21; Gradle 8.14.3 requires JDK 21-24 for this project
+OK      androidSdk             C:\Users\DEROK137\AppData\Local\Android\Sdk
+OK      androidPlatform36      C:\Users\DEROK137\AppData\Local\Android\Sdk\platforms\android-36
+OK      adb                    C:\Users\DEROK137\AppData\Local\Android\Sdk\platform-tools\adb.exe
+OK      authorizedDevice       R9TY6027L2L
+
+Android environment is ready for the requested gate.
+Version 5.9.3
+Summer Quest modules built to D:\WORK\10 - AI\SUMMER CAMP\summer-quest\dist\mobile
+Summer Quest web bundle: 478 files, 03f269ac26328e42b8c2115623504538416464a96dccebed6992b7f9cb94eec6
+√ Copying web assets from android-web to android\app\src\main\assets\public in 106.61ms
+√ Creating capacitor.config.json in android\app\src\main\assets in 539.20μs
+√ copy android in 112.20ms
+√ Updating Android plugins in 376.70μs
+√ update android in 25.36ms
+[info] Sync finished in 0.143s
+Summer Quest native Android overlay applied.
+{
+  "files": 478,
+  "treeSha256": "03f269ac26328e42b8c2115623504538416464a96dccebed6992b7f9cb94eec6"
+}
+{
+  "files": 478,
+  "treeSha256": "03f269ac26328e42b8c2115623504538416464a96dccebed6992b7f9cb94eec6"
+}
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>if "Windows_NT" == "Windows_NT" setlocal
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>set DIRNAME=D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android\ 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>if "D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android\" == "" set DIRNAME=. 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>set APP_BASE_NAME=gradlew 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>set APP_HOME=D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android\ 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>for %i in ("D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android\") do set APP_HOME=%~fi 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>set APP_HOME=D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android\ 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m" 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>if defined JAVA_HOME goto findJavaFromJavaHome 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>set JAVA_HOME=C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>set JAVA_EXE=C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot/bin/java.exe 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>if exist "C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot/bin/java.exe" goto execute 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>set CLASSPATH= 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>"C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot/bin/java.exe" "-Xmx64m" "-Xms64m"   "-Dorg.gradle.appname=gradlew" -classpath "" -jar "D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android\\gradle\wrapper\gradle-wrapper.jar" "assembleDebug" "--no-daemon" 
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-android:preDebugBuild UP-TO-DATE
+> Task :capacitor-android:writeDebugAarMetadata UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preDebugBuild UP-TO-DATE
+> Task :capacitor-android:processDebugNavigationResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:writeDebugAarMetadata
+> Task :capacitor-cordova-android-plugins:processDebugNavigationResources
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :capacitor-android:generateDebugResValues UP-TO-DATE
+> Task :capacitor-android:generateDebugResources UP-TO-DATE
+> Task :capacitor-android:packageDebugResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateDebugResValues
+> Task :capacitor-cordova-android-plugins:generateDebugResources
+> Task :capacitor-cordova-android-plugins:packageDebugResources
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :capacitor-android:extractDeepLinksDebug UP-TO-DATE
+> Task :capacitor-android:processDebugManifest UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:extractDeepLinksDebug
+> Task :capacitor-android:compileDebugLibraryResources UP-TO-DATE
+> Task :capacitor-android:parseDebugLocalResources UP-TO-DATE
+> Task :capacitor-android:generateDebugRFile UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:compileDebugLibraryResources
+> Task :capacitor-android:javaPreCompileDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:processDebugManifest
+> Task :capacitor-cordova-android-plugins:parseDebugLocalResources
+> Task :capacitor-android:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :capacitor-android:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :capacitor-android:mergeDebugShaders UP-TO-DATE
+> Task :capacitor-android:compileDebugShaders NO-SOURCE
+> Task :capacitor-android:generateDebugAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:javaPreCompileDebug
+> Task :capacitor-android:mergeDebugAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateDebugRFile
+> Task :capacitor-cordova-android-plugins:mergeDebugShaders
+> Task :app:processDebugResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:compileDebugJavaWithJavac NO-SOURCE
+> Task :capacitor-cordova-android-plugins:compileDebugShaders NO-SOURCE
+> Task :capacitor-cordova-android-plugins:generateDebugAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugAssets
+> Task :capacitor-cordova-android-plugins:bundleLibCompileToJarDebug
+> Task :app:mergeDebugAssets
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :capacitor-android:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarDebug
+> Task :app:dexBuilderDebug UP-TO-DATE
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :capacitor-android:processDebugJavaRes NO-SOURCE
+> Task :capacitor-cordova-android-plugins:processDebugJavaRes NO-SOURCE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:compressDebugAssets
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :capacitor-android:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :app:mergeProjectDexDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToDirDebug
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :capacitor-android:mergeDebugJniLibFolders UP-TO-DATE
+> Task :capacitor-android:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-android:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugJniLibFolders
+> Task :capacitor-cordova-android-plugins:mergeDebugNativeLibs NO-SOURCE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:copyDebugJniLibsProjectOnly
+> Task :capacitor-android:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-android:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-android:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :capacitor-android:extractDebugAnnotations UP-TO-DATE
+> Task :capacitor-android:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :capacitor-android:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :capacitor-android:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :capacitor-android:prepareDebugArtProfile UP-TO-DATE
+> Task :capacitor-android:prepareLintJarForPublish UP-TO-DATE
+> Task :capacitor-android:mergeDebugJavaResource UP-TO-DATE
+> Task :capacitor-android:syncDebugLibJars UP-TO-DATE
+> Task :capacitor-android:bundleDebugAar UP-TO-DATE
+> Task :capacitor-android:assembleDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-cordova-android-plugins:checkDebugAarMetadata
+> Task :capacitor-cordova-android-plugins:extractDebugAnnotations
+> Task :capacitor-cordova-android-plugins:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:prepareDebugArtProfile UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:prepareLintJarForPublish UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugJavaResource
+> Task :capacitor-cordova-android-plugins:syncDebugLibJars
+> Task :capacitor-cordova-android-plugins:bundleDebugAar
+> Task :capacitor-cordova-android-plugins:assembleDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebug
+
+BUILD SUCCESSFUL in 12s
+93 actionable tasks: 27 executed, 66 up-to-date
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>if 0 EQU 0 goto mainEnd 
+
+D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android>if "Windows_NT" == "Windows_NT" endlocal
+Android debug artifact: D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\android\app\build\outputs\apk\debug\app-debug.apk
+SHA-256: 7ca92f5583bd4737831c5b2ca1ee1f1cd33df6c67b6f5a0a4a7a6a6722905d6e
+Build report: D:\WORK\10 - AI\SUMMER CAMP\summer-quest\apps\android\.reports\build-debug.json

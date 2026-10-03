@@ -25,7 +25,7 @@ const SQ_ACT_DATA=[
  {icon:"🧠",cat:"Boredom → creativity",catz:"無聊→創意",
   lucien:"Box of random objects to invent games with",lili:"Invent a game and teach it tonight",luis:"Weekly project: build or invent, present at dinner",
   z:{lucien:"用雜物箱發明遊戲",lili:"發明遊戲，今晚教大家",luis:"每週計畫：建造或發明，晚餐發表"}},
- {icon:"🧹",cat:"House help (extra stars)",catz:"家事幫手（加星星）",
+ {icon:"🧹",cat:"House help",catz:"家事幫手",
   lucien:"Pair socks, clothes in drawer, toys away",lili:"Fold laundry, tidy wardrobe by type, sweep",luis:"Fold laundry, vacuum, help cook",
   z:{lucien:"配襪子、衣服入櫃、收玩具",lili:"摺衣、整理衣櫃、掃地",luis:"摺衣、吸地、幫忙煮飯"}},
  {icon:"🕺",cat:"Active screen (heat backup)",catz:"活力螢幕（太熱備案）",

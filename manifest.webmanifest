@@ -1,9 +1,9 @@
 {
   "name": "Summer Quest",
   "short_name": "Summer Quest",
-  "description": "Family summer quest for daily rhythm, games, missions, and Papa support.",
+  "description": "Quest-first family adventure for chores, routines, learning, games, and guided daily activities.",
   "lang": "en",
-  "start_url": "./",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
@@ -22,5 +22,6 @@
       "type": "image/png",
       "purpose": "any"
     }
-  ]
+  ],
+  "id": "./index.html"
 }

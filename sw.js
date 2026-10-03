@@ -1,20 +1,112 @@
-const CACHE_NAME = "summer-quest-v74";
+const CACHE_NAME = "summer-quest-v135-kitchen-guide";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./admin.html",
+  "./dist/mobile/packages/core/src/localization.js",
+  "./dist/mobile/packages/core/src/interaction-profile.js",
+  "./dist/mobile/packages/core/src/tablet-runtime.js",
+  "./dist/mobile/packages/core/src/time.js",
+  "./dist/mobile/packages/storage/src/StorageDriver.js",
+  "./dist/mobile/packages/storage/src/SerialStorageTasks.js",
+  "./dist/mobile/packages/storage/src/memory/MemoryStorageDriver.js",
+  "./dist/mobile/packages/storage/src/web/LocalStorageDriver.js",
+  "./dist/mobile/packages/agent/src/ResponseValidation.js",
+  "./dist/mobile/packages/agent/src/client/AgentHttpClient.js",
+  "./dist/mobile/packages/agent/src/eval/LessonHintEval.js",
+  "./dist/mobile/packages/agent/src/routing/ModelCatalog.js",
+  "./dist/mobile/packages/agent/src/routing/TaskPolicy.js",
+  "./dist/mobile/packages/learning/src/LearnerProfileStore.js",
+  "./dist/mobile/packages/learning/src/LearningSessionEngine.js",
+  "./dist/mobile/packages/learning/src/types.js",
+  "./dist/mobile/packages/learning/src/storage/LearningSessionStore.js",
+  "./dist/mobile/packages/learning/src/math/BrainMathQuestionAdapter.js",
+  "./dist/mobile/packages/learning/src/math/MathHintFallback.js",
+  "./dist/mobile/packages/learning/src/math/MathHintPresentation.js",
+  "./dist/mobile/packages/learning/src/math/MathHintRequest.js",
+  "./dist/mobile/packages/learning/src/math/MathHintService.js",
+  "./dist/mobile/packages/learning/src/math/MathMistakeClassifier.js",
+  "./dist/mobile/packages/learning/src/math/MathScaffold.js",
+  "./dist/mobile/packages/learning/src/teach/MathTeachScene.js",
+  "./dist/mobile/packages/learning/src/teach/MathTeachRequest.js",
+  "./dist/mobile/packages/learning/src/teach/MathTeachService.js",
+  "./dist/mobile/packages/learning/src/teach/LanguageTeachScene.js",
+  "./dist/mobile/packages/learning/src/teach/LanguageTeachRequest.js",
+  "./dist/mobile/packages/learning/src/teach/LanguageTeachService.js",
+  "./dist/mobile/packages/learning/src/tutor/AdaptiveMathTutorPolicy.js",
+  "./dist/mobile/packages/learning/src/language/VocabularyHintRequest.js",
+  "./dist/mobile/packages/learning/src/language/VocabularyHintFallback.js",
+  "./dist/mobile/packages/learning/src/language/VocabularyHintPresentation.js",
+  "./dist/mobile/packages/learning/src/language/VocabularyHintService.js",
+  "./dist/mobile/packages/learning/src/language/VocabularyMistakeClassifier.js",
+  "./dist/mobile/packages/learning/src/tutor/AdaptiveVocabularyTutorPolicy.js",
+  "./dist/mobile/packages/learning/src/legacy/BrainMathLearningBridge.js",
+  "./dist/mobile/packages/learning/src/legacy/VocabularyLearningBridge.js",
+  "./dist/mobile/packages/learning/src/curriculum/SkillCatalog.js",
+  "./dist/mobile/packages/learning/src/curriculum/LanguageSkillRules.js",
+  "./dist/mobile/packages/learning/src/mastery/MasteryReviewScheduler.js",
+  "./dist/mobile/packages/learning/src/director/LearningDirector.js",
+  "./dist/mobile/packages/learning/src/director/LearningDirectorStore.js",
+  "./dist/mobile/packages/learning/src/legacy/LearningDirectorBridge.js",
+  "./dist/mobile/packages/learning/src/legacy/MathTeachBridge.js",
+  "./dist/mobile/packages/learning/src/legacy/LanguageTeachBridge.js",
+  "./dist/mobile/packages/learning/src/knowledge/KnowledgeHelpContract.js",
+  "./dist/mobile/packages/learning/src/knowledge/KnowledgeHelpService.js",
+  "./dist/mobile/packages/learning/src/legacy/KnowledgeHelpBridge.js",
+  "./dist/mobile/packages/learning/src/knowledge/KnowledgeLessonCatalog.js",
+  "./dist/mobile/packages/learning/src/knowledge/ScienceLessonCatalog.js",
+  "./dist/mobile/packages/learning/src/knowledge/GeographyLessonCatalog.js",
+  "./dist/mobile/packages/learning/src/knowledge/HistoryLessonCatalog.js",
+  "./dist/mobile/packages/learning/src/knowledge/KnowledgeLessonRuntime.js",
+  "./dist/mobile/packages/learning/src/knowledge/KnowledgeLessonStore.js",
+  "./dist/mobile/packages/learning/src/knowledge/KnowledgeLessonRequest.js",
+  "./dist/mobile/packages/learning/src/knowledge/KnowledgeLessonService.js",
+  "./dist/mobile/packages/learning/src/legacy/KnowledgeLessonBridge.js",
+  "./dist/mobile/packages/learning/src/placement/PlacementCalibration.js",
+  "./dist/mobile/packages/learning/src/placement/PlacementCalibrationStore.js",
+  "./dist/mobile/packages/learning/src/legacy/PlacementCalibrationBridge.js",
+  "./dist/mobile/packages/learning/src/telemetry/LearningTelemetry.js",
+  "./dist/mobile/packages/learning/src/telemetry/LearningTelemetryHttpClient.js",
+  "./dist/mobile/packages/learning/src/telemetry/TutorPolicyEvaluation.js",
+  "./dist/mobile/packages/learning/src/telemetry/TutorExperimentEvaluation.js",
+  "./dist/mobile/packages/learning/src/experiments/TutorExperimentHarness.js",
   "./css/admin-tokens.css",
+  "./css/app.css",
   "./css/admin-shell.css",
   "./css/admin.css",
+  "./css/admin-quests.css",
   "./css/brain-shell.css",
   "./css/brain-sprites.css",
   "./css/brain-scenes.css",
+  "./css/quest-shell.css",
+  "./css/world-explorer.css",
+  "./css/kitchen-quest.css",
   "./js/config.js",
   "./js/day.js",
   "./js/star-id.js",
+  "./js/points.js",
   "./js/star-id.js?v=3",
   "./js/day-data.js",
   "./js/act-data.js",
+  "./js/quest-data.js",
+  "./js/reward-data.js",
+  "./js/quest-config.js",
+  "./js/quest-progress.js",
+  "./js/quest-core.js",
+  "./js/event-bus.js",
+  "./js/agent-memory.js",
+  "./js/agent-context.js",
+  "./js/agent-provider.js",
+  "./js/learning-runtime.js",
+  "./js/summer-agent.js",
+  "./js/summer-ui.js",
+  "./js/platform.js",
+  "./js/tool-registry.js",
+  "./js/agent-tools.js",
+  "./js/activity-router.js",
+  "./js/content-registry.js",
+  "./js/activity-adapters/brain.js",
+  "./js/agent-orchestrator.js",
   "./js/learn-data.js",
   "./js/time-core.js?v=63",
   "./js/chat-core.js",
@@ -24,7 +116,9 @@ const APP_SHELL = [
   "./js/drills.js",
   "./js/bopomofo.js",
   "./js/admin-nav.js",
-  "./js/admin.js?v=65",
+  "./js/admin.js?v=66",
+  "./js/admin-ai-lab.js?v=1",
+  "./js/admin-learning-telemetry.js?v=1",
   "./js/sync.js",
   "./js/notify.js",
   "./js/brain-data.js",
@@ -36,6 +130,15 @@ const APP_SHELL = [
   "./js/brain/scenes/generic.js",
   "./js/brain/scenes/change.js",
   "./js/brain/scenes/recall.js",
+  "./js/brain/scenes/bonds.js",
+  "./js/brain/scenes/fractions.js",
+  "./js/brain/scenes/balance.js",
+  "./js/brain/scenes/circuit.js",
+  "./js/brain/scenes/sorter.js",
+  "./js/brain/scenes/sentence.js",
+  "./js/brain/scenes/soundmatch.js",
+  "./js/brain/scenes/memorymatch.js",
+  "./js/brain/scenes/patternecho.js",
   "./js/game-services/scheduler.js",
   "./js/game-services/motion.js",
   "./js/game-services/audio.js",
@@ -67,8 +170,20 @@ const APP_SHELL = [
   "./js/games/solar-sim.js",
   "./js/games/solar-quiz.js",
   "./js/games/solar.js",
-  "./js/games/dig.js",
-  "./js/games/city.js",
+  "./js/games/kitchen.js",
+  "./js/games/kitchen/model.js",
+  "./js/games/kitchen/ingredients.js",
+  "./js/games/kitchen/recipes.js",
+  "./js/games/kitchen/kitchen.js",
+  "./js/games/kitchen/motion.js",
+  "./js/games/kitchen/pixel-art.js",
+  "./js/games/kitchen/strings.js",
+  "./js/games/kitchen/progression.js",
+  "./js/games/kitchen/prep-plan.js",
+  "./js/games/kitchen/sprites.js",
+  "./js/games/kitchen/scene.js",
+  "./js/games/kitchen/audio.js",
+  "./js/games/kitchen/customers.js",
   "./js/games/monster-truck.js",
   "./js/games/hunt.js",
   "./js/games/home.js",
@@ -79,9 +194,20 @@ const APP_SHELL = [
   "./js/games/vocab.js",
   "./js/games/paint.js",
   "./js/games/paint-sheets.js",
+  "./js/world/world-explorer.js",
+  "./js/world/planet-palette.js",
+  "./js/world/planet-map.js",
+  "./js/world/planet-globe.js",
+  "./js/world/planet-sprites.js",
+  "./js/world/planet-toys.js",
+  "./js/world/planet-minigames.js",
   "./js/vendor/three.core.min.js",
   "./js/vendor/three.module.min.js",
   "./js/vendor/OrbitControls.js",
+  "./js/games/three-runtime.js",
+  "./js/vendor/three-legacy/three.module.min.js",
+  "./js/vendor/three-legacy/OrbitControls.js",
+  "./js/vendor/three-legacy/Timer.js",
   "./js/vendor/supabase.js",
   "./assets/solar/sun.jpg",
   "./assets/solar/mercury.jpg",
@@ -220,6 +346,105 @@ const APP_SHELL = [
   "./assets/books/giraffe/sleep.jpg",
   "./assets/books/giraffe/habitat.jpg",
   "./assets/books/giraffe/family.jpg",
+  "./assets/books/animals/ant.jpg",
+  "./assets/books/animals/bat.jpg",
+  "./assets/books/animals/bee.jpg",
+  "./assets/books/animals/butterfly.jpg",
+  "./assets/books/animals/chameleon.jpg",
+  "./assets/books/animals/cheetah.jpg",
+  "./assets/books/animals/clownfish.jpg",
+  "./assets/books/animals/coral.jpg",
+  "./assets/books/animals/crocodile.jpg",
+  "./assets/books/animals/dolphin.jpg",
+  "./assets/books/animals/dragonfly.jpg",
+  "./assets/books/animals/eagle.jpg",
+  "./assets/books/animals/elephant.jpg",
+  "./assets/books/animals/flamingo.jpg",
+  "./assets/books/animals/frog.jpg",
+  "./assets/books/animals/giraffe.jpg",
+  "./assets/books/animals/hummingbird.jpg",
+  "./assets/books/animals/jellyfish.jpg",
+  "./assets/books/animals/kangaroo.jpg",
+  "./assets/books/animals/ladybug.jpg",
+  "./assets/books/animals/lion.jpg",
+  "./assets/books/animals/mantis.jpg",
+  "./assets/books/animals/octopus.jpg",
+  "./assets/books/animals/orangutan.jpg",
+  "./assets/books/animals/ostrich.jpg",
+  "./assets/books/animals/owl.jpg",
+  "./assets/books/animals/panda.jpg",
+  "./assets/books/animals/parrot.jpg",
+  "./assets/books/animals/penguin.jpg",
+  "./assets/books/animals/polarbear.jpg",
+  "./assets/books/animals/redpanda.jpg",
+  "./assets/books/animals/rhino.jpg",
+  "./assets/books/animals/seahorse.jpg",
+  "./assets/books/animals/shark.jpg",
+  "./assets/books/animals/snake.jpg",
+  "./assets/books/animals/starfish.jpg",
+  "./assets/books/animals/tiger.jpg",
+  "./assets/books/animals/turtle.jpg",
+  "./assets/books/animals/whale.jpg",
+  "./assets/books/animals/wolf.jpg",
+  "./assets/books/animals/zebra.jpg",
+  "./assets/books/construction/backhoe.jpg",
+  "./assets/books/construction/bulldozer.jpg",
+  "./assets/books/construction/cementmixer.jpg",
+  "./assets/books/construction/compactor.jpg",
+  "./assets/books/construction/concretepump.jpg",
+  "./assets/books/construction/crane.jpg",
+  "./assets/books/construction/drill.jpg",
+  "./assets/books/construction/dumptruck.jpg",
+  "./assets/books/construction/excavator.jpg",
+  "./assets/books/construction/forklift.jpg",
+  "./assets/books/construction/grader.jpg",
+  "./assets/books/construction/jackhammer.jpg",
+  "./assets/books/construction/loader.jpg",
+  "./assets/books/construction/scaffolding.jpg",
+  "./assets/books/public-vehicles/ambulance.jpg",
+  "./assets/books/public-vehicles/bus.jpg",
+  "./assets/books/public-vehicles/firetruck.jpg",
+  "./assets/books/public-vehicles/garbagetruck.jpg",
+  "./assets/books/public-vehicles/helicopter.jpg",
+  "./assets/books/public-vehicles/mailtruck.jpg",
+  "./assets/books/public-vehicles/policecar.jpg",
+  "./assets/books/public-vehicles/schoolbus.jpg",
+  "./assets/books/public-vehicles/streetsweeper.jpg",
+  "./assets/books/public-vehicles/taxi.jpg",
+  "./assets/books/public-vehicles/towtruck.jpg",
+  "./assets/books/public-vehicles/train.jpg",
+  "./assets/books/public-vehicles/tram.jpg",
+  "./assets/books/race-cars/brakes.jpg",
+  "./assets/books/race-cars/checkeredflag.jpg",
+  "./assets/books/race-cars/engine.jpg",
+  "./assets/books/race-cars/firesuit.jpg",
+  "./assets/books/race-cars/formula-car.jpg",
+  "./assets/books/race-cars/helmet.jpg",
+  "./assets/books/race-cars/kart.jpg",
+  "./assets/books/race-cars/pitstop.jpg",
+  "./assets/books/race-cars/rally-car.jpg",
+  "./assets/books/race-cars/roll-cage.jpg",
+  "./assets/books/race-cars/starting-grid.jpg",
+  "./assets/books/race-cars/tyre.jpg",
+  "./assets/books/race-cars/wing.jpg",
+  "./assets/books/science/brain.jpg",
+  "./assets/books/science/cloud.jpg",
+  "./assets/books/science/electricity.jpg",
+  "./assets/books/science/friction.jpg",
+  "./assets/books/science/gas.jpg",
+  "./assets/books/science/gravity.jpg",
+  "./assets/books/science/heart.jpg",
+  "./assets/books/science/light.jpg",
+  "./assets/books/science/liquid.jpg",
+  "./assets/books/science/lungs.jpg",
+  "./assets/books/science/magnets.jpg",
+  "./assets/books/science/photosynthesis.jpg",
+  "./assets/books/science/rainbow.jpg",
+  "./assets/books/science/skeleton.jpg",
+  "./assets/books/science/solid.jpg",
+  "./assets/books/science/sound.jpg",
+  "./assets/books/science/volcano.jpg",
+  "./assets/books/science/watercycle.jpg",
   "./assets/orc/sprites/hero.png",
   "./assets/orc/sprites/orc-grunt.png",
   "./assets/orc/sprites/orc-brute.png",
@@ -234,22 +459,30 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => Promise.all(
-      APP_SHELL.map(url =>
-        fetch(url, {cache: "reload"})
-          .then(response => response.ok ? cache.put(url, response) : null)
-          .catch(() => null)
-      )
-    ))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => {
+    // Leave connections available for the screen the child is opening.
+    const pending = new Set(APP_SHELL).values();
+    return Promise.all(Array.from({ length: 4 }, async () => {
+      for (const url of pending) {
+        try {
+          const response = await fetch(url, { cache: "no-cache", priority: "low" });
+          if (!response.ok) throw new Error("Precache fetch failed");
+          await cache.put(url, response);
+        } catch {
+          // A failed update should not discard an asset that already works offline.
+          const previous = await caches.match(url);
+          if (previous) await cache.put(url, previous).catch(() => null);
+        }
+      }
+    }));
+  }));
   self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
-      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      keys.filter(key => key.startsWith("summer-quest-") && key !== CACHE_NAME).map(key => caches.delete(key))
     ))
   );
   self.clients.claim();
@@ -261,24 +494,35 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (/\/api(?:\/|$)/.test(url.pathname) || (request.headers && request.headers.has("authorization"))) return;
+  if (request.mode !== "navigate" && !/\.(?:html|js|mjs|css|json|svg|png|jpe?g|webp|gif|ico|mp3|wav|ogg|woff2?|webmanifest)$/i.test(url.pathname)) return;
 
-  // Network-first for EVERY same-origin GET, not just navigations. Cache-first on
-  // scripts meant tablets kept running the previous deploy's JS until someone did a
-  // hard reload. js/config.js is handled here too: leaving it to the browser's HTTP
-  // cache is what made F5 show "Config needed" while ctrl+shift+R worked.
-  const offline = request.mode === "navigate"
-    ? cached => cached || caches.match("./index.html")
-    : cached => cached;
-
-  event.respondWith(
-    fetch(request)
-      .then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-        }
-        return response;
-      })
-      .catch(() => caches.match(request).then(offline))
-  );
+  // App code and runtime config stay fresh. Media and vendored libraries are
+  // refreshed at install, so revisiting a world or book needs no network trip.
+  const cacheFirst = /\.(?:svg|png|jpe?g|webp|gif|ico|mp3|wav|ogg|woff2?)$/i.test(url.pathname)
+    || /\/js\/vendor\//.test(url.pathname);
+  let refresh;
+  const response = caches.open(CACHE_NAME).then(async cache => {
+    const cached = await cache.match(request)
+      || (request.mode === "navigate" ? await cache.match("./index.html") : undefined);
+    if (cacheFirst && request.cache !== "reload" && request.cache !== "no-cache") {
+      if (cached) return cached;
+    }
+    const network = fetch(request);
+    refresh = network.then(response => response.ok ? cache.put(request, response.clone()) : null).catch(() => null);
+    const fresh = network.catch(() => cached);
+    if (!cached) return fresh;
+    // A weak connection must not hold an already downloaded screen indefinitely.
+    // The request still refreshes the cache if it completes after this fallback.
+    let timeout;
+    try {
+      return await Promise.race([fresh, new Promise(resolve => {
+        timeout = setTimeout(() => resolve(cached), 2000);
+      })]);
+    } finally {
+      clearTimeout(timeout);
+    }
+  });
+  event.respondWith(response);
+  event.waitUntil(response.then(() => refresh).catch(() => null));
 });

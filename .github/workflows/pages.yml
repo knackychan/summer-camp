@@ -22,6 +22,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
 
       - name: Create browser config
         shell: bash
@@ -45,9 +50,15 @@ jobs:
           fs.writeFileSync("js/config.js", `window.SQ_CONFIG = ${JSON.stringify(config, null, 2)};\n`);
           NODE
 
+      - name: Build and verify root application
+        run: |
+          npm run build:android-web
+          npm run build:agent
+          node scripts/check.mjs
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist/android-web
       - id: deployment
         uses: actions/deploy-pages@v4

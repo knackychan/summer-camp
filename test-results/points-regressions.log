@@ -1,0 +1,188 @@
+(node:30660) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/js/game-services/scheduler.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\WORK\10 - AI\SUMMER CAMP\summer-quest\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ math exercise generators preserve solvable bilingual, numeric, serialized rounds at every tier (3.9746ms)
+✔ Fraction Picnic allows reversals and pause, then submits the chosen share only once (2.9081ms)
+✔ Fraction Picnic wrong shares reveal the equivalent share and a new item resets (1105.1258ms)
+✔ Balance Lab compares actual values, undoes replacements, pauses, and guards duplicate checks (3.5474ms)
+✔ Balance Lab corrects a wrong block and resets the next equation (1103.2838ms)
+✔ both math scenes remove animated travel with reduced motion and retain numeric fallback (2.2218ms)
+(node:34652) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/js/brain/scenes/memorymatch.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\WORK\10 - AI\SUMMER CAMP\summer-quest\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ memory generators produce deterministic paired decks, valid sequences and serializable choices (3.2321ms)
+✔ Memory Match hides the target during study, gates taps, and submits two distinct positions once (2.8975ms)
+✔ Memory Match correct and wrong feedback reveal the target pair and reset the next item (2.1199ms)
+✔ Pattern Echo displays every step in order and rejects taps until playback finishes (1.2973ms)
+✔ Pattern Echo clears partial input, replays safely, accepts repeated pads, and submits only once (1.365ms)
+✔ Pattern Echo correct and wrong feedback exposes the full sequence and resolves through the scheduler (0.904ms)
+✔ replacing or destroying memory study/playback cancels work and resolves pending present promises (1.2902ms)
+✔ both memory games retain a working generic choice fallback at every tier (1.8358ms)
+✔ process invocation preserves spaced paths, cwd, arguments and failures (129.7556ms)
+✔ JDK bounds and SDK repair preserve unrelated local properties (2.2797ms)
+✔ payload verifier rejects missing, stale and extra files and checks native output (5120.6591ms)
+(node:27368) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/js/games/index.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\WORK\10 - AI\SUMMER CAMP\summer-quest\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ registry waits for readiness and reports actual async failure (1.7099ms)
+✔ a launch pending catalog readiness cannot follow a child or navigation change (0.747ms)
+✔ background lesson refreshes do not cancel a launch, but real navigation does (1.3586ms)
+✖ root projection covers real catalogs, stable aliases and shared lock exceptions (19.3343ms)
+✔ parseMins (1.1143ms)
+✔ effMins uses override when present (0.1433ms)
+✔ timedOrder sorts by effective time and skips untimed (0.6515ms)
+✔ timelineInfo current/next with and without overrides (0.1925ms)
+✔ timelineInfo before first block clamps to first timed (0.0917ms)
+✔ neededBefore respects effective order (0.1206ms)
+✔ displayOrder = timed ascending then untimed in DAY order (0.1196ms)
+✔ resolveOverrides: kid row wins over all row (0.3521ms)
+✔ free by default (games are only gated by redo/brain, not the schedule) (0.1715ms)
+✔ redo block locks games regardless of the schedule (0.2258ms)
+✔ re-ticked redo block unlocks (0.091ms)
+✔ pass on redo block unlocks (0.0721ms)
+✔ gateState counts only today's trio (0.1323ms)
+✔ gateState opens on a bypass without touching the counter (0.0455ms)
+✔ gateState opens when there is no trio at all (0.0458ms)
+✔ dailyThree is stable per kid+day and three distinct games (0.3439ms)
+✔ dailyThree returns nothing when brain_enabled_<kid> is off (0.0828ms)
+✔ brainEnabled defaults to true and only '0' turns it off (0.0417ms)
+✔ computeLock reports a reason for every lock (0.0861ms)
+✔ redo lock outranks the brain gate (0.0442ms)
+✔ brainOpen defaults to open so pre-gate callers are unaffected (0.0372ms)
+✔ practice-day alternation is deterministic and roughly half (0.1966ms)
+✔ sessionFor is deterministic per kid+date and respects DRILL_PLAN (0.1187ms)
+✔ rotation varies across dates (0.1332ms)
+✔ all drill steps are bilingual pairs (0.1446ms)
+✔ tierFor falls back to the per-kid default (0.0645ms)
+✔ tierFor honours a valid admin override (0.0468ms)
+✔ tierFor ignores an empty or unrecognised override (0.0537ms)
+✔ mulberry32 is deterministic and in range (0.0686ms)
+✔ eligibleGames drops games with no tier for that kid (0.0718ms)
+✔ eligibleGames follows an admin tier override (0.0355ms)
+✔ dailyThree is deterministic for the same kid and date (0.0888ms)
+✔ dailyThree differs by kid and by date (0.0796ms)
+✔ dailyThree prefers three different skills when it can (0.1239ms)
+✔ dailyThree returns the whole pool when fewer than three games are eligible (0.0698ms)
+✔ every game declares bilingual title, skill and at least one tier (0.1473ms)
+✖ every tier generator produces a well-formed item (0.2281ms)
+✔ tot tiers never run a clock (0.069ms)
+✔ buildRound produces the tier's item count and config (0.2528ms)
+✔ buildRound on a tot tier is unclocked (0.2942ms)
+✔ buildRound throws on an unknown game or tier (0.2211ms)
+✔ scoreRound counts correct answers and keeps ms only when clocked (0.5258ms)
+✔ scoreRound compares answers as trimmed strings (0.0786ms)
+✔ scoreRound treats a missing answer as wrong, never as a crash (0.053ms)
+✔ scoreRound still scores plain items one point each (0.0441ms)
+✔ scoreRound honours item.worth (0.0378ms)
+✔ scoreRound honours item.grade for partial credit (0.1369ms)
+✔ scoreRound clamps grade into 0..worth (0.0457ms)
+✔ buildRound uses a tier-level build() when present (0.0713ms)
+✔ Sign Finder answers are always a real operator that makes the equation true (0.3141ms)
+✔ Sign Finder tot only ever asks for plus or minus (0.0712ms)
+✔ Color Words asks for the ink, never the word (0.1692ms)
+✔ Color Words tot uses swatches and never a written word (0.1093ms)
+✔ Number Bonds answer is a pair on the board that makes the target (0.6086ms)
+✔ Time Lapse answers are valid 12-hour clock strings (0.4642ms)
+✔ Time Lapse tot only shows whole hours (0.0982ms)
+✔ Change Maker never asks for negative change (0.3625ms)
+✔ Change Maker tot compares two coins and names the bigger one (0.1366ms)
+✔ Low to High answers are the cells sorted ascending (0.2493ms)
+✔ Low to High grows with the tier (0.0998ms)
+✔ Word Memory is one weighted item that grades partial recall (0.2171ms)
+✔ Word Memory grading is case- and separator-insensitive and ignores repeats (0.0773ms)
+✔ Word Memory tot taps the missing emoji instead of typing (0.1036ms)
+✔ Math Recall asks for the previous answer and gives item 0 away (0.2597ms)
+✔ Math Recall's freebie accepts anything (0.0741ms)
+✔ gradeItem: default worth 1, exact trimmed-string match (0.0533ms)
+✔ gradeItem: numeric answers work as a number or a string (0.0642ms)
+✔ gradeItem: worth 0 is never correct even on an exact match (Math Recall's freebie) (0.0431ms)
+✔ gradeItem: custom grade() clamps into 0..worth (Word Memory partial credit) (0.1031ms)
+✔ gradeItem: a missing answer grades as empty, not a crash (0.0696ms)
+✔ scoreRound delegates to gradeItem (no duplicated comparison logic) (0.0581ms)
+✔ SHOP_PRODUCTS is exactly ten unique, bilingual products (0.0687ms)
+✔ Change Maker mid/hard carry the structured make-change contract (0.2484ms)
+✔ Change Maker tot prompt carries its coin pair alongside the legacy art field (0.0702ms)
+✔ greedyPieceCount: exact change is payable, an impossible set is Infinity (0.0339ms)
+ℹ tests 96
+ℹ suites 0
+ℹ pass 92
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5351.9701
+
+✖ failing tests:
+
+test at scripts\brain-math-exercises.test.mjs:41:1
+✖ math exercise generators preserve solvable bilingual, numeric, serialized rounds at every tier (3.9746ms)
+  AssertionError [ERR_ASSERTION]: visual share equals requested fraction
+  
+  12 !== 4
+  
+      at TestContext.<anonymous> (file:///D:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/scripts/brain-math-exercises.test.mjs:61:20)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1366:25)
+      at Test.start (node:internal/test_runner/test:1226:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 12,
+    expected: 4,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\brain-memory-exercises.test.mjs:49:1
+✖ memory generators produce deterministic paired decks, valid sequences and serializable choices (3.2321ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  3 !== 4
+  
+      at TestContext.<anonymous> (file:///D:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/scripts/brain-memory-exercises.test.mjs:62:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1366:25)
+      at Test.start (node:internal/test_runner/test:1226:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 3,
+    expected: 4,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\content-registry.test.mjs:80:1
+✖ root projection covers real catalogs, stable aliases and shared lock exceptions (19.3343ms)
+  AssertionError [ERR_ASSERTION]: quest
+  
+  15 !== 12
+  
+      at TestContext.<anonymous> (file:///D:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/scripts/content-registry.test.mjs:112:62)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1373:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:946:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 15,
+    expected: 12,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\core.test.mjs:299:1
+✖ every tier generator produces a well-formed item (0.2281ms)
+  TypeError: Cannot read properties of undefined (reading 'i')
+      at Object.gen (D:\WORK\10 - AI\SUMMER CAMP\summer-quest\js\brain-data.js:748:97)
+      at TestContext.<anonymous> (file:///D:/WORK/10%20-%20AI/SUMMER%20CAMP/summer-quest/scripts/core.test.mjs:310:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1366:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:946:18)
+      at Test.postRun (node:internal/test_runner/test:1506:19)
+      at Test.run (node:internal/test_runner/test:1431:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:946:7)

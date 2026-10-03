@@ -49,9 +49,9 @@ test("an achievement unlocks once and is never taken back", () => {
   const none = { stars: 0, words: 0, games: 0, acts: 0, fullDay: false, brain: false };
   assert.equal(SQNotify.check("lili", none).length, 0);
 
-  const first = SQNotify.check("lili", Object.assign({}, none, { stars: 12 }));
+  const first = SQNotify.check("lili", Object.assign({}, none, { stars: 120 }));
   assert.deepEqual(first.map((a) => a.id), ["star1", "star10"], "both thresholds fire together");
-  assert.equal(SQNotify.check("lili", Object.assign({}, none, { stars: 12 })).length, 0, "no re-fire");
+  assert.equal(SQNotify.check("lili", Object.assign({}, none, { stars: 120 })).length, 0, "no re-fire");
 
   // stars revoked back to zero: the badge stays earned
   assert.equal(SQNotify.check("lili", none).length, 0);

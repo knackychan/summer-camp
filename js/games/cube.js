@@ -3,15 +3,17 @@
    when location.hash === "#devcube" (main.js). Stays as permanent
    probe file per project non-negotiable (never delete project files). */
 
-var R = null;
+import { loadThree, createRenderer, releaseContext, firstFrame, observeResize } from "./three-runtime.js";
+
+var R = null, initToken = 0;
 
 function pauseOnHidden() {
   function onVis() {
-    if (!R || !R.raf) return;
+    if (!R) return;
     if (document.hidden) {
       cancelAnimationFrame(R.raf);
       R.raf = null;
-    } else {
+    } else if(!R.raf) {
       R.timer.reset();
       R.raf = requestAnimationFrame(tick);
     }
@@ -22,6 +24,7 @@ function pauseOnHidden() {
 
 function tick() {
   if (!R) return;
+  if(R.renderer.getContext().isContextLost()||R.renderer.sqGraphicsError){R.raf=requestAnimationFrame(tick);return;}
   R.timer.update();
   var dt = Math.min(R.timer.getDelta(), 0.1);
   R.cube.rotation.x += 0.4 * dt;
@@ -53,7 +56,12 @@ export default {
   bestKey: null,
 
   async init(ctx) {
-    var THREE = await import("../vendor/three.module.min.js");
+    var token=++initToken;
+    await Promise.resolve();
+    if(token!==initToken)return;
+    var runtime=await loadThree(document.createElement("canvas"));
+    if(token!==initToken){releaseContext(runtime);return;}
+    var THREE=runtime.THREE;
     R = {};
     R.THREE = THREE;
 
@@ -63,14 +71,13 @@ export default {
     }
     mount.innerHTML = "";
 
-    var canvas = document.createElement("canvas");
+    var canvas = runtime.canvas;
     canvas.style.display = "block";
     canvas.style.width = "100%";
     canvas.style.height = "100%";
     mount.appendChild(canvas);
 
-    R.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-    R.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    R.renderer = createRenderer(runtime,2);
     R.renderer.setClearColor(0x191340);
     var initialW = Math.max(mount.clientWidth || 640, 1);
     var initialH = Math.max(mount.clientHeight || 320, 1);
@@ -99,14 +106,15 @@ export default {
       R.camera.aspect = w / Math.max(h, 1);
       R.camera.updateProjectionMatrix();
     };
-    R.ro = new ResizeObserver(function () { R.resize(); });
-    R.ro.observe(mount);
+    R.ro = observeResize(mount,R.resize);
 
     R.unpause = pauseOnHidden();
+    firstFrame(R.renderer,R.scene,R.camera);
     R.raf = requestAnimationFrame(tick);
   },
 
   stop() {
+    initToken++;
     if (!R) return;
     if (R.raf) { cancelAnimationFrame(R.raf); R.raf = null; }
     if (R.unpause) { R.unpause(); R.unpause = null; }

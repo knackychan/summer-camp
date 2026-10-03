@@ -1,0 +1,26 @@
+{
+  "name": "summer-quest-android-shell",
+  "private": true,
+  "version": "0.6.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/core": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  },
+  "scripts": {
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "sync": "node scripts/sync.mjs",
+    "open": "node node_modules/@capacitor/cli/bin/capacitor open android",
+    "run": "node node_modules/@capacitor/cli/bin/capacitor run android",
+    "doctor": "node scripts/doctor.mjs",
+    "build:debug": "node scripts/build.mjs debug",
+    "build:release-apk": "node scripts/build.mjs release-apk",
+    "build:release-bundle": "node scripts/build.mjs release-bundle",
+    "device": "node scripts/device.mjs"
+  }
+}

@@ -1,0 +1,1914 @@
+TAP version 13
+# agent local server tests: ok
+# Subtest: scripts/agent-local-server.test.mjs
+ok 1 - scripts/agent-local-server.test.mjs
+  ---
+  duration_ms: 141.430913
+  type: 'test'
+  ...
+# ok - v0.2.2 agent orchestration, privacy, provider and Brain adapter
+# Subtest: scripts/agent-orchestration.test.mjs
+ok 2 - scripts/agent-orchestration.test.mjs
+  ---
+  duration_ms: 34.277218
+  type: 'test'
+  ...
+# agent routing tests: ok
+# Subtest: scripts/agent-routing.test.mjs
+ok 3 - scripts/agent-routing.test.mjs
+  ---
+  duration_ms: 73.352253
+  type: 'test'
+  ...
+# AI math + vocabulary eval tests: ok
+# Subtest: scripts/ai-eval.test.mjs
+ok 4 - scripts/ai-eval.test.mjs
+  ---
+  duration_ms: 34.398681
+  type: 'test'
+  ...
+# Subtest: normal correct path: submit accepted once, feedback correct, onFinish once
+ok 5 - normal correct path: submit accepted once, feedback correct, onFinish once
+  ---
+  duration_ms: 126.525583
+  type: 'test'
+  ...
+# Subtest: corrective path: wrong submit grades incorrect and still advances
+ok 6 - corrective path: wrong submit grades incorrect and still advances
+  ---
+  duration_ms: 1320.732003
+  type: 'test'
+  ...
+# Subtest: quit from loading calls destroy but never onFinish
+ok 7 - quit from loading calls destroy but never onFinish
+  ---
+  duration_ms: 21.562407
+  type: 'test'
+  ...
+# Subtest: quit from active calls destroy but never onFinish
+ok 8 - quit from active calls destroy but never onFinish
+  ---
+  duration_ms: 21.928088
+  type: 'test'
+  ...
+# Subtest: quit mid-feedback calls destroy but never onFinish
+ok 9 - quit mid-feedback calls destroy but never onFinish
+  ---
+  duration_ms: 40.639531
+  type: 'test'
+  ...
+# Subtest: onProgress persists after each item and clears once the round completes
+ok 10 - onProgress persists after each item and clears once the round completes
+  ---
+  duration_ms: 1423.488321
+  type: 'test'
+  ...
+# Subtest: contained HUD hook receives arcade stats as the round advances
+ok 11 - contained HUD hook receives arcade stats as the round advances
+  ---
+  duration_ms: 1321.836105
+  type: 'test'
+  ...
+# Subtest: resume restores mid-round progress instead of restarting
+ok 12 - resume restores mid-round progress instead of restarting
+  ---
+  duration_ms: 4025.448597
+  type: 'test'
+  ...
+# Subtest: resume is ignored when its shape doesn't match the fresh round
+ok 13 - resume is ignored when its shape doesn't match the fresh round
+  ---
+  duration_ms: 20.497253
+  type: 'test'
+  ...
+# Subtest: a never-resolving showFeedback is capped at 1200ms, not stuck forever
+ok 14 - a never-resolving showFeedback is capped at 1200ms, not stuck forever
+  ---
+  duration_ms: 1322.425953
+  type: 'test'
+  ...
+# brain scene create() failed: change Error: boom
+#     at changeMod.default.create (file:///mnt/data/sq_v055_work/summer-quest/scripts/brain-host.test.mjs:274:50)
+#     at file:///mnt/data/sq_v055_work/summer-quest/js/brain/host.js:755:37
+# Subtest: zero-worth item (Math Recall's freebie) advances with no feedback state
+ok 15 - zero-worth item (Math Recall's freebie) advances with no feedback state
+  ---
+  duration_ms: 20.571117
+  type: 'test'
+  ...
+# brain scene present() failed: change Error: boom
+#     at Object.present (file:///mnt/data/sq_v055_work/summer-quest/scripts/brain-host.test.mjs:290:36)
+#     at present (file:///mnt/data/sq_v055_work/summer-quest/js/brain/host.js:568:30)
+#     at file:///mnt/data/sq_v055_work/summer-quest/js/brain/host.js:760:14
+# Subtest: scene create() throwing falls back to the generic scene
+ok 16 - scene create() throwing falls back to the generic scene
+  ---
+  duration_ms: 60.601382
+  type: 'test'
+  ...
+# Subtest: scene present() throwing falls back to the generic scene for that item
+ok 17 - scene present() throwing falls back to the generic scene for that item
+  ---
+  duration_ms: 61.705115
+  type: 'test'
+  ...
+# Subtest: an unknown game id uses the generic scene directly
+ok 18 - an unknown game id uses the generic scene directly
+  ---
+  duration_ms: 20.954302
+  type: 'test'
+  ...
+# Subtest: opening a second round destroys the first one first
+ok 19 - opening a second round destroys the first one first
+  ---
+  duration_ms: 39.881231
+  type: 'test'
+  ...
+# Subtest: hidden document excludes time from the active-time clock
+ok 20 - hidden document excludes time from the active-time clock
+  ---
+  duration_ms: 101.638946
+  type: 'test'
+  ...
+# Subtest: fmtMs formats minutes:seconds with a leading zero
+ok 21 - fmtMs formats minutes:seconds with a leading zero
+  ---
+  duration_ms: 0.293923
+  type: 'test'
+  ...
+# Subtest: generic scene module exposes the required contract shape
+ok 22 - generic scene module exposes the required contract shape
+  ---
+  duration_ms: 0.082444
+  type: 'test'
+  ...
+# Subtest: learning support: wrong answer can request a hint, retry locally, and preserve original Brain score
+ok 23 - learning support: wrong answer can request a hint, retry locally, and preserve original Brain score
+  ---
+  duration_ms: 153.352108
+  type: 'test'
+  ...
+# Subtest: adaptive tutor: strong-context continue skips extra tutor UI but stores the wrong attempt
+ok 24 - adaptive tutor: strong-context continue skips extra tutor UI but stores the wrong attempt
+  ---
+  duration_ms: 61.320117
+  type: 'test'
+  ...
+# Subtest: adaptive tutor: repeated difficulty inserts an unscored easier step then retries the original
+ok 25 - adaptive tutor: repeated difficulty inserts an unscored easier step then retries the original
+  ---
+  duration_ms: 803.094698
+  type: 'test'
+  ...
+# Subtest: createMoneyTray: add/undo/clear/total/groups/serialize
+ok 26 - createMoneyTray: add/undo/clear/total/groups/serialize
+  ---
+  duration_ms: 1.322262
+  type: 'test'
+  ...
+# Subtest: createMoneyTray: invalid denominations are ignored, not added
+ok 27 - createMoneyTray: invalid denominations are ignored, not added
+  ---
+  duration_ms: 0.133051
+  type: 'test'
+  ...
+# Subtest: createMoneyTray: undo on empty tray returns null and does not throw
+ok 28 - createMoneyTray: undo on empty tray returns null and does not throw
+  ---
+  duration_ms: 0.130717
+  type: 'test'
+  ...
+# Subtest: createMoneyTray: groups are sorted highest denomination first
+ok 29 - createMoneyTray: groups are sorted highest denomination first
+  ---
+  duration_ms: 0.11971
+  type: 'test'
+  ...
+# Subtest: SCENE_LOADERS keys are all known brain-data game ids
+ok 30 - SCENE_LOADERS keys are all known brain-data game ids
+  ---
+  duration_ms: 0.142354
+  type: 'test'
+  ...
+# Subtest: bespoke and generic scenes report matching ids and create() functions
+ok 31 - bespoke and generic scenes report matching ids and create() functions
+  ---
+  duration_ms: 0.491069
+  type: 'test'
+  ...
+# Subtest: generic scene: choice pad renders buttons and submits on tap
+ok 32 - generic scene: choice pad renders buttons and submits on tap
+  ---
+  duration_ms: 2.037318
+  type: 'test'
+  ...
+# Subtest: generic scene: clockface renders separate hour and minute hands
+ok 33 - generic scene: clockface renders separate hour and minute hands
+  ---
+  duration_ms: 0.555026
+  type: 'test'
+  ...
+# Subtest: generic scene: keypad pad accumulates digits and submits on checkmark
+ok 34 - generic scene: keypad pad accumulates digits and submits on checkmark
+  ---
+  duration_ms: 0.770711
+  type: 'test'
+  ...
+# Subtest: generic scene: showFeedback on a wrong answer shows the corrective panel and resolves via the scheduler
+ok 35 - generic scene: showFeedback on a wrong answer shows the corrective panel and resolves via the scheduler
+  ---
+  duration_ms: 902.521821
+  type: 'test'
+  ...
+# Subtest: recallView: shows the current sum result as the next thing to remember
+ok 36 - recallView: shows the current sum result as the next thing to remember
+  ---
+  duration_ms: 0.377629
+  type: 'test'
+  ...
+# Subtest: recall scene: first item renders a Next button instead of answer choices
+ok 37 - recall scene: first item renders a Next button instead of answer choices
+  ---
+  duration_ms: 0.8501
+  type: 'test'
+  ...
+# Subtest: recall scene: choice tier submits the old answer, not the new value
+ok 38 - recall scene: choice tier submits the old answer, not the new value
+  ---
+  duration_ms: 0.486513
+  type: 'test'
+  ...
+# Subtest: recall scene: keypad tier accumulates digits and submits on checkmark
+ok 39 - recall scene: keypad tier accumulates digits and submits on checkmark
+  ---
+  duration_ms: 0.426743
+  type: 'test'
+  ...
+# Subtest: change scene: tot presents two coins and submits the tapped value
+ok 40 - change scene: tot presents two coins and submits the tapped value
+  ---
+  duration_ms: 1.828624
+  type: 'test'
+  ...
+# Subtest: change scene: mid shop renders the drawer, adds tokens to the tray, and Give change submits the total
+ok 41 - change scene: mid shop renders the drawer, adds tokens to the tray, and Give change submits the total
+  ---
+  duration_ms: 23.588479
+  type: 'test'
+  ...
+# Subtest: change scene: undo removes exactly the last piece
+ok 42 - change scene: undo removes exactly the last piece
+  ---
+  duration_ms: 1.233188
+  type: 'test'
+  ...
+# Subtest: change scene: destroy is idempotent and clears the mount
+ok 43 - change scene: destroy is idempotent and clears the mount
+  ---
+  duration_ms: 0.240141
+  type: 'test'
+  ...
+# Subtest: buildStream on empty data returns an empty array
+ok 44 - buildStream on empty data returns an empty array
+  ---
+  duration_ms: 1.310154
+  type: 'test'
+  ...
+# Subtest: buildStream turns an unanswered ask into one kid row that needs Papa
+ok 45 - buildStream turns an unanswered ask into one kid row that needs Papa
+  ---
+  duration_ms: 0.323717
+  type: 'test'
+  ...
+# Subtest: buildStream splits an answered ask into a kid row and a papa row
+ok 46 - buildStream splits an answered ask into a kid row and a papa row
+  ---
+  duration_ms: 0.147753
+  type: 'test'
+  ...
+# Subtest: buildStream turns a requested claim into an action card that needs Papa
+ok 47 - buildStream turns a requested claim into an action card that needs Papa
+  ---
+  duration_ms: 0.143847
+  type: 'test'
+  ...
+# Subtest: buildStream marks a reviewed claim as no longer needing Papa
+ok 48 - buildStream marks a reviewed claim as no longer needing Papa
+  ---
+  duration_ms: 0.158959
+  type: 'test'
+  ...
+# Subtest: buildStream includes requested passes but not outing passes
+ok 49 - buildStream includes requested passes but not outing passes
+  ---
+  duration_ms: 0.140782
+  type: 'test'
+  ...
+# Subtest: buildStream adds photo and system rows
+ok 50 - buildStream adds photo and system rows
+  ---
+  duration_ms: 0.424169
+  type: 'test'
+  ...
+# Subtest: buildStream sorts every source together, oldest first
+ok 51 - buildStream sorts every source together, oldest first
+  ---
+  duration_ms: 0.149666
+  type: 'test'
+  ...
+# Subtest: buildStream ignores ticks and photos from other days
+ok 52 - buildStream ignores ticks and photos from other days
+  ---
+  duration_ms: 0.279722
+  type: 'test'
+  ...
+# Subtest: filterStream with no filters returns everything
+ok 53 - filterStream with no filters returns everything
+  ---
+  duration_ms: 0.447213
+  type: 'test'
+  ...
+# Subtest: filterStream by kid keeps only that kid
+ok 54 - filterStream by kid keeps only that kid
+  ---
+  duration_ms: 0.187352
+  type: 'test'
+  ...
+# Subtest: filterStream kid 'all' is the same as no kid filter
+ok 55 - filterStream kid 'all' is the same as no kid filter
+  ---
+  duration_ms: 0.110186
+  type: 'test'
+  ...
+# Subtest: filterStream by type keeps only the listed types
+ok 56 - filterStream by type keeps only the listed types
+  ---
+  duration_ms: 0.199721
+  type: 'test'
+  ...
+# Subtest: filterStream treats reply as part of the ask type
+ok 57 - filterStream treats reply as part of the ask type
+  ---
+  duration_ms: 0.165459
+  type: 'test'
+  ...
+# Subtest: needs filter overrides both axes
+ok 58 - needs filter overrides both axes
+  ---
+  duration_ms: 0.12665
+  type: 'test'
+  ...
+# Subtest: needsCount counts exactly what the needs filter returns
+ok 59 - needsCount counts exactly what the needs filter returns
+  ---
+  duration_ms: 0.164588
+  type: 'test'
+  ...
+# Subtest: archived rows are hidden unless asked for
+ok 60 - archived rows are hidden unless asked for
+  ---
+  duration_ms: 0.209275
+  type: 'test'
+  ...
+# Subtest: parseMins
+ok 61 - parseMins
+  ---
+  duration_ms: 1.035981
+  type: 'test'
+  ...
+# Subtest: effMins uses override when present
+ok 62 - effMins uses override when present
+  ---
+  duration_ms: 0.117977
+  type: 'test'
+  ...
+# Subtest: timedOrder sorts by effective time and skips untimed
+ok 63 - timedOrder sorts by effective time and skips untimed
+  ---
+  duration_ms: 0.641606
+  type: 'test'
+  ...
+# Subtest: timelineInfo current/next with and without overrides
+ok 64 - timelineInfo current/next with and without overrides
+  ---
+  duration_ms: 0.233221
+  type: 'test'
+  ...
+# Subtest: timelineInfo before first block clamps to first timed
+ok 65 - timelineInfo before first block clamps to first timed
+  ---
+  duration_ms: 0.110626
+  type: 'test'
+  ...
+# Subtest: neededBefore respects effective order
+ok 66 - neededBefore respects effective order
+  ---
+  duration_ms: 0.215925
+  type: 'test'
+  ...
+# Subtest: displayOrder = timed ascending then untimed in DAY order
+ok 67 - displayOrder = timed ascending then untimed in DAY order
+  ---
+  duration_ms: 0.195965
+  type: 'test'
+  ...
+# Subtest: resolveOverrides: kid row wins over all row
+ok 68 - resolveOverrides: kid row wins over all row
+  ---
+  duration_ms: 0.284448
+  type: 'test'
+  ...
+# Subtest: free by default (games are only gated by redo/brain, not the schedule)
+ok 69 - free by default (games are only gated by redo/brain, not the schedule)
+  ---
+  duration_ms: 0.379993
+  type: 'test'
+  ...
+# Subtest: redo block locks games regardless of the schedule
+ok 70 - redo block locks games regardless of the schedule
+  ---
+  duration_ms: 0.304859
+  type: 'test'
+  ...
+# Subtest: re-ticked redo block unlocks
+ok 71 - re-ticked redo block unlocks
+  ---
+  duration_ms: 0.135123
+  type: 'test'
+  ...
+# Subtest: pass on redo block unlocks
+ok 72 - pass on redo block unlocks
+  ---
+  duration_ms: 0.084788
+  type: 'test'
+  ...
+# Subtest: gateState counts only today's trio
+ok 73 - gateState counts only today's trio
+  ---
+  duration_ms: 0.146291
+  type: 'test'
+  ...
+# Subtest: gateState opens on a bypass without touching the counter
+ok 74 - gateState opens on a bypass without touching the counter
+  ---
+  duration_ms: 0.104147
+  type: 'test'
+  ...
+# Subtest: gateState opens when there is no trio at all
+ok 75 - gateState opens when there is no trio at all
+  ---
+  duration_ms: 0.060821
+  type: 'test'
+  ...
+# Subtest: dailyThree is stable per kid+day and three distinct games
+ok 76 - dailyThree is stable per kid+day and three distinct games
+  ---
+  duration_ms: 0.310839
+  type: 'test'
+  ...
+# Subtest: dailyThree returns nothing when brain_enabled_<kid> is off
+ok 77 - dailyThree returns nothing when brain_enabled_<kid> is off
+  ---
+  duration_ms: 0.136385
+  type: 'test'
+  ...
+# Subtest: brainEnabled defaults to true and only '0' turns it off
+ok 78 - brainEnabled defaults to true and only '0' turns it off
+  ---
+  duration_ms: 0.115293
+  type: 'test'
+  ...
+# Subtest: computeLock reports a reason for every lock
+ok 79 - computeLock reports a reason for every lock
+  ---
+  duration_ms: 0.114082
+  type: 'test'
+  ...
+# Subtest: redo lock outranks the brain gate
+ok 80 - redo lock outranks the brain gate
+  ---
+  duration_ms: 0.122985
+  type: 'test'
+  ...
+# Subtest: brainOpen defaults to open so pre-gate callers are unaffected
+ok 81 - brainOpen defaults to open so pre-gate callers are unaffected
+  ---
+  duration_ms: 0.064928
+  type: 'test'
+  ...
+# Subtest: practice-day alternation is deterministic and roughly half
+ok 82 - practice-day alternation is deterministic and roughly half
+  ---
+  duration_ms: 0.17925
+  type: 'test'
+  ...
+# Subtest: sessionFor is deterministic per kid+date and respects DRILL_PLAN
+ok 83 - sessionFor is deterministic per kid+date and respects DRILL_PLAN
+  ---
+  duration_ms: 0.137487
+  type: 'test'
+  ...
+# Subtest: rotation varies across dates
+ok 84 - rotation varies across dates
+  ---
+  duration_ms: 0.175044
+  type: 'test'
+  ...
+# Subtest: all drill steps are bilingual pairs
+ok 85 - all drill steps are bilingual pairs
+  ---
+  duration_ms: 0.196797
+  type: 'test'
+  ...
+# Subtest: tierFor falls back to the per-kid default
+ok 86 - tierFor falls back to the per-kid default
+  ---
+  duration_ms: 0.077166
+  type: 'test'
+  ...
+# Subtest: tierFor honours a valid admin override
+ok 87 - tierFor honours a valid admin override
+  ---
+  duration_ms: 0.064387
+  type: 'test'
+  ...
+# Subtest: tierFor ignores an empty or unrecognised override
+ok 88 - tierFor ignores an empty or unrecognised override
+  ---
+  duration_ms: 0.05271
+  type: 'test'
+  ...
+# Subtest: mulberry32 is deterministic and in range
+ok 89 - mulberry32 is deterministic and in range
+  ---
+  duration_ms: 0.070316
+  type: 'test'
+  ...
+# Subtest: eligibleGames drops games with no tier for that kid
+ok 90 - eligibleGames drops games with no tier for that kid
+  ---
+  duration_ms: 0.108904
+  type: 'test'
+  ...
+# Subtest: eligibleGames follows an admin tier override
+ok 91 - eligibleGames follows an admin tier override
+  ---
+  duration_ms: 0.144738
+  type: 'test'
+  ...
+# Subtest: dailyThree is deterministic for the same kid and date
+ok 92 - dailyThree is deterministic for the same kid and date
+  ---
+  duration_ms: 0.118309
+  type: 'test'
+  ...
+# Subtest: dailyThree differs by kid and by date
+ok 93 - dailyThree differs by kid and by date
+  ---
+  duration_ms: 0.114322
+  type: 'test'
+  ...
+# Subtest: dailyThree prefers three different skills when it can
+ok 94 - dailyThree prefers three different skills when it can
+  ---
+  duration_ms: 0.173101
+  type: 'test'
+  ...
+# Subtest: dailyThree returns the whole pool when fewer than three games are eligible
+ok 95 - dailyThree returns the whole pool when fewer than three games are eligible
+  ---
+  duration_ms: 0.109255
+  type: 'test'
+  ...
+# Subtest: every game declares bilingual title, skill and at least one tier
+ok 96 - every game declares bilingual title, skill and at least one tier
+  ---
+  duration_ms: 0.169515
+  type: 'test'
+  ...
+# Subtest: every tier generator produces a well-formed item
+ok 97 - every tier generator produces a well-formed item
+  ---
+  duration_ms: 5.019541
+  type: 'test'
+  ...
+# Subtest: tot tiers never run a clock
+ok 98 - tot tiers never run a clock
+  ---
+  duration_ms: 0.11976
+  type: 'test'
+  ...
+# Subtest: buildRound produces the tier's item count and config
+ok 99 - buildRound produces the tier's item count and config
+  ---
+  duration_ms: 0.260503
+  type: 'test'
+  ...
+# Subtest: buildRound on a tot tier is unclocked
+ok 100 - buildRound on a tot tier is unclocked
+  ---
+  duration_ms: 0.17259
+  type: 'test'
+  ...
+# Subtest: buildRound throws on an unknown game or tier
+ok 101 - buildRound throws on an unknown game or tier
+  ---
+  duration_ms: 0.210578
+  type: 'test'
+  ...
+# Subtest: scoreRound counts correct answers and keeps ms only when clocked
+ok 102 - scoreRound counts correct answers and keeps ms only when clocked
+  ---
+  duration_ms: 0.17247
+  type: 'test'
+  ...
+# Subtest: scoreRound compares answers as trimmed strings
+ok 103 - scoreRound compares answers as trimmed strings
+  ---
+  duration_ms: 0.110676
+  type: 'test'
+  ...
+# Subtest: scoreRound treats a missing answer as wrong, never as a crash
+ok 104 - scoreRound treats a missing answer as wrong, never as a crash
+  ---
+  duration_ms: 0.083485
+  type: 'test'
+  ...
+# Subtest: scoreRound still scores plain items one point each
+ok 105 - scoreRound still scores plain items one point each
+  ---
+  duration_ms: 0.076866
+  type: 'test'
+  ...
+# Subtest: scoreRound honours item.worth
+ok 106 - scoreRound honours item.worth
+  ---
+  duration_ms: 0.074071
+  type: 'test'
+  ...
+# Subtest: scoreRound honours item.grade for partial credit
+ok 107 - scoreRound honours item.grade for partial credit
+  ---
+  duration_ms: 0.183726
+  type: 'test'
+  ...
+# Subtest: scoreRound clamps grade into 0..worth
+ok 108 - scoreRound clamps grade into 0..worth
+  ---
+  duration_ms: 0.083095
+  type: 'test'
+  ...
+# Subtest: buildRound uses a tier-level build() when present
+ok 109 - buildRound uses a tier-level build() when present
+  ---
+  duration_ms: 0.144858
+  type: 'test'
+  ...
+# Subtest: Sign Finder answers are always a real operator that makes the equation true
+ok 110 - Sign Finder answers are always a real operator that makes the equation true
+  ---
+  duration_ms: 0.317549
+  type: 'test'
+  ...
+# Subtest: Sign Finder tot only ever asks for plus or minus
+ok 111 - Sign Finder tot only ever asks for plus or minus
+  ---
+  duration_ms: 0.102604
+  type: 'test'
+  ...
+# Subtest: Color Words asks for the ink, never the word
+ok 112 - Color Words asks for the ink, never the word
+  ---
+  duration_ms: 0.109866
+  type: 'test'
+  ...
+# Subtest: Color Words tot uses swatches and never a written word
+ok 113 - Color Words tot uses swatches and never a written word
+  ---
+  duration_ms: 0.085919
+  type: 'test'
+  ...
+# Subtest: Number Cruncher's answer equals the real count in the field
+ok 114 - Number Cruncher's answer equals the real count in the field
+  ---
+  duration_ms: 0.421915
+  type: 'test'
+  ...
+# Subtest: Time Lapse answers are valid 12-hour clock strings
+ok 115 - Time Lapse answers are valid 12-hour clock strings
+  ---
+  duration_ms: 0.379201
+  type: 'test'
+  ...
+# Subtest: Time Lapse tot only shows whole hours
+ok 116 - Time Lapse tot only shows whole hours
+  ---
+  duration_ms: 0.11953
+  type: 'test'
+  ...
+# Subtest: Change Maker never asks for negative change
+ok 117 - Change Maker never asks for negative change
+  ---
+  duration_ms: 0.170416
+  type: 'test'
+  ...
+# Subtest: Change Maker tot compares two coins and names the bigger one
+ok 118 - Change Maker tot compares two coins and names the bigger one
+  ---
+  duration_ms: 0.094412
+  type: 'test'
+  ...
+# Subtest: Low to High answers are the cells sorted ascending
+ok 119 - Low to High answers are the cells sorted ascending
+  ---
+  duration_ms: 0.263517
+  type: 'test'
+  ...
+# Subtest: Low to High grows with the tier
+ok 120 - Low to High grows with the tier
+  ---
+  duration_ms: 0.110026
+  type: 'test'
+  ...
+# Subtest: Word Memory is one weighted item that grades partial recall
+ok 121 - Word Memory is one weighted item that grades partial recall
+  ---
+  duration_ms: 0.193542
+  type: 'test'
+  ...
+# Subtest: Word Memory grading is case- and separator-insensitive and ignores repeats
+ok 122 - Word Memory grading is case- and separator-insensitive and ignores repeats
+  ---
+  duration_ms: 0.09274
+  type: 'test'
+  ...
+# Subtest: Word Memory tot taps the missing emoji instead of typing
+ok 123 - Word Memory tot taps the missing emoji instead of typing
+  ---
+  duration_ms: 0.090366
+  type: 'test'
+  ...
+# Subtest: Math Recall asks for the previous answer and gives item 0 away
+ok 124 - Math Recall asks for the previous answer and gives item 0 away
+  ---
+  duration_ms: 0.290347
+  type: 'test'
+  ...
+# Subtest: Math Recall's freebie accepts anything
+ok 125 - Math Recall's freebie accepts anything
+  ---
+  duration_ms: 0.394624
+  type: 'test'
+  ...
+# Subtest: gradeItem: default worth 1, exact trimmed-string match
+ok 126 - gradeItem: default worth 1, exact trimmed-string match
+  ---
+  duration_ms: 0.154332
+  type: 'test'
+  ...
+# Subtest: gradeItem: numeric answers work as a number or a string
+ok 127 - gradeItem: numeric answers work as a number or a string
+  ---
+  duration_ms: 0.069945
+  type: 'test'
+  ...
+# Subtest: gradeItem: worth 0 is never correct even on an exact match (Math Recall's freebie)
+ok 128 - gradeItem: worth 0 is never correct even on an exact match (Math Recall's freebie)
+  ---
+  duration_ms: 0.055644
+  type: 'test'
+  ...
+# Subtest: gradeItem: custom grade() clamps into 0..worth (Word Memory partial credit)
+ok 129 - gradeItem: custom grade() clamps into 0..worth (Word Memory partial credit)
+  ---
+  duration_ms: 0.157978
+  type: 'test'
+  ...
+# Subtest: gradeItem: a missing answer grades as empty, not a crash
+ok 130 - gradeItem: a missing answer grades as empty, not a crash
+  ---
+  duration_ms: 0.065769
+  type: 'test'
+  ...
+# Subtest: scoreRound delegates to gradeItem (no duplicated comparison logic)
+ok 131 - scoreRound delegates to gradeItem (no duplicated comparison logic)
+  ---
+  duration_ms: 0.074192
+  type: 'test'
+  ...
+# Subtest: SHOP_PRODUCTS is exactly ten unique, bilingual products
+ok 132 - SHOP_PRODUCTS is exactly ten unique, bilingual products
+  ---
+  duration_ms: 0.120472
+  type: 'test'
+  ...
+# Subtest: Change Maker mid/hard carry the structured make-change contract
+ok 133 - Change Maker mid/hard carry the structured make-change contract
+  ---
+  duration_ms: 0.275194
+  type: 'test'
+  ...
+# Subtest: Change Maker tot prompt carries its coin pair alongside the legacy art field
+ok 134 - Change Maker tot prompt carries its coin pair alongside the legacy art field
+  ---
+  duration_ms: 0.087692
+  type: 'test'
+  ...
+# Subtest: greedyPieceCount: exact change is payable, an impossible set is Infinity
+ok 135 - greedyPieceCount: exact change is payable, an impossible set is Infinity
+  ---
+  duration_ms: 0.055184
+  type: 'test'
+  ...
+# curriculum skill-map tests: ok
+# Subtest: scripts/curriculum-skill-map.test.mjs
+ok 9 - scripts/curriculum-skill-map.test.mjs
+  ---
+  duration_ms: 38.857107
+  type: 'test'
+  ...
+# geography knowledge runtime tests: ok
+# Subtest: scripts/geography-knowledge-runtime.test.mjs
+ok 10 - scripts/geography-knowledge-runtime.test.mjs
+  ---
+  duration_ms: 45.719934
+  type: 'test'
+  ...
+# geography Smart Practice + mastery tests: ok
+# Subtest: scripts/geography-smart-practice.test.mjs
+ok 11 - scripts/geography-smart-practice.test.mjs
+  ---
+  duration_ms: 40.978001
+  type: 'test'
+  ...
+# Subtest: guided math: available existing runtime, run-bound result and no automatic next launch
+ok 139 - guided math: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 6.522985
+  type: 'test'
+  ...
+# Subtest: guided language: available existing runtime, run-bound result and no automatic next launch
+ok 140 - guided language: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 3.090475
+  type: 'test'
+  ...
+# Subtest: guided science: available existing runtime, run-bound result and no automatic next launch
+ok 141 - guided science: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 2.773838
+  type: 'test'
+  ...
+# Subtest: guided geography: available existing runtime, run-bound result and no automatic next launch
+ok 142 - guided geography: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 1.448712
+  type: 'test'
+  ...
+# Subtest: guided history: available existing runtime, run-bound result and no automatic next launch
+ok 143 - guided history: available existing runtime, run-bound result and no automatic next launch
+  ---
+  duration_ms: 2.11121
+  type: 'test'
+  ...
+# Subtest: free practice, another learner, wrong skill and duplicate events cannot complete a guided step
+ok 144 - free practice, another learner, wrong skill and duplicate events cannot complete a guided step
+  ---
+  duration_ms: 2.120704
+  type: 'test'
+  ...
+# Subtest: pause closes the old run; refresh/resume keeps committed progress even after telemetry pruning
+ok 145 - pause closes the old run; refresh/resume keeps committed progress even after telemetry pruning
+  ---
+  duration_ms: 1.698058
+  type: 'test'
+  ...
+# Subtest: another choice persists across rendering, retains completed prefix and ignores old run
+ok 146 - another choice persists across rendering, retains completed prefix and ignores old run
+  ---
+  duration_ms: 1.896987
+  type: 'test'
+  ...
+# Subtest: finish is not successful completion and stale reset/start cannot reopen a finished session
+ok 147 - finish is not successful completion and stale reset/start cannot reopen a finished session
+  ---
+  duration_ms: 1.363544
+  type: 'test'
+  ...
+# Subtest: an empty available-runtime set returns a supported no-candidate finish, never an invented exercise
+ok 148 - an empty available-runtime set returns a supported no-candidate finish, never an invented exercise
+  ---
+  duration_ms: 0.545051
+  type: 'test'
+  ...
+# Subtest: double start is compare-and-set; child scopes and stale revisions are isolated
+ok 149 - double start is compare-and-set; child scopes and stale revisions are isolated
+  ---
+  duration_ms: 1.171494
+  type: 'test'
+  ...
+# Subtest: v11 additive migration retains committed progress; v10 rebuild does not erase learning telemetry
+ok 150 - v11 additive migration retains committed progress; v10 rebuild does not erase learning telemetry
+  ---
+  duration_ms: 2.695099
+  type: 'test'
+  ...
+# Subtest: math duplicate callbacks remain idempotent after reloading the learning engine
+ok 151 - math duplicate callbacks remain idempotent after reloading the learning engine
+  ---
+  duration_ms: 0.589157
+  type: 'test'
+  ...
+# Subtest: vocabulary duplicate callbacks neither inflate mastery evidence nor replay support outcomes
+ok 152 - vocabulary duplicate callbacks neither inflate mastery evidence nor replay support outcomes
+  ---
+  duration_ms: 1.179066
+  type: 'test'
+  ...
+# Subtest: simultaneous telemetry writes are serialized instead of silently losing sibling/subject evidence
+ok 153 - simultaneous telemetry writes are serialized instead of silently losing sibling/subject evidence
+  ---
+  duration_ms: 7.241427
+  type: 'test'
+  ...
+# Subtest: late knowledge AI cannot undo advance
+ok 154 - late knowledge AI cannot undo advance
+  ---
+  duration_ms: 10.433204
+  type: 'test'
+  ...
+# Subtest: late knowledge AI cannot undo reset
+ok 155 - late knowledge AI cannot undo reset
+  ---
+  duration_ms: 2.586305
+  type: 'test'
+  ...
+# Subtest: late knowledge AI cannot undo replace
+ok 156 - late knowledge AI cannot undo replace
+  ---
+  duration_ms: 2.349048
+  type: 'test'
+  ...
+# Subtest: Check mode never calls AI; concurrent answers and stale item callbacks cannot double-grade or skip
+ok 157 - Check mode never calls AI; concurrent answers and stale item callbacks cannot double-grade or skip
+  ---
+  duration_ms: 0.378581
+  type: 'test'
+  ...
+# Subtest: directed knowledge resume retains its answer and question position, while rebinding its new run
+ok 158 - directed knowledge resume retains its answer and question position, while rebinding its new run
+  ---
+  duration_ms: 0.346873
+  type: 'test'
+  ...
+# Subtest: an unavailable saved activity offers a valid replacement without starting or crediting it
+ok 159 - an unavailable saved activity offers a valid replacement without starting or crediting it
+  ---
+  duration_ms: 1.307859
+  type: 'test'
+  ...
+# Subtest: the full guided plan reaches genuine completion only through every current step
+ok 160 - the full guided plan reaches genuine completion only through every current step
+  ---
+  duration_ms: 3.423526
+  type: 'test'
+  ...
+# history knowledge runtime tests: ok
+# Subtest: scripts/history-knowledge-runtime.test.mjs
+ok 13 - scripts/history-knowledge-runtime.test.mjs
+  ---
+  duration_ms: 48.773187
+  type: 'test'
+  ...
+# history Smart Practice + mastery tests: ok
+# Subtest: scripts/history-smart-practice.test.mjs
+ok 14 - scripts/history-smart-practice.test.mjs
+  ---
+  duration_ms: 45.19954
+  type: 'test'
+  ...
+# Subtest: every zhuyin key that a pack word uses gets a picture word
+ok 163 - every zhuyin key that a pack word uses gets a picture word
+  ---
+  duration_ms: 2.464101
+  type: 'test'
+  ...
+# Subtest: targets are emoji + 中文, and prefer a word starting with the symbol
+ok 164 - targets are emoji + 中文, and prefer a word starting with the symbol
+  ---
+  duration_ms: 1.037653
+  type: 'test'
+  ...
+# Subtest: a symbol no word uses is left out rather than crashing
+ok 165 - a symbol no word uses is left out rather than crashing
+  ---
+  duration_ms: 0.557029
+  type: 'test'
+  ...
+# Subtest: science: every approved clue remains bilingual, literal and free of assessment fields
+ok 166 - science: every approved clue remains bilingual, literal and free of assessment fields
+  ---
+  duration_ms: 1.809826
+  type: 'test'
+  ...
+# Subtest: geography: every approved clue remains bilingual, literal and free of assessment fields
+ok 167 - geography: every approved clue remains bilingual, literal and free of assessment fields
+  ---
+  duration_ms: 0.38506
+  type: 'test'
+  ...
+# Subtest: history: every approved clue remains bilingual, literal and free of assessment fields
+ok 168 - history: every approved clue remains bilingual, literal and free of assessment fields
+  ---
+  duration_ms: 0.266201
+  type: 'test'
+  ...
+# Subtest: pre-reader defaults to a visual; explicit visual focus is preserved locally
+ok 169 - pre-reader defaults to a visual; explicit visual focus is preserved locally
+  ---
+  duration_ms: 0.202805
+  type: 'test'
+  ...
+# Subtest: start, snapshot and opening local help make no remote calls
+ok 170 - start, snapshot and opening local help make no remote calls
+  ---
+  duration_ms: 1.51397
+  type: 'test'
+  ...
+# Subtest: one explicit selection records actual route and nullable usage, never mastery or answers
+ok 171 - one explicit selection records actual route and nullable usage, never mastery or answers
+  ---
+  duration_ms: 2.590963
+  type: 'test'
+  ...
+# Subtest: double taps share one claim; reopening and Another clue do not repeat a model call
+ok 172 - double taps share one claim; reopening and Another clue do not repeat a model call
+  ---
+  duration_ms: 6.925251
+  type: 'test'
+  ...
+# Subtest: no configured client returns usable local help and unavailable cost
+ok 173 - no configured client returns usable local help and unavailable cost
+  ---
+  duration_ms: 0.47151
+  type: 'test'
+  ...
+# Subtest: science: Check mode blocks help before and after a recorded answer
+ok 174 - science: Check mode blocks help before and after a recorded answer
+  ---
+  duration_ms: 0.913055
+  type: 'test'
+  ...
+# Subtest: geography: Check mode blocks help before and after a recorded answer
+ok 175 - geography: Check mode blocks help before and after a recorded answer
+  ---
+  duration_ms: 0.713454
+  type: 'test'
+  ...
+# Subtest: history: Check mode blocks help before and after a recorded answer
+ok 176 - history: Check mode blocks help before and after a recorded answer
+  ---
+  duration_ms: 0.396437
+  type: 'test'
+  ...
+# Subtest: help requires the current learner, domain, session, intro and eligible age
+ok 177 - help requires the current learner, domain, session, intro and eligible age
+  ---
+  duration_ms: 0.375526
+  type: 'test'
+  ...
+# Subtest: invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"fact:unknown"})
+ok 178 - invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"fact:unknown"})
+  ---
+  duration_ms: 0.587174
+  type: 'test'
+  ...
+# Subtest: invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"<script>"})
+ok 179 - invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"<script>"})
+  ---
+  duration_ms: 0.472812
+  type: 'test'
+  ...
+# Subtest: invalid selection falls back without rendering provider prose ({"kind":"lesson_hint","message":"wrong task"})
+ok 180 - invalid selection falls back without rendering provider prose ({"kind":"lesson_hint","message":"wrong task"})
+  ---
+  duration_ms: 0.353072
+  type: 'test'
+  ...
+# Subtest: invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"fact:any","message":"invented prose"})
+ok 181 - invalid selection falls back without rendering provider prose ({"kind":"knowledge_help","cueId":"fact:any","message":"invented prose"})
+  ---
+  duration_ms: 0.363287
+  type: 'test'
+  ...
+# Subtest: provider errors are bounded local fallback, not retry or escalation
+ok 182 - provider errors are bounded local fallback, not retry or escalation
+  ---
+  duration_ms: 0.466362
+  type: 'test'
+  ...
+# Subtest: non-resolving custom client is timed out and receives cancellation
+ok 183 - non-resolving custom client is timed out and receives cancellation
+  ---
+  duration_ms: 8.627865
+  type: 'test'
+  ...
+# Subtest: cancel aborts promptly even when an adapter ignores the signal
+ok 184 - cancel aborts promptly even when an adapter ignores the signal
+  ---
+  duration_ms: 1.10169
+  type: 'test'
+  ...
+# Subtest: late help cannot rewind an answered question or alter an attempt
+ok 185 - late help cannot rewind an answered question or alter an attempt
+  ---
+  duration_ms: 2.90795
+  type: 'test'
+  ...
+# Subtest: Another clue wins over a pending remote selection
+ok 186 - Another clue wins over a pending remote selection
+  ---
+  duration_ms: 0.847507
+  type: 'test'
+  ...
+# Subtest: reset plus replacement cannot be resurrected by a late request
+ok 187 - reset plus replacement cannot be resurrected by a late request
+  ---
+  duration_ms: 1.224074
+  type: 'test'
+  ...
+# Subtest: a stale cancel cannot cancel a replacement session
+ok 188 - a stale cancel cannot cancel a replacement session
+  ---
+  duration_ms: 0.884382
+  type: 'test'
+  ...
+# Subtest: interrupted persisted request restores local help without a second paid attempt
+ok 189 - interrupted persisted request restores local help without a second paid attempt
+  ---
+  duration_ms: 0.930872
+  type: 'test'
+  ...
+# Subtest: saved selection survives bridge reload; injected saved text is ignored
+ok 190 - saved selection survives bridge reload; injected saved text is ignored
+  ---
+  duration_ms: 0.771582
+  type: 'test'
+  ...
+# Subtest: server canonicalizes client content, strips private extras and supplies only catalogue cues
+ok 191 - server canonicalizes client content, strips private extras and supplies only catalogue cues
+  ---
+  duration_ms: 0.84286
+  type: 'test'
+  ...
+# Subtest: server blocks wrong stages, mismatched tasks, unknown lessons and Check requests before provider use
+ok 192 - server blocks wrong stages, mismatched tasks, unknown lessons and Check requests before provider use
+  ---
+  duration_ms: 0.766715
+  type: 'test'
+  ...
+# Subtest: server rejects an out-of-lesson cue even if it exists in another lesson
+ok 193 - server rejects an out-of-lesson cue even if it exists in another lesson
+  ---
+  duration_ms: 0.383137
+  type: 'test'
+  ...
+# Subtest: client cannot authorize a stronger profile; server route and usage remain authoritative
+ok 194 - client cannot authorize a stronger profile; server route and usage remain authoritative
+  ---
+  duration_ms: 0.253923
+  type: 'test'
+  ...
+# Subtest: server-authorized manual override works without an automatic escalation path
+ok 195 - server-authorized manual override works without an automatic escalation path
+  ---
+  duration_ms: 0.169576
+  type: 'test'
+  ...
+# Subtest: implicit task, JSON schema and provider prompt all dispatch to the bounded selector
+ok 196 - implicit task, JSON schema and provider prompt all dispatch to the bounded selector
+  ---
+  duration_ms: 0.256587
+  type: 'test'
+  ...
+# Subtest: HTTP client forwards external cancellation to its fetch without exposing secrets
+ok 197 - HTTP client forwards external cancellation to its fetch without exposing secrets
+  ---
+  duration_ms: 0.317648
+  type: 'test'
+  ...
+# Subtest: diagnostic normalization retains unknown metrics as null and does not coerce missing fields to zero
+ok 198 - diagnostic normalization retains unknown metrics as null and does not coerce missing fields to zero
+  ---
+  duration_ms: 0.333883
+  type: 'test'
+  ...
+# Subtest: adult diagnostic table displays Unavailable rather than a fabricated zero cost
+ok 199 - adult diagnostic table displays Unavailable rather than a fabricated zero cost
+  ---
+  duration_ms: 1.197083
+  type: 'test'
+  ...
+# Subtest: every new runtime module and its transitive imports is included in the offline shell
+ok 200 - every new runtime module and its transitive imports is included in the offline shell
+  ---
+  duration_ms: 0.83695
+  type: 'test'
+  ...
+# Subtest: navigation cancellation before the network claim prevents a late request from starting
+ok 201 - navigation cancellation before the network claim prevents a late request from starting
+  ---
+  duration_ms: 0.74394
+  type: 'test'
+  ...
+# Subtest: a local next-clue action before the network claim prevents a late request from starting
+ok 202 - a local next-clue action before the network claim prevents a late request from starting
+  ---
+  duration_ms: 0.190977
+  type: 'test'
+  ...
+# Subtest: invalid HTTP response becomes invalid_response, not model text or fabricated usage
+ok 203 - invalid HTTP response becomes invalid_response, not model text or fabricated usage
+  ---
+  duration_ms: 15.62192
+  type: 'test'
+  ...
+# Subtest: boolean or null provider counters are unavailable; zero is kept only when actually reported
+ok 204 - boolean or null provider counters are unavailable; zero is kept only when actually reported
+  ---
+  duration_ms: 0.27859
+  type: 'test'
+  ...
+# Subtest: unknown persisted session versions remain unreadable, matching the pre-help snapshot contract
+ok 205 - unknown persisted session versions remain unreadable, matching the pre-help snapshot contract
+  ---
+  duration_ms: 0.218378
+  type: 'test'
+  ...
+# Subtest: end-to-end client → fetch handler → protected proxy → selection → bridge works without a live provider
+ok 206 - end-to-end client → fetch handler → protected proxy → selection → bridge works without a live provider
+  ---
+  duration_ms: 11.058136
+  type: 'test'
+  ...
+# Subtest: fetch-handler provider outage preserves the local card without a retry
+ok 207 - fetch-handler provider outage preserves the local card without a retry
+  ---
+  duration_ms: 0.834637
+  type: 'test'
+  ...
+# Subtest: operational help diagnostics cannot evict graded attempts from the local evidence window
+ok 208 - operational help diagnostics cannot evict graded attempts from the local evidence window
+  ---
+  duration_ms: 9.220277
+  type: 'test'
+  ...
+# Subtest: repeated diagnostic IDs cannot bypass the separate retention bound
+ok 209 - repeated diagnostic IDs cannot bypass the separate retention bound
+  ---
+  duration_ms: 0.393623
+  type: 'test'
+  ...
+# knowledge lesson runtime tests: ok
+# Subtest: scripts/knowledge-lesson-runtime.test.mjs
+ok 17 - scripts/knowledge-lesson-runtime.test.mjs
+  ---
+  duration_ms: 45.283816
+  type: 'test'
+  ...
+# granular language skill-map tests: ok
+# Subtest: scripts/language-skill-map.test.mjs
+ok 18 - scripts/language-skill-map.test.mjs
+  ---
+  duration_ms: 31.413295
+  type: 'test'
+  ...
+# language teach scene tests: ok
+# Subtest: scripts/language-teach.test.mjs
+ok 19 - scripts/language-teach.test.mjs
+  ---
+  duration_ms: 39.649851
+  type: 'test'
+  ...
+# learning director tests: ok
+# Subtest: scripts/learning-director.test.mjs
+ok 20 - scripts/learning-director.test.mjs
+  ---
+  duration_ms: 60.273153
+  type: 'test'
+  ...
+# learning runtime tests: ok
+# Subtest: scripts/learning-runtime.test.mjs
+ok 21 - scripts/learning-runtime.test.mjs
+  ---
+  duration_ms: 96.577139
+  type: 'test'
+  ...
+# learning telemetry tests: ok
+# Subtest: scripts/learning-telemetry.test.mjs
+ok 22 - scripts/learning-telemetry.test.mjs
+  ---
+  duration_ms: 37.273521
+  type: 'test'
+  ...
+# mastery review scheduler tests: ok
+# Subtest: scripts/mastery-review-scheduler.test.mjs
+ok 23 - scripts/mastery-review-scheduler.test.mjs
+  ---
+  duration_ms: 27.813472
+  type: 'test'
+  ...
+# math teach scene tests: ok
+# Subtest: scripts/math-teach.test.mjs
+ok 24 - scripts/math-teach.test.mjs
+  ---
+  duration_ms: 47.658143
+  type: 'test'
+  ...
+# mobile architecture tests: ok
+# Subtest: scripts/mobile-architecture.test.mjs
+ok 25 - scripts/mobile-architecture.test.mjs
+  ---
+  duration_ms: 54.153791
+  type: 'test'
+  ...
+# Subtest: monster truck keeps visuals, steering, and touch controls aligned
+ok 219 - monster truck keeps visuals, steering, and touch controls aligned
+  ---
+  duration_ms: 0.708127
+  type: 'test'
+  ...
+# Subtest: monster truck updates AI and cold-load state independently of frame timing
+ok 220 - monster truck updates AI and cold-load state independently of frame timing
+  ---
+  duration_ms: 0.796209
+  type: 'test'
+  ...
+# loadKit: http://test/bad.wav returned undefined
+# Subtest: default cap is still 4
+ok 221 - default cap is still 4
+  ---
+  duration_ms: 1.817137
+  type: 'test'
+  ...
+# Subtest: setMaxVoices raises cap, returns previous, can restore
+ok 222 - setMaxVoices raises cap, returns previous, can restore
+  ---
+  duration_ms: 0.203487
+  type: 'test'
+  ...
+# Subtest: graph returns shared context and master without second context
+ok 223 - graph returns shared context and master without second context
+  ---
+  duration_ms: 0.19242
+  type: 'test'
+  ...
+# Subtest: clock returns audio time values, zeroes with no context
+ok 224 - clock returns audio time values, zeroes with no context
+  ---
+  duration_ms: 0.164688
+  type: 'test'
+  ...
+# Subtest: loadKit decodes once and caches
+ok 225 - loadKit decodes once and caches
+  ---
+  duration_ms: 0.458751
+  type: 'test'
+  ...
+# Subtest: loadKit survives a missing file, other samples still load
+ok 226 - loadKit survives a missing file, other samples still load
+  ---
+  duration_ms: 0.702898
+  type: 'test'
+  ...
+# Subtest: playSample respects mute
+ok 227 - playSample respects mute
+  ---
+  duration_ms: 0.286572
+  type: 'test'
+  ...
+# Subtest: playSample respects unlock, no sound before gesture
+ok 228 - playSample respects unlock, no sound before gesture
+  ---
+  duration_ms: 0.157007
+  type: 'test'
+  ...
+# Subtest: playSample returns noop for unknown sample name
+ok 229 - playSample returns noop for unknown sample name
+  ---
+  duration_ms: 0.328815
+  type: 'test'
+  ...
+# Subtest: playSample treats when as a relative delay
+ok 230 - playSample treats when as a relative delay
+  ---
+  duration_ms: 0.589868
+  type: 'test'
+  ...
+# Subtest: stopAll stops live sample voices
+ok 231 - stopAll stops live sample voices
+  ---
+  duration_ms: 0.353052
+  type: 'test'
+  ...
+# Subtest: drops the first two pairs
+ok 232 - drops the first two pairs
+  ---
+  duration_ms: 0.774166
+  type: 'test'
+  ...
+# Subtest: returns the median, not the mean
+ok 233 - returns the median, not the mean
+  ---
+  duration_ms: 0.171489
+  type: 'test'
+  ...
+# Subtest: one wild outlier does not move the result more than a few ms
+ok 234 - one wild outlier does not move the result more than a few ms
+  ---
+  duration_ms: 0.117397
+  type: 'test'
+  ...
+# Subtest: reports low confidence when spread exceeds threshold
+ok 235 - reports low confidence when spread exceeds threshold
+  ---
+  duration_ms: 0.13915
+  type: 'test'
+  ...
+# Subtest: fewer than 4 usable taps returns no result
+ok 236 - fewer than 4 usable taps returns no result
+  ---
+  duration_ms: 0.170206
+  type: 'test'
+  ...
+# Subtest: no taps at all returns null
+ok 237 - no taps at all returns null
+  ---
+  duration_ms: 0.089795
+  type: 'test'
+  ...
+# Subtest: mismatched tap/beat lengths handled cleanly
+ok 238 - mismatched tap/beat lengths handled cleanly
+  ---
+  duration_ms: 0.133832
+  type: 'test'
+  ...
+# Subtest: realistic calibration — consistent 50ms late
+ok 239 - realistic calibration — consistent 50ms late
+  ---
+  duration_ms: 0.098508
+  type: 'test'
+  ...
+# Subtest: every note fires exactly once, in beat order
+ok 240 - every note fires exactly once, in beat order
+  ---
+  duration_ms: 0.953837
+  type: 'test'
+  ...
+# Subtest: each note is scheduled ahead of its play time
+ok 241 - each note is scheduled ahead of its play time
+  ---
+  duration_ms: 0.375135
+  type: 'test'
+  ...
+# Subtest: big clock jump does not fire a burst of stale notes
+ok 242 - big clock jump does not fire a burst of stale notes
+  ---
+  duration_ms: 0.25212
+  type: 'test'
+  ...
+# Subtest: beat-to-time math is exact at 60, 100, 137 bpm
+ok 243 - beat-to-time math is exact at 60, 100, 137 bpm
+  ---
+  duration_ms: 0.169295
+  type: 'test'
+  ...
+# Subtest: pause and resume keep one transport loop
+ok 244 - pause and resume keep one transport loop
+  ---
+  duration_ms: 0.203567
+  type: 'test'
+  ...
+# Subtest: judge boundaries at offset=0
+ok 245 - judge boundaries at offset=0
+  ---
+  duration_ms: 0.1459
+  type: 'test'
+  ...
+# Subtest: judge honours the calibration offset
+ok 246 - judge honours the calibration offset
+  ---
+  duration_ms: 0.08614
+  type: 'test'
+  ...
+# Subtest: feed records newest-first and unread clears on markSeen
+ok 247 - feed records newest-first and unread clears on markSeen
+  ---
+  duration_ms: 1.317825
+  type: 'test'
+  ...
+# Subtest: a repeated ref is dropped — realtime replays the same row on reconnect
+ok 248 - a repeated ref is dropped — realtime replays the same row on reconnect
+  ---
+  duration_ms: 0.7899
+  type: 'test'
+  ...
+# Subtest: feeds are per kid and capped
+ok 249 - feeds are per kid and capped
+  ---
+  duration_ms: 1.902005
+  type: 'test'
+  ...
+# Subtest: an achievement unlocks once and is never taken back
+ok 250 - an achievement unlocks once and is never taken back
+  ---
+  duration_ms: 0.814366
+  type: 'test'
+  ...
+# Subtest: every achievement ships EN + 中文
+ok 251 - every achievement ships EN + 中文
+  ---
+  duration_ms: 0.227753
+  type: 'test'
+  ...
+# Subtest: exactly 6 exercises
+ok 252 - exactly 6 exercises
+  ---
+  duration_ms: 1.512238
+  type: 'test'
+  ...
+# Subtest: every exercise has a unique id
+ok 253 - every exercise has a unique id
+  ---
+  duration_ms: 0.198058
+  type: 'test'
+  ...
+# Subtest: every exercise is fully bilingual
+ok 254 - every exercise is fully bilingual
+  ---
+  duration_ms: 0.155274
+  type: 'test'
+  ...
+# Subtest: every exercise has exactly 4 lanes
+ok 255 - every exercise has exactly 4 lanes
+  ---
+  duration_ms: 0.097367
+  type: 'test'
+  ...
+# Subtest: lane indices in notes are within range
+ok 256 - lane indices in notes are within range
+  ---
+  duration_ms: 0.175605
+  type: 'test'
+  ...
+# Subtest: beats are within bars * 4
+ok 257 - beats are within bars * 4
+  ---
+  duration_ms: 0.138238
+  type: 'test'
+  ...
+# Subtest: bpm is reasonable (40-200)
+ok 258 - bpm is reasonable (40-200)
+  ---
+  duration_ms: 0.162655
+  type: 'test'
+  ...
+# Subtest: bpm rises monotonically within a tier
+ok 259 - bpm rises monotonically within a tier
+  ---
+  duration_ms: 0.111147
+  type: 'test'
+  ...
+# Subtest: backing names a real earlier exercise or null
+ok 260 - backing names a real earlier exercise or null
+  ---
+  duration_ms: 0.327964
+  type: 'test'
+  ...
+# Subtest: backing chain has no cycles
+ok 261 - backing chain has no cycles
+  ---
+  duration_ms: 0.338891
+  type: 'test'
+  ...
+# Subtest: tiers are 1, 2, or 3
+ok 262 - tiers are 1, 2, or 3
+  ---
+  duration_ms: 0.197097
+  type: 'test'
+  ...
+# Subtest: exactly 6 exercises
+ok 263 - exactly 6 exercises
+  ---
+  duration_ms: 1.503384
+  type: 'test'
+  ...
+# Subtest: every exercise has a unique id
+ok 264 - every exercise has a unique id
+  ---
+  duration_ms: 0.200773
+  type: 'test'
+  ...
+# Subtest: every exercise is fully bilingual
+ok 265 - every exercise is fully bilingual
+  ---
+  duration_ms: 0.10635
+  type: 'test'
+  ...
+# Subtest: hand is right, left, or both
+ok 266 - hand is right, left, or both
+  ---
+  duration_ms: 0.121183
+  type: 'test'
+  ...
+# Subtest: every step has finger 1-5
+ok 267 - every step has finger 1-5
+  ---
+  duration_ms: 0.178258
+  type: 'test'
+  ...
+# Subtest: every step has at least one midi note
+ok 268 - every step has at least one midi note
+  ---
+  duration_ms: 0.116816
+  type: 'test'
+  ...
+# Subtest: midi values are in piano range (21-108)
+ok 269 - midi values are in piano range (21-108)
+  ---
+  duration_ms: 0.187353
+  type: 'test'
+  ...
+# Subtest: beats are within bars * 4
+ok 270 - beats are within bars * 4
+  ---
+  duration_ms: 0.117156
+  type: 'test'
+  ...
+# Subtest: beats are in non-decreasing order
+ok 271 - beats are in non-decreasing order
+  ---
+  duration_ms: 0.414214
+  type: 'test'
+  ...
+# Subtest: bpm is reasonable (30-200)
+ok 272 - bpm is reasonable (30-200)
+  ---
+  duration_ms: 0.303016
+  type: 'test'
+  ...
+# strand-aware placement calibration tests: ok
+# Subtest: scripts/placement-calibration.test.mjs
+ok 33 - scripts/placement-calibration.test.mjs
+  ---
+  duration_ms: 54.823891
+  type: 'test'
+  ...
+# ok - quest lifecycle, verification, routing and local companion
+# Subtest: scripts/quest-agent.test.mjs
+ok 34 - scripts/quest-agent.test.mjs
+  ---
+  duration_ms: 44.910755
+  type: 'test'
+  ...
+# Subtest: register then get returns the same game
+ok 275 - register then get returns the same game
+  ---
+  duration_ms: 0.982359
+  type: 'test'
+  ...
+# Subtest: get on an unknown id returns null, never throws
+ok 276 - get on an unknown id returns null, never throws
+  ---
+  duration_ms: 0.120502
+  type: 'test'
+  ...
+# Subtest: registering the same id twice throws
+ok 277 - registering the same id twice throws
+  ---
+  duration_ms: 0.356326
+  type: 'test'
+  ...
+# Subtest: register rejects a game with no id or no init
+ok 278 - register rejects a game with no id or no init
+  ---
+  duration_ms: 0.155404
+  type: 'test'
+  ...
+# Subtest: isBest matches a registered bestKey and nothing else
+ok 279 - isBest matches a registered bestKey and nothing else
+  ---
+  duration_ms: 0.15237
+  type: 'test'
+  ...
+# Subtest: isBest ignores games that declare no bestKey
+ok 280 - isBest ignores games that declare no bestKey
+  ---
+  duration_ms: 0.122134
+  type: 'test'
+  ...
+# Subtest: ids returns registration order, not insertion-sorted order
+ok 281 - ids returns registration order, not insertion-sorted order
+  ---
+  duration_ms: 0.645853
+  type: 'test'
+  ...
+# Subtest: manifest lists every game with a bilingual title and blurb
+ok 282 - manifest lists every game with a bilingual title and blurb
+  ---
+  duration_ms: 0.2521
+  type: 'test'
+  ...
+# Subtest: manifest bestKeys are unique where present
+ok 283 - manifest bestKeys are unique where present
+  ---
+  duration_ms: 0.268104
+  type: 'test'
+  ...
+# Subtest: brain games are flagged and carry no arcade bestKey
+ok 284 - brain games are flagged and carry no arcade bestKey
+  ---
+  duration_ms: 0.311499
+  type: 'test'
+  ...
+# science Smart Practice + mastery tests: ok
+# Subtest: scripts/science-smart-practice.test.mjs
+ok 36 - scripts/science-smart-practice.test.mjs
+  ---
+  duration_ms: 49.607525
+  type: 'test'
+  ...
+# Subtest: sun and exactly eight planets, ordered by distance
+ok 286 - sun and exactly eight planets, ordered by distance
+  ---
+  duration_ms: 1.436694
+  type: 'test'
+  ...
+# Subtest: every planet has a complete bilingual schema
+ok 287 - every planet has a complete bilingual schema
+  ---
+  duration_ms: 0.368996
+  type: 'test'
+  ...
+# Subtest: quiz superlatives are computable and unique
+ok 288 - quiz superlatives are computable and unique
+  ---
+  duration_ms: 0.241834
+  type: 'test'
+  ...
+# Subtest: anchor facts stay true (guard against well-meaning edits)
+ok 289 - anchor facts stay true (guard against well-meaning edits)
+  ---
+  duration_ms: 0.34574
+  type: 'test'
+  ...
+# Subtest: solar module exports the expected contract without touching vendor files
+ok 290 - solar module exports the expected contract without touching vendor files
+  ---
+  duration_ms: 13.639754
+  type: 'test'
+  ...
+# Subtest: a mission is 8 questions, no repeated target
+ok 291 - a mission is 8 questions, no repeated target
+  ---
+  duration_ms: 1.462863
+  type: 'test'
+  ...
+# Subtest: every question is bilingual and names a real planet
+ok 292 - every question is bilingual and names a real planet
+  ---
+  duration_ms: 0.436257
+  type: 'test'
+  ...
+# Subtest: superlative answers agree with the data
+ok 293 - superlative answers agree with the data
+  ---
+  duration_ms: 0.352862
+  type: 'test'
+  ...
+# Subtest: grade: first-try correct scores a star; retries are free
+ok 294 - grade: first-try correct scores a star; retries are free
+  ---
+  duration_ms: 0.728037
+  type: 'test'
+  ...
+# Subtest: four superlative questions exist in every mission
+ok 295 - four superlative questions exist in every mission
+  ---
+  duration_ms: 0.302666
+  type: 'test'
+  ...
+# Subtest: SPEEDS has five steps with pause at 0 and bilingual labels
+ok 296 - SPEEDS has five steps with pause at 0 and bilingual labels
+  ---
+  duration_ms: 1.426218
+  type: 'test'
+  ...
+# Subtest: daysPerSec returns the correct step or 10-day fallback
+ok 297 - daysPerSec returns the correct step or 10-day fallback
+  ---
+  duration_ms: 0.973116
+  type: 'test'
+  ...
+# Subtest: advance accumulates sim-days from wall-clock dt
+ok 298 - advance accumulates sim-days from wall-clock dt
+  ---
+  duration_ms: 0.151328
+  type: 'test'
+  ...
+# Subtest: orbitCount for Earth at 365 days gives exactly 1 count and 0 angle
+ok 299 - orbitCount for Earth at 365 days gives exactly 1 count and 0 angle
+  ---
+  duration_ms: 0.208894
+  type: 'test'
+  ...
+# Subtest: orbitCount for Mercury at 365 days gives ~4.15 orbits
+ok 300 - orbitCount for Mercury at 365 days gives ~4.15 orbits
+  ---
+  duration_ms: 0.208774
+  type: 'test'
+  ...
+# Subtest: orbitCount for Neptune at 88 days floors to 0
+ok 301 - orbitCount for Neptune at 88 days floors to 0
+  ---
+  duration_ms: 0.160011
+  type: 'test'
+  ...
+# Subtest: orbitCount angle is always in [0, 2π)
+ok 302 - orbitCount angle is always in [0, 2π)
+  ---
+  duration_ms: 0.354184
+  type: 'test'
+  ...
+# ok - star ids are legal uuids and never collide
+# ok - block -> id is stable
+# ok - bad input yields no id
+# ok - deterministic star ids decode for admin actions
+# ok - one rule prices a block for both apps
+# ok - brain gym pays once per kid per day
+# ok - one star per block, whoever asks twice
+# Subtest: scripts/star-id.test.mjs
+ok 41 - scripts/star-id.test.mjs
+  ---
+  duration_ms: 59.012645
+  type: 'test'
+  ...
+# summer-ui.test.mjs: ok
+# Subtest: scripts/summer-ui.test.mjs
+ok 42 - scripts/summer-ui.test.mjs
+  ---
+  duration_ms: 27.66603
+  type: 'test'
+  ...
+# ok - enqueueDiff never mints a star
+# ok - addStars is the only star path
+# ok - grant and revoke round-trip through serverStars
+# ok - displayed stars are self-balancing across a sync
+# ok - non-numeric act keys cannot stall the queue
+# ok - hydrate merges server state and replays pending queue
+# ok - local-only stars work without config
+# ok - brain best scores round-trip through hydration and diffing
+# ok - legacy high scores hydrate
+# ok - best-stat predicate is injectable
+# ok - init survives a failed hydrate
+# ok - configured but offline still queues
+# ok - totals read cannot overtake a flush
+# ok - full offline round trip
+# ok - a season reset wipes the tablet once
+# sync tests passed
+# Subtest: scripts/sync.test.mjs
+ok 43 - scripts/sync.test.mjs
+  ---
+  duration_ms: 61.096613
+  type: 'test'
+  ...
+# tutor experiment tests: ok
+# Subtest: scripts/tutor-experiment.test.mjs
+ok 44 - scripts/tutor-experiment.test.mjs
+  ---
+  duration_ms: 39.816651
+  type: 'test'
+  ...
+# tutor policy evaluation tests: ok
+# Subtest: scripts/tutor-policy-eval.test.mjs
+ok 45 - scripts/tutor-policy-eval.test.mjs
+  ---
+  duration_ms: 32.331513
+  type: 'test'
+  ...
+# vocabulary learning tests: ok
+# Subtest: scripts/vocabulary-learning.test.mjs
+ok 46 - scripts/vocabulary-learning.test.mjs
+  ---
+  duration_ms: 67.521441
+  type: 'test'
+  ...
+1..308
+# tests 308
+# suites 0
+# pass 308
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 11118.17805

@@ -85,17 +85,16 @@ for (const file of runtimeFiles.filter((f) => f.endsWith(".js"))) {
     if (!loaders.includes(file)) continue;
     if (!swText.includes(`./${file}`)) fail("offline", `${file} is loaded but missing from sw.js APP_SHELL`);
   }
-  // The other direction, and the nastier one: cache.addAll() rejects as a unit, so a
-  // single APP_SHELL entry that 404s aborts the install and every device keeps serving
-  // the previous cache forever. This shipped once (three solar textures that were never
-  // added), so the list is checked against the disk here rather than in a bug report.
+  // Check the reverse direction too: per-file cache installation tolerates a
+  // missing optional config, but required assets must exist for offline use.
   const shellBody = swText.match(/const APP_SHELL = \[([\s\S]*?)\];/);
   if (!shellBody) {
     fail("offline", "sw.js has no APP_SHELL array");
   } else {
     for (const [, entry] of shellBody[1].matchAll(/"\.\/([^"]+)"/g)) {
+      if (entry === "js/config.js") continue; // Optional local config; the builder supplies an offline stub.
       if (!existsSync(new URL(entry, root))) {
-        fail("offline", `sw.js precaches ./${entry} but the file does not exist — cache.addAll will reject and the service worker will never update`);
+        fail("offline", `sw.js precaches ./${entry} but the required offline asset does not exist`);
       }
     }
   }
@@ -373,7 +372,8 @@ try {
       }
     }
     if (g.tiers.tot && g.tiers.tot.clock !== false) fail("BRAIN", `${id}: tot tier must be unclocked`);
-    if (!new RegExp(`\\b${id}\\s*:\\s*\\{[^}]*brain\\s*:\\s*true`).test(indexHtml)) {
+    /* Retired exercises (Papa, 2026-10-03) keep their data but leave the app. */
+    if (!g.retired && !new RegExp(`\\b${id}\\s*:\\s*\\{[^}]*brain\\s*:\\s*true`).test(indexHtml)) {
       fail("BRAIN", `${id}: missing a LEVELS entry with brain:true in index.html`);
     }
   }
@@ -544,10 +544,13 @@ try {
   if (/UNLABELLED|App progress/.test(syncJs)) {
     fail("stars are a ledger", "sync.js still has an anonymous star bucket");
   }
-  const grants = [...appScript.matchAll(/addStars\(([^)]*)\)/g)];
-  if (grants.length < 3) {
-    fail("stars are a ledger", `only ${grants.length} addStars call sites; the app earns via block, day-complete bonus and the Brain Gym set`);
+  // The approved points policy replaces flat schedule/trio bonuses. Every child
+  // entrance must use the same server-validated claim, never a supplied delta.
+  if (/store\.addStars\s*\(/.test(appScript)) fail("points provenance", "child runtime still supplies raw ledger deltas");
+  if (!/store\.awardPoints\s*\(/.test(appScript) || !/SQPoints\.block\s*\(/.test(appScript) || !/SQPoints\.quest\s*\(/.test(appScript)) {
+    fail("points provenance", "schedule, quests and Brain must use shared point claims");
   }
+  if (/SQStarId\.(BONUS_DELTA|brain|bonus)\b/.test(appScript)) fail("points provenance", "legacy flat bonuses remain active");
   // Papa, 2026-08-03: stars come from the schedule, where Papa sees the block and
   // can accept or send it back. The Activities and Learn tabs used to hand one out
   // for a single "I did it" tap — free stars, and the Learn ledger reason said
@@ -555,9 +558,6 @@ try {
   if (/addStars\([^)]*(Activity 活動|self-claimed)/.test(appScript)) {
     fail("stars are a ledger", "a self-claimed Activity/Learn star is back — stars come from the schedule (Papa, 2026-08-03)");
   }
-  grants.forEach(([, args]) => {
-    if (args.split(",").length < 3) fail("stars are a ledger", `addStars(${args}) passes no reason — the ledger would be unauditable`);
-  });
   if (!/starsFor\s*\(/.test(syncJs)) {
     fail("stars are a ledger", "sync.js has no starsFor() — nothing derives the displayed total");
   }
@@ -583,7 +583,12 @@ if (!indexHtml.includes("onBrainDone")) {
   fail("brain gate", "kid app is not subscribed to brain_done realtime updates");
 }
 if (!/!brainGate\(savedKid\)\.open/.test(indexHtml)) {
-  fail("brain gate", "app restore can skip My Day while today's Brain Gym is pending");
+  // Quest-first builds no longer have to force the child back into My Day: the
+  // games gate still enforces Brain Gym, while the Quest Board exposes the
+  // brain_sprint action as the way through it. Accept either architecture.
+  const questFirstBrainPath = indexHtml.includes('hubTab="quests"') &&
+    readFileSync(new URL("js/quest-data.js", root), "utf8").includes('id:"brain_sprint"');
+  if (!questFirstBrainPath) fail("brain gate", "app restore can skip both My Day and the Quest Board path while today's Brain Gym is pending");
 }
 {
   const adminJs = readFileSync(new URL("js/admin.js", root), "utf8");
@@ -592,7 +597,8 @@ if (!/!brainGate\(savedKid\)\.open/.test(indexHtml)) {
   }
 }
 // the gate hides the rest of the row; hiding the brain games too would deadlock the kid
-if (!indexHtml.includes(".brainlocked #gameRow .gamecard:not(.brain)")) {
+const gateStyles = indexHtml + (indexHtml.includes('href="css/app.css"') ? readFileSync(new URL("css/app.css", root), "utf8") : "");
+if (!gateStyles.includes(".brainlocked #practiceRow .gamecard:not(.brain)")) {
   fail("brain gate", "brain games are not exempt from the locked-row rule");
 }
 if (!/先做頭腦體操/.test(indexHtml)) {
@@ -620,13 +626,18 @@ if (!adminHtml.includes("helpClaims") && !/helpClaims/.test(readFileSync(new URL
     .concat([...allJs.matchAll(/\bshow\("([^"]+)"/g)].map(m => m[1]));
   const uniqueIds = [...new Set(idRefs)];
   const adminHtmlLower = adminHtml.toLowerCase();
+  // Some controls live in HTML strings rendered by admin.js (Quest Studio,
+  // reply composers, settings panels). Treat those as real DOM declarations
+  // too instead of requiring every dynamic id to be hard-coded in admin.html.
+  const dynamicIds = new Set([...adminJs.matchAll(/\bid=["']([^"']+)["']/g)].map((m) => m[1].toLowerCase()));
   for (const id of uniqueIds) {
     // Skip dynamic IDs with interpolation
     if (id.includes("${") || id.includes("+")) continue;
-    // Skip synthetic ids created by JS itself (render functions that build DOM dynamically)
-    if (/^(exportCsv|ledgerRange|dangerResetDay|dangerPauseAll|notifyCheck|ttsEnabled|chatClearFilters|settingsLogout|noteBodyZh|saveNoteBtn|saveAdminPinBtn|noteBody|noteStatus|noteDay|adminPin|removedCredited|queueKidFilter|adminPinStatus|pin-.+|recstatus-.+|answer-.+|pinmsg-.+|themeSelect|seasonResetConfirm|seasonResetBtn|seasonResetStatus)$/.test(id)) continue;
-    if (!adminHtmlLower.includes(`id="${id.toLowerCase()}"`) && !adminHtmlLower.includes(`id='${id.toLowerCase()}'`)) {
-      fail("admin routes: orphan control", `$("${id}") in JS has no matching id in admin.html`);
+    // Skip synthetic ids whose names themselves are assembled at runtime.
+    if (/^(pin-.+|recstatus-.+|answer-.+|pinmsg-.+)$/.test(id)) continue;
+    const lower=id.toLowerCase();
+    if (!adminHtmlLower.includes(`id="${lower}"`) && !adminHtmlLower.includes(`id='${lower}'`) && !dynamicIds.has(lower)) {
+      fail("admin routes: orphan control", `$("${id}") in JS has no matching static or rendered id`);
     }
   }
 }
@@ -637,7 +648,8 @@ if (!adminHtml.includes("helpClaims") && !/helpClaims/.test(readFileSync(new URL
 {
   const adminJs = readFileSync(new URL("js/admin.js", root), "utf8");
   const adminNavJs = existsSync(new URL("js/admin-nav.js", root)) ? readFileSync(new URL("js/admin-nav.js", root), "utf8") : "";
-  const all = adminJs + "\n" + adminNavJs + "\n" + adminHtml;
+  const adminAiLabJs = existsSync(new URL("js/admin-ai-lab.js", root)) ? readFileSync(new URL("js/admin-ai-lab.js", root), "utf8") : "";
+  const all = adminJs + "\n" + adminNavJs + "\n" + adminAiLabJs + "\n" + adminHtml;
   // Presentational hooks read by CSS only, not by script.
   const cssOnly = new Set(["l", "zero", "kid", "block", "paused", "locked", "delta", "admin"]);
   const emitted = new Set([...all.matchAll(/\sdata-([a-z0-9]+)=/g)].map((m) => m[1]));
@@ -655,9 +667,10 @@ if (!adminHtml.includes("helpClaims") && !/helpClaims/.test(readFileSync(new URL
 // mentions is markup nothing can fill. #reportMetrics was an empty labelled
 // chip group; #notifyToggleBtn was a bell with no handler.
 {
-  const adminJs = readFileSync(new URL("js/admin.js", root), "utf8");
-  const adminNavJs = existsSync(new URL("js/admin-nav.js", root)) ? readFileSync(new URL("js/admin-nav.js", root), "utf8") : "";
-  const js = adminJs + "\n" + adminNavJs;
+  const jsDir = new URL("js/", root);
+  const js = existsSync(jsDir)
+    ? readdirSync(jsDir).filter((f) => /^admin.*\.js$/.test(f)).map((f) => readFileSync(new URL(`js/${f}`, root), "utf8")).join("\n")
+    : "";
   const cssDir = new URL("css/", root);
   const css = existsSync(cssDir)
     ? readdirSync(cssDir).filter((f) => /^admin.*\.css$/.test(f)).map((f) => readFileSync(new URL(`css/${f}`, root), "utf8")).join("\n")
@@ -710,7 +723,10 @@ try {
     if (text.includes(jwtPattern) && !allowedJwtFiles.has(normalizedFile)) {
       fail("secrets", `${file} contains JWT prefix ${jwtPattern}`);
     }
-    if (text.includes(serviceRolePattern) && !allowedServiceRoleFiles.has(normalizedFile)) {
+    // Retained audit logs quote this checker finding; they contain no credential.
+    const secretScanText = /^docs\/releases\/2026-10-02-v0\.6\.0\/(baseline|current)-checker\.txt$/.test(normalizedFile)
+      ? text.replaceAll("- secrets: dist/android-web/js/config.example.js contains " + serviceRolePattern, "") : text;
+    if (secretScanText.includes(serviceRolePattern) && !allowedServiceRoleFiles.has(normalizedFile)) {
       fail("secrets", `${file} contains ${serviceRolePattern}`);
     }
   }
@@ -1147,7 +1163,7 @@ try {
 {
   ["css/brain-shell.css", "css/brain-scenes.css"].forEach(function (file) {
     var text = readFileSync(new URL(file, root), "utf8");
-    var rootBlock = text.match(/:root\s*\{[\s\S]*?\n\}\n/);
+    var rootBlock = text.match(/:root\s*\{[\s\S]*?\r?\n\}\r?\n/);
     var scannable = rootBlock ? text.slice(0, rootBlock.index) + text.slice(rootBlock.index + rootBlock[0].length) : text;
     scannable.split("\n").forEach(function (line, i) {
       if (/color-mix\(in srgb,\s*var\(--/.test(line)) return;

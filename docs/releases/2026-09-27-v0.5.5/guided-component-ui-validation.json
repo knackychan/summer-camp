@@ -1,0 +1,14 @@
+{
+  "scope": "Actual rendered Smart Practice/knowledge components with real Node bridges; surrounding navigation/audio stubbed. Not full-app, service-worker, hardware or live-provider E2E.",
+  "checks": [
+    "Another choice changes the eligible skill and persists on rerender.",
+    "Pause renders bilingual Resume and saved-state controls.",
+    "Finish is distinct from success and does not complete unfinished steps.",
+    "History answer saves 1/2 progress; pausing preserves it and unlocks free topics.",
+    "History resumes after bridge reload, completes exactly two local answers, then suggests without auto-launch.",
+    "Rendered 768px tablet component has no horizontal document overflow.",
+    "A start response released after child switching neither launches nor overwrites the new child view.",
+    "No page-level JavaScript exceptions during these component interactions."
+  ],
+  "count": 8
+}

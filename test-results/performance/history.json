@@ -1,0 +1,19 @@
+{
+  "target": "source",
+  "headed": false,
+  "browser": "154.0.4258.53",
+  "passed": true,
+  "checks": [
+    "hero/world/Classic/books through visible controls",
+    "browser Back/Forward across tabs, books, games and instruments",
+    "reload restores current book and instrument history entry",
+    "Back dismisses overlays, zoom and book grid once without leaving the book",
+    "Back from the initial home leaves the application naturally",
+    "outgoing game/instrument teardown",
+    "changed access checked on Forward",
+    "wrong/right PIN and cross-child history cannot restore the prior child",
+    "Placement Back/Forward and reload return to its saved learning session without arcade rewards",
+    "Failed module on history reload keeps its visible error, Back works and retry recovers"
+  ],
+  "pageErrors": []
+}

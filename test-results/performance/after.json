@@ -1,0 +1,39 @@
+{
+  "target": "source",
+  "ok": true,
+  "measurements": [
+    {
+      "throttled": false,
+      "homeSeconds": 0.295,
+      "worldSeconds": 0.502,
+      "startup": {
+        "requests": 47,
+        "bytes": 370727,
+        "longTasks": [
+          69
+        ],
+        "deferred": true
+      }
+    },
+    {
+      "throttled": true,
+      "homeSeconds": 6.909,
+      "worldSeconds": 3.312,
+      "startup": {
+        "requests": 46,
+        "bytes": 370024,
+        "longTasks": [
+          189
+        ],
+        "deferred": true
+      }
+    }
+  ],
+  "checks": [
+    "saved hero survives reload and new tab",
+    "books load on demand and resume",
+    "failed book download retries",
+    "invalid hero falls back",
+    "PIN policy preserved"
+  ]
+}

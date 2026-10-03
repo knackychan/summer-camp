@@ -2,6 +2,7 @@
 js/config.js
 .env
 .env.*
+!server/agent-proxy/.env.example
 *.local
 
 # supabase CLI local state
@@ -11,6 +12,9 @@ supabase/.branches/
 # node / tooling
 node_modules/
 npm-debug.log*
+dist/
+.tmp/
+scripts/__pycache__/
 
 # OS / editor noise
 .DS_Store
@@ -18,3 +22,9 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# runtime-only family PC telemetry
+server/agent-proxy/data/
+# generated Android workstation state / local acceptance reports
+apps/android/android/
+apps/android/.reports/
