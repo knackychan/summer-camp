@@ -1,4 +1,14 @@
 /* Runtime styles. The first-screen styles remain inline in index.html. */
+.rotate-overlay{display:none;position:fixed;inset:0;z-index:99999;background:#201A40;color:#fff;
+  align-items:center;justify-content:center;text-align:center;padding:24px}
+.rotate-overlay-card{font-family:'Fredoka',sans-serif}
+.rotate-overlay-icon{font-size:64px;margin-bottom:12px;animation:rotate-hint 1.6s ease-in-out infinite}
+.rotate-overlay-card p{font-size:20px;font-weight:700;margin:4px 0}
+@keyframes rotate-hint{0%,100%{transform:rotate(0deg)}50%{transform:rotate(90deg)}}
+@media (orientation:portrait){
+  .rotate-overlay{display:flex}
+  .wrap{display:none !important}
+}
 .btn{min-width:44px;min-height:44px}
 .spacer{flex:1}
 .chips{display:flex;gap:8px;flex-wrap:wrap}

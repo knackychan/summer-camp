@@ -14,6 +14,8 @@ export var MANIFEST = [
     meta: { icon: "\ud83d\udede\ufe0f", title: "Monster Truck", tz: "\u602a\u7378\u5361\u8eca", blurb: "Crush cars in 3D \u00b7 3D\u58d3\u8eca" } },
   { id: "kitchen",  brain: false, keyboard: false, bestKey: "kitchen", legacy: false,
     meta: { icon: "🍳", title: "Kitchen Quest", tz: "廚房冒險", blurb: "Cook & serve · 料理上菜" } },
+  { id: "codequest", brain: false, keyboard: false, bestKey: "codequest", legacy: false,
+    meta: { icon: "🏰", title: "Code Quest", tz: "程式冒險", blurb: "Program the hero · 編程闖關" } },
   { id: "balloon",  brain: false, keyboard: true,  bestKey: "balloon", legacy: false,
     meta: { icon: "\ud83c\udf88", title: "Balloon Pop",   tz: "\u6233\u6c23\u7403",   blurb: "Pop balloons with keys" } },
   { id: "hunt",     brain: false, keyboard: true,  bestKey: null,      legacy: false, practice: true,

@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v136-world-first-nav";
+const CACHE_NAME = "summer-quest-v137-codequest-v14";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -81,6 +81,7 @@ const APP_SHELL = [
   "./css/quest-shell.css",
   "./css/world-explorer.css",
   "./css/kitchen-quest.css",
+  "./css/codequest.css",
   "./js/config.js",
   "./js/day.js",
   "./js/star-id.js",
@@ -184,6 +185,19 @@ const APP_SHELL = [
   "./js/games/kitchen/scene.js",
   "./js/games/kitchen/audio.js",
   "./js/games/kitchen/customers.js",
+  "./js/games/codequest.js",
+  "./js/games/codequest/ast.js",
+  "./js/games/codequest/interpreter.js",
+  "./js/games/codequest/parser.js",
+  "./js/games/codequest/alchemy-code.js",
+  "./js/games/codequest/loot.js",
+  "./js/games/codequest/run.js",
+  "./js/games/codequest/model.js",
+  "./js/games/codequest/levels.js",
+  "./js/games/codequest/progression.js",
+  "./js/games/codequest/strings.js",
+  "./js/games/codequest/pixel-art.js",
+  "./js/games/codequest/dungeon-view.js",
   "./js/games/monster-truck.js",
   "./js/games/hunt.js",
   "./js/games/home.js",
