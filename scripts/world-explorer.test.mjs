@@ -5,7 +5,8 @@ import { resolve } from "node:path";
 import vm from "node:vm";
 
 const root = resolve(import.meta.dirname, "..");
-const read = (path) => readFileSync(resolve(root, path), "utf8");
+// Normalise CRLF: with core.autocrlf a Windows checkout has CRLF, and the vm tests slice source on "\n".
+const read = (path) => readFileSync(resolve(root, path), "utf8").replace(/\r\n/g, "\n");
 const WORLD_MODULES = ["world-explorer", "planet-palette", "planet-map", "planet-globe", "planet-sprites", "planet-toys", "planet-minigames"];
 
 test("miniature world is a real root-runtime surface, not a wrapper", () => {
