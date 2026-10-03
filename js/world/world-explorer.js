@@ -2,8 +2,8 @@
    A software-rendered pixel globe on a 2D canvas: places open real content through the
    registry, toys react, sparkly toys start tiny in-place games. No stars, no navigation of its own. */
 import { HEX, C, nearestIndex } from "./planet-palette.js";
-import { buildPlanetMap, buildCloudMap, SITES, MAP_W, MAP_H, DEFAULT_SEED } from "./planet-map.js";
-import { facingQuat, project, unproject, drawGlobe, quatMul, quatAxisAngle, quatNormalize, quatRotate, quatConj, quatSlerp } from "./planet-globe.js";
+import { buildPlanetMap, buildCloudMap, SITES, MAP_W, DEFAULT_SEED } from "./planet-map.js";
+import { facingQuat, project, unproject, drawGlobe, cloudAtPoint, quatMul, quatAxisAngle, quatNormalize, quatRotate, quatConj, quatSlerp } from "./planet-globe.js";
 import { buildAtlas, LANDMARK_SPRITE } from "./planet-sprites.js";
 import { TOYS, SOUNDS, GAMES, SKY } from "./planet-toys.js";
 import { createMinigame } from "./planet-minigames.js";
@@ -284,11 +284,7 @@ function createWorld(options){
     return onDisc?{kind:"surface",x:p.x,y:p.y}:{kind:"space",x:p.x,y:p.y};
   }
   function cloudAt(x,y){
-    var ll=unproject(x,y,view());
-    if(!ll)return false;
-    var row=Math.min(MAP_H-1,Math.floor((90-ll.lat)/180*MAP_H));
-    var col=Math.floor(((ll.lon*Math.PI/180)+cloudDrawn+Math.PI)/(Math.PI*2)*MAP_W)%MAP_W;
-    return !!clouds[row*MAP_W+(col+MAP_W)%MAP_W];
+    return cloudAtPoint(clouds,x,y,view(),cloudDrawn);
   }
   function tap(clientX,clientY){
     var hit=hitAt(clientX,clientY);

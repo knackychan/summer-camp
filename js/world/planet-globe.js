@@ -65,6 +65,21 @@ export function unproject(x, y, view){
   return {lat:Math.asin(Math.max(-1, Math.min(1, local[1])))/RAD, lon:Math.atan2(local[0], local[2])/RAD};
 }
 
+/* Map row and drifting cloud column under a surface point (radians). drawGlobe paints with
+   these and cloudAtPoint hit-tests taps with them, so a tapped cloud is the one on screen. */
+function mapRow(lat){
+  var row = ((Math.PI/2 - lat)/Math.PI*MAP_H) | 0;
+  return row >= MAP_H ? MAP_H - 1 : row;
+}
+export function cloudColumn(lon, shift){
+  var cc = (((lon + shift + Math.PI)/(Math.PI*2)*MAP_W) | 0) % MAP_W;
+  return cc < 0 ? cc + MAP_W : cc;
+}
+export function cloudAtPoint(clouds, x, y, view, shift){
+  var ll = unproject(x, y, view);
+  return !!ll && !!clouds[mapRow(ll.lat*RAD)*MAP_W + cloudColumn(ll.lon*RAD, shift || 0)];
+}
+
 /* Fills target.data (Uint32 RGBA) with the shaded globe; everything else becomes transparent.
    cloudOffset is in radians of longitude. clouds may be null. */
 export function drawGlobe(target, map, clouds, view, cloudOffset){
@@ -87,13 +102,11 @@ export function drawGlobe(target, map, clouds, view, cloudOffset){
       var nz = Math.sqrt(1 - d2);
       var lx = M[0]*nx + M[1]*ny + M[2]*nz, ly = M[3]*nx + M[4]*ny + M[5]*nz, lz = M[6]*nx + M[7]*ny + M[8]*nz;
       var lon = Math.atan2(lx, lz), lat = Math.asin(ly > 1 ? 1 : ly < -1 ? -1 : ly);
-      var row = ((Math.PI/2 - lat)/Math.PI*MAP_H) | 0, col = ((lon + Math.PI)/TWO_PI*MAP_W) | 0;
-      if (row >= MAP_H) row = MAP_H - 1;
+      var row = mapRow(lat), col = ((lon + Math.PI)/TWO_PI*MAP_W) | 0;
       if (col >= MAP_W) col = MAP_W - 1;
       var c = colors[row*MAP_W + col];
       if (clouds) {
-        var cc = (((lon + shift + Math.PI)/TWO_PI*MAP_W) | 0) % MAP_W;
-        if (cc < 0) cc += MAP_W;
+        var cc = cloudColumn(lon, shift);
         if (clouds[row*MAP_W + cc]) c = C.white;
         else if (row > 0 && clouds[(row - 1)*MAP_W + (cc + MAP_W - 1) % MAP_W]) c = DARK[c];
       }

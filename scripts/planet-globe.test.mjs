@@ -104,3 +104,23 @@ test("cloud shadows fall away from the upper-left light, down and to the right",
   assert.ok(sx / n > cloud.x + 1, `shadow sits right of the cloud (${(sx / n).toFixed(1)} vs ${cloud.x.toFixed(1)})`);
   assert.ok(sy / n > cloud.y + 1, `shadow sits below the cloud (${(sy / n).toFixed(1)} vs ${cloud.y.toFixed(1)})`);
 });
+
+test("tapping finds the same cloud cell that drawGlobe paints, including drift", async () => {
+  const { cloudAtPoint } = await import("../js/world/planet-globe.js");
+  const view = { rotation: facingQuat(10, 20), radius: 120, cx: 160, cy: 120 };
+  for (const shift of [0, 0.37, 7.1]) {
+    for (const [row, col] of [[60, 140], [50, 130], [70, 150]]) {
+      const clouds = new Uint8Array(256 * 128);
+      clouds[row * 256 + col] = 1;
+      // the cell drifts east with the shift, so it shows at lon - shift
+      const lat = 90 - (row + 0.5) / 128 * 180, lon = (col + 0.5) / 256 * 360 - 180 - shift * 180 / Math.PI;
+      const p = project(lat, lon, view);
+      assert.ok(p.z > 0, "cell visible");
+      assert.equal(cloudAtPoint(clouds, p.x, p.y, view, shift), true, `hit at shift ${shift}`);
+      const east = project(lat, lon + 360 / 256, view), south = project(lat - 180 / 128, lon, view);
+      assert.equal(cloudAtPoint(clouds, east.x, east.y, view, shift), false, "east neighbour is clear");
+      assert.equal(cloudAtPoint(clouds, south.x, south.y, view, shift), false, "south neighbour is clear");
+    }
+  }
+  assert.equal(cloudAtPoint(new Uint8Array(256 * 128).fill(1), 0, 0, view, 0), false, "outside the disc never hits");
+});
