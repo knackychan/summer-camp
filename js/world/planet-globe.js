@@ -95,7 +95,7 @@ export function drawGlobe(target, map, clouds, view, cloudOffset){
         var cc = (((lon + shift + Math.PI)/TWO_PI*MAP_W) | 0) % MAP_W;
         if (cc < 0) cc += MAP_W;
         if (clouds[row*MAP_W + cc]) c = C.white;
-        else if (row + 1 < MAP_H && clouds[(row + 1)*MAP_W + (cc + MAP_W - 1) % MAP_W]) c = DARK[c];
+        else if (row > 0 && clouds[(row - 1)*MAP_W + (cc + MAP_W - 1) % MAP_W]) c = DARK[c];
       }
       var lam = nx*L[0] + ny*L[1] + nz*L[2], v = lam + (BAYER[(py & 3)*4 + (px & 3)]/16 - 0.47)*0.18;
       if (v > 0.75 || (d2 > 0.93 && lam > 0.3)) c = LIGHT[c];

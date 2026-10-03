@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildPlanetMap, buildCloudMap } from "../js/world/planet-map.js";
+import { RGBA, C } from "../js/world/planet-palette.js";
 import { facingQuat, project, unproject, drawGlobe, quatMul, quatAxisAngle, quatRotate, quatSlerp, quatNormalize } from "../js/world/planet-globe.js";
 
 const close = (a, b, eps, label) => assert.ok(Math.abs(a - b) < eps, `${label}: ${a} vs ${b}`);
@@ -71,4 +72,31 @@ test("drawGlobe is fast enough for a tablet frame", () => {
   for (let i = 0; i < 10; i++) drawGlobe(target, map, clouds, view, i * 0.01);
   const each = (performance.now() - t) / 10;
   assert.ok(each < 25, `drawGlobe took ${each.toFixed(1)} ms on desktop node`);
+});
+
+test("cloud shadows fall away from the upper-left light, down and to the right", () => {
+  const map = buildPlanetMap(7);
+  const base = { color: new Uint8Array(map.color.length).fill(map.color[0]) };
+  const width = 400, height = 400, R = 180, cx = 200, cy = 200;
+  const view = { rotation: facingQuat(0, 0), radius: R, cx, cy };
+  const draw = (clouds) => {
+    const target = { data: new Uint32Array(width * height), width, height };
+    drawGlobe(target, base, clouds, view, 0);
+    return target.data;
+  };
+  const clear = new Uint8Array(base.color.length), one = new Uint8Array(base.color.length);
+  const cloudRow = 60, cloudCol = 128;
+  one[cloudRow * 256 + cloudCol] = 1;
+  const before = draw(clear), after = draw(one);
+  const cloud = project(90 - (cloudRow + 0.5) / 128 * 180, (cloudCol + 0.5) / 256 * 360 - 180, view);
+  let sx = 0, sy = 0, n = 0;
+  for (let i = 0; i < before.length; i++) {
+    if (before[i] === after[i]) continue;
+    const x = i % width, y = (i / width) | 0;
+    if (after[i] === RGBA[C.white]) continue;
+    sx += x + 0.5; sy += y + 0.5; n++;
+  }
+  assert.ok(n > 0, "a shadow is drawn");
+  assert.ok(sx / n > cloud.x + 1, `shadow sits right of the cloud (${(sx / n).toFixed(1)} vs ${cloud.x.toFixed(1)})`);
+  assert.ok(sy / n > cloud.y + 1, `shadow sits below the cloud (${(sy / n).toFixed(1)} vs ${cloud.y.toFixed(1)})`);
 });
