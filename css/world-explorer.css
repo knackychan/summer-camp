@@ -7,14 +7,22 @@ body.world-mode .wrap{max-width:none;width:100%;height:100vh;height:100dvh;paddi
 .world-canvas canvas{display:block;touch-action:none;image-rendering:crisp-edges;image-rendering:pixelated}
 .world-hud{position:absolute;z-index:8;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;pointer-events:none}
 .world-hud>*{pointer-events:auto}
-.world-back,.world-menu{min-height:48px;border:0;border-radius:18px;padding:10px 14px;font:700 15px 'Fredoka',system-ui;color:#fff;background:rgba(27,32,67,.82);box-shadow:0 5px 16px rgba(25,28,53,.24);backdrop-filter:blur(10px)}
-.world-menu{justify-self:end}
-.world-kid{justify-self:center;display:flex;align-items:center;gap:8px;min-height:48px;padding:7px 12px;border-radius:18px;background:rgba(255,255,255,.88);box-shadow:0 5px 16px rgba(25,28,53,.16);color:#27234d;min-width:0}
+/* World-first navigation (docs/plans/2026-10-03-world-first-navigation): Base Camp is the one big
+   way out of the planet; switching hero is a quiet control inside the kid chip, like a log-out. */
+.world-menu{grid-column:3;grid-row:1;justify-self:end;min-height:56px;border:3px solid rgba(255,255,255,.9);border-radius:20px;padding:10px 18px;font:700 18px 'Fredoka',system-ui;color:#fff;background:var(--accent,#4EA8FF);box-shadow:0 5px 0 rgba(0,0,0,.22),0 8px 20px rgba(25,28,53,.28);text-shadow:0 1px 2px rgba(0,0,0,.25);white-space:nowrap}
+.world-menu .zh{font-size:15px}
+.world-kid{grid-column:1;grid-row:1;justify-self:start;display:flex;align-items:center;gap:8px;min-height:48px;padding:4px 4px 4px 12px;border-radius:18px;background:rgba(255,255,255,.88);box-shadow:0 5px 16px rgba(25,28,53,.16);color:#27234d;min-width:0}
+.world-switch{display:inline-flex;align-items:center;gap:4px;min-width:44px;min-height:44px;margin-left:2px;padding:0 10px;border:0;border-left:1px solid rgba(39,35,77,.14);border-radius:0 14px 14px 0;background:transparent;color:#8a84ad;font:700 13px 'Fredoka',system-ui;white-space:nowrap}
+.world-switch span{font-size:11px}
+.world-waiting{grid-column:2;grid-row:1;justify-self:center;min-height:48px;max-width:100%;border:0;border-radius:999px;padding:8px 16px;font:700 15px 'Fredoka',system-ui;color:#2a2350;background:#ffd23f;box-shadow:0 4px 0 rgba(0,0,0,.18),0 6px 18px rgba(25,28,53,.22);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:world-waiting-glow 2s ease-in-out infinite}
+.world-waiting.hidden{display:none!important}
+.world-waiting__words{font-size:14px}
+@keyframes world-waiting-glow{0%,100%{box-shadow:0 4px 0 rgba(0,0,0,.18),0 0 0 0 rgba(255,210,63,.7)}60%{box-shadow:0 4px 0 rgba(0,0,0,.18),0 0 0 12px rgba(255,210,63,0)}}
 .world-kid__avatar{font-size:27px;line-height:1}.world-kid__copy{min-width:0}.world-kid__copy b{display:block;font:700 16px 'Fredoka',system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.world-kid__copy small{display:block;font-size:11px;font-weight:900;color:#746d9b;white-space:nowrap}
 .world-hint{position:absolute;z-index:7;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:8px;align-items:center;max-width:calc(100% - 24px);padding:8px 12px;border-radius:999px;background:rgba(28,31,62,.68);color:#fff;font-size:12px;font-weight:900;box-shadow:0 4px 16px rgba(25,28,53,.18);pointer-events:none;backdrop-filter:blur(8px)}
 .world-selection{position:absolute;z-index:9;left:50%;bottom:max(24px,calc(env(safe-area-inset-bottom) + 12px));transform:translateX(-50%);width:min(520px,calc(100% - 28px));display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 13px;border:2px solid rgba(255,255,255,.72);border-radius:24px;background:rgba(31,28,65,.9);box-shadow:0 16px 40px rgba(25,28,53,.3);color:#fff;backdrop-filter:blur(14px)}
 .world-selection.hidden{display:none!important}.world-selection__icon{width:58px;height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);font-size:34px}.world-selection__copy{min-width:0}.world-selection__copy b{display:block;font:700 18px 'Fredoka',system-ui}.world-selection__copy span{display:block;color:#d5d0ee;font-size:12px;font-weight:800;margin-top:2px;white-space:pre;overflow:hidden;text-overflow:ellipsis}.world-go{min-width:70px;min-height:52px;border:0;border-radius:17px;background:#ffc93c;color:#211b42;font:800 17px 'Fredoka',system-ui;box-shadow:0 4px 0 rgba(0,0,0,.2)}
-.world-go:active,.world-back:active,.world-menu:active{transform:translateY(2px)}
+.world-go:active,.world-menu:active,.world-waiting:active,.world-switch:active{transform:translateY(2px)}
 .world-go{padding:8px 12px}
 /* Focus mode (docs/plans/2026-10-03-planet-focus-readability D4/D5): the card hangs off the chosen sprite. */
 .world-selection__hint{display:none}
@@ -36,7 +44,7 @@ body.world-mode .summer-companion{bottom:max(12px,var(--sq-safe-bottom))}
 body.world-mode .summer-nudge{bottom:calc(max(12px,var(--sq-safe-bottom)) + 80px)}
 .world-status{position:absolute;z-index:10;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(420px,calc(100% - 40px));padding:18px;border-radius:22px;background:rgba(31,28,65,.9);color:#fff;text-align:center;font-weight:900;box-shadow:0 14px 38px rgba(0,0,0,.22)}
 .world-status.hidden{display:none!important}.world-status b{display:block;font:700 21px 'Fredoka',system-ui;margin-bottom:5px}.world-status span{display:block;color:#d8d3ee;font-size:13px;line-height:1.4}
-@media(max-width:620px){.world-hud{grid-template-columns:auto 1fr auto}.world-back,.world-menu{font-size:0;width:50px;padding:8px}.world-back:before{content:'←';font-size:22px}.world-menu:before{content:'☰';font-size:22px}.world-kid__copy small{display:none}.world-selection{grid-template-columns:auto 1fr}.world-go{grid-column:1/-1;width:100%}.world-selection.is-anchored{grid-template-columns:auto 1fr}}
+@media(max-width:620px){.world-hud{grid-template-columns:auto 1fr auto}.world-menu{font-size:15px;padding:8px 12px}.world-menu .zh{font-size:13px}.world-waiting__words,.world-switch span,.world-kid__copy{display:none}.world-kid__copy small{display:none}.world-selection{grid-template-columns:auto 1fr}.world-go{grid-column:1/-1;width:100%}.world-selection.is-anchored{grid-template-columns:auto 1fr}}
 /* Below ~700px a centred card reaches the floating companion (quest-shell.css: 64px at right 14px); stop short of it. */
 @media(max-width:700px){.world-selection{left:max(14px,var(--sq-safe-left,0px));right:calc(max(14px,var(--sq-safe-right,0px)) + 74px);width:auto;transform:none}}
-@media(prefers-reduced-motion:reduce){.world-selection,.world-back,.world-menu,.world-go,.world-hint{transition:none!important}.world-selection.is-anchored,.world-selection.is-anchored .world-go,.world-selection.is-anchored .world-selection__hint:before{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.world-waiting{animation:none!important}.world-selection,.world-menu,.world-go,.world-hint{transition:none!important}.world-selection.is-anchored,.world-selection.is-anchored .world-go,.world-selection.is-anchored .world-selection__hint:before{animation:none!important}}

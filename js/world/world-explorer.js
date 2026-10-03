@@ -14,8 +14,12 @@ var savedViews = new Map();
 function selectionSubtitle(entry){
   if(entry.available===false)return "Not available right now · 現在暫時無法開啟";
   var title=entry.title||[],blurb=entry.blurb||[];
+  /* Something waiting replaces the blurb: the card says what is waiting, in both languages. */
+  if(entry.attention)return ["✨ "+entry.attention[0],[title[1],entry.attention[1]].filter(Boolean).join(" · ")].join("\n");
   return [blurb[0],[title[1],blurb[1]].filter(Boolean).join(" · ")].filter(Boolean).join("\n");
 }
+/* A place has something waiting (world-first navigation D5) only while it can be opened. */
+function waiting(mark){return !!(mark.entry&&mark.entry.attention&&mark.entry.available!==false);}
 
 function readView(kidId){
   var view=savedViews.get(kidId);
@@ -60,6 +64,8 @@ var FX={
   zzz:{sprite:"pZ",vx:[2,4],vy:[-8,-6],g:0,life:1.6}
 };
 var AMBIENT={"section:acts":"smoke","section:music":"note","section:rewards":"sparkle"};
+/* The "something waiting" bubble: yellow, bobbing, never red (coach, not cop). */
+var BUBBLE=[".ooooo.","oyyyyyo","oyyoyyo","oyyoyyo","oyyoyyo","oyyyyyo","oyyoyyo","oyyyyyo",".ooooo.","...o..."];
 var CONFETTI=[C.pink,C.yellow,C.cyan,C.lime,C.purple,C.white,C.lava];
 
 function easeOut(t){return 1-Math.pow(1-t,3);}
@@ -91,7 +97,7 @@ function createWorld(options){
   var rotation=DEFAULT_VIEW.slice(),zoom=1,dirty=true,viewDirty=false;
   var cloudOffset=0,cloudDrawn=0,starShift=[0,0],clock=0,tick=0;
   var pointers=new Map(),gesture=null,pinch=null,momentum=null,easing=null,lastInput=performance.now();
-  var particles=[],confetti=[],selected=null,minigame=null,hudTimer=0;
+  var particles=[],confetti=[],selected=null,minigame=null,hudTimer=0,pendingFocus=null,attentionIndex=-1,bubble=null;
   var active=false,destroyed=false,nativePaused=false,frames=0,raf=0,last=performance.now(),lastError=null;
 
   var places=SITES.map(function(site){
@@ -240,7 +246,11 @@ function createWorld(options){
     if(easing){
       easing.t=easing.dur>0?Math.min(1,easing.t+dt/easing.dur):1;
       rotation=quatSlerp(easing.from,easing.to,easeOut(easing.t));dirty=true;viewDirty=true;
-      if(easing.t>=1)easing=null;
+      if(easing.t>=1){
+        easing=null;
+        var landed=pendingFocus;pendingFocus=null;
+        if(landed){layout();if(landed.z>0.15){enterFocus(landed,true);react(landed,"hop");}}
+      }
       return;
     }
     if(pointers.size)return;
@@ -261,6 +271,20 @@ function createWorld(options){
   function focusOn(item){
     var to=facingQuat(clamp(item.lat+8,-80,80),item.lon);
     easing={from:rotation.slice(),to:to,t:0,dur:reduced?0:0.45};
+  }
+  /* Spin a place to the front, then focus it when the spin lands (rim bubbles, the HUD chip). */
+  function flyTo(mark){
+    showSelection(null);lastInput=performance.now();momentum=null;
+    focusOn(mark);easing.dur=reduced?0:0.7;pendingFocus=mark;
+    playSound("pop");haptic("tap");
+  }
+  function nextAttention(){
+    if(destroyed||minigame)return false;
+    refreshRegistry();
+    var marks=places.filter(waiting);
+    if(!marks.length)return false;
+    attentionIndex=(attentionIndex+1)%marks.length;
+    flyTo(marks[attentionIndex]);return true;
   }
 
   /* ---------- reactions + particles ---------- */
@@ -312,6 +336,14 @@ function createWorld(options){
       item.left=item.x-Math.floor(img.width/2);item.top=item.y-(img.height-2);
     });
     var angle=reduced?0.9:clock*Math.PI*2/40,R=radius();
+    /* A waiting place on the far side shows its bubble on the rim, pointing the way. */
+    places.forEach(function(mark){
+      mark.rim=null;
+      if(!waiting(mark)||mark.z>0.15)return;
+      var p=project(mark.lat,mark.lon,v),dx=p.x-cx,dy=p.y-cy,len=Math.hypot(dx,dy);
+      if(len<1){dx=0;dy=1;len=1;}
+      mark.rim={x:clamp(Math.round(cx+dx/len*(R+7)),5,bw-5),y:clamp(Math.round(cy+dy/len*(R+7)),Math.ceil(84/scale)+6,bh-8)};
+    });
     moon.z=Math.sin(angle);
     moon.x=Math.round(cx+Math.cos(angle)*R*1.55);moon.y=Math.round(cy-R*0.85+Math.sin(angle)*R*0.3);
     var mimg=atlas.moon.normal[0];
@@ -352,6 +384,8 @@ function createWorld(options){
   function hitAt(clientX,clientY){
     var p=toBuffer(clientX,clientY);
     var R=radius(),dx=p.x-cx,dy=p.y-cy,onDisc=dx*dx+dy*dy<=R*R;
+    var reach=Math.max(6,(coarse?26:16)/scale);
+    for(var r=0;r<places.length;r++){var rim=places[r].rim;if(rim&&Math.abs(p.x-rim.x)<=reach&&Math.abs(p.y-rim.y)<=reach)return {kind:"rim",mark:places[r]};}
     if(moon.z>0&&inRect(moon,p.x,p.y))return moon;
     var front=surface.filter(function(item){return item.z>0.15;}).sort(function(a,b){return b.z-a.z;});
     for(var i=0;i<front.length;i++)if(inRect(front[i],p.x,p.y))return front[i];
@@ -363,6 +397,7 @@ function createWorld(options){
   }
   function tap(clientX,clientY){
     var hit=hitAt(clientX,clientY);
+    if(hit.kind==="rim"){flyTo(hit.mark);return;}
     if(hit.kind==="place"){
       enterFocus(hit);react(hit,"hop");focusOn(hit);
       hero.react=null;react(hero,"hop");hero.flip=hit.x<hero.x;playSound("pop");
@@ -435,7 +470,7 @@ function createWorld(options){
         // A press away from the focused sprite leaves focus and is spent: it never also taps what it landed on.
         if(inFocus(at.x,at.y))gesture.focusTap=true;else{gesture.spent=true;showSelection(null);}
       }
-      if(!gesture.focusTap)easing=null;
+      if(!gesture.focusTap){easing=null;pendingFocus=null;}
     }
     else if(pointers.size===2&&gesture){gesture.multi=true;pinch={distance:pinchDistance(),zoom:zoom};if(focus)showSelection(null);}
   }
@@ -505,10 +540,10 @@ function createWorld(options){
       var result=await registry.open(selected.id,{origin:"world"});
       // Focus is a moment, not saved state: coming back shows the plain planet (D7).
       if(result&&result.ok){haptic("success");if(!destroyed&&selected&&selected.id===id)showSelection(null);}
-      else if(selected&&selected.id===id)subtitleEl.textContent="Could not open. Try again or choose Classic. · 暫時無法開啟，請重試或選經典介面。";
+      else if(selected&&selected.id===id)subtitleEl.textContent="Could not open. Try again or open Base Camp. · 暫時無法開啟，請重試或打開營地。";
     }catch(error){
       console.error("World content launch failed",error);
-      if(selected&&selected.id===id)subtitleEl.textContent="Could not open. Try again or choose Classic. · 暫時無法開啟，請重試或選經典介面。";
+      if(selected&&selected.id===id)subtitleEl.textContent="Could not open. Try again or open Base Camp. · 暫時無法開啟，請重試或打開營地。";
     }finally{if(!destroyed&&selected&&selected.kind==="place"){var entry=registry.get(selected.id);goEl.disabled=!entry||entry.available===false;}}
   }
   goEl.onclick=go;
@@ -555,6 +590,25 @@ function createWorld(options){
     });
     ctx.globalAlpha=1;
   }
+  function bubbleImage(){
+    if(bubble)return bubble;
+    bubble=document.createElement("canvas");bubble.width=BUBBLE[0].length;bubble.height=BUBBLE.length;
+    var c=bubble.getContext("2d");
+    BUBBLE.forEach(function(row,y){for(var x=0;x<row.length;x++){var ch=row[x];if(ch===".")continue;c.fillStyle=HEX[ch==="o"?C.outline:C.yellow];c.fillRect(x,y,1,1);}});
+    return bubble;
+  }
+  function drawAttention(){
+    var img=bubbleImage();
+    places.forEach(function(mark){
+      if(!waiting(mark))return;
+      var bob=reduced?0:Math.round(Math.sin(clock*5+mark.ambient*3)*1.5);
+      if(mark.z>0.15)ctx.drawImage(img,mark.x-3,mark.top-img.height-1+bob);
+      else if(mark.rim){
+        if(!reduced&&Math.floor(clock*3)%3===0)return;
+        ctx.drawImage(img,mark.rim.x-3,mark.rim.y-Math.floor(img.height/2)+bob);
+      }
+    });
+  }
   function drawConfetti(){
     confetti.forEach(function(p){ctx.fillStyle=HEX[p.color];ctx.fillRect(Math.round(p.x),Math.round(p.y),1,1);});
   }
@@ -564,7 +618,7 @@ function createWorld(options){
       if(!mark.entry||mark.z<0.2)return;
       mark.ambient-=dt;
       if(mark.ambient>0)return;
-      var asleep=mark.entry.available===false,kind=asleep?"zzz":AMBIENT[mark.id];
+      var asleep=mark.entry.available===false,kind=asleep?"zzz":waiting(mark)?"sparkle":AMBIENT[mark.id];
       mark.ambient=asleep?2:1.2+rand();
       if(kind)spawn(kind,mark.x+(asleep?4:0),mark.top+1,1);
     });
@@ -577,6 +631,7 @@ function createWorld(options){
     surface.filter(function(item){return item.z>0.08;}).sort(function(a,b){return a.z-b.z;}).forEach(drawItem);
     if(moon.z>0)drawItem(moon);
     drawParticles();
+    if(!minigame)drawAttention();
     if(dim>0&&!minigame){ctx.globalAlpha=0.68*dim;ctx.fillStyle=HEX[C.space];ctx.fillRect(0,0,bw,bh);ctx.globalAlpha=1;}
     if(focus&&!minigame)drawFocus();
     if(minigame){ctx.globalAlpha=0.62;ctx.fillStyle=HEX[C.space];ctx.fillRect(0,0,bw,bh);ctx.globalAlpha=1;minigame.draw(ctx);}
@@ -655,11 +710,11 @@ function createWorld(options){
     }
     return {running:active,frames:frames,contextLost:lostCanvases.size>0,error:lastError,selected:selected&&selected.id,minigame:minigame&&minigame.kind,
       camera:{position:quatRotate(quatConj(rotation),[0,0,distance]),target:[0,0,0],distance:distance,minDistance:BASE_DISTANCE/MAX_ZOOM,maxDistance:BASE_DISTANCE/MIN_ZOOM,rotation:rotation.slice(),zoom:zoom},
-      landmarks:places.map(function(mark){var at=point(mark);return {id:mark.id,x:at&&at.x,y:at&&at.y,visible:!!at,available:!!mark.entry&&mark.entry.available!==false};}),
+      landmarks:places.map(function(mark){var at=point(mark);return {id:mark.id,x:at&&at.x,y:at&&at.y,visible:!!at,available:!!mark.entry&&mark.entry.available!==false,waiting:waiting(mark),rim:mark.rim?{x:rect.left+mark.rim.x*scale,y:rect.top+mark.rim.y*scale}:null};}),
       toys:toys.map(function(toy){var at=point(toy);return {id:toy.id,x:at&&at.x,y:at&&at.y,visible:!!at};})};
   }
 
-  return {pause:pause,resume:resume,resize:resize,destroy:destroy,showSelection:showSelection,snapshot:snapshot,back:back};
+  return {pause:pause,resume:resume,resize:resize,destroy:destroy,showSelection:showSelection,snapshot:snapshot,back:back,refresh:refreshRegistry,nextAttention:nextAttention};
 }
 
 export async function start(options){
@@ -672,4 +727,6 @@ export function pause(){if(current)current.instance.pause();}
 export function resume(){if(current)current.instance.resume();}
 export function destroy(){if(current){current.instance.destroy();current=null;}}
 export function back(){return current?current.instance.back():false;}
+export function refresh(){if(current)current.instance.refresh();}
+export function nextAttention(){return current?current.instance.nextAttention():false;}
 export function snapshot(){return current?Object.assign({kidId:current.kidId},current.instance.snapshot()):null;}
