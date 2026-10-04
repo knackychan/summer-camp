@@ -73,13 +73,17 @@ test('a recipe mix in the wrong order is a reaction with an order hint', () => {
 const FIXTURES = [
   ['pocketUniverse', ['moonflower', 'echoCrystal', 'voidDust']],
   ['explosion', ['voidDust', 'redMushroom', 'emberSeed', 'starDust']],
+  ['thermalShock', [{ id: 'frostDew', state: 'frozen' }, { id: 'emberSeed', state: 'heated' }]],
   ['temporalRupture', ['voidDust', 'starDust']],
   ['singularity', ['voidDust', 'emberSeed']],
+  ['snowflakeCopies', [{ id: 'redMushroom', state: 'frozen' }, 'echoCrystal']],
   ['monstrosity', ['echoCrystal', 'lifeSap', 'redMushroom']],
   ['duplication', ['echoCrystal', 'redMushroom']],
   ['overgrowth', ['lifeSap', 'redMushroom', 'frostDew']],
+  ['flamingVines', [{ id: 'redMushroom', state: 'heated' }]],
   ['fireball', ['emberSeed'], ['heat']],
   ['iceBurst', ['frostDew'], ['cool']],
+  ['glitterStorm', [{ id: 'moonflower', state: 'crushed' }]],
   ['glow', ['moonflower', 'starDust']],
   ['steam', ['emberSeed', 'frostDew']],
   ['bubbles', ['frostDew']],
@@ -92,7 +96,7 @@ test('every rule is reached by a fixture, in table order', () => {
   for (const [id, mix, steps] of FIXTURES) {
     const result = resolve(mix, steps);
     assert.equal(result.kind, 'reaction', id);
-    assert.equal(result.ruleId, id, mix.join('+') + ' should be ' + id + ', got ' + result.ruleId);
+    assert.equal(result.ruleId, id, JSON.stringify(mix) + ' should be ' + id + ', got ' + result.ruleId);
     assert.equal(result.family, LAB_RULES.find(rule => rule.id === id).family);
     assert.ok([1, 2, 3].includes(result.intensity), id + ' intensity');
   }
@@ -372,4 +376,83 @@ test('Journal strings ship EN + 中文', () => {
   for (const [where, pair] of [...Object.entries(LAB_PROPS), ...Object.entries(LAB_FAMILIES)]) {
     assert.ok(pair[0].trim() && /[一-鿿]/.test(pair[1]), where);
   }
+});
+
+/* ---------- Phase 2 slice 01: ingredient states (docs/plans/2026-10-04-lab-states) ---------- */
+import { LAB_STATES, STATE_TOOL, applyState } from '../js/games/codequest/lab/ingredients.js';
+import { labEntries } from '../js/games/codequest/lab/resolve.js';
+
+const st = (id, state) => ({ id, state });
+
+test('states: the three tools map to crushed / heated / frozen and change points per design D3', () => {
+  assert.deepEqual([...LAB_STATES], ['raw', 'crushed', 'heated', 'frozen']);
+  assert.deepEqual({ ...STATE_TOOL }, { grind: 'crushed', heat: 'heated', cool: 'frozen' });
+  const mushroom = LAB_INGREDIENTS.redMushroom.props; // life 1, growth 2, chaos 1
+  assert.deepEqual({ ...applyState(mushroom, 'raw') }, { ...mushroom });
+  assert.deepEqual({ ...applyState(mushroom, 'crushed') }, { life: 1, growth: 3, chaos: 2 });
+  assert.deepEqual({ ...applyState(mushroom, 'heated') }, { life: 1, growth: 2, fire: 2, chaos: 2 });
+  assert.deepEqual({ ...applyState(mushroom, 'frozen') }, { cold: 2, calm: 1, chaos: 1 });
+  assert.deepEqual({ ...applyState(LAB_INGREDIENTS.frostDew.props, 'heated') }, { fire: 2, water: 1, calm: 1, chaos: 1 });
+  for (const item of Object.values(LAB_INGREDIENTS)) for (const state of LAB_STATES) {
+    for (const [prop, n] of Object.entries(applyState(item.props, state))) {
+      assert.ok(LAB_PROPERTIES.includes(prop) && Number.isInteger(n) && n > 0, `${item.id} ${state} ${prop}=${n}`);
+    }
+  }
+});
+
+test('entries: bare ids are fresh, unknown states become fresh, junk is dropped, cap 4', () => {
+  assert.deepEqual(labEntries(['sunHerb', st('voidDust', 'frozen'), st('lifeSap', 'melted'), st('nope', 'heated'), 7, null]),
+    [st('sunHerb', 'raw'), st('voidDust', 'frozen'), st('lifeSap', 'raw')]);
+  assert.equal(labEntries(Array(9).fill(st('moonflower', 'crushed'))).length, 4);
+  assert.deepEqual(labEntries('sunHerb'), []);
+});
+
+test('the vision test: Frozen Mushroom + Echo Crystal is not Mushroom + Echo Crystal', () => {
+  assert.equal(resolve(['redMushroom', 'echoCrystal']).ruleId, 'duplication');
+  assert.equal(resolve([st('redMushroom', 'frozen'), 'echoCrystal']).ruleId, 'snowflakeCopies');
+});
+
+test('every state-only rule is reachable, and none fires without a changed ingredient', () => {
+  const fixtures = {
+    thermalShock: [st('frostDew', 'frozen'), st('emberSeed', 'heated')],
+    snowflakeCopies: [st('redMushroom', 'frozen'), 'echoCrystal'],
+    flamingVines: [st('redMushroom', 'heated')],
+    glitterStorm: [st('moonflower', 'crushed')]
+  };
+  for (const [ruleId, mix] of Object.entries(fixtures)) assert.equal(resolve(mix).ruleId, ruleId, ruleId);
+  assert.equal(resolve([st('starDust', 'crushed')]).ruleId, 'glitterStorm');
+  // The same ingredients fresh land elsewhere.
+  assert.notEqual(resolve(['frostDew', 'emberSeed']).ruleId, 'thermalShock');
+  assert.notEqual(resolve(['redMushroom']).ruleId, 'flamingVines');
+  assert.notEqual(resolve(['moonflower']).ruleId, 'glitterStorm');
+  // Every one of the 18 rules still has a fixture that reaches it.
+  const reached = new Set();
+  const ids = Object.keys(LAB_INGREDIENTS);
+  const forms = ids.flatMap(id => LAB_STATES.map(state => st(id, state)));
+  for (const a of forms) {
+    reached.add(resolve([a]).ruleId);
+    for (const b of forms) reached.add(resolve([a, b]).ruleId);
+  }
+  // Phase 1's three- and four-ingredient and step fixtures, unchanged.
+  for (const [, mix, steps] of FIXTURES) reached.add(resolve(mix, steps).ruleId);
+  assert.equal(LAB_RULES.length, 18);
+  assert.deepEqual(LAB_RULES.map(rule => rule.id).filter(id => !reached.has(id)), []);
+});
+
+test('potions need fresh ingredients: a changed one gives a reaction and the fresh hint', () => {
+  const healing = RECIPES.find(recipe => recipe.id === 'healing');
+  assert.equal(resolve(healing.ingredients, healing.process).kind, 'potion');
+  const crushed = resolve([st('sunHerb', 'crushed'), 'sunHerb', 'waterCrystal'], healing.process);
+  assert.equal(crushed.kind, 'reaction');
+  assert.equal(crushed.hint, 'fresh');
+  assert.equal(resolve([st('sunHerb', 'frozen'), 'sunHerb', 'waterCrystal'], ['stir', 'grind']).hint, 'fresh', 'fresh wins over order');
+  assert.equal(resolve(['sunHerb', 'sunHerb', 'waterCrystal'], ['stir', 'grind']).hint, 'order');
+  assert.equal(resolve([st('sunHerb', 'raw'), 'sunHerb', 'waterCrystal'], healing.process).kind, 'potion', 'an explicit raw state is fresh');
+});
+
+test('states: deterministic, and mixHint follows them', () => {
+  const mix = [st('voidDust', 'heated'), st('starDust', 'crushed')];
+  assert.deepEqual(resolve(mix, ['stir']), resolve(mix, ['stir']));
+  assert.equal(mixHint([st('frostDew', 'frozen')], []).tint, 'cold');
+  assert.equal(mixHint([st('frostDew', 'heated')], []).tint, 'fire');
 });

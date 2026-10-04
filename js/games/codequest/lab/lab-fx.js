@@ -11,7 +11,6 @@ import { LAB_INGREDIENTS } from './ingredients.js';
 import { LAB_RULES } from './rules.js';
 
 export const FX_BEAT = 3000;
-export const FX_IDS = Object.freeze(['potion', ...LAB_RULES.map(rule => rule.id)]);
 export const FX_LINGER = Object.freeze(['explosion', 'monstrosity', 'duplication', 'overgrowth']);
 const STARTLE = ['explosion', 'fireball', 'singularity'];
 
@@ -307,6 +306,8 @@ function fizzle(ctx, e, t, o) {
 }
 
 const DRAW = { potion, pocketUniverse, explosion, temporalRupture, singularity, monstrosity, duplication, overgrowth, fireball, iceBurst, glow, steam, bubbles, smoke, fizzle };
+// Outcomes with a drawn effect; a rule without one (until its effect slice ships) just shows the room.
+export const FX_IDS = Object.freeze(['potion', ...LAB_RULES.map(rule => rule.id).filter(id => Object.hasOwn(DRAW, id))]);
 
 /**
  * Draws the active effect over the room. `o`: { t, now, reduced, still, mix, home(id) → {x, y} },

@@ -46,7 +46,9 @@ const FORMULA = Object.freeze({
   explosion: ['chaos', 'chaos', 'chaos'], temporalRupture: ['time', 'time'], singularity: ['space', 'light'],
   monstrosity: ['echo', 'life', 'growth'], duplication: ['echo', 'life'], overgrowth: ['growth', 'life', 'water'],
   fireball: ['fire', 'fire'], iceBurst: ['cold', 'cold'], glow: ['light', 'light'], steam: ['fire', 'water'],
-  bubbles: ['water'], smoke: ['fire'], fizzle: []
+  bubbles: ['water'], smoke: ['fire'], fizzle: [],
+  // Phase 2 state rules (lab-states D4); slice 05 shows the state icons themselves.
+  thermalShock: ['cold', 'fire'], snowflakeCopies: ['echo', 'cold'], flamingVines: ['fire', 'growth'], glitterStorm: ['light', 'chaos']
 });
 
 /** Reaction pages: found rules in rule order with label, line and formula; unfound ones carry only their family. */
