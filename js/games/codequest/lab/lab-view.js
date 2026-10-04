@@ -1,8 +1,10 @@
-/* Laboratory of Curiosity scene renderer (lab design D3, slice 03). One code-drawn
-   320×180 room — moon window, ingredient shelf, cauldron on its burner, owl, cat,
-   Journal and workbench tools — drawn at a whole-number device-pixel scale. Pure
-   projection of the state it is given; it returns the tap targets (CSS px) so the
-   screen controller never has to know the layout. */
+/* Laboratory of Curiosity scene renderer (lab design D3, slice 03; lab-feel D1).
+   One code-drawn room — moon window, ingredient shelf, cauldron on its burner, owl,
+   cat, Journal and workbench tools — drawn at a whole-number device-pixel scale. The
+   320×180 core always fits; the room then widens and grows (up to 480×240) to fill
+   the box, its left, centre and right groups pinned to their edges. Pure projection
+   of the state it is given; it returns the tap targets (CSS px) so the screen
+   controller never has to know the layout. */
 import { Q } from '../palette.js';
 import { drawSprite, spriteSize } from '../pixel-art.js';
 import { px, drawLabSprite, labSpriteSize } from './lab-art.js';
@@ -11,23 +13,48 @@ import { fxTime, fxPose, drawEffect } from './lab-fx.js';
 
 export const LAB_W = 320;
 export const LAB_H = 180;
+export const LAB_MAX_W = 480;
+export const LAB_MAX_H = 240;
 
-/* Tap targets in logical px. Each is ≥ 24 px on its short side — 48 CSS px at the
-   smallest fit (2×) — and no two overlap (tested). */
-const r = (id, kind, x, y, w, h, extra = {}) => Object.freeze({ id, kind, x, y, w, h, ...extra });
+/* Tap targets in logical px of the 320×180 core, each tagged with the group it moves
+   with. Each is ≥ 24 px on its short side — 48 CSS px at the smallest fit (2×) — and
+   no two overlap at any room size (tested). */
+const r = (id, kind, group, x, y, w, h, extra = {}) => Object.freeze({ id, kind, group, x, y, w, h, ...extra });
 const LAYOUT = Object.freeze([
-  ...SHELF_IDS.map((id, i) => r('jar:' + id, 'jar', 208 + (i % 4) * 26, i < 4 ? 24 : 62, 25, 28, { ingredient: id })),
-  ...BAG_IDS.map((id, i) => r('bag:' + id, 'bag', 2 + i * 24, 152, 24, 26, { ingredient: id })),
-  r('cauldron', 'cauldron', 128, 76, 64, 52),
-  r('prop:heat', 'prop', 136, 129, 48, 24, { step: 'heat' }),
-  r('prop:grind', 'prop', 100, 152, 26, 26, { step: 'grind' }),
-  r('prop:stir', 'prop', 194, 152, 26, 26, { step: 'stir' }),
-  r('prop:cool', 'prop', 222, 152, 26, 26, { step: 'cool' }),
-  r('scroll', 'scroll', 252, 152, 26, 26),
-  r('book', 'book', 14, 114, 62, 34),
-  r('owl', 'owl', 16, 68, 32, 26)
+  ...SHELF_IDS.map((id, i) => r('jar:' + id, 'jar', 'right', 208 + (i % 4) * 26, i < 4 ? 24 : 62, 25, 28, { ingredient: id })),
+  ...BAG_IDS.map((id, i) => r('bag:' + id, 'bag', 'left', 2 + i * 24, 152, 24, 26, { ingredient: id })),
+  r('cauldron', 'cauldron', 'centre', 128, 76, 64, 52),
+  r('prop:heat', 'prop', 'centre', 136, 129, 48, 24, { step: 'heat' }),
+  r('prop:grind', 'prop', 'centre', 100, 152, 26, 26, { step: 'grind' }),
+  r('prop:stir', 'prop', 'centre', 194, 152, 26, 26, { step: 'stir' }),
+  r('prop:cool', 'prop', 'centre', 222, 152, 26, 26, { step: 'cool' }),
+  r('scroll', 'scroll', 'right', 252, 152, 26, 26),
+  r('book', 'book', 'left', 14, 114, 62, 34),
+  r('owl', 'owl', 'left', 16, 68, 32, 26)
 ]);
+// Core coordinates: every draw function below works in these, under its group's offset.
 const AT = Object.fromEntries(LAYOUT.map(hit => [hit.id, hit]));
+
+/** Where each group sits in a W×H room: left pinned left, centre centred, right pinned right, all on the bench. */
+export function labGroups(W = LAB_W, H = LAB_H) {
+  const dy = H - LAB_H;
+  return Object.freeze({
+    left: Object.freeze({ dx: 0, dy }),
+    centre: Object.freeze({ dx: Math.floor((W - LAB_W) / 2), dy }),
+    right: Object.freeze({ dx: W - LAB_W, dy })
+  });
+}
+const LAYOUTS = new Map();
+/** The room's tap targets in logical room px (memoised per size). At 320×180 it is the core layout. */
+export function labLayout(W = LAB_W, H = LAB_H) {
+  const key = W + 'x' + H;
+  if (!LAYOUTS.has(key)) {
+    const groups = labGroups(W, H);
+    const hits = Object.freeze(LAYOUT.map(hit => Object.freeze({ ...hit, x: hit.x + groups[hit.group].dx, y: hit.y + groups[hit.group].dy })));
+    LAYOUTS.set(key, Object.freeze({ W, H, groups, hits, at: Object.freeze(Object.fromEntries(hits.map(hit => [hit.id, hit]))) }));
+  }
+  return LAYOUTS.get(key);
+}
 
 // Cauldron liquid follows the mix's strongest property (resolve.js mixHint).
 const TINT = Object.freeze({
@@ -94,14 +121,17 @@ function pool(ctx, color, cx, cy, rx, ry, a) {
   glow(ctx, a, () => { for (const k of [1, 0.7, 0.42]) ellipse(ctx, color, cx, cy, Math.round(rx * k), Math.round(ry * k)); });
 }
 
-/** Whole-number device-pixel fit of the 320×180 scene into a CSS box, centred. */
+/** Whole-number device-pixel fit into a CSS box: the 320×180 core always fits, then the
+    room (W×H, capped at 480×240) takes the rest of the box, centred. */
 export function fitLab(cssWidth, cssHeight, dpr = 1) {
   const ratio = Number(dpr) > 0 ? Number(dpr) : 1;
   const canvasW = Math.max(1, Math.round(cssWidth * ratio)), canvasH = Math.max(1, Math.round(cssHeight * ratio));
   const device = Math.max(1, Math.floor(Math.min(canvasW / LAB_W, canvasH / LAB_H)));
+  const W = Math.max(LAB_W, Math.min(LAB_MAX_W, Math.floor(canvasW / device)));
+  const H = Math.max(LAB_H, Math.min(LAB_MAX_H, Math.floor(canvasH / device)));
   return {
-    device, dpr: ratio, canvasW, canvasH,
-    ox: Math.floor((canvasW - LAB_W * device) / 2), oy: Math.floor((canvasH - LAB_H * device) / 2)
+    device, dpr: ratio, canvasW, canvasH, W, H,
+    ox: Math.floor((canvasW - W * device) / 2), oy: Math.floor((canvasH - H * device) / 2)
   };
 }
 
@@ -109,24 +139,42 @@ export function hitAt(hits, x, y) {
   return (hits || []).find(hit => x >= hit.x && x < hit.x + hit.w && y >= hit.y && y < hit.y + hit.h) || null;
 }
 
-/* ---------- room ---------- */
+/* ---------- room (whole-room parts draw in room px: W×H, groups from labGroups) ---------- */
+// Beyond the room caps the box is painted as more wall and bench, never black.
 function drawBackdrop(ctx, fit) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  px(ctx, Q.deep, 0, 0, fit.canvasW, fit.canvasH);
+  const bench = Math.max(0, Math.min(fit.canvasH, fit.oy + (110 + fit.H - LAB_H) * fit.device));
+  px(ctx, Q.stoneDark, 0, 0, fit.canvasW, bench);
+  px(ctx, Q.woodDark, 0, bench, fit.canvasW, fit.canvasH - bench);
 }
 
-function drawWall(ctx) {
-  px(ctx, Q.stoneDark, 0, 0, LAB_W, 112);
-  for (let y = 0; y < 112; y += 8) {
-    const shift = (y / 8) & 1 ? 8 : 0;
-    for (let x = -shift; x < LAB_W; x += 16) {
+/* `paint` is the whole canvas in room px ({ x0, y0, x1, y1 }): wall, beam and bench carry
+   on past the room caps so the box never shows bare bands. */
+function drawWall(ctx, H, groups, paint) {
+  const dy = H - LAB_H, fire = groups.centre.dx, top = 112 + dy;
+  px(ctx, Q.stoneDark, paint.x0, paint.y0, paint.x1 - paint.x0, top - paint.y0);
+  for (let y = Math.floor(paint.y0 / 8) * 8; y < top; y += 8) {
+    const shift = Math.abs(y / 8) % 2 ? 8 : 0;
+    for (let x = Math.floor(paint.x0 / 16) * 16 - shift; x < paint.x1; x += 16) {
       // Bricks near the fire and the lantern take the warm stone ramp.
-      const warm = Math.hypot(x + 8 - 160, (y + 4 - 110) * 1.4) < 78 || Math.hypot(x + 8 - 96, y + 4 - 20) < 34;
+      const warm = Math.hypot(x + 8 - 160 - fire, (y + 4 - 110 - dy) * 1.4) < 78 || Math.hypot(x + 8 - 96 - fire, y + 4 - 20 - dy) < 34;
       px(ctx, warm ? Q.warm : Q.stone, x + 1, y + 1, 15, 7);
       if (hash(x, y) % 5 === 0) px(ctx, warm ? Q.warmLit : Q.stoneMid, x + 1, y + 1, 15, 1);
       if (hash(y, x) % 9 === 0) px(ctx, Q.stoneDark, x + 4 + (hash(x, y) % 8), y + 3, 2, 1);
     }
   }
+}
+
+/** A ceiling beam across the extra height above the core: the lantern and the plants hang from it. */
+function drawBeam(ctx, H, paint) {
+  const dy = H - LAB_H, x0 = paint.x0, w = paint.x1 - paint.x0;
+  if (dy < 4) return;
+  const h = Math.min(6, dy);
+  px(ctx, Q.woodDark, x0, dy - h, w, h);
+  px(ctx, Q.wood, x0, dy - h, w, Math.max(1, h - 3));
+  px(ctx, Q.rockLit, x0, dy - h, w, 1);
+  px(ctx, Q.outline, x0, dy, w, 1);
+  for (let x = Math.floor(x0 / 64) * 64 + 12; x < paint.x1; x += 64) px(ctx, Q.woodDark, x, dy - h + 1, 2, 1);
 }
 
 function drawWindow(ctx, frame, still) {
@@ -225,15 +273,19 @@ function drawJar(ctx, hit, selected, lean = 0, state = 'raw') {
   px(ctx, Q.woodDark, x + 7, y + 25, 11, 1);
 }
 
-function drawBench(ctx) {
-  px(ctx, Q.woodDark, 0, 110, LAB_W, 70);
-  for (let y = 112; y < LAB_H; y += 9) {
-    px(ctx, Q.wood, 0, y, LAB_W, 8);
-    for (let x = (y * 7) % 37; x < LAB_W; x += 53) px(ctx, Q.woodDark, x, y + 2, 9, 1);
+function drawBench(ctx, H, paint) {
+  const dy = H - LAB_H, x0 = paint.x0, w = paint.x1 - paint.x0;
+  px(ctx, Q.woodDark, x0, 110 + dy, w, paint.y1 - 110 - dy);
+  for (let y = 112; y + dy < paint.y1; y += 9) {
+    px(ctx, Q.wood, x0, y + dy, w, 8);
+    for (let x = Math.floor(x0 / 53) * 53 + (y * 7) % 37; x < paint.x1; x += 53) px(ctx, Q.woodDark, x, y + 2 + dy, 9, 1);
   }
-  px(ctx, Q.rockLit, 0, 110, LAB_W, 1);
-  px(ctx, Q.outline, 0, 111, LAB_W, 1);
-  // A blue cloth under the cauldron, like the mock's.
+  px(ctx, Q.rockLit, x0, 110 + dy, w, 1);
+  px(ctx, Q.outline, x0, 111 + dy, w, 1);
+}
+
+/** A blue cloth under the cauldron, like the mock's (centre group). */
+function drawCloth(ctx) {
   px(ctx, Q.oceanDark, 118, 142, 84, 16);
   for (let x = 120; x < 200; x += 6) px(ctx, Q.ocean, x, 144 + (x % 12 ? 0 : 6), 3, 1);
 }
@@ -435,20 +487,22 @@ function drawToolUse(ctx, tool, clock, reduced) {
   }
 }
 
-function drawLight(ctx) {
-  pool(ctx, Q.lava, 160, 132, 64, 30, 0.07);
-  pool(ctx, Q.oceanLit, 160, 92, 40, 18, 0.04);
+function drawLight(ctx, groups, paint) {
+  const cx = 160 + groups.centre.dx, dy = groups.centre.dy, { x0, y0, x1, y1 } = paint;
+  pool(ctx, Q.lava, cx, 132 + dy, 64, 30, 0.07);
+  pool(ctx, Q.oceanLit, cx, 92 + dy, 40, 18, 0.04);
+  // A soft dark frame at the canvas edge (not the room edge, which may sit inside it).
   glow(ctx, 0.35, () => {
-    px(ctx, Q.deep, 0, 0, LAB_W, 2); px(ctx, Q.deep, 0, LAB_H - 2, LAB_W, 2);
-    px(ctx, Q.deep, 0, 0, 2, LAB_H); px(ctx, Q.deep, LAB_W - 2, 0, 2, LAB_H);
+    px(ctx, Q.deep, x0, y0, x1 - x0, 2); px(ctx, Q.deep, x0, y1 - 2, x1 - x0, 2);
+    px(ctx, Q.deep, x0, y0, 2, y1 - y0); px(ctx, Q.deep, x1 - 2, y0, 2, y1 - y0);
   });
 }
 
-/** Where an ingredient lives — the centre of its jar or bag slot — for effects that send it home. */
-function homeOf(id) {
-  const jar = AT['jar:' + id];
+/** Where an ingredient lives — the centre of its jar or bag slot, in room px — for effects that send it home. */
+function homeIn(layout, id) {
+  const jar = layout.at['jar:' + id];
   if (jar) return { x: jar.x + 12, y: jar.y + 13 };
-  const bag = AT['bag:' + id];
+  const bag = layout.at['bag:' + id];
   if (!bag) return null;
   const { width, height } = spriteSize(id, 1);
   return { x: bag.x + 7 + width / 2, y: bag.y + 7 + height / 2 };
@@ -477,34 +531,67 @@ export function drawLab(canvas, options = {}) {
   const clock = Number(options.now) || (Number(options.time) || 0) * 1000;
   const effect = options.effect || null, t = fxTime(effect, clock), pose = fxPose(effect, t, !!options.reduced);
 
+  const layout = labLayout(fit.W, fit.H), { W, H, groups } = layout, room = { dx: 0, dy: 0 };
+  // Each group draws in core coordinates under its own offset; `room` parts span the whole W×H.
+  const place = g => ctx.setTransform(fit.device, 0, 0, fit.device, fit.ox + (g.dx + pose.shakeX) * fit.device, fit.oy + (g.dy + pose.shakeY) * fit.device);
+
+  // The whole canvas in room px, so wall and bench reach every edge of the box.
+  const paint = {
+    x0: -Math.ceil(fit.ox / fit.device), y0: -Math.ceil(fit.oy / fit.device),
+    x1: W + Math.ceil((fit.canvasW - fit.ox - W * fit.device) / fit.device), y1: H + Math.ceil((fit.canvasH - fit.oy - H * fit.device) / fit.device)
+  };
+
   drawBackdrop(ctx, fit);
-  ctx.setTransform(fit.device, 0, 0, fit.device, fit.ox + pose.shakeX * fit.device, fit.oy + pose.shakeY * fit.device);
-  drawWall(ctx);
+  place(room);
+  drawWall(ctx, H, groups, paint);
+  drawBeam(ctx, H, paint);
+  place(groups.centre);
   drawWindow(ctx, frame, still);
   drawLantern(ctx, frame, still);
+  place(groups.left);
   drawPlants(ctx, frame, still);
+  place(groups.right);
   drawShelf(ctx);
   // Jars lean toward a singularity (every jar sits right of it).
   for (const id of SHELF_IDS) drawJar(ctx, AT['jar:' + id], selection === 'jar:' + id, -pose.lean, selection === 'jar:' + id ? formOf(options.held).state : 'raw');
-  drawBench(ctx);
+  place(room);
+  drawBench(ctx, H, paint);
+  place(groups.centre);
+  drawCloth(ctx);
+  place(groups.left);
   drawBookStack(ctx);
   drawOwl(ctx, now, still, pose);
   drawJournal(ctx);
+  place(groups.right);
   drawCat(ctx, now, still, pose);
+  place(groups.centre);
   drawBurner(ctx, frame, still);
   drawCauldron(ctx, options, frame, now, still);
   drawMortar(ctx);
   drawSpoon(ctx);
   drawFrost(ctx, frame, still);
+  place(groups.right);
   drawScroll(ctx);
+  place(groups.centre);
   drawToolUse(ctx, options.tool, clock, !!options.reduced);
+  place(groups.left);
   drawBag(ctx, selection, options.held);
-  drawLight(ctx);
-  drawEffect(ctx, effect, { t, now: clock, reduced: !!options.reduced, still, mix: options.mix || [], home: homeOf });
+  place(room);
+  drawLight(ctx, groups, paint);
+  // Effects are cauldron-centred: they draw in the centre group's core coordinates;
+  // `shift` and `room` say where the other groups and the whole room sit from there.
+  const c = groups.centre;
+  place(c);
+  drawEffect(ctx, effect, {
+    t, now: clock, reduced: !!options.reduced, still, mix: options.mix || [],
+    home: id => { const at = homeIn(layout, id); return at && { x: at.x - c.dx, y: at.y - c.dy }; },
+    shift: { left: { x: groups.left.dx - c.dx, y: 0 }, centre: { x: 0, y: 0 }, right: { x: groups.right.dx - c.dx, y: 0 } },
+    room: { x: -c.dx, y: -c.dy, w: W, h: H }
+  });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
   const k = fit.device / fit.dpr;
-  const hits = LAYOUT.map(hit => ({
+  const hits = layout.hits.map(hit => ({
     ...hit, x: (fit.ox + hit.x * fit.device) / fit.dpr, y: (fit.oy + hit.y * fit.device) / fit.dpr, w: hit.w * k, h: hit.h * k
   }));
   return { hits, fit };

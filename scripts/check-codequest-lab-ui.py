@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.stdout.reconfigure(encoding='utf-8')
 RECOVERY = runpy.run_path(str(ROOT / 'scripts/check-architecture-recovery.py'))
 SNAPSHOT = "SQGames.get('codequest').snapshot()"
-SIZES = [(1280, 800), (1280, 600)]
+SIZES = [(1280, 800), (1280, 600), (1024, 600), (1366, 768)]
 
 
 def fixture(completed):

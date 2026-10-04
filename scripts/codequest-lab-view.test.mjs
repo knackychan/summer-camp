@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LAB_W, LAB_H, fitLab, drawLab, hitAt } from '../js/games/codequest/lab/lab-view.js';
+import { LAB_W, LAB_H, LAB_MAX_W, LAB_MAX_H, fitLab, drawLab, hitAt, labLayout } from '../js/games/codequest/lab/lab-view.js';
 import { SHELF_IDS, BAG_IDS } from '../js/games/codequest/lab/ingredients.js';
-import { CQ_HEX } from '../js/games/codequest/palette.js';
+import { CQ_HEX, Q } from '../js/games/codequest/palette.js';
 
 class FakeContext {
   constructor() { this.fillStyle = ''; this.globalAlpha = 1; this.imageSmoothingEnabled = true; this.ops = 0; this.bad = []; }
@@ -14,8 +14,8 @@ class FakeCanvas {
   getContext(kind) { return kind === '2d' ? this.ctx : null; }
 }
 
-// Stage boxes the Lab can get: 1280×600 and 1280×800 screens minus host bar and strip.
-const STAGES = [[1280, 440, 1], [1280, 640, 1], [1280, 440, 2], [1024, 520, 1.5]];
+// Stage boxes the Lab can get: 1024×600, 1280×600, 1280×800 and 1366×768 screens minus host bar and strip.
+const STAGES = [[1280, 440, 1], [1280, 640, 1], [1280, 440, 2], [1024, 520, 1.5], [1014, 440, 1], [1270, 630, 1], [1270, 630, 1.5], [1356, 560, 1]];
 const EXPECTED = [
   ...SHELF_IDS.map(id => 'jar:' + id), ...BAG_IDS.map(id => 'bag:' + id),
   'cauldron', 'prop:grind', 'prop:heat', 'prop:stir', 'prop:cool', 'book', 'scroll', 'owl'
@@ -28,14 +28,64 @@ const draw = (w, h, dpr, extra = {}) => {
 // 0.01 px slack: CSS rects at fractional dpr carry float rounding on shared edges.
 const overlap = (a, b, e = 0.01) => a.x < b.x + b.w - e && b.x < a.x + a.w - e && a.y < b.y + b.h - e && b.y < a.y + a.h - e;
 
-test('fitLab: whole device pixels, centred, never below 1', () => {
+test('fitLab: whole device pixels, the room widens to fill the box (capped), centred, never below 1', () => {
   const fit = fitLab(1280, 440, 1);
   assert.equal(fit.device, 2);
-  assert.equal(fit.ox, Math.floor((1280 - LAB_W * 2) / 2));
-  assert.equal(fit.oy, Math.floor((440 - LAB_H * 2) / 2));
+  assert.deepEqual([fit.W, fit.H], [LAB_MAX_W, 220]);
+  assert.equal(fit.ox, Math.floor((1280 - fit.W * 2) / 2));
+  assert.equal(fit.oy, 0);
   assert.equal(fitLab(1280, 640, 1).device, 3);
   assert.equal(fitLab(1280, 440, 2).device, 4);
   assert.equal(fitLab(100, 50, 1).device, 1);
+  // 1280×800 at 1× and 1.5×, 1024×600 at 1× (lab-feel design D1 examples).
+  const at = (w, h, dpr) => { const f = fitLab(w, h, dpr); return [f.device, f.W, f.H]; };
+  assert.deepEqual(at(1270, 630, 1), [3, 423, 210]);
+  assert.deepEqual(at(1270, 630, 1.5), [5, 381, 189]);
+  assert.deepEqual(at(1014, 440, 1), [2, 480, 220]);
+  for (const [w, h, dpr] of STAGES) {
+    const f = fitLab(w, h, dpr);
+    // Below the caps the room leaves less than one device step of the box on each axis.
+    if (f.W < LAB_MAX_W) assert.ok(f.canvasW - f.W * f.device < f.device, w + 'x' + h + '@' + dpr + ' width');
+    if (f.H < LAB_MAX_H) assert.ok(f.canvasH - f.H * f.device < f.device, w + 'x' + h + '@' + dpr + ' height');
+    assert.ok(f.W >= LAB_W && f.H >= LAB_H && f.W <= LAB_MAX_W && f.H <= LAB_MAX_H);
+  }
+});
+
+test('labLayout: the core is the old layout; groups pin left, centre and right at every room size', () => {
+  const core = labLayout(LAB_W, LAB_H).hits;
+  const old = {
+    cauldron: [128, 76, 64, 52], 'prop:heat': [136, 129, 48, 24], 'prop:grind': [100, 152, 26, 26], 'prop:stir': [194, 152, 26, 26],
+    'prop:cool': [222, 152, 26, 26], scroll: [252, 152, 26, 26], book: [14, 114, 62, 34], owl: [16, 68, 32, 26],
+    'jar:redMushroom': [208, 24, 25, 28], 'bag:sunHerb': [2, 152, 24, 26]
+  };
+  for (const [id, rect] of Object.entries(old)) {
+    const hit = core.find(h => h.id === id);
+    assert.deepEqual([hit.x, hit.y, hit.w, hit.h], rect, id);
+  }
+  for (const [W, H] of [[320, 180], [381, 189], [400, 200], [423, 210], [455, 186], [480, 220], [480, 240]]) {
+    const { hits } = labLayout(W, H);
+    assert.deepEqual(hits.map(h => h.id).sort(), [...EXPECTED].sort());
+    for (const hit of hits) {
+      assert.ok(Math.min(hit.w, hit.h) >= 24, hit.id);
+      assert.ok(hit.x >= 0 && hit.y >= 0 && hit.x + hit.w <= W && hit.y + hit.h <= H, `${hit.id} inside ${W}x${H}`);
+    }
+    for (let i = 0; i < hits.length; i++) for (let j = i + 1; j < hits.length; j++) assert.ok(!overlap(hits[i], hits[j]), `${hits[i].id} overlaps ${hits[j].id} at ${W}x${H}`);
+    const at = id => hits.find(h => h.id === id);
+    assert.equal(at('bag:sunHerb').x, 2, 'left group pinned left');
+    assert.equal(at('jar:redMushroom').x, 208 + W - 320, 'right group pinned right');
+    assert.equal(at('cauldron').x, 128 + Math.floor((W - 320) / 2), 'centre group centred');
+    assert.equal(at('book').y, 114 + H - 180, 'everything sits on the bench');
+  }
+});
+
+test('the box beyond the room is wall and bench, never the black backdrop', () => {
+  for (const [w, h, dpr] of [[1280, 440, 1], [1356, 560, 1], [2000, 500, 1]]) {
+    const canvas = new FakeCanvas(), first = [];
+    const fillRect = canvas.ctx.fillRect.bind(canvas.ctx);
+    canvas.ctx.fillRect = (...rect) => { if (first.length < 2) first.push(canvas.ctx.fillStyle); fillRect(...rect); };
+    drawLab(canvas, { cssWidth: w, cssHeight: h, dpr, time: 1 });
+    assert.ok(!first.includes(CQ_HEX[Q.deep]), `${w}x${h} backdrop is ${first}`);
+  }
 });
 
 test('drawLab returns a hit for every interactive object', () => {
@@ -169,4 +219,17 @@ test('a changed form looks different from the fresh one, and a tool use shows th
   assert.notEqual(fills({ mix: ['redMushroom:frozen'] }), fills({ mix: ['redMushroom'] }));
   assert.ok(ops({ tool: { step: 'cool', start: 1900 } }) > ops({}));
   assert.equal(ops({ tool: { step: 'cool', start: 0 } }), ops({}), 'gone after 600 ms');
+});
+
+/* ---------- lab-feel slice 01: effects in the core room and the biggest room ---------- */
+test('every effect draws palette-only in a 320×180 and a 480×240 room, hits unchanged', () => {
+  for (const [w, h] of [[640, 360], [960, 480]]) {
+    const fit = fitLab(w, h, 1), base = draw(w, h, 1).out.hits;
+    assert.deepEqual([fit.W, fit.H], w === 640 ? [320, 180] : [480, 240]);
+    for (const id of FX_IDS) for (const t of [0, 150, FX_BEAT / 2, FX_BEAT * 3]) {
+      const { canvas, out } = draw(w, h, 1, { now: 50000 + t, mix: ['redMushroom'], effect: { ruleId: id, intensity: 3, start: 50000, potionId: 'focus', lastIngredient: 'voidDust' } });
+      assert.deepEqual(canvas.ctx.bad, [], `${id} t=${t} at ${w}x${h}`);
+      assert.deepEqual(out.hits, base, `${id} moved a tap target`);
+    }
+  }
 });

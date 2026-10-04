@@ -1,9 +1,11 @@
 /* Laboratory of Curiosity reaction effects (lab design rules table, D8, D13; slice 05).
    Every outcome is a small, funny event in the room: a ≤ 3 s main beat, and for a few
    (soot, the blob, the copies, the vines) a lingering part that stays until ✕ Clear or
-   the next Brew. Pure drawing in logical 320×180 px, palette colours only; effects never
-   move a tap target. Under reduced motion: no shake, no flash, the explosion is a puff,
-   half the particles, and the lingering parts hold still. */
+   the next Brew. Pure drawing in logical px of the centre group's 320×180 core (the
+   cauldron's frame); `o.shift` places spots on the left / right groups and `o.room` is
+   the whole room (lab-feel D1). Palette colours only; effects never move a tap target.
+   Under reduced motion: no shake, no flash, the explosion is a puff, half the
+   particles, and the lingering parts hold still. */
 import { Q } from '../palette.js';
 import { drawSprite, spriteSize } from '../pixel-art.js';
 import { px, drawLabSprite, labSpriteSize } from './lab-art.js';
@@ -21,6 +23,10 @@ const lerp = (a, b, k) => a + (b - a) * k;
 const easeOut = k => 1 - (1 - k) * (1 - k);
 const rand = (i, salt = 0) => { let h = (i * 374761393 + salt * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const count = (n, reduced) => Math.max(1, reduced ? Math.ceil(n / 2) : n);
+// Without a layout (old callers) the room is the 320×180 core and every group sits at 0.
+const CORE_ROOM = Object.freeze({ x: 0, y: 0, w: 320, h: 180 });
+const roomOf = o => o.room || CORE_ROOM;
+const shiftX = (o, group) => (o.shift && o.shift[group] ? o.shift[group].x : 0);
 
 function alpha(ctx, a, fn) {
   if (a <= 0) return;
@@ -115,7 +121,8 @@ function explosion(ctx, e, t, o) {
       const p = clamp01(t / 1200);
       alpha(ctx, 1 - p, () => { disc(ctx, Q.grey, CX, SURFACE - 8 - p * 10, 5 + p * 14); disc(ctx, Q.snowShade, CX - 3, SURFACE - 10 - p * 10, 3 + p * 8); });
     } else {
-      if (t < 200) alpha(ctx, 0.5 * (1 - t / 200), () => px(ctx, Q.white, 0, 0, 320, 180));
+      const room = roomOf(o);
+      if (t < 200) alpha(ctx, 0.5 * (1 - t / 200), () => px(ctx, Q.white, room.x, room.y, room.w, room.h));
       const p = easeOut(clamp01(t / 700)), n = count(14 + k * 6, o.reduced);
       alpha(ctx, t < 900 ? 1 : 1 - (t - 900) / 600, () => {
         for (let i = 0; i < n; i++) {
@@ -135,9 +142,10 @@ function explosion(ctx, e, t, o) {
     }
   }
   // Lingering: soot on the owl (a harmless smudge) and a curl of smoke above it.
-  for (const [x, y] of [[23, 81], [26, 83], [31, 82], [34, 80], [28, 86], [36, 85], [24, 88], [33, 89]]) px(ctx, Q.rockDark, x, y, 2, 1);
+  const owl = shiftX(o, 'left');
+  for (const [x, y] of [[23, 81], [26, 83], [31, 82], [34, 80], [28, 86], [36, 85], [24, 88], [33, 89]]) px(ctx, Q.rockDark, owl + x, y, 2, 1);
   const curl = o.still ? 0 : Math.floor(o.now / 400) % 3;
-  px(ctx, Q.grey, 30 + curl, 66, 1, 2); px(ctx, Q.grey, 29 - curl, 63, 1, 2);
+  px(ctx, Q.grey, owl + 30 + curl, 66, 1, 2); px(ctx, Q.grey, owl + 29 - curl, 63, 1, 2);
 }
 
 function temporalRupture(ctx, e, t, o) {
@@ -205,11 +213,13 @@ function duplication(ctx, e, t, o) {
   }
 }
 
-const VINES = [[205, 92], [311, 92], [60, 100], [118, 100], [196, 100], [250, 100]];
+// Vine roots: on the shelf posts (right group), by the books (left) and either side of the cauldron.
+const VINES = [[205, 92, 'right'], [311, 92, 'right'], [60, 100, 'left'], [118, 100, 'centre'], [196, 100, 'centre'], [250, 100, 'right']];
+const vineAt = (o, v) => [VINES[v][0] + shiftX(o, VINES[v][2]), VINES[v][1]];
 function overgrowth(ctx, e, t, o) {
   const n = Math.min(VINES.length, 2 + e.intensity * 2);
   for (let v = 0; v < n; v++) {
-    const [x, base] = VINES[v], full = 60 + Math.round(rand(v, 5) * 26), grow = easeOut(clamp01((t - v * 120) / 2000));
+    const [x, base] = vineAt(o, v), full = 60 + Math.round(rand(v, 5) * 26), grow = easeOut(clamp01((t - v * 120) / 2000));
     const h = Math.round(full * grow), sway = o.still ? 0 : Math.floor((o.now / 500 + v) % 2);
     for (let y = 0; y < h; y += 2) {
       const dx = (Math.floor(y / 6) % 2 ? 1 : 0) + (y > h - 12 ? sway : 0);
@@ -275,7 +285,7 @@ function flamingVines(ctx, e, t, o) {
   // Vines like Overgrowth, burning at the tips: orange leaves and flickering flame crowns.
   const n = Math.min(VINES.length, 2 + e.intensity * 2);
   for (let v = 0; v < n; v++) {
-    const [x, base] = VINES[v], full = 50 + Math.round(rand(v, 9) * 24), grow = easeOut(clamp01((t - v * 120) / 1800));
+    const [x, base] = vineAt(o, v), full = 50 + Math.round(rand(v, 9) * 24), grow = easeOut(clamp01((t - v * 120) / 1800));
     const h = Math.round(full * grow), flick = o.still ? 0 : Math.floor((o.now / 140 + v) % 3);
     for (let y = 0; y < h; y += 2) {
       const dx = Math.floor(y / 6) % 2 ? 1 : 0;
@@ -341,7 +351,8 @@ function glow(ctx, e, t, o) {
   if (t >= FX_BEAT) return;
   const fade = t < 300 ? t / 300 : t > 2300 ? 1 - (t - 2300) / 700 : 1;
   const pulse = o.reduced ? 0.12 : 0.1 + 0.06 * Math.sin(t / 180) + e.intensity * 0.02;
-  alpha(ctx, pulse * fade, () => px(ctx, Q.yellow, 0, 0, 320, 180));
+  const room = roomOf(o);
+  alpha(ctx, pulse * fade, () => px(ctx, Q.yellow, room.x, room.y, room.w, room.h));
   alpha(ctx, fade, () => { ring(ctx, Q.sandLit, 176, 22, 9 + e.intensity + (o.reduced ? 0 : Math.floor(t / 250) % 2)); ring(ctx, Q.yellow, 176, 22, 12 + e.intensity); });
 }
 
@@ -397,8 +408,9 @@ const DRAW = { potion, pocketUniverse, explosion, thermalShock, temporalRupture,
 export const FX_IDS = Object.freeze(['potion', ...LAB_RULES.map(rule => rule.id).filter(id => Object.hasOwn(DRAW, id))]);
 
 /**
- * Draws the active effect over the room. `o`: { t, now, reduced, still, mix, home(id) → {x, y} },
- * where `home` is where an ingredient lives (its jar or bag slot), in logical px.
+ * Draws the active effect over the room. `o`: { t, now, reduced, still, mix, home(id) → {x, y},
+ * shift?: { left, centre, right: {x, y} }, room?: {x, y, w, h} }, all in the centre group's
+ * logical px; `home` is where an ingredient lives (its jar or bag slot).
  */
 export function drawEffect(ctx, effect, o) {
   const fn = effect && DRAW[effect.ruleId];

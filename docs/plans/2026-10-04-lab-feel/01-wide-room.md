@@ -37,3 +37,14 @@
 - Every effect id draws palette-only at 320×180 and 480×240, with anchors in range.
 - Manual check at 1280×800 and 1024×600: no black bars, no page scroll; owl, cauldron and shelf all in place.
 - `node scripts/check.mjs` green.
+
+## Implementation notes (2026-10-04)
+
+- **Groups by transform, not new coordinates.** Each hit carries its `group`; every draw function keeps its core 320×180 coordinates and `drawLab` sets the group's offset on the canvas transform before calling it. `labLayout(W, H)` returns `{ W, H, groups, hits, at }`; at 320×180 the hits are the old layout (tested).
+- **Effects** draw in the centre group's frame (the cauldron's), so `CX`, `SURFACE`, the orb, copy and flake spots keep their constants. `drawEffect` gets `o.shift` (left / right group offsets from the centre) and `o.room` (the whole room) instead of a named anchor list: the owl soot uses `shift.left`, the vines carry a group per root, the explosion flash and Glow fill `room`, and `home(id)` is converted into the centre frame. Without them (old callers) the room is the core and every shift is 0.
+- **Past the caps** (e.g. 1280×600 → 2×, room 480×220 inside a 625-px-wide box) wall bricks, the ceiling beam and bench planks are painted across the whole canvas (`paint` rect in room px), and the soft dark frame sits at the canvas edge, so there are no bands at all, not just no black.
+- **Ceiling beam** appears once the room is ≥ 4 px taller than the core.
+- **CSS:** `.cq-lab` gap 0, `.cq-lab-scene` without border or radius. `min-height: 300px` stays: the stage has no definite height on desktop, and the scene's canvas is absolutely positioned, so `min-height: 0` would collapse it.
+- **Tests:** 3 new (fit examples and the < 1 device step rule over 8 stages; layout matrix over 7 room sizes — ids, ≥ 24 logical px, inside, no overlap, pinning; the backdrop is never `Q.deep`), plus every effect palette-only in a 320×180 and a 480×240 room. 15 in `codequest-lab-view.test.mjs`.
+- **Harness:** `check-codequest-lab-ui.py` now also runs 1024×600 and 1366×768 (pulled forward from slice 06): green at all 4 sizes, no page or console errors. Screenshots `test-results/codequest-lab/harness-*-{1280x800,1280x600,1024x600,1366x768}.png`.
+- `dist/android-web` rebuilt (`node scripts/build-android-web.mjs`) so the payload verifier in `check.mjs` matches source. `sw.js` cache `summer-quest-v159-lab-feel-01`.

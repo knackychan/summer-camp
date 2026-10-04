@@ -1,6 +1,6 @@
 # Slice 02 — Depth: a room that feels 3D
 
-**Status:** Approved by Papa 2026-10-04 (`design.md` D6, written from Papa's "feel 3D like the planet"). Papa reviews D6 before this slice starts.
+**Status:** Approved by Papa 2026-10-04 (`design.md` D6, written from Papa's "feel 3D like the planet"). Papa approved D6 on review ("ok go").
 **Goal:** The Lab reads as a 3D room, with perspective, light, volume, shadows and a little parallax. It is still crisp pixel art on a 2D canvas.
 **Depends on:** 01.
 **Files:** `js/games/codequest/lab/lab-art.js`, `js/games/codequest/lab/lab-view.js`, `js/games/codequest/lab/lab-screen.js` (parallax target), `js/games/codequest/palette.js` (append only, if a ramp step is missing), `scripts/codequest-lab-view.test.mjs`, `sw.js` cache bump.
