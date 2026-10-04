@@ -4,7 +4,10 @@
    Slice 05: tools sit on the piece, selection never touches layout, bricks
    have real proportions and studs on a studded baseplate. */
 import { loadThree, createRenderer, releaseContext, firstFrame, observeResize } from "../games/three-runtime.js";
-import { CATEGORIES, COLORS, COLOR_NAMES, PARTS, getColorHex, getPart } from "./brick-catalog.js";
+import {
+  BRICK_HEIGHT, CATEGORIES, COLORS, COLOR_NAMES, FIXED_COLOR_SHAPES, PARTS, PLATE_HEIGHT, getColorHex, getPart, partDims,
+} from "./brick-catalog.js";
+import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, worldConnectors } from "./brick-rails.js";
 import { BrickLabStorage } from "./brick-storage.js";
 
 let THREE = null;
@@ -26,9 +29,44 @@ const HINTS = {
   explore: ["Explore freely. Tap something to edit it.", "自由探索。點任何東西就能修改。"],
   backInBuild: ["Back in Build — edit the piece you tapped.", "回到建造——修改你點的積木。"],
   saved: ["Saved on this tablet", "已儲存在這台平板"],
+  railSelected: ["Glowing dots are rail ends — turn or drag to join them.", "發光的點是軌道接頭，轉一轉或拖過去接起來。"],
+  railBusy: ["Rails can't overlap — try a free spot.", "軌道不能疊在一起，換個空位試試。"],
+  railJoined: ["Rails connected!", "軌道接上了！"],
+  circuit: ["Circuit complete!", "軌道接成一圈了！"],
 };
 
+/* Parts tray and info card (slice 11). */
+const TRAY = {
+  parts: (n) => [`${n} ${n === 1 ? "part" : "parts"}`, `${n} 種`],
+  search: ["Find a part", "找積木"],
+  results: ["Search", "搜尋"],
+  allSizes: ["All sizes", "全部尺寸"],
+  favorites: ["Favourites", "最愛"],
+  recents: ["Recent", "最近用過"],
+  favorite: ["Favourite", "最愛"],
+  none: ["No parts match.", "沒有符合的積木。"],
+  close: ["Close", "關閉"],
+  size: ["Size", "尺寸"],
+  studs: ["studs", "顆凸點"],
+  colours: (n) => [`${n} colours`, `${n} 種顏色`],
+  ownColours: ["Comes in its own colours", "有自己固定的顏色"],
+  railEnds: (n) => [`${n} rail ends`, `${n} 個軌道接頭`],
+  flat: ["Lies flat on the baseplate", "平放在底板上"],
+};
+
+const SNAP_GUIDES = {
+  studs: ["Snaps onto the studs. Stack it on other bricks.", "會卡在凸點上，可以疊在別的積木上。"],
+  rail: ["Snaps to a nearby rail end. Turn it until the ends face each other.", "靠近軌道接頭就會自動接上。轉一轉，讓接頭對好。"],
+  wheel: ["Put it next to an axle or a brick.", "放在車軸或積木旁邊。"],
+  plant: ["Plants straight into the baseplate.", "直接種在底板上。"],
+};
+
+const RECENT_MAX = 5;
+
 const TAU = Math.PI * 2;
+/* Rail end dots float just above the track; at most this many show. */
+const MARKER_Y = 0.62;
+const MARKER_MAX = 240;
 const DEFAULT_COLOR = "red";
 const BASEPLATE_GREEN = 0x4b9f4a;
 
@@ -66,6 +104,33 @@ function escapeHtml(value) {
 function partLabel(part, preReader) {
   /* Sized parts show "2×4" (the rail already names the category); others their name. */
   return part.size || (preReader ? "" : label(part.label));
+}
+
+/* "1 brick tall", "2 plates tall"… for the info card. */
+function heightText(part) {
+  if (isRail(part)) return TRAY.flat;
+  if (Math.abs(part.height - BRICK_HEIGHT) < 0.01) return ["1 brick tall", "1 塊積木高"];
+  const plates = Math.max(1, Math.round(part.height / PLATE_HEIGHT));
+  return [`${plates} ${plates === 1 ? "plate" : "plates"} tall`, `${plates} 片薄板高`];
+}
+
+function snapGuide(part) {
+  if (isRail(part)) return SNAP_GUIDES.rail;
+  if (part.shape === "wheel") return SNAP_GUIDES.wheel;
+  if (part.shape === "tree" || part.shape === "flower") return SNAP_GUIDES.plant;
+  return SNAP_GUIDES.studs;
+}
+
+/* Search folds case and lets "2x4" find "2×4"; labels match in EN and 中文. */
+function searchText(value) {
+  return String(value || "").toLowerCase().replace(/[x*]/g, "×").replace(/\s+/g, " ").trim();
+}
+
+function partMatches(part, query) {
+  if (!query) return true;
+  const category = CATEGORIES.find((c) => c.id === part.category);
+  const haystack = searchText([part.label[0], part.label[1], partDims(part), part.size, category ? category.label.join(" ") : ""].join(" "));
+  return query.split(" ").every((word) => haystack.includes(word));
 }
 
 function cssHex(hex) {
@@ -107,6 +172,8 @@ function makeKit() {
     /* Satin plastic by default: soft lo-fi highlights, not mirror gloss (slice 08). */
     mat: (hex, roughness = 0.45, metalness = 0) => keep(mats, `${hex}:${roughness}:${metalness}`,
       () => new THREE.MeshStandardMaterial({ color: hex, roughness, metalness })),
+    /* Any other shared material (rail glow, connector dots), freed with the lab. */
+    custom: (key, make) => keep(mats, key, make),
     dispose() {
       geos.forEach((g) => g.dispose());
       mats.forEach((m) => m.dispose());
@@ -234,19 +301,22 @@ function makeSlopePiece(part, colorHex, kit) {
 }
 
 function makeWheelPiece(part, colorHex, kit) {
-  const tire = kit.geo("wheel:tire", () => {
+  const scale = part.wheelScale || 1;
+  const tire = kit.geo(`wheel:tire:${scale}`, () => {
     const g = new THREE.LatheGeometry([
       [0.25, -0.21], [0.4, -0.22], [0.46, -0.15], [0.46, 0.15], [0.4, 0.22], [0.25, 0.21],
     ].map(([r, y]) => new THREE.Vector2(r, y)), 28);
     g.rotateZ(Math.PI / 2);
+    g.scale(scale, scale, scale);
     return g;
   });
-  const hub = kit.geo("wheel:hub", () => {
+  const hub = kit.geo(`wheel:hub:${scale}`, () => {
     const g = mergeGeometries([
       new THREE.CylinderGeometry(0.27, 0.27, 0.4, 20),
       new THREE.CylinderGeometry(0.1, 0.1, 0.46, 10),
     ]);
     g.rotateZ(Math.PI / 2);
+    g.scale(scale, scale, scale);
     return g;
   });
   const group = new THREE.Group();
@@ -255,24 +325,144 @@ function makeWheelPiece(part, colorHex, kit) {
   return group;
 }
 
-function makeRailPiece(part, kit) {
-  const rails = kit.geo("rail:rails", () => mergeGeometries([-0.62, 0.62].map((x) => {
-    const g = new THREE.BoxGeometry(0.12, 0.12, part.depth * 0.96);
-    g.translate(x, 0.03, 0);
-    return g;
-  })));
-  const sleepers = kit.geo("rail:sleepers", () => {
-    const list = [];
-    for (let z = -part.depth / 2 + 0.35; z <= part.depth / 2 - 0.35; z += 0.68) {
-      const g = new THREE.BoxGeometry(1.72, 0.1, 0.18);
-      g.translate(0, -0.04, z);
-      list.push(g);
+/* Track gauge and sleepers (slice 09, D17): every rail is built from the
+   catalog's centre-line segments, so straight, curve, T and cross share one
+   look and join seamlessly. */
+const RAIL_OFFSET = 0.62;
+const SLEEPER_STEP = 0.68;
+const SLEEPER_END = 0.35;
+const RAIL_STEEL = 0x8a9097;
+
+function railBar(length, x, z, angle) {
+  const g = new THREE.BoxGeometry(0.12, 0.12, length);
+  g.rotateY(angle);
+  g.translate(x, 0.03, z);
+  return g;
+}
+
+function sleeper(x, z, angle) {
+  const g = new THREE.BoxGeometry(1.72, 0.1, 0.18);
+  g.rotateY(angle);
+  g.translate(x, -0.04, z);
+  return g;
+}
+
+/* Positions along a run of `length`, one sleeper every SLEEPER_STEP. */
+function sleeperStops(length) {
+  const out = [];
+  for (let t = SLEEPER_END; t <= length - SLEEPER_END + 1e-6; t += SLEEPER_STEP) out.push(t);
+  return out;
+}
+
+function trackGeometries(part) {
+  const rails = [];
+  const sleepers = [];
+  part.track.forEach((segment) => {
+    if (segment.type === "pad") {
+      const g = new THREE.BoxGeometry(part.width - 0.14, 0.1, part.depth - 0.14);
+      g.translate(0, -0.04, 0);
+      sleepers.push(g);
+    } else if (segment.type === "line") {
+      const [ax, az] = segment.from;
+      const [bx, bz] = segment.to;
+      const length = Math.hypot(bx - ax, bz - az);
+      const ux = (bx - ax) / length;
+      const uz = (bz - az) / length;
+      /* A box's length runs along +z; rotateY(angle) turns +z to (ux, uz). */
+      const angle = Math.atan2(ux, uz);
+      const mx = (ax + bx) / 2;
+      const mz = (az + bz) / 2;
+      [-RAIL_OFFSET, RAIL_OFFSET].forEach((side) => rails.push(railBar(length * 0.98, mx + uz * side, mz - ux * side, angle)));
+      if (segment.sleepers !== false) {
+        sleeperStops(length).forEach((t) => sleepers.push(sleeper(ax + ux * t, az + uz * t, angle)));
+      }
+    } else if (segment.type === "arc") {
+      const [cx, cz] = segment.centre;
+      const from = segment.from * Math.PI / 180;
+      const to = segment.to * Math.PI / 180;
+      /* Points on the arc are centre + r·(sin a, cos a): angles count from
+         +z towards +x, like a connector's direction. */
+      [segment.radius - RAIL_OFFSET, segment.radius + RAIL_OFFSET].forEach((r) => {
+        const steps = 12;
+        for (let i = 0; i < steps; i += 1) {
+          const a0 = from + (to - from) * i / steps;
+          const a1 = from + (to - from) * (i + 1) / steps;
+          const mid = (a0 + a1) / 2;
+          const chord = 2 * r * Math.sin(Math.abs(a1 - a0) / 2);
+          rails.push(railBar(chord * 1.04, cx + r * Math.sin(mid), cz + r * Math.cos(mid), mid + Math.PI / 2));
+        }
+      });
+      const length = segment.radius * Math.abs(to - from);
+      sleeperStops(length).forEach((t) => {
+        const a = from + (to - from) * t / length;
+        sleepers.push(sleeper(cx + segment.radius * Math.sin(a), cz + segment.radius * Math.cos(a), a + Math.PI / 2));
+      });
     }
-    return mergeGeometries(list);
+  });
+  return { rails: mergeGeometries(rails), sleepers: mergeGeometries(sleepers) };
+}
+
+function makeRailPiece(part, kit) {
+  let built = null;
+  const build = () => { if (!built) built = trackGeometries(part); return built; };
+  const rails = kit.geo(`${part.id}:rails`, () => build().rails);
+  const sleepers = kit.geo(`${part.id}:sleepers`, () => build().sleepers);
+  const group = new THREE.Group();
+  const steel = mesh(rails, kit.mat(RAIL_STEEL, 0.32, 0.45));
+  /* The steel glows gold when the rail is on a closed circuit (slice 10). */
+  steel.userData.sqblSteel = true;
+  group.add(steel);
+  group.add(mesh(sleepers, kit.mat(0x6c6e68, 0.4)));
+  return group;
+}
+
+/* Roof peak 2×2 (slice 09): two 45°-ish faces meeting at a ridge along x,
+   with a short upright lip on both sides like the real ridge brick. */
+function makePeakPiece(part, colorHex, kit) {
+  const geometry = kit.geo(part.id, () => {
+    const bevel = 0.03;
+    const hd = part.depth / 2 - SEAM - bevel;
+    const hh = part.height / 2 - bevel;
+    const lip = 0.16;
+    const ridge = 0.12;
+    const shape = new THREE.Shape();
+    shape.moveTo(hd, -hh);
+    shape.lineTo(-hd, -hh);
+    shape.lineTo(-hd, -hh + lip);
+    shape.lineTo(-ridge, hh);
+    shape.lineTo(ridge, hh);
+    shape.lineTo(hd, -hh + lip);
+    shape.lineTo(hd, -hh);
+    const length = part.width - SEAM * 2 - bevel * 2;
+    const body = new THREE.ExtrudeGeometry(shape, {
+      depth: length, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2,
+    });
+    body.translate(0, 0, -length / 2);
+    body.rotateY(Math.PI / 2);
+    return mergeGeometries([body]);
   });
   const group = new THREE.Group();
-  group.add(mesh(rails, kit.mat(0x8a9097, 0.32, 0.45)));
-  group.add(mesh(sleepers, kit.mat(0x6c6e68, 0.4)));
+  group.add(mesh(geometry, kit.mat(colorHex)));
+  return group;
+}
+
+/* Axle 1×2 (slice 09): a studded plate with a grey axle across it, poking
+   out both sides where wheels go. */
+function makeAxlePiece(part, colorHex, kit) {
+  const plate = kit.geo(part.id, () => {
+    const list = [bevelBox(part.width - SEAM * 2, part.height, part.depth - SEAM * 2, 0.025)];
+    addStuds(list, studRow(part.width), studRow(part.depth), part.height / 2);
+    return mergeGeometries(list);
+  });
+  const rod = kit.geo(`${part.id}:rod`, () => {
+    const g = new THREE.CylinderGeometry(0.1, 0.1, part.width + 1.4, 12);
+    g.rotateZ(Math.PI / 2);
+    g.translate(0, -part.height / 2 + 0.06, 0);
+    return g;
+  });
+  const group = new THREE.Group();
+  group.add(mesh(plate, kit.mat(colorHex)));
+  group.add(mesh(rod, kit.mat(0x6c6e68, 0.38, 0.3)));
   return group;
 }
 
@@ -327,6 +517,8 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "tree") return makeTreePiece(part, kit);
   if (part.shape === "flower") return makeFlowerPiece(part, colorHex, kit);
   if (part.shape === "slope") return makeSlopePiece(part, colorHex, kit);
+  if (part.shape === "peak") return makePeakPiece(part, colorHex, kit);
+  if (part.shape === "axle") return makeAxlePiece(part, colorHex, kit);
   return makeRectPiece(part, colorHex, kit);
 }
 
@@ -416,6 +608,21 @@ export class BrickLabRuntime {
     this.cameraTween = null;
     this.baseplateStuds = 0;
     this.bubble = { shown: false, x: NaN, y: NaN, width: 0, height: 0 };
+    /* Slice 11: tray search, size filter, favourites, recents, info card. */
+    this.query = "";
+    this.sizeFilter = "";
+    this.prefs = this.cleanPrefs(this.storage.loadPrefs());
+    this.infoPartId = null;
+    /* Slice 10: rail joins. `rails` is the last trace; `snap` the join the
+       ghost or a dragged rail would make right now. */
+    this.rails = { edges: [], linked: new Map(), free: [], circuit: new Set() };
+    this.freeEndsCache = null;
+    this.snap = null;
+  }
+
+  cleanPrefs(prefs) {
+    const known = (list, max) => Array.from(new Set(list)).filter((id) => PARTS.some((part) => part.id === id)).slice(0, max);
+    return { favorites: known(prefs.favorites, PARTS.length), recents: known(prefs.recents, RECENT_MAX) };
   }
 
   async mount() {
@@ -425,6 +632,7 @@ export class BrickLabRuntime {
     THREE = runtime.THREE;
     OrbitControls = runtime.OrbitControls;
     this.kit = makeKit();
+    this.reducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     this.renderShell();
     this.setupScene();
     this.bindUI();
@@ -484,13 +692,19 @@ export class BrickLabRuntime {
               </div>
             </div>
             <div class="sqbl-stage-hint" data-stage-hint aria-live="polite"></div>
+            <div class="sqbl-info" data-info role="dialog" aria-modal="false" hidden></div>
             <div class="sqbl-explore-badge">🌍 ${pre ? "" : "Explore 探索"}</div>
           </div>
         </div>
 
         <footer class="sqbl-bottom-tray">
           <div class="sqbl-tray-top">
-            <div class="sqbl-tray-title" data-tray-title></div>
+            <div class="sqbl-tray-title" data-tray-title aria-live="polite"></div>
+            ${pre ? "" : `<label class="sqbl-search"><span aria-hidden="true">🔍</span><input type="search" data-search enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(label(TRAY.search))}" aria-label="${escapeHtml(label(TRAY.search))}"></label>
+            <select class="sqbl-size" data-size aria-label="${escapeHtml(label(TRAY.size))}">
+              <option value="">${escapeHtml(label(TRAY.allSizes))}</option>
+              ${Array.from(new Set(PARTS.map(partDims))).sort((a, b) => a.localeCompare(b, "en", { numeric: true })).map((dims) => `<option value="${dims}">${dims}</option>`).join("")}
+            </select>`}
             <button type="button" class="sqbl-focus-build" data-action="toggle-chrome" aria-label="Bigger build area 放大建造區">↕</button>
           </div>
           <div class="sqbl-parts" data-parts></div>
@@ -508,6 +722,9 @@ export class BrickLabRuntime {
     this.bubbleEl = this.root.querySelector("[data-bubble]");
     this.leftRail = this.root.querySelector(".sqbl-left-rail");
     this.bottomTray = this.root.querySelector(".sqbl-bottom-tray");
+    this.infoEl = this.root.querySelector("[data-info]");
+    this.searchEl = this.root.querySelector("[data-search]");
+    this.sizeEl = this.root.querySelector("[data-size]");
   }
 
   setupScene() {
@@ -595,6 +812,19 @@ export class BrickLabRuntime {
     this.ghost.visible = false;
     this.ghost.raycast = () => {};
     this.scene.add(this.ghost);
+
+    /* Rail end dots and the dashed join guide (slice 10); shared geometry
+       and materials come from the kit, so destroy() frees them. */
+    this.markers = new THREE.Group();
+    this.markers.raycast = () => {};
+    this.scene.add(this.markers);
+    const guideGeometry = new THREE.BufferGeometry();
+    guideGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
+    this.guideLine = new THREE.Line(guideGeometry, new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.35, gapSize: 0.22, transparent: true, opacity: 0.9 }));
+    this.guideLine.visible = false;
+    this.guideLine.raycast = () => {};
+    this.guideLine.renderOrder = 2;
+    this.scene.add(this.guideLine);
 
     this.resizeObserver = observeResize(this.stage, () => this.resize());
     this.resize();
@@ -716,10 +946,15 @@ export class BrickLabRuntime {
       button.addEventListener("pointerdown", () => {
         this.activeCategory = button.dataset.category;
         this.activePartId = (PARTS.find((part) => part.category === this.activeCategory) || PARTS[0]).id;
+        /* Picking a category leaves a search: the tray shows that category again. */
+        this.setFilters("", "", false);
+        this.hideInfo();
         this.renderPartTray();
         this.updateCategoryUI();
         this.placementArmed = false;
         this.ghost.visible = false;
+        this.snap = null;
+        this.updateRailMarks();
         this.setHint("🧱", HINTS.choose);
       });
     });
@@ -733,6 +968,37 @@ export class BrickLabRuntime {
     this.root.querySelector("[data-action=move]").addEventListener("pointerdown", () => this.beginMoveSelected());
     this.root.querySelector("[data-action=toggle-left]").addEventListener("pointerdown", () => this.leftRail.classList.toggle("is-collapsed"));
     this.root.querySelector("[data-action=toggle-chrome]").addEventListener("pointerdown", () => this.app.classList.toggle("is-build-focus"));
+
+    /* Tray (slice 11): one delegated listener survives every re-render. The
+       star toggles a favourite; the rest of a tile arms the part and opens its
+       info card. click, not pointerdown: a swipe that scrolls the tray must
+       not pick a part. */
+    this.partsEl.addEventListener("click", (event) => {
+      const star = event.target.closest("[data-fav]");
+      if (star) { this.toggleFavorite(star.dataset.fav); return; }
+      const tile = event.target.closest("[data-part]");
+      if (!tile) return;
+      this.activePartId = tile.dataset.part;
+      this.markActivePart();
+      this.armPlacement(this.activePartId);
+      this.showInfo(this.activePartId);
+    });
+    if (this.searchEl) {
+      this.searchEl.addEventListener("input", () => this.setFilters(this.searchEl.value, this.sizeFilter));
+      this.searchEl.addEventListener("keydown", (event) => { if (event.key === "Enter") this.searchEl.blur(); });
+    }
+    if (this.sizeEl) this.sizeEl.addEventListener("change", () => this.setFilters(this.query, this.sizeEl.value));
+    this.infoEl.addEventListener("click", (event) => {
+      const action = event.target.closest("[data-info-action]");
+      if (!action) return;
+      if (action.dataset.infoAction === "close") this.hideInfo();
+      else this.toggleFavorite(this.infoPartId);
+    });
+    /* Tap anywhere else closes the card (the tray tap that opens it comes after). */
+    this.onOutsidePress = (event) => {
+      if (this.infoPartId && !this.infoEl.contains(event.target)) this.hideInfo();
+    };
+    this.root.addEventListener("pointerdown", this.onOutsidePress, true);
 
     /* Capture phase on the stage runs before OrbitControls' own listener on
        the canvas, so a press on the selected piece can suspend orbiting. */
@@ -766,24 +1032,124 @@ export class BrickLabRuntime {
     });
     const category = CATEGORIES.find((item) => item.id === this.activeCategory);
     const title = this.root.querySelector("[data-tray-title]");
-    if (title) title.textContent = this.preReader ? (category && category.icon) || "🧱" : label((category && category.label) || ["Pieces", "積木"]);
+    if (!title) return;
+    const searching = !!(this.query || this.sizeFilter);
+    const count = this.trayCount || 0;
+    /* "<category>: <count> parts" (slice 11); a search names itself instead. */
+    if (this.preReader) title.textContent = `${searching ? "🔍" : (category && category.icon) || "🧱"} ${count}`;
+    else title.textContent = `${label(searching ? TRAY.results : (category && category.label) || ["Pieces", "積木"])}: ${label(TRAY.parts(count))}`;
   }
 
+  /* Slice 11: favourites and recents pinned at the front of the tray, then
+     the category; a search or size filter shows matches from every category
+     instead. The row keeps its fixed height (D14), it only scrolls. */
   renderPartTray() {
-    const parts = PARTS.filter((part) => part.category === this.activeCategory);
-    this.partsEl.innerHTML = parts.map((part) => `
-      <button type="button" class="sqbl-part${part.id === this.activePartId ? " is-active" : ""}" data-part="${part.id}" aria-label="${escapeHtml(label(part.label))}">
-        <span class="sqbl-part-preview" data-shape="${part.shape}" aria-hidden="true"></span>
-        <b>${escapeHtml(partLabel(part, this.preReader))}</b>
-      </button>`).join("");
-    this.partsEl.querySelectorAll("[data-part]").forEach((button) => {
-      button.addEventListener("click", () => {
-        this.activePartId = button.dataset.part;
-        this.partsEl.querySelectorAll("[data-part]").forEach((item) => item.classList.toggle("is-active", item === button));
-        this.armPlacement(this.activePartId);
-      });
-    });
+    const filtering = !!(this.query || this.sizeFilter);
+    const sections = [];
+    let count = 0;
+    if (filtering) {
+      const found = PARTS.filter((part) => partMatches(part, this.query) && (!this.sizeFilter || partDims(part) === this.sizeFilter));
+      count = found.length;
+      sections.push({ id: "results", parts: found });
+    } else {
+      const byId = (ids) => ids.map((id) => getPart(id));
+      if (this.prefs.favorites.length) sections.push({ id: "favorites", icon: "★", title: TRAY.favorites, parts: byId(this.prefs.favorites) });
+      if (this.prefs.recents.length) sections.push({ id: "recents", icon: "🕘", title: TRAY.recents, parts: byId(this.prefs.recents) });
+      const parts = PARTS.filter((part) => part.category === this.activeCategory);
+      count = parts.length;
+      sections.push({ id: "category", parts });
+    }
+    const tile = (part) => {
+      const fav = this.prefs.favorites.includes(part.id);
+      return `
+      <div class="sqbl-part-slot">
+        <button type="button" class="sqbl-part${part.id === this.activePartId ? " is-active" : ""}" data-part="${part.id}" aria-label="${escapeHtml(label(part.label))}">
+          <span class="sqbl-part-preview" data-shape="${part.shape}" data-preview="${part.id}" aria-hidden="true"></span>
+          <b>${escapeHtml(partLabel(part, this.preReader))}</b>
+        </button>
+        <button type="button" class="sqbl-fav${fav ? " is-on" : ""}" data-fav="${part.id}" aria-pressed="${fav}" aria-label="${escapeHtml(label(TRAY.favorite))} · ${escapeHtml(label(part.label))}">${fav ? "★" : "☆"}</button>
+      </div>`;
+    };
+    this.partsEl.innerHTML = sections.map((section) => {
+      const head = section.title
+        ? `<span class="sqbl-tray-sep" data-section="${section.id}" title="${escapeHtml(label(section.title))}"><span aria-hidden="true">${section.icon}</span><small>${this.preReader ? "" : escapeHtml(section.title[0])}</small><span class="sqbl-sr">${escapeHtml(label(section.title))}</span></span>`
+        : "";
+      const body = section.parts.length ? section.parts.map(tile).join("")
+        : `<p class="sqbl-tray-empty">${this.preReader ? "🔍 ∅" : escapeHtml(say(TRAY.none))}</p>`;
+      return head + body;
+    }).join("");
+    this.trayCount = count;
     this.updateCategoryUI();
+  }
+
+  markActivePart() {
+    this.partsEl.querySelectorAll("[data-part]").forEach((item) => item.classList.toggle("is-active", item.dataset.part === this.activePartId));
+  }
+
+  setFilters(query, size, render = true) {
+    this.query = searchText(query);
+    this.sizeFilter = size || "";
+    if (this.searchEl && searchText(this.searchEl.value) !== this.query) this.searchEl.value = query || "";
+    if (this.sizeEl && this.sizeEl.value !== this.sizeFilter) this.sizeEl.value = this.sizeFilter;
+    if (render) this.renderPartTray();
+  }
+
+  toggleFavorite(partId) {
+    if (!partId) return;
+    const list = this.prefs.favorites;
+    const at = list.indexOf(partId);
+    if (at >= 0) list.splice(at, 1);
+    else list.push(partId);
+    this.storage.savePrefs(this.prefs);
+    const scroll = this.partsEl.scrollLeft;
+    this.renderPartTray();
+    this.partsEl.scrollLeft = scroll;
+    if (this.infoPartId === partId) this.showInfo(partId);
+    this.haptic("tap");
+  }
+
+  rememberRecent(partId) {
+    const list = [partId].concat(this.prefs.recents.filter((id) => id !== partId)).slice(0, RECENT_MAX);
+    if (list.join() === this.prefs.recents.join()) return;
+    this.prefs.recents = list;
+    this.storage.savePrefs(this.prefs);
+    /* Re-render only outside a search: the recents row is not shown then. */
+    if (!this.query && !this.sizeFilter) {
+      const scroll = this.partsEl.scrollLeft;
+      this.renderPartTray();
+      this.partsEl.scrollLeft = scroll;
+    }
+  }
+
+  /* Small card over the bottom-left of the view: an overlay, so it never
+     resizes the 3D canvas (D9). */
+  showInfo(partId) {
+    const part = getPart(partId);
+    const pre = this.preReader;
+    const fav = this.prefs.favorites.includes(part.id);
+    const fixed = FIXED_COLOR_SHAPES.includes(part.shape);
+    const line = (pair) => (pre ? "" : `<p>${escapeHtml(say(pair))}</p>`);
+    const swatches = fixed ? "" : `<div class="sqbl-info-swatches" aria-hidden="true">${Object.keys(COLORS).map((id) => `<i style="background:${cssHex(getColorHex(id))}"></i>`).join("")}</div>`;
+    this.infoEl.innerHTML = `
+      <div class="sqbl-info-head">
+        <span class="sqbl-part-preview" data-shape="${part.shape}" data-preview="${part.id}" aria-hidden="true"></span>
+        <div><strong>${escapeHtml(part.label[0])}</strong><strong lang="zh-TW">${escapeHtml(part.label[1])}</strong></div>
+        <button type="button" class="sqbl-info-fav${fav ? " is-on" : ""}" data-info-action="favorite" aria-pressed="${fav}" aria-label="${escapeHtml(label(TRAY.favorite))}">${fav ? "★" : "☆"}</button>
+        <button type="button" class="sqbl-info-close" data-info-action="close" aria-label="${escapeHtml(label(TRAY.close))}">✕</button>
+      </div>
+      <p class="sqbl-info-dims"><b>${escapeHtml(partDims(part))}</b>${pre ? "" : ` ${escapeHtml(label(TRAY.studs))} · ${escapeHtml(label(heightText(part)))}`}</p>
+      ${line(fixed ? TRAY.ownColours : TRAY.colours(Object.keys(COLORS).length))}
+      ${swatches}
+      ${isRail(part) ? line(TRAY.railEnds(part.connectors.length)) : ""}
+      ${line(snapGuide(part))}`;
+    this.infoEl.hidden = false;
+    this.infoPartId = part.id;
+  }
+
+  hideInfo() {
+    if (!this.infoPartId) return;
+    this.infoEl.hidden = true;
+    this.infoPartId = null;
   }
 
   /* Built once; selection only moves the is-active class (D9). */
@@ -813,6 +1179,7 @@ export class BrickLabRuntime {
     const source = fresh ? (this.options.seedDemo === false ? [] : createStarterPieces()) : saved.pieces;
     const pieces = fresh || saved.grid !== GRID_VERSION ? this.settle(source) : source;
     pieces.forEach((instance) => this.addPiece(instance, false));
+    this.syncRails();
     if (pieces.length && (fresh || saved.grid !== GRID_VERSION)) this.scheduleSave();
     this.homeView(false);
     this.placementArmed = false;
@@ -856,6 +1223,7 @@ export class BrickLabRuntime {
     this.scene.add(object);
     this.pieces.set(clean.id, clean);
     this.sceneObjects.set(clean.id, object);
+    this.freeEndsCache = null;
     if (persist) this.scheduleSave();
     return clean.id;
   }
@@ -869,6 +1237,7 @@ export class BrickLabRuntime {
     }
     this.sceneObjects.delete(id);
     this.pieces.delete(id);
+    this.freeEndsCache = null;
     if (this.selectedId === id) this.selectPiece(null);
     if (persist) this.scheduleSave();
   }
@@ -878,8 +1247,12 @@ export class BrickLabRuntime {
     this.activePartId = getPart(partId).id;
     this.moveId = null;
     this.placementArmed = true;
+    this.snap = null;
     this.refreshGhost();
+    /* A new part is placed unturned (the ghost may still carry a moved piece's turn). */
+    this.ghost.rotation.y = 0;
     this.setHint("☝️", HINTS.place);
+    this.updateRailMarks();
   }
 
   refreshGhost() {
@@ -899,6 +1272,7 @@ export class BrickLabRuntime {
     });
     this.ghost.add(preview);
     this.ghost.visible = false;
+    this.ghostBlocked = false;
   }
 
   setRay(event) {
@@ -928,12 +1302,25 @@ export class BrickLabRuntime {
   /* Where a piece lands when dropped at a point: snapped to the stud grid,
      resting on whatever it overlaps in `pool`. */
   placementFor(point, part, rotation = 0, ignoreId = null, pool = this.pieces) {
+    return this.landing(point, part, rotation, ignoreId, pool).pos;
+  }
+
+  /* placementFor plus, for rails (slice 10), the join it snapped onto and
+     whether it would clip another rail — then it cannot go there. */
+  landing(point, part, rotation = 0, ignoreId = null, pool = this.pieces) {
     const { w, d } = footprint(part, rotation);
-    const x = snapAxis(point.x, w);
-    const z = snapAxis(point.z, d);
-    /* Rails sit on the baseplate studs; trees and flowers plug in at ground level. */
-    if (part.shape === "rail") return { x, y: STUD_H + part.height / 2, z };
-    if (part.shape === "tree" || part.shape === "flower") return { x, y: part.height / 2, z };
+    let x = snapAxis(point.x, w);
+    let z = snapAxis(point.z, d);
+    if (isRail(part)) {
+      const { rails, free } = pool === this.pieces ? this.freeEnds(ignoreId) : this.endsOf(this.railList(pool, ignoreId));
+      const join = snapRail(part, x, z, rotation, free, ignoreId);
+      const onPlate = join && Math.abs(join.x) + w / 2 <= BASE_HALF && Math.abs(join.z) + d / 2 <= BASE_HALF;
+      if (onPlate) { x = join.x; z = join.z; }
+      /* Rails sit on the baseplate studs. */
+      return { pos: { x, y: STUD_H + part.height / 2, z }, join: onPlate ? join : null, blocked: railClash(part, x, z, rotation, rails, ignoreId) };
+    }
+    /* Trees and flowers plug in at ground level. */
+    if (part.shape === "tree" || part.shape === "flower") return { pos: { x, y: part.height / 2, z }, join: null, blocked: false };
     const probe = pieceBounds({ x, y: 0, z, rotation }, part);
     let top = 0;
     for (const [id, instance] of pool) {
@@ -943,7 +1330,136 @@ export class BrickLabRuntime {
       const other = pieceBounds(instance, otherPart);
       if (overlap2D(probe, other)) top = Math.max(top, other.maxY);
     }
-    return { x, y: Math.round((top + part.height / 2) * 1000) / 1000, z };
+    return { pos: { x, y: Math.round((top + part.height / 2) * 1000) / 1000, z }, join: null, blocked: false };
+  }
+
+  /* The rails of a pool in the shape brick-rails.js reads. */
+  railList(pool = this.pieces, ignoreId = null) {
+    const out = [];
+    for (const [id, instance] of pool) {
+      if (id === ignoreId) continue;
+      const part = getPart(instance.partId);
+      if (isRail(part)) out.push({ id, part, x: instance.x, z: instance.z, rotation: instance.rotation });
+    }
+    return out;
+  }
+
+  endsOf(rails) {
+    return { rails, free: railLinks(rails).free };
+  }
+
+  /* Free rail ends with one rail lifted out (the one being moved), cached
+     until the build changes: a drag at 60 fps only scans the ends. */
+  freeEnds(ignoreId = null) {
+    const cache = this.freeEndsCache;
+    if (cache && cache.ignoreId === ignoreId) return cache;
+    this.freeEndsCache = { ignoreId, ...this.endsOf(this.railList(this.pieces, ignoreId)) };
+    return this.freeEndsCache;
+  }
+
+  /* Re-trace joins and circuits after a change (slice 10): circuit rails
+     glow gold; the piece just placed, moved or turned gets a toast when it
+     joined a rail or closed a loop. */
+  syncRails(focusId = null, announce = false) {
+    this.freeEndsCache = null;
+    const before = this.rails;
+    const list = this.railList();
+    const traced = traceCircuits(list);
+    this.rails = traced;
+    const steel = this.kit.mat(RAIL_STEEL, 0.32, 0.45);
+    const glow = this.glowMaterial();
+    list.forEach((rail) => {
+      const object = this.sceneObjects.get(rail.id);
+      if (!object) return;
+      const lit = traced.circuit.has(rail.id);
+      object.traverse((node) => { if (node.userData.sqblSteel) node.material = lit ? glow : steel; });
+    });
+    if (announce && focusId && traced.linked.has(focusId)) {
+      const closed = traced.circuit.has(focusId) && !before.circuit.has(focusId);
+      const wasLinked = before.linked.get(focusId);
+      const joined = traced.linked.get(focusId).size > (wasLinked ? wasLinked.size : 0);
+      if (closed) {
+        this.toast(this.preReader ? "🔁 ✨" : say(HINTS.circuit));
+        this.setHint("✨", HINTS.circuit);
+      } else if (joined) {
+        this.toast(this.preReader ? "🛤️ ✓" : say(HINTS.railJoined));
+      }
+    }
+    this.updateRailMarks();
+  }
+
+  glowMaterial() {
+    return this.kit.custom("rail:glow", () => new THREE.MeshStandardMaterial({
+      color: 0xf6c945, roughness: 0.3, metalness: 0.45, emissive: 0xffa000, emissiveIntensity: 0.45,
+    }));
+  }
+
+  /* Glowing dots on rail ends (slice 10): a selected rail shows its own ends
+     (green = joined); while a rail is being placed, moved or dragged every
+     free end shows, the one it will join is big and white, and a dashed
+     guide runs through the joint along the track. */
+  updateRailMarks() {
+    if (!this.markers) return;
+    const dots = [];
+    let guide = null;
+    const movingId = this.drag && this.drag.active ? this.drag.id : this.moveId;
+    const moving = movingId && this.pieces.get(movingId);
+    const carrying = this.mode === "build" && (moving ? isRail(getPart(moving.partId)) : this.placementArmed && isRail(getPart(this.activePartId)));
+    if (carrying) {
+      this.freeEnds(movingId || null).free.forEach((end) => dots.push({ x: end.x, z: end.z, kind: "free" }));
+      if (this.snap) {
+        dots.push({ x: this.snap.end.x, z: this.snap.end.z, kind: "target" });
+        guide = this.snap.end;
+      }
+    } else if (this.selectedId && this.mode === "build") {
+      const instance = this.pieces.get(this.selectedId);
+      const part = instance && getPart(instance.partId);
+      if (part && isRail(part)) {
+        const linked = this.rails.linked.get(this.selectedId) || new Set();
+        worldConnectors(part, instance.x, instance.z, instance.rotation)
+          .forEach((c) => dots.push({ x: c.x, z: c.z, kind: linked.has(c.index) ? "linked" : "free" }));
+      }
+    }
+    const shown = dots.slice(0, MARKER_MAX);
+    const pool = this.markers.children;
+    while (pool.length < shown.length) {
+      const dot = new THREE.Mesh(this.kit.geo("marker", () => new THREE.SphereGeometry(0.22, 14, 10)), this.markerMaterial("free"));
+      dot.raycast = () => {};
+      dot.renderOrder = 2;
+      this.markers.add(dot);
+    }
+    pool.forEach((dot, i) => {
+      const spec = shown[i];
+      dot.visible = !!spec;
+      if (!spec) return;
+      dot.position.set(spec.x, MARKER_Y, spec.z);
+      dot.scale.setScalar(spec.kind === "target" ? 1.7 : 1);
+      dot.material = this.markerMaterial(spec.kind);
+    });
+    this.markerCount = shown.length;
+    this.guideLine.visible = !!guide;
+    if (guide) {
+      const dx = Math.sin(guide.dir * Math.PI / 180) * 3.5;
+      const dz = Math.cos(guide.dir * Math.PI / 180) * 3.5;
+      const position = this.guideLine.geometry.attributes.position;
+      position.setXYZ(0, guide.x - dx, MARKER_Y, guide.z - dz);
+      position.setXYZ(1, guide.x + dx, MARKER_Y, guide.z + dz);
+      position.needsUpdate = true;
+      this.guideLine.geometry.computeBoundingSphere();
+      this.guideLine.computeLineDistances();
+    }
+  }
+
+  markerMaterial(kind) {
+    const color = { free: 0xffe066, linked: 0x6ee7a0, target: 0xffffff }[kind];
+    return this.kit.custom(`marker:${kind}`, () => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92 }));
+  }
+
+  /* A ghost that would clip a rail turns faint — never red (coach, not cop). */
+  setGhostBlocked(blocked) {
+    if (blocked === this.ghostBlocked) return;
+    this.ghostBlocked = blocked;
+    this.ghost.traverse((node) => { if (node.material) node.material.opacity = blocked ? 0.18 : 0.48; });
   }
 
   onPointerMove(event) {
@@ -958,9 +1474,14 @@ export class BrickLabRuntime {
     }
     const instance = this.moveId && this.pieces.get(this.moveId);
     const part = getPart(instance ? instance.partId : this.activePartId);
-    const pos = this.placementFor(groundHit.point, part, instance ? instance.rotation : 0, this.moveId);
-    this.ghost.position.set(pos.x, pos.y, pos.z);
+    const land = this.landing(groundHit.point, part, instance ? instance.rotation : 0, this.moveId);
+    this.ghost.position.set(land.pos.x, land.pos.y, land.pos.z);
     this.ghost.visible = true;
+    this.setGhostBlocked(land.blocked);
+    if (land.join !== this.snap) {
+      this.snap = land.join;
+      this.updateRailMarks();
+    }
   }
 
   /* Press on the selected piece: orbit is suspended until the finger lifts.
@@ -1002,10 +1523,16 @@ export class BrickLabRuntime {
     const point = this.raycaster.ray.intersectPlane(this.dragPlane, this.dragPoint);
     if (!point) return;
     const instance = this.pieces.get(drag.id);
-    const pos = this.placementFor({ x: point.x - drag.offsetX, z: point.z - drag.offsetZ },
+    const land = this.landing({ x: point.x - drag.offsetX, z: point.z - drag.offsetZ },
       getPart(instance.partId), instance.rotation, drag.id);
+    const pos = land.pos;
     this.sceneObjects.get(drag.id).position.set(pos.x, pos.y, pos.z);
     drag.pos = pos;
+    drag.blocked = land.blocked;
+    if (land.join !== this.snap) {
+      this.snap = land.join;
+      this.updateRailMarks();
+    }
   }
 
   /* Returns true when this pointer finished a real drag (so it is not a tap). */
@@ -1019,14 +1546,17 @@ export class BrickLabRuntime {
     const object = this.sceneObjects.get(drag.id);
     if (!instance || !object) return true;
     const pos = drag.pos;
-    if (cancelled || !pos || (pos.x === instance.x && pos.y === instance.y && pos.z === instance.z)) {
+    this.snap = null;
+    if (cancelled || !pos || drag.blocked || (pos.x === instance.x && pos.y === instance.y && pos.z === instance.z)) {
       object.position.set(instance.x, instance.y, instance.z);
+      if (drag.blocked && !cancelled) this.setHint("🛤️", HINTS.railBusy);
     } else {
       this.recordHistory();
       Object.assign(instance, pos);
       this.scheduleSave();
       this.setHint("✓", HINTS.moved);
       this.haptic("tap");
+      this.syncRails(drag.id, true);
     }
     this.selectPiece(drag.id);
     return true;
@@ -1051,16 +1581,20 @@ export class BrickLabRuntime {
       const targetHit = hits.find((hit) => isGround(hit) || this.getPieceIdFromIntersection(hit));
       if (!targetHit) return;
       const instance = this.pieces.get(this.moveId);
+      const land = this.landing(targetHit.point, getPart(instance.partId), instance.rotation, this.moveId);
+      if (land.blocked) { this.setHint("🛤️", HINTS.railBusy); return; }
       this.recordHistory();
-      const pos = this.placementFor(targetHit.point, getPart(instance.partId), instance.rotation, this.moveId);
+      const pos = land.pos;
       Object.assign(instance, pos);
       this.sceneObjects.get(this.moveId).position.set(pos.x, pos.y, pos.z);
       const moved = this.moveId;
       this.moveId = null;
+      this.snap = null;
       this.ghost.visible = false;
       this.selectPiece(moved);
       this.scheduleSave();
       this.setHint("✓", HINTS.moved);
+      this.syncRails(moved, true);
       return;
     }
 
@@ -1068,13 +1602,17 @@ export class BrickLabRuntime {
       const targetHit = hits.find((hit) => isGround(hit) || this.getPieceIdFromIntersection(hit));
       if (!targetHit) return;
       const part = getPart(this.activePartId);
-      const pos = this.placementFor(targetHit.point, part);
-      const id = this.addPiece({ id: uid(), partId: part.id, colorId: this.activeColorId, ...pos, rotation: 0 }, true);
+      const land = this.landing(targetHit.point, part);
+      if (land.blocked) { this.setHint("🛤️", HINTS.railBusy); return; }
+      const id = this.addPiece({ id: uid(), partId: part.id, colorId: this.activeColorId, ...land.pos, rotation: 0 }, true);
       this.placementArmed = false;
+      this.snap = null;
       this.selectPiece(id);
       this.ghost.visible = false;
       this.setHint("✓", HINTS.placed);
       this.haptic("tap");
+      this.rememberRecent(part.id);
+      this.syncRails(id, true);
       return;
     }
 
@@ -1097,7 +1635,7 @@ export class BrickLabRuntime {
     if (id) {
       this.selectionBox.setFromObject(this.sceneObjects.get(id));
       this.setActiveColor(this.pieces.get(id).colorId);
-      if (changed) this.setHint("✨", HINTS.selected);
+      if (changed) this.setHint("✨", isRail(getPart(this.pieces.get(id).partId)) ? HINTS.railSelected : HINTS.selected);
     }
     this.updateSelectionUI();
   }
@@ -1109,6 +1647,7 @@ export class BrickLabRuntime {
       this.bubbleEl.classList.toggle("is-visible", shown);
     }
     if (shown) this.placeBubble();
+    this.updateRailMarks();
   }
 
   /* Keep the tool bubble above the selected piece (below it near the top
@@ -1148,30 +1687,55 @@ export class BrickLabRuntime {
     this.recordHistory();
     const id = this.selectedId;
     const instance = this.pieces.get(id);
-    instance.rotation = (instance.rotation + 90) % 360;
-    Object.assign(instance, this.placementFor(instance, getPart(instance.partId), instance.rotation, id));
+    const rotation = (instance.rotation + 90) % 360;
+    const land = this.landing(instance, getPart(instance.partId), rotation, id);
+    /* A rail that would clip its neighbour once turned stays as it is. */
+    if (land.blocked) {
+      this.history.pop();
+      this.updateUndoUI();
+      this.setHint("🛤️", HINTS.railBusy);
+      return;
+    }
+    instance.rotation = rotation;
+    Object.assign(instance, land.pos);
     const object = this.sceneObjects.get(id);
     object.rotation.y = instance.rotation * Math.PI / 180;
     object.position.set(instance.x, instance.y, instance.z);
     this.selectPiece(id);
     this.scheduleSave();
     this.haptic("tap");
+    this.syncRails(id, true);
   }
 
   duplicateSelected() {
     if (!this.selectedId) return;
     const original = this.pieces.get(this.selectedId);
     const part = getPart(original.partId);
-    const pos = this.placementFor({ x: original.x + 2, z: original.z + 2 }, part, original.rotation);
-    const id = this.addPiece({ ...original, id: uid(), ...pos }, true);
+    let spot = { x: original.x + 2, z: original.z + 2, rotation: original.rotation };
+    if (isRail(part)) {
+      /* A copied rail continues the track from a free end (turned if it must:
+         three copies of a curve close a ring), else the first free spot. */
+      const { w, d } = footprint(part, 0);
+      const fits = (s) => Math.abs(s.x) + Math.max(w, d) / 2 <= BASE_HALF && Math.abs(s.z) + Math.max(w, d) / 2 <= BASE_HALF
+        && !this.landing(s, part, s.rotation).blocked;
+      const ahead = extendSpots(part, { id: original.id, rotation: original.rotation }, this.freeEnds().free)
+        .map((s) => ({ ...s, ...this.placementFor(s, part, s.rotation) }));
+      const aside = [2, 4, 6, 8, 10].map((step) => ({ x: original.x + step, z: original.z + step, rotation: original.rotation }));
+      spot = ahead.concat(aside).find(fits);
+      if (!spot) { this.setHint("🛤️", HINTS.railBusy); return; }
+    }
+    const pos = this.placementFor(spot, part, spot.rotation);
+    const id = this.addPiece({ ...original, id: uid(), ...pos, rotation: spot.rotation }, true);
     this.selectPiece(id);
     this.focusPiece(id, 5.5);
+    this.syncRails(id, true);
   }
 
   deleteSelected() {
     if (!this.selectedId) return;
     const id = this.selectedId;
     this.removePiece(id, true);
+    this.syncRails();
     this.setHint("🗑️", HINTS.removed);
     this.haptic("tap");
   }
@@ -1211,6 +1775,7 @@ export class BrickLabRuntime {
     if (this.mode === mode) return;
     this.mode = mode;
     this.moveId = null;
+    this.snap = null;
     this.ghost.visible = false;
     if (mode === "explore") {
       this.selectPiece(null);
@@ -1289,6 +1854,7 @@ export class BrickLabRuntime {
     this.placementArmed = false;
     for (const id of Array.from(this.pieces.keys())) this.removePiece(id, false);
     snapshot.forEach((piece) => this.addPiece(piece, false));
+    this.syncRails();
     this.updateUndoUI();
     this.scheduleSave();
     this.setHint("↶", HINTS.undone);
@@ -1348,6 +1914,10 @@ export class BrickLabRuntime {
       }
       this.controls.update();
       this.keepViewOnIsland();
+      /* Circuit rails breathe softly (still with reduced motion). */
+      if (this.rails.circuit.size && !this.reducedMotion) {
+        this.glowMaterial().emissiveIntensity = 0.35 + 0.2 * (1 + Math.sin(time / 420));
+      }
       if (this.selectedId && this.selectionHelper.visible) {
         const object = this.sceneObjects.get(this.selectedId);
         if (object) this.selectionBox.setFromObject(object);
@@ -1361,12 +1931,15 @@ export class BrickLabRuntime {
   /* Read-only state for browser harnesses; screen points are CSS pixels. */
   snapshot() {
     const rect = this.renderer ? this.renderer.domElement.getBoundingClientRect() : null;
+    const toScreen = (x, y, z) => {
+      if (!rect || !THREE) return null;
+      const p = new THREE.Vector3(x, y, z).project(this.camera);
+      return { x: rect.left + (p.x + 1) / 2 * rect.width, y: rect.top + (1 - p.y) / 2 * rect.height };
+    };
     const pieces = Array.from(this.pieces.values()).map((piece) => {
       const out = Object.assign({}, piece);
-      if (rect && THREE) {
-        const p = new THREE.Vector3(piece.x, piece.y, piece.z).project(this.camera);
-        out.screen = { x: rect.left + (p.x + 1) / 2 * rect.width, y: rect.top + (1 - p.y) / 2 * rect.height };
-      }
+      const screen = toScreen(piece.x, piece.y, piece.z);
+      if (screen) out.screen = screen;
       return out;
     });
     return {
@@ -1383,6 +1956,16 @@ export class BrickLabRuntime {
       canvas: rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
       camera: this.camera ? { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, aspect: this.camera.aspect } : null,
       target: this.controls ? { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z } : null,
+      rails: {
+        links: this.rails.edges.length, circuit: Array.from(this.rails.circuit),
+        markers: this.markerCount || 0, guide: !!(this.guideLine && this.guideLine.visible),
+        free: this.rails.free.map((end) => ({ id: end.id, x: end.x, z: end.z, dir: end.dir, screen: toScreen(end.x, STUD_H, end.z) })),
+      },
+      tray: {
+        category: this.activeCategory, query: this.query, size: this.sizeFilter, count: this.trayCount || 0,
+        parts: this.partsEl ? Array.from(this.partsEl.querySelectorAll("[data-part]"), (el) => el.dataset.part) : [],
+        favorites: this.prefs.favorites.slice(), recents: this.prefs.recents.slice(), info: this.infoPartId,
+      },
       pieces,
     };
   }
@@ -1398,6 +1981,7 @@ export class BrickLabRuntime {
     clearTimeout(this.toastTimer);
     cancelAnimationFrame(this.raf);
     if (this.resizeObserver) this.resizeObserver.disconnect();
+    if (this.onOutsidePress) this.root.removeEventListener("pointerdown", this.onOutsidePress, true);
     if (this.controls) this.controls.dispose();
     if (this.scene) disposeTree(this.scene, true);
     if (this.kit) this.kit.dispose();
