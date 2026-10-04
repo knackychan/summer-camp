@@ -170,17 +170,17 @@ test('runAlchemyCode passes free through', () => {
 
 test('profiles carry a lab journal; old saves get an empty one', () => {
   const old = normalizeProfile({ version: 11, completed: ['q01'], ingredients: { sunHerb: 3 } });
-  assert.deepEqual(old.lab, { found: [], seen: [] });
+  assert.deepEqual(old.lab, { found: [], seen: [], states: [] });
   assert.deepEqual(old.completed, ['q01']);
   assert.equal(old.ingredients.sunHerb, 3);
   const saved = normalizeProfile({ version: 12, lab: { found: ['glow', 'fizzle'], seen: ['moonflower'] } });
-  assert.deepEqual(normalizeProfile(JSON.parse(JSON.stringify(saved))).lab, { found: ['glow', 'fizzle'], seen: ['moonflower'] });
+  assert.deepEqual(normalizeProfile(JSON.parse(JSON.stringify(saved))).lab, { found: ['glow', 'fizzle'], seen: ['moonflower'], states: [] });
 });
 
 test('normalizeLab drops unknown ids and duplicates and caps the lists', () => {
-  assert.deepEqual(normalizeLab(null), { found: [], seen: [] });
-  assert.deepEqual(normalizeLab({ found: ['glow', 'glow', 'nope', 7, '__proto__'], seen: ['frostDew', 'dragon', 'frostDew'] }), { found: ['glow'], seen: ['frostDew'] });
-  assert.deepEqual(normalizeLab({ found: 'glow', seen: {} }), { found: [], seen: [] });
+  assert.deepEqual(normalizeLab(null), { found: [], seen: [], states: [] });
+  assert.deepEqual(normalizeLab({ found: ['glow', 'glow', 'nope', 7, '__proto__'], seen: ['frostDew', 'dragon', 'frostDew'] }), { found: ['glow'], seen: ['frostDew'], states: [] });
+  assert.deepEqual(normalizeLab({ found: 'glow', seen: {} }), { found: [], seen: [], states: [] });
   assert.ok(Object.isFrozen(normalizeLab({ found: ['glow'] })));
   const many = normalizeLab({ found: Array(500).fill(0).map((_, i) => LAB_RULES[i % LAB_RULES.length].id) });
   assert.equal(many.found.length, LAB_RULES.length);
@@ -455,4 +455,40 @@ test('states: deterministic, and mixHint follows them', () => {
   assert.deepEqual(resolve(mix, ['stir']), resolve(mix, ['stir']));
   assert.equal(mixHint([st('frostDew', 'frozen')], []).tint, 'cold');
   assert.equal(mixHint([st('frostDew', 'heated')], []).tint, 'fire');
+});
+
+/* ---------- Phase 2 slice 02: the Journal remembers forms ---------- */
+import { recordStates } from '../js/games/codequest/lab/journal.js';
+
+test('lab.states: known changed forms only, deduped, capped; Phase 1 saves get none', () => {
+  assert.deepEqual([...normalizeLab({ states: ['redMushroom:frozen', 'redMushroom:frozen', 'redMushroom:raw', 'dragon:frozen', 'sunHerb:melted', 'sunHerb:heated:x', 7, 'lifeSap:crushed'] }).states],
+    ['redMushroom:frozen', 'lifeSap:crushed']);
+  const many = Object.keys(LAB_INGREDIENTS).flatMap(id => ['crushed', 'heated', 'frozen'].map(state => id + ':' + state));
+  assert.equal(normalizeLab({ states: [...many, ...many, ...many, ...many] }).states.length, Math.min(128, many.length));
+  // A Phase 1 save: everything else unchanged, states empty.
+  const phase1 = normalizeProfile({ version: 12, completed: ['q01'], lab: { found: ['glow'], seen: ['moonflower'] } });
+  assert.deepEqual(phase1.lab, { found: ['glow'], seen: ['moonflower'], states: [] });
+  assert.deepEqual(phase1.completed, ['q01']);
+  assert.equal(phase1.version, 12);
+});
+
+test('recordStates adds changed forms once; fresh entries and bare ids add nothing', () => {
+  const base = emptyProfile();
+  assert.equal(recordStates(base, ['redMushroom', { id: 'sunHerb', state: 'raw' }]), base);
+  const one = recordStates(base, [{ id: 'redMushroom', state: 'frozen' }, 'echoCrystal', { id: 'moonflower', state: 'crushed' }]);
+  assert.deepEqual([...one.lab.states], ['redMushroom:frozen', 'moonflower:crushed']);
+  assert.equal(recordStates(one, [{ id: 'redMushroom', state: 'frozen' }]), one);
+  // Other Journal lists survive.
+  const full = recordStates(recordFound(recordSeen(base, [{ id: 'lifeSap', state: 'heated' }]), 'glow'), [{ id: 'lifeSap', state: 'heated' }]);
+  assert.deepEqual(full.lab, { found: ['glow'], seen: ['lifeSap'], states: ['lifeSap:heated'] });
+  assert.deepEqual(recordFound(full, 'smoke').lab.states, ['lifeSap:heated'], 'recordFound keeps forms');
+});
+
+test('Journal ingredient pages list discovered forms with their points', () => {
+  const pages = journalIngredients({ seen: ['redMushroom'], states: ['redMushroom:frozen', 'redMushroom:crushed'] });
+  const mushroom = pages.find(page => page.id === 'redMushroom');
+  assert.deepEqual(mushroom.forms.map(form => form.state), ['crushed', 'frozen'], 'state order, not discovery order');
+  assert.deepEqual(Object.fromEntries(mushroom.forms[1].props), { cold: 2, calm: 1, chaos: 1 });
+  for (const page of pages.filter(p => p.id !== 'redMushroom')) assert.deepEqual([...page.forms], []);
+  assert.equal(journalReactions({}).total, 18);
 });
