@@ -38,9 +38,18 @@ export function bodyOpacity(bodyId, focusId) {
 export function focusPanLimit(id, size) { return id === "sun" ? 9 : Math.max(2.5, Math.min(8, size * 3)); }
 export function photoIsVendored(path) { return !!AVAILABLE_PHOTOS[path]; }
 export function bodyNamePair(body) { return [body.name, body.tz]; }
-function speedDockLabel(step) {
-  var labels = { pause: "Pause", day: "1d", "10day": "10d", month: "1mo", year: "1y" };
-  return labels[step.id] || step.en;
+var SPEED_SHORT = {
+  en: { pause: "Pause", day: "1d", "10day": "10d", month: "1mo", year: "1y" },
+  zh: { pause: "暫停", day: "1天", "10day": "10天", month: "1個月", year: "1年" }
+};
+function speedDockHtml(step) {
+  return '<span class="i18n-en">' + (SPEED_SHORT.en[step.id] || step.en) + '</span>' +
+    '<span class="i18n-zh">' + (SPEED_SHORT.zh[step.id] || step.tz) + '</span>';
+}
+function splitBilingual(str) {
+  var i = str.indexOf(" · ");
+  if (i < 0) return [str, str];
+  return [str.slice(0, i), str.slice(i + 3)];
 }
 
 export function factPool(body, excludeIdx) {
@@ -130,30 +139,6 @@ export function statCells(body) {
 
 export var meta = { icon: "\ud83e\ude90", title: "Solar System", tz: "\u592a\u967d\u7cfb", blurb: "Explore the planets" };
 
-/* ====== Self-referencing settings ====== */
-
-function _settings(bar, ctx) {
-  var speedId = (ctx.settings && ctx.settings.speed) || "10day";
-  var row = document.createElement("div");
-  row.style.display = "flex";
-  row.style.gap = "8px";
-  row.style.flexWrap = "wrap";
-  row.style.padding = "6px 10px";
-  SPEEDS.forEach(function (step) {
-    var chip = document.createElement("button");
-    chip.className = "chip" + (step.id === speedId ? " on" : "");
-    chip.style.fontSize = "13px";
-    chip.textContent = step.en + " " + step.tz;
-    chip.addEventListener("click", function () {
-      ctx.settings.speed = step.id;
-      _settings(bar, ctx);
-    });
-    row.appendChild(chip);
-  });
-  bar.innerHTML = "";
-  bar.appendChild(row);
-}
-
 /* ====== CSS ====== */
 
 var SOLAR_CSS = [
@@ -163,7 +148,14 @@ var SOLAR_CSS = [
   "  border:2px solid #4A4090; background:rgba(25,19,64,.72); backdrop-filter:blur(6px); color:#A79FD6; ",
   "  border-radius:999px; padding:8px 18px; cursor:pointer; pointer-events:auto }",
   ".solar-ui .chip.on { background:#FFC93C; color:#1C1436; border-color:transparent }",
-  ".solar-ui .modebar { position:absolute; top:12px; left:12px; display:flex; gap:10px; z-index:2 }",
+  "[data-lang=\"en\"] .i18n-zh { display:none }",
+  "[data-lang=\"zh\"] .i18n-en { display:none }",
+  ".solar-ui .modebar { position:absolute; top:0; left:0; right:0; min-height:48px; z-index:2; ",
+  "  background:rgba(51,43,102,.82); backdrop-filter:blur(8px); border-bottom:2px solid #4A4090; ",
+  "  display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 10px; ",
+  "  pointer-events:auto }",
+  ".solar-ui .modebar .modes,.solar-ui .modebar .langgrp { display:flex; gap:8px; flex-wrap:wrap }",
+  ".solar-ui .modebar .chip.lang { min-width:44px; padding:8px 14px }",
   ".solar-ui .timeband { position:absolute; left:10px; right:10px; bottom:10px; min-height:44px; ",
   "  background:rgba(51,43,102,.82); backdrop-filter:blur(8px); border:2px solid #4A4090; ",
   "  border-radius:14px; padding:6px 8px; display:flex; align-items:center; gap:8px; ",
@@ -176,7 +168,7 @@ var SOLAR_CSS = [
   ".solar-ui .speeds { flex:0 0 auto; display:flex; gap:5px; justify-content:center; align-items:center; flex-wrap:nowrap }",
   ".solar-ui .speeds .chip { min-width:44px; min-height:44px; font-size:12px; padding:5px 8px; border-radius:11px }",
   /* Info card */
-  ".solar-ui .infocard { position:absolute; top:12px; right:12px; bottom:80px; width:min(360px,calc(100% - 24px)); overflow-y:auto; ",
+  ".solar-ui .infocard { position:absolute; top:60px; right:12px; bottom:80px; width:min(360px,calc(100% - 24px)); overflow-y:auto; ",
   "  background:rgba(25,19,64,.82); backdrop-filter:blur(10px); border:1px solid rgba(78,168,255,.45); border-radius:18px; ",
   "  padding:16px 16px 18px; box-shadow:0 0 32px rgba(78,168,255,.12); pointer-events:auto; z-index:2; ",
   "  animation:solar-card-in .22s ease-out; scrollbar-width:thin }",
@@ -192,7 +184,7 @@ var SOLAR_CSS = [
   ".solar-ui .ic-photo.fallback img { display:none }",
   ".solar-ui .ic-class { margin-top:12px; font-weight:800; font-size:11px; letter-spacing:2px; color:#4EA8FF }",
   ".solar-ui .card-name { font-family:'Fredoka',system-ui,sans-serif; font-weight:700; font-size:28px; margin-top:2px; color:#F3F0FF }",
-  ".solar-ui .card-name span { font-weight:600; font-size:23px }",
+  ".solar-ui .card-name .i18n-zh { font-weight:600; font-size:23px }",
   ".solar-ui .ic-desc { margin-top:8px; font-weight:700; font-size:15px; line-height:1.45; color:#F3F0FF }",
   ".solar-ui .ic-desc-tz { margin-top:4px; font-weight:700; font-size:14px; line-height:1.45; color:#A79FD6 }",
   ".solar-ui .ic-factbox { margin-top:12px; border:1px dashed rgba(255,201,60,.45); border-radius:12px; padding:10px 12px }",
@@ -244,6 +236,9 @@ var SOLAR_CSS = [
   "  .solar-ui .counter2 { display:none } ",
   "  .solar-ui .speeds { flex:1 1 auto } ",
   "  .solar-ui .speeds .chip { flex:1 1 0; min-width:0; padding:5px 2px; font-size:11px } ",
+  "  .solar-ui .modebar { min-height:40px; padding:5px 8px } ",
+  "  .solar-ui .modebar .chip { padding:6px 10px; font-size:13px } ",
+  "  .solar-ui .modebar .chip.lang { padding:6px 10px } ",
   "  .solar-ui .infocard { top:auto; left:12px; right:12px; bottom:80px; width:auto; max-height:48vh } }"
 ].join("\n");
 
@@ -361,7 +356,6 @@ export default {
   meta: meta,
   keyboard: false,
   bestKey: null,
-  settings: _settings,
 
   init: async function (ctx) {
     var token = ++initToken;
@@ -785,6 +779,17 @@ export default {
     R.uiRoot.className = "solar-ui";
     R.uiRoot.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:1";
     mount.appendChild(R.uiRoot);
+    var solarSettings = (ctx.settings.solar = ctx.settings.solar || {});
+    var langByKid = (solarSettings.lang = solarSettings.lang || {});
+    R.uiRoot.dataset.lang = langByKid[ctx.kid] || "en";
+    function setLang(lang) {
+      R.uiRoot.dataset.lang = lang;
+      langByKid[ctx.kid] = lang;
+      ctx.saveSettings();
+      modeBar.querySelectorAll(".chip.lang").forEach(function (b) {
+        b.classList.toggle("on", b.dataset.langBtn === lang);
+      });
+    }
 
     R.styleNode = document.createElement("style");
     R.styleNode.id = "solar-style";
@@ -795,12 +800,23 @@ export default {
     var modeBar = document.createElement("div");
     modeBar.className = "modebar";
     modeBar.innerHTML =
-      '<button class="chip on" data-mode="explore">Explore \u63a2\u7d22</button>' +
-      '<button class="chip" data-mode="quiz">Quiz \u6e2c\u9a57</button>' +
-      '<button class="chip" data-mode="galaxy">Galaxy \u9280\u6cb3</button>';
-    modeBar.querySelectorAll(".chip").forEach(function (chip) {
+      '<div class="modes">' +
+      '<button class="chip on" data-mode="explore"><span class="i18n-en">Explore</span><span class="i18n-zh">\u63a2\u7d22</span></button>' +
+      '<button class="chip" data-mode="quiz"><span class="i18n-en">Quiz</span><span class="i18n-zh">\u6e2c\u9a57</span></button>' +
+      '<button class="chip" data-mode="galaxy"><span class="i18n-en">Galaxy</span><span class="i18n-zh">\u9280\u6cb3</span></button>' +
+      '</div>' +
+      '<div class="langgrp">' +
+      '<button class="chip lang' + (R.uiRoot.dataset.lang === "en" ? " on" : "") + '" data-lang-btn="en">EN</button>' +
+      '<button class="chip lang' + (R.uiRoot.dataset.lang === "zh" ? " on" : "") + '" data-lang-btn="zh">\u4e2d</button>' +
+      '</div>';
+    modeBar.querySelectorAll(".modes .chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         setMode(chip.dataset.mode);
+      });
+    });
+    modeBar.querySelectorAll(".chip.lang").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        setLang(chip.dataset.langBtn);
       });
     });
     R.uiRoot.appendChild(modeBar);
@@ -814,14 +830,14 @@ export default {
       '<div class="ic-photo" id="icphoto"><img id="icimg" alt=""></div>' +
       '<div class="ic-class" id="icclass"></div>' +
       '<h2 class="card-name" id="icname"></h2>' +
-      '<p class="ic-desc" id="icdesc"></p>' +
-      '<p class="ic-desc-tz" id="icdesctz"></p>' +
+      '<p class="ic-desc i18n-en" id="icdesc"></p>' +
+      '<p class="ic-desc-tz i18n-zh" id="icdesctz"></p>' +
       '<div class="ic-factbox">' +
-      '<div class="fb-head">\u2726 DID YOU KNOW \u00b7 \u4f60\u77e5\u9053\u55ce <button id="icshuffle">\ud83d\udd00</button></div>' +
-      '<div class="fb-en" id="icfact"></div>' +
-      '<div class="fb-tz" id="icfacttz"></div></div>' +
+      '<div class="fb-head"><span class="i18n-en">\u2726 DID YOU KNOW</span><span class="i18n-zh">\u2726 \u4f60\u77e5\u9053\u55ce</span> <button id="icshuffle">\ud83d\udd00</button></div>' +
+      '<div class="fb-en i18n-en" id="icfact"></div>' +
+      '<div class="fb-tz i18n-zh" id="icfacttz"></div></div>' +
       '<div class="ic-grid" id="icgrid"></div>' +
-      '<button class="btn ic-voice" id="icvoice">\ud83d\udd0a Listen \u807d\u4e00\u807d</button>';
+      '<button class="btn ic-voice" id="icvoice">\ud83d\udd0a <span class="i18n-en">Listen</span><span class="i18n-zh">\u807d\u4e00\u807d</span></button>';
     R.uiRoot.appendChild(ic);
     R.infocard = ic;
 
@@ -841,7 +857,7 @@ export default {
     var band = document.createElement("div");
     band.className = "timeband";
     band.innerHTML =
-      '<div class="counter1" id="sol-day">Day <b>0</b> \u00b7 \u7b2c <b>0</b> \u5929</div>' +
+      '<div class="counter1" id="sol-day"><span class="i18n-en">Day <b>0</b></span><span class="i18n-zh">\u7b2c <b>0</b> \u5929</span></div>' +
       '<div class="speeds" id="sol-speeds"></div>' +
       '<div class="counter2" id="sol-years"></div>';
     R.uiRoot.appendChild(band);
@@ -851,7 +867,7 @@ export default {
     SPEEDS.forEach(function (step) {
       var chip = document.createElement("button");
       chip.className = "chip" + (step.id === R.speedId ? " on" : "");
-      chip.textContent = speedDockLabel(step);
+      chip.innerHTML = speedDockHtml(step);
       chip.title = step.en + " \u00b7 " + step.tz;
       chip.setAttribute("aria-label", step.en + " " + step.tz);
       chip.addEventListener("click", function () {
@@ -868,10 +884,10 @@ export default {
     qb.className = "quizbanner hidden";
     qb.innerHTML =
       '<div class="q-round" id="qround">1 / 8</div>' +
-      '<div class="q-mid"><div class="q-en" id="qen"></div><div class="q-tz" id="qtz"></div></div>' +
+      '<div class="q-mid"><div class="q-en i18n-en" id="qen"></div><div class="q-tz i18n-zh" id="qtz"></div></div>' +
       '<div class="q-stars" id="qstars">\u2605 0</div>' +
       '<button class="q-voice" id="qvoice">\ud83d\udd0a</button>' +
-      '<div class="q-try hidden" id="qtry">Try again! \u518d\u8a66\u4e00\u6b21!</div>';
+      '<div class="q-try hidden" id="qtry"><span class="i18n-en">Try again!</span><span class="i18n-zh">\u518d\u8a66\u4e00\u6b21!</span></div>';
     R.uiRoot.appendChild(qb);
     R.quizBanner = qb;
     qb.querySelector("#qvoice").addEventListener("click", function () {
@@ -884,10 +900,11 @@ export default {
     ec.innerHTML =
       '<div class="card">' +
       '<div class="big"><b>\u2605</b> <span id="endstars">0</span> / 8</div>' +
-      '<p>Well done, space explorer!<br>\u505a\u5f97\u597d,\u5c0f\u5c0f\u592a\u7a7a\u4eba!</p>' +
+      '<p class="i18n-en">Well done, space explorer!</p>' +
+      '<p class="i18n-zh">\u505a\u5f97\u597d,\u5c0f\u5c0f\u592a\u7a7a\u4eba!</p>' +
       '<div class="row">' +
-      '<button class="btn gold" id="ecAgain">Again \u518d\u4e00\u6b21</button>' +
-      '<button class="btn" id="ecExplore">Explore \u63a2\u7d22</button></div></div>';
+      '<button class="btn gold" id="ecAgain"><span class="i18n-en">Again</span><span class="i18n-zh">\u518d\u4e00\u6b21</span></button>' +
+      '<button class="btn" id="ecExplore"><span class="i18n-en">Explore</span><span class="i18n-zh">\u63a2\u7d22</span></button></div></div>';
     R.uiRoot.appendChild(ec);
     R.endCard = ec;
     ec.querySelector("#ecAgain").addEventListener("click", startQuiz);
@@ -899,7 +916,7 @@ export default {
         leaveGalaxyView(0.6);
       }
       R.mode = mode;
-      R.modeBar.querySelectorAll(".chip").forEach(function (c) {
+      R.modeBar.querySelectorAll(".modes .chip").forEach(function (c) {
         c.classList.toggle("on", c.dataset.mode === mode);
       });
       if (mode === "quiz") {
@@ -1020,8 +1037,8 @@ export default {
 
       var cEl = R.infocard;
       cEl.classList.remove("hidden");
-      cEl.querySelector("#icclass").textContent = b.type.en + " \u00b7 " + b.type.tz;
-      cEl.querySelector("#icname").innerHTML = b.name + " <span>" + b.tz + "</span>";
+      cEl.querySelector("#icclass").innerHTML = '<span class="i18n-en">' + b.type.en + '</span><span class="i18n-zh">' + b.type.tz + '</span>';
+      cEl.querySelector("#icname").innerHTML = '<span class="i18n-en">' + b.name + '</span><span class="i18n-zh">' + b.tz + '</span>';
       cEl.querySelector("#icdesc").textContent = b.desc.en;
       cEl.querySelector("#icdesctz").textContent = b.desc.tz;
 
@@ -1047,7 +1064,8 @@ export default {
       var cells = statCells(b);
       var gridHtml = "";
       cells.forEach(function (cell) {
-        gridHtml += '<div class="cell"><div class="k">' + cell.kEn + '</div><div class="v">' + cell.v + '</div></div>';
+        var kPair = splitBilingual(cell.kEn);
+        gridHtml += '<div class="cell"><div class="k"><span class="i18n-en">' + kPair[0] + '</span><span class="i18n-zh">' + kPair[1] + '</span></div><div class="v">' + cell.v + '</div></div>';
       });
       cEl.querySelector("#icgrid").innerHTML = gridHtml;
 
@@ -1359,28 +1377,34 @@ export default {
       var yearsEl = document.getElementById("sol-years");
       if (!dayEl || !yearsEl) return;
       var days = Math.floor(R.totalDays);
-      dayEl.innerHTML = "Day <b>" + days.toLocaleString() + "</b>";
-      var parts = [];
+      dayEl.innerHTML = '<span class="i18n-en">Day <b>' + days.toLocaleString() + '</b></span>' +
+        '<span class="i18n-zh">\u7b2c <b>' + days.toLocaleString() + '</b> \u5929</span>';
+      var enParts = [], zhParts = [];
       R.bodies.forEach(function (b) {
         var oc = orbitCount(R.totalDays, b.yearDays);
-        parts.push(b.data.name + " <b>" + oc.count + "</b>y");
+        enParts.push(b.data.name + " <b>" + oc.count + "</b>y");
+        zhParts.push(b.data.tz + " <b>" + oc.count + "</b>\u5e74");
         b.prevCount = oc.count;
       });
       if (R.issBody) {
         var issOc = orbitCount(R.totalDays, R.issBody.orbitDays);
-        parts.push("ISS <b>" + issOc.count + "</b>o");
+        enParts.push("ISS <b>" + issOc.count + "</b>o");
+        zhParts.push(ISS.tz + " <b>" + issOc.count + "</b>\u5708");
       }
       if (R.plutoBody) {
         var plutoOc = orbitCount(R.totalDays, R.plutoBody.yearDays);
-        parts.push("Pluto <b>" + plutoOc.count + "</b>y");
+        enParts.push("Pluto <b>" + plutoOc.count + "</b>y");
+        zhParts.push(PLUTO.tz + " <b>" + plutoOc.count + "</b>\u5e74");
       }
       if (R.satBodies) {
         R.satBodies.forEach(function (s) {
           var soc = orbitCount(R.totalDays, s.orbitDays);
-          parts.push(s.data.name + " <b>" + soc.count + "</b>o");
+          enParts.push(s.data.name + " <b>" + soc.count + "</b>o");
+          zhParts.push(s.data.tz + " <b>" + soc.count + "</b>\u5708");
         });
       }
-      yearsEl.innerHTML = parts.join(" \u00b7 ");
+      yearsEl.innerHTML = '<span class="i18n-en">' + enParts.join(" \u00b7 ") + '</span>' +
+        '<span class="i18n-zh">' + zhParts.join(" \u00b7 ") + '</span>';
     }, 100);
 
     /* ====== Main loop ====== */
