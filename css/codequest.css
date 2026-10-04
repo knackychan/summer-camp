@@ -132,7 +132,7 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
 .cq-dialog::backdrop{background:#0b0a1fd0}
 .cq-dialog h2{font-size:22px;color:#ffd23f}
 .cq-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:9px;border-bottom:2px solid #46456a}
-.cq-dialog.cq-sheet{width:min(1180px,96vw);height:calc(100dvh - 24px);display:flex;flex-direction:column;gap:10px}
+.cq-dialog.cq-sheet[open]{width:min(1180px,96vw);height:calc(100dvh - 24px);display:flex;flex-direction:column;gap:10px}
 .cq-sheet-body{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px}
 .cq-sheet .cq-code-layout{grid-template-columns:minmax(0,1fr) minmax(190px,.34fr);min-height:420px}
 .cq-sheet .cq-code-input{min-height:400px}
