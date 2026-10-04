@@ -394,6 +394,11 @@ const deal = (seed, served, count = 12) => {
 const seedFor = (kid, day, served) => shiftSeeds(kid, day, served);
 assert.deepEqual(seedFor('luis', '2026-10-04', 9), seedFor('luis', '2026-10-04', 9));
 assert.equal(seedFor('luis', '2026-10-04', 9).key, 'luis:2026-10-04:9');
+// Another visit the same day is another shift, still reproducible from its key; the first visit keeps the plain key.
+assert.equal(shiftSeeds('luis', '2026-10-04', 9, 0).key, 'luis:2026-10-04:9');
+assert.equal(shiftSeeds('luis', '2026-10-04', 9, 2).key, 'luis:2026-10-04:9:r2');
+assert.deepEqual(shiftSeeds('luis', '2026-10-04', 9, 2), shiftSeeds('luis', '2026-10-04', 9, 2));
+assert.equal(new Set([0, 1, 2, 3, 4, 5].map(run => shiftSeeds('luis', '2026-10-04', 9, run).orders)).size, 6);
 assert.ok(Number.isInteger(seedFor('luis', '2026-10-04', 9).orders) && seedFor('luis', '2026-10-04', 9).orders >= 0);
 assert.notEqual(seedFor('luis', '2026-10-04', 9).orders, seedFor('luis', '2026-10-04', 9).cast);
 const base = seedFor('luis', '2026-10-04', 9).orders;

@@ -42,6 +42,14 @@ function savedLang(ctx) {
   const langs = ctx.settings.kitchen && ctx.settings.kitchen.lang;
   return langs && typeof langs === "object" && langs[ctx.kid] === "zh" ? "zh" : "en";
 }
+/* Visits to the kitchen so far today by this kid, remembered so each visit deals a new shift; saved with the next profile save. */
+function countVisit(ctx, day) {
+  const kitchen = kitchenSettings(ctx.settings);
+  if (!kitchen.visits || typeof kitchen.visits !== "object" || Array.isArray(kitchen.visits)) kitchen.visits = {};
+  const last = kitchen.visits[ctx.kid], before = last && last.day === day && Number.isInteger(last.n) ? Math.min(Math.max(last.n, 0), 999) : 0;
+  kitchen.visits[ctx.kid] = { day, n: before + 1 };
+  return before;
+}
 function saveProfile() {
   const kitchen = kitchenSettings(S.ctx.settings);
   if (!kitchen.profiles || typeof kitchen.profiles !== "object" || Array.isArray(kitchen.profiles)) kitchen.profiles = {};
@@ -595,9 +603,10 @@ function init(ctx) {
   const profile = normalizeProfile(saved, ctx.best);
   // One deal per kid per (Taipei) day and amount of progress: different tomorrow, and different again once a
   // dish has been served since the last visit. The key is on root.dataset.seed and in snapshot().seed; to replay
-  // a shift (a bug report, a test) put that key in settings.kitchen.seed.
+  // a shift (a bug report, a test) put that key in settings.kitchen.seed. Each visit the same day gets its own key (…:r1, …:r2).
   const pinned = ctx.settings.kitchen && typeof ctx.settings.kitchen.seed === "string" ? ctx.settings.kitchen.seed : "";
-  const seeds = pinned ? seedsFromKey(pinned) : shiftSeeds(ctx.kid, typeof ctx.today === "function" ? ctx.today() : "", profile.totalServed);
+  const day = typeof ctx.today === "function" ? ctx.today() : "";
+  const seeds = pinned ? seedsFromKey(pinned) : shiftSeeds(ctx.kid, day, profile.totalServed, countVisit(ctx, day));
   const model = new KitchenModel(seeds.orders, true, true, profile); model.requestDifficulty("easy");
   const audio = new KitchenAudio(() => !!(ctx.isMuted && ctx.isMuted()));
   root.dataset.seed = seeds.key;

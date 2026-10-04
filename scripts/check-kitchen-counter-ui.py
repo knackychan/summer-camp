@@ -36,6 +36,12 @@ def run(args):
     brain_ids = json.loads(subprocess.check_output(['node', '-e',
         'process.stdout.write(JSON.stringify(Object.keys(require(process.argv[1]).GAMES)))',
         str(directory / 'js/brain-data.js')], text=True))
+    # The expected Games / Practice split comes from the manifest, so adding a game never stales this script.
+    split = json.loads(subprocess.check_output(['node', '--input-type=module', '-e',
+        "import('file://' + process.argv[1]).then(m => process.stdout.write(JSON.stringify({"
+        "games: m.MANIFEST.filter(e => !e.brain && !e.practice).map(e => e.id),"
+        "practice: m.MANIFEST.filter(e => e.brain || e.practice).map(e => e.id)})))",
+        str(directory / 'js/games/index.js')], text=True))
     report = {'target': args.target, 'checks': [], 'pageErrors': [], 'consoleErrors': [], 'layouts': {}}
 
     def check(name, condition):
@@ -112,13 +118,15 @@ def run(args):
                     page.evaluate("SummerQuest.navigate('practice')")
                     practice = page.evaluate("[...document.querySelectorAll('#practiceRow .gamecard')].map(c=>c.dataset.l)")
                     report['games'], report['practice'] = games, practice
-                    check('Games tab has the arcade, cooking and 3D games only', set(games) == {'machines', 'monster-truck', 'kitchen', 'balloon', 'race', 'orc', 'solar', 'paint'})
-                    check('Practice tab has Brain Gym plus typing and word drills', {'calc', 'hunt', 'home', 'vocab'} <= set(practice) and not set(practice) & set(games))
+                    # Music Room instruments (pads, piano, moog) are manifest games reached through their own tile, so the tab may list fewer.
+                    check('Games tab lists manifest games only, with the core arcade and Kitchen', {'kitchen', 'machines', 'monster-truck', 'solar'} <= set(games) <= set(split['games']))
+                    check('Practice tab has Brain Gym plus typing and word drills', {'calc', 'hunt', 'home', 'vocab'} <= set(practice) <= set(split['practice']) and not set(practice) & set(games))
                     check('Dig Site and Change Maker are gone', 'dig' not in games + practice and 'change' not in games + practice)
                     check('Dig Site and Change Maker no longer open', page.evaluate("Promise.all([SQContentRegistry.open('game:dig'),SQContentRegistry.open('game:change')]).then(r=>r.every(x=>!x.ok))"))
                     page.evaluate("progress.luis.brain.done={}; SummerQuest.navigate('games')")
                     page.wait_for_selector('#lockToPractice')
                     check('Brain-locked Games tab points to Practice', page.locator('#gamesLockCard').count() == 1)
+                    page.wait_for_function("document.querySelectorAll('.sqtoast').length === 0", timeout=20000)  # the fixture's achievement toast covers the button
                     tap('#lockToPractice')
                     check('Practice button opens the Practice tab', page.evaluate('hubTab') == 'practice' and not page.locator('#tab-practice').evaluate('el=>el.classList.contains("hidden")'))
                     page.evaluate("progress.luis.brain.done=Object.fromEntries(brainTrio('luis').map(id=>[id,{score:8,ms:1}]))")

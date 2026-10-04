@@ -10,9 +10,10 @@ export const SERVICE_SECONDS = .82;
 export function seedsFromKey(key) {
     return { key, orders: hashSeed(key + ':orders'), cast: hashSeed(key + ':cast') };
 }
-/** One deal per cook per day per amount of progress: a new day, or a dish served since the last visit, deals a different one. */
-export function shiftSeeds(kid, day, totalServed) {
-    return seedsFromKey([kid, day, totalServed].join(':'));
+/** One deal per cook per day per amount of progress, and per visit: a new day, a dish served since the last visit,
+ *  or another visit the same day (`run` counts the earlier ones) deals a different shift. The first visit keeps the plain key. */
+export function shiftSeeds(kid, day, totalServed, run = 0) {
+    return seedsFromKey([kid, day, totalServed].join(':') + (run > 0 ? ':r' + run : ''));
 }
 const emptyDish = (order) => ({ food: [], order, phase: 'editing', feedbackVisible: false, elapsed: 0, waitRemaining: 0, arrivalAge: 0 });
 const copyOrder = (order) => order ? { ...order, recipe: { ...order.recipe,
