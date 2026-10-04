@@ -199,12 +199,12 @@ const KIDS = {
 
   <!-- KID HUB -->
   <section id="hub" class="hidden">
-    <div class="topbar">
+    <div class="hub-shell">
+    <div class="hub-rail hub-rail-left">
       <button class="btn" id="hubBack">← 🌍 Planet 星球</button>
       <button class="btn small" id="papaBtn">🔧 Papa 爸爸</button>
-      <div class="spacer"></div>
-      <div class="hubstars" id="hubStars"></div>
     </div>
+    <div class="hub-main">
     <div class="hubhead" id="hubHead"></div>
     <div class="kidtabs" id="hubTabs" aria-label="Summer Quest navigation">
       <button class="chip" data-t="quests"><span class="nav-ico">🧭</span><span>Quests</span><span class="nav-zh">任務</span></button>
@@ -391,6 +391,11 @@ const KIDS = {
           <p id="calibOut" role="status">Preparing sound… 準備聲音中…</p>
         </details>
       </div>
+    </div>
+    </div>
+    <div class="hub-rail hub-rail-right">
+      <div class="hubstars" id="hubStars"></div>
+    </div>
     </div>
   </section>
 
