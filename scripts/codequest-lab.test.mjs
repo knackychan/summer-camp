@@ -247,6 +247,7 @@ test('lab screen brew: Echo Crystal + Red Mushroom is duplication, a new Journal
   const out = labBrew(fill(['echoCrystal', 'redMushroom']), profile, { now: 5 });
   assert.equal(out.state.lastResult.ruleId, 'duplication');
   assert.equal(out.state.newPage, true);
+  assert.equal(out.newRule, true);
   assert.equal(out.changed, true);
   assert.deepEqual([...out.profile.lab.found], ['duplication']);
   assert.deepEqual([...out.profile.lab.seen], ['echoCrystal', 'redMushroom']);
@@ -260,6 +261,7 @@ test('lab screen brew: Echo Crystal + Red Mushroom is duplication, a new Journal
   assert.equal(repeat.changed, false);
   assert.equal(repeat.profile, out.profile);
   assert.equal(repeat.state.newPage, false);
+  assert.equal(repeat.newRule, false);
 });
 
 test('lab screen brew: Healing recipe in order bottles a potion without using the bag (D5)', () => {

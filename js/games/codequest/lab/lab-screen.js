@@ -59,14 +59,14 @@ export function labClear(state) {
 }
 
 /**
- * Brew the current experiment. Returns `{ state, profile, changed, potionId }`:
+ * Brew the current experiment. Returns `{ state, profile, changed, potionId, newRule }`:
  * `changed` says whether the profile needs saving, `potionId` names a bottled dungeon
  * potion (the caller tops up the live run). Mix and steps stay, so a kid can change one
  * thing and brew again.
  */
 export function labBrew(state, profile, { free = LAB_FREE_INGREDIENTS, now = 0 } = {}) {
   const mix = [...state.mix], steps = [...state.steps];
-  if (!mix.length) return { state: next(state, { selection: null, line: LAB.empty }), profile, changed: false, potionId: null };
+  if (!mix.length) return { state: next(state, { selection: null, line: LAB.empty }), profile, changed: false, potionId: null, newRule: false };
   const lastIngredient = mix[mix.length - 1];
   let result = resolveExperiment({ ingredients: mix, steps, recipes: RECIPES });
   let practice = false;
@@ -77,7 +77,7 @@ export function labBrew(state, profile, { free = LAB_FREE_INGREDIENTS, now = 0 }
       return {
         state: next(state, { selection: null, lastResult: result, newPage: false, line: labMadeLine(recipe.label),
           effect: Object.freeze({ ruleId: 'potion', potionId: result.potionId, intensity: 1, start: now, lastIngredient }) }),
-        profile: brewed.profile, changed: true, potionId: result.potionId
+        profile: brewed.profile, changed: true, potionId: result.potionId, newRule: false
       };
     }
     // D5 off and the bag is short: the reaction still plays as a practice brew.
@@ -90,13 +90,15 @@ export function labBrew(state, profile, { free = LAB_FREE_INGREDIENTS, now = 0 }
   return {
     state: next(state, { selection: null, lastResult: practice ? Object.freeze({ ...result, practice: true }) : result, newPage: state.newPage || fresh, line,
       effect: Object.freeze({ ruleId: result.ruleId, intensity: result.intensity, start: now, lastIngredient }) }),
-    profile: recorded, changed: recorded !== profile, potionId: null
+    profile: recorded, changed: recorded !== profile, potionId: null, newRule: fresh
   };
 }
 
 /* ---------- DOM controller ---------- */
 
 const LINE_MS = 6000;
+// Existing host sounds only (lab design D13); per-family audio is a later phase.
+const REACTION_SOUND = Object.freeze({ explosion: 'hit', fireball: 'zap', singularity: 'zap' });
 const DRAG_PX = 8;
 const BUBBLE_SIDE_CLASSES = ['below', 'side-left', 'side-right', 'caption'];
 const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -259,7 +261,7 @@ export function mountLab(root, api) {
     const out = labBrew(state, api.profile(), { free: LAB_FREE_INGREDIENTS, now: performance.now() });
     if (out.changed) api.save(out.profile);
     if (out.potionId && api.onPotion) api.onPotion(out.potionId);
-    if (out.potionId || (out.state.newPage && !state.newPage)) sfx('good'); else if (out.state.lastResult) sfx('pop');
+    if (out.state.lastResult) sfx(out.potionId || out.newRule ? 'good' : REACTION_SOUND[out.state.lastResult.ruleId] || 'pop');
     apply(out.state);
     // The same line twice in a row (brew again) still needs the owl to speak.
     if (out.state.lastResult) say(out.state.line);
