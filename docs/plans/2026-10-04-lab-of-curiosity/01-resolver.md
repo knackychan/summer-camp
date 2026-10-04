@@ -32,3 +32,10 @@
   - determinism: same input twice → deep-equal output;
   - every rule and ingredient label/line has non-empty EN and 中文.
 - `node scripts/check.mjs` green.
+
+## Implementation notes (2026-10-04)
+
+- Shipped: `lab/ingredients.js`, `lab/rules.js`, `lab/resolve.js`, `scripts/codequest-lab.test.mjs` (11 tests, all fixtures reach their rule with the `design.md` starting numbers — no tuning needed).
+- Intensity = `clamp(1 + floor(over / 2), 1, 3)`.
+- `sw.js` APP_SHELL entries moved to slice 04: nothing loads the lab modules until the screen mounts, and `check.mjs` only requires loaded files in the shell.
+- `check.mjs`'s payload test compares source against the gitignored `dist/android-web`; after adding files, run `npm run build:android-web` before `check.mjs`.
