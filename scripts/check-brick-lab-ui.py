@@ -14,6 +14,7 @@ resizes, and there is no bottom tray. Slice 13: an idle lab draws no frames, and
 gets the reduced tier (studs painted on the plate, Lambert light, a fraction of the triangles) and still
 places pieces. Slice 14: a standard tablet that can't keep up steps down (painted studs, no shadows)
 without resizing the view. Slice 15: a part slid sideways out of the rail places where it is let go.
+Multiplayer plan slice 08: part icons are the real part, in the picked colour, drawn on the lab's own canvas.
 A pre-reader profile shows the icon-first UI.
 Requires Python Playwright. --target web checks dist/android-web after a build.
 """
@@ -280,6 +281,35 @@ def run(args):
                 check('A category opens its parts in two columns, with Back and colours', snap()['tray']['view'] == 'parts'
                       and len(xs) == 2 and page.locator('.sqbl-rail-back').is_visible()
                       and not page.locator('.sqbl-category-list').is_visible() and page.locator('.sqbl-colors').is_visible())
+                # Multiplayer plan slice 08 (D12): each icon on screen is the real part in the picked colour.
+                on_screen = """() => { const r = document.querySelector('.sqbl-parts').getBoundingClientRect();
+                    return [...document.querySelectorAll('.sqbl-parts .sqbl-part-preview')].filter((e) => {
+                      const b = e.getBoundingClientRect(); return b.bottom > r.top && b.top < r.bottom; }).length; }"""
+                rail_box = page.locator('.sqbl-left-rail').bounding_box()
+
+                def icons(suffix, wait=900):
+                    page.wait_for_timeout(wait)
+                    keys = snap()['tray']['icons']
+                    return len(keys) >= page.evaluate(on_screen) and keys and all(suffix(k) for k in keys)
+
+                check('Every part icon on screen is the real part, in the picked colour (red)', icons(lambda k: k.endswith(':red')))
+                check('An icon is the part on a clear background (see-through corner, solid middle)', page.evaluate("""async () => {
+                    const img = document.querySelector('.sqbl-parts .sqbl-part-preview.has-pic img'); await img.decode();
+                    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+                    const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+                    const at = (x, y) => g.getImageData(x, y, 1, 1).data[3];
+                    return at(0, 0) === 0 && at(c.width >> 1, c.height >> 1) === 255; }"""))
+                check('Icons draw on the lab canvas, no second 3D canvas', page.locator('.sqbl-app canvas').count() == 1)
+                page.screenshot(path=str(out / 'icons-red.png'), clip=rail_box)
+                page.locator('.sqbl-color[data-color="blue"]').click()
+                check('Picking blue redraws the icons on screen in blue', icons(lambda k: k.endswith(':blue')))
+                page.screenshot(path=str(out / 'icons-blue.png'), clip=rail_box)
+                pick(page, 'rails')
+                check('Rails keep their own colours: one icon per rail part', icons(lambda k: ':' not in k))
+                page.screenshot(path=str(out / 'icons-rails.png'), clip=rail_box)
+                page.locator('.sqbl-color[data-color="red"]').click()
+                pick(page, 'bricks')
+                check('Back to red: icons come from the cache at once', icons(lambda k: k.endswith(':red'), wait=150))
                 check('Rail targets are tablet-sized', all(min(page.locator(sel).bounding_box()['width'], page.locator(sel).bounding_box()['height']) >= 44
                       for sel in ('.sqbl-rail-back', '.sqbl-rail-find', '.sqbl-part-slot >> nth=0')))
                 box = page.locator('.sqbl-stage canvas').bounding_box()

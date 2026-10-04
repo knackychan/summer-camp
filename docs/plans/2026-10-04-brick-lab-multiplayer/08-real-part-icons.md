@@ -22,3 +22,13 @@ Tray tiles (`.sqbl-part-preview`, `brick-lab.js:1302`, and the info card at `:13
 - Screenshot of the tray for Papa (Bricks and Rails categories, red and blue).
 
 **DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; `check-android8-ui.py` with Chrome 138 passes; Papa has reviewed the screenshot; scrolling the tray on the Android 8 tablet stays smooth.
+
+## As built (2026-10-04)
+- **Orthographic, not perspective.** The fixed ¾ view is an orthographic camera fitted to each part's box, like a parts catalogue: a 1×1 brick and a 2×6 plate both fill their tile, centred, and nothing leans. Icon size is **56×36 CSS px** (× pixel ratio), not 96×64; the tile's picture row grew from 30 to 36 px.
+- **Drawn in the canvas corner, not into a render target.** A render target skips the screen's tone mapping and sRGB output (the icon would not match the plate) and sRGB targets are shaky on WebGL1. Instead the lab's renderer draws the icon into the bottom-left corner of its own canvas, it is copied to a 2D canvas in the same task, and the scene is drawn over the corner that same frame. The context has no alpha, so each icon is drawn on black and on white and the difference gives each pixel's coverage: a clean transparent background, antialiased edges included.
+- **Shadows off while drawing an icon**; the plate's lights (hemisphere, warm sun, cool fill on the standard tier) are copied.
+- **Cache kept on context loss.** Icons are data URLs, so they outlive a lost GL context; only the queue waits until the context is back.
+- Colour change keeps the old picture until the new one is ready (no flash back to the CSS drawing).
+- `sw.js` precaches `brick-thumbs.js` (cache `summer-quest-v165-brick-icons`).
+
+**Verified 2026-10-04:** `check.mjs` green (after `npm run build:android-web`); `check-brick-lab-ui.py` 92/92 (Edge headless, SwiftShader), including the 6 new checks: icons on screen are the real part in red, clear background (see-through corner, solid middle), still one canvas in the lab, blue redraws them in blue, rail icons don't change with colour, back to red comes from the cache. Forced WebGL1 (r162 fallback, reduced tier) draws every icon. `check-android8-ui.py` passes with Playwright Chromium 1228 (webgl2, webgl1, no-GL retry, offline) — **not yet with Chrome 138**, which isn't on this machine. Screenshots for Papa: `.tmp/brick-lab-ui/icons-all-webgl2.png`, `icons-all-webgl1.png`, `icons-red.png`, `icons-blue.png`, `icons-rails.png`. Not yet done: Papa's review of the screenshots, tray scrolling on the Android 8 tablet.

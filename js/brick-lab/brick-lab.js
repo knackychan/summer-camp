@@ -9,6 +9,7 @@ import {
 } from "./brick-catalog.js";
 import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, worldConnectors } from "./brick-rails.js";
 import { BrickLabStorage } from "./brick-storage.js";
+import { createThumbs } from "./brick-thumbs.js";
 
 let THREE = null;
 let OrbitControls = null;
@@ -656,6 +657,7 @@ export class BrickLabRuntime {
     this.reducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     this.renderShell();
     this.setupScene();
+    this.setupThumbs();
     this.bindUI();
     this.loadInitialState();
     this.renderPartTray();
@@ -1175,6 +1177,68 @@ export class BrickLabRuntime {
     });
   }
 
+  /* Part icons are the real part in the picked colour (multiplayer plan
+     D12, slice 08). Only icons on screen are drawn; until one is ready the
+     CSS drawing stands in. */
+  setupThumbs() {
+    this.thumbs = createThumbs({ THREE, renderer: this.renderer, cheap: this.kit.cheap, perFrame: this.kit.cheap ? 1 : 3 });
+    this.thumbs.onReady((key, url) => {
+      this.root.querySelectorAll(".sqbl-part-preview[data-thumb-want]").forEach((el) => {
+        if (el.dataset.thumbWant === key) this.setThumb(el, key, url);
+      });
+    });
+    this.shownPreviews = new Set();
+    this.previewWatch = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          this.shownPreviews.add(entry.target);
+          this.paintPreview(entry.target);
+        } else this.shownPreviews.delete(entry.target);
+      });
+    });
+  }
+
+  thumbKey(part) {
+    return FIXED_COLOR_SHAPES.includes(part.shape) ? part.id : `${part.id}:${this.activeColorId}`;
+  }
+
+  setThumb(el, key, url) {
+    let img = el.firstElementChild;
+    if (!img) {
+      img = document.createElement("img");
+      img.alt = "";
+      img.draggable = false;
+      el.appendChild(img);
+    }
+    img.src = url;
+    el.dataset.thumb = key;
+    delete el.dataset.thumbWant;
+    el.classList.add("has-pic");
+  }
+
+  paintPreview(el) {
+    if (!this.thumbs || !el.isConnected) return;
+    const part = getPart(el.dataset.preview);
+    const key = this.thumbKey(part);
+    if (el.dataset.thumb === key) return;
+    const url = this.thumbs.get(key);
+    if (url) { this.setThumb(el, key, url); return; }
+    /* Keep the old picture (other colour) until the new one is ready. */
+    el.dataset.thumbWant = key;
+    const colorHex = getColorHex(this.activeColorId);
+    this.thumbs.want(key, () => makePieceMesh(part, colorHex, this.kit), (object) => disposeTree(object));
+  }
+
+  watchPreviews(container, fresh) {
+    if (!this.previewWatch) return;
+    if (fresh) {
+      this.previewWatch.disconnect();
+      this.shownPreviews.clear();
+      this.thumbs.cancel();
+    }
+    container.querySelectorAll(".sqbl-part-preview").forEach((el) => this.previewWatch.observe(el));
+  }
+
   /* Slice 12 (D23): the rail shows the categories, or one category's parts
      (or search results). Its width never changes between the two, so the 3D
      view never resizes (D14); opening a category unfolds a folded rail. */
@@ -1314,6 +1378,8 @@ export class BrickLabRuntime {
       return head + body;
     }).join("");
     this.trayCount = count;
+    this.watchPreviews(this.partsEl, true);
+    if (this.infoPartId) this.watchPreviews(this.infoEl, false);
     this.markScrollable(this.partsEl);
     this.updateCategoryUI();
   }
@@ -1381,6 +1447,7 @@ export class BrickLabRuntime {
       ${line(snapGuide(part))}`;
     this.infoEl.hidden = false;
     this.infoPartId = part.id;
+    this.watchPreviews(this.infoEl, false);
   }
 
   hideInfo() {
@@ -1408,6 +1475,7 @@ export class BrickLabRuntime {
     this.activeColorId = colorId;
     this.colorsEl.querySelectorAll("[data-color]").forEach((item) => item.classList.toggle("is-active", item.dataset.color === colorId));
     this.app.style.setProperty("--sqbl-piece", cssHex(getColorHex(colorId)));
+    if (this.shownPreviews) this.shownPreviews.forEach((el) => this.paintPreview(el));
   }
 
   loadInitialState() {
@@ -2182,7 +2250,9 @@ export class BrickLabRuntime {
         this.glowMaterial().emissiveIntensity = 0.35 + 0.2 * (1 + Math.sin(time / 420));
       }
       const moved = this.cameraMoved();
-      if (!moved && !glowing && !this.cameraTween && performance.now() > this.renderUntil) return;
+      /* Part icons draw into the canvas corner; the scene then covers it. */
+      const icons = this.thumbs ? this.thumbs.pump() : 0;
+      if (!icons && !moved && !glowing && !this.cameraTween && performance.now() > this.renderUntil) return;
       if (this.selectedId && this.selectionHelper.visible) {
         const object = this.sceneObjects.get(this.selectedId);
         if (object) this.selectionBox.setFromObject(object);
@@ -2236,6 +2306,8 @@ export class BrickLabRuntime {
         view: this.railView, finding: this.finding, category: this.activeCategory, query: this.query, size: this.sizeFilter, count: this.trayCount || 0,
         parts: this.partsEl ? Array.from(this.partsEl.querySelectorAll("[data-part]"), (el) => el.dataset.part) : [],
         favorites: this.prefs.favorites.slice(), recents: this.prefs.recents.slice(), info: this.infoPartId,
+        icons: this.partsEl ? Array.from(this.partsEl.querySelectorAll(".sqbl-part-preview.has-pic"), (el) => el.dataset.thumb) : [],
+        iconsCached: this.thumbs ? this.thumbs.cached() : 0, iconsPending: this.thumbs ? this.thumbs.pending() : 0,
       },
       pieces,
     };
@@ -2252,6 +2324,8 @@ export class BrickLabRuntime {
     clearTimeout(this.toastTimer);
     cancelAnimationFrame(this.raf);
     if (this.resizeObserver) this.resizeObserver.disconnect();
+    if (this.previewWatch) this.previewWatch.disconnect();
+    if (this.thumbs) this.thumbs.dispose();
     if (this.onOutsidePress) this.root.removeEventListener("pointerdown", this.onOutsidePress, true);
     if (this.onInput) INPUT_EVENTS.forEach((type) => this.root.removeEventListener(type, this.onInput, { capture: true }));
     if (this.controls) this.controls.dispose();
