@@ -18,6 +18,8 @@ Multiplayer plan slice 08: part icons are the real part, in the picked colour, d
 Multiplayer plan slice 02: every change goes through the op sequencer (placed pieces carry `by`).
 Multiplayer plan slice 05: on a pretend home wifi (in-page loopback), a sibling joins the open world, builds,
 undoes and leaves; then this tablet joins a sibling's world, builds in it and is sent home when it closes.
+Multiplayer plan slice 06: another app version is turned away, an app pause takes the hosted world off the
+wifi (and back on resume), and a guest whose host vanishes waits calmly, then rejoins when it is back.
 Multiplayer plan slice 01: the lab opens on the kid's worlds (the old single build becomes world 1); a new
 world starts empty; rename and delete from a card; Back leaves a world for the menu with its picture saved.
 A pre-reader profile shows the icon-first UI.
@@ -84,10 +86,11 @@ WIFI = """async () => {
       crewToast: (k, j) => lab.events.push(['crew', k, j]), loadShared(w) { lab.pieces.clear(); w.forEach((p) => lab.pieces.set(p.id, { ...p })); },
       ownChangeApplied: (op) => lab.events.push(['mine', op.type]), ownChangeRefused: (op, why) => lab.events.push(['refused', why]),
       sessionEnded: (r) => lab.events.push(['ended', r]) };
-    lab.together = new BrickTogether(lab, lan.createLanSession(wifi.device()), kid);
+    lab.device = wifi.device();
+    lab.together = new BrickTogether(lab, lan.createLanSession(lab.device), kid);
     return lab;
   };
-  window.__sqSib = { wifi, share, rules, fake, lili: fake('lili') };
+  window.__sqSib = { wifi, lan, share, rules, fake, lili: fake('lili') };
   return true; }"""
 
 
@@ -304,6 +307,26 @@ def lab_together(browser, base, report, console, check, out):
     pg.wait_for_timeout(150)
     check('Lili leaves: a toast, the chips go', '離開了' in pg.locator('.sqbl-toast').inner_text()
           and not pg.locator('.sqbl-crew').is_visible())
+    # Slice 06: a tablet on another app version is turned away kindly; this tablet says to update both.
+    sib("""const old = S.lan.createLanSession(S.wifi.device()); const name = Array.from(S.wifi.services.keys())[0];
+        const peer = await old.join({ host: name, port: 1 }); old.send(peer, { t: 'hello', proto: 99, kid: 'lucien' });
+        await new Promise((r) => setTimeout(r, 80)); return true;""")
+    pg.wait_for_timeout(100)
+    check('Another app version is turned away; this tablet says to update both', '兩台平板都要更新' in pg.locator('.sqbl-toast').inner_text()
+          and snap()['together']['peers'] == 0)
+    # An app pause (home button, screen off) takes the world off the wifi; Lili goes home. Resume puts it back.
+    sib("""const t = S.lili.together; t.startLooking(); await new Promise((r) => setTimeout(r, 50));
+        await t.join(t.joinable()[0]); await new Promise((r) => setTimeout(r, 80)); return true;""")
+    pg.wait_for_timeout(100)
+    pg.evaluate("window.dispatchEvent(new CustomEvent('summerquest:native-pause'))")
+    pg.wait_for_timeout(150)
+    check('An app pause takes the world off the wifi and sends Lili home', snap()['together']['role'] is None
+          and sib("return S.lili.together.role") is None and sib("return S.lili.events.some((e) => e[0] === 'ended')"))
+    pg.evaluate("window.dispatchEvent(new CustomEvent('summerquest:native-resume'))")
+    pg.wait_for_timeout(150)
+    check('Back in the app, the world is on the wifi again', snap()['together']['role'] == 'host'
+          and sib("""const t = S.lili.together; t.startLooking(); await new Promise((r) => setTimeout(r, 50));
+              const n = t.joinable().length; t.stopLooking(); return n;""") == 1)
     pg.evaluate('SQPlatform.triggerBack()')
     check("Lili's brick is saved in this tablet's world", any(p['id'] == 'lili-1' for p in world_build(pg, 'luis', 'pieces')))
     check('Leaving the world takes it off the wifi', sib("""const t = S.lili.together; t.startLooking();
@@ -333,6 +356,20 @@ def lab_together(browser, base, report, console, check, out):
     check("Our brick goes to Lili's tablet, comes back numbered, and is selected", len(added) == 1 and added[0].get('by') == 'luis'
           and s['selectedId'] == added[0]['id'] and sib(f"return S.lili.pieces.get('{added[0]['id']}').by") == 'luis')
     pg.screenshot(path=str(out / 'together-guest.png'))
+
+    # Slice 06: Lili's tablet drops off the wifi; this one waits calmly, then rejoins when she is back.
+    sib("S.lili.device.drop(); await new Promise((r) => setTimeout(r, 60)); return true;")
+    pg.wait_for_timeout(100)
+    s = snap()
+    check("Lili's world vanishes: the plate stays, a calm 'looking for' note, no red", s['together']['lost'] and s['together']['role'] == 'guest'
+          and pg.locator('.sqbl-lost').is_visible() and '正在找' in pg.locator('.sqbl-lost').inner_text() and len(s['pieces']) == 2)
+    pg.screenshot(path=str(out / 'together-lost.png'))
+    sib("""S.lili.pieces.set('t2', { id: 't2', partId: 'brick_1x1', colorId: 'yellow', x: -3.5, y: 0.6, z: -3.5, rotation: 0, by: 'lili' });
+        await S.lili.together.host('Treehouse'); await new Promise((r) => setTimeout(r, 120)); return true;""")
+    pg.wait_for_function(f"{SNAP}.together.role === 'guest' && !{SNAP}.together.lost")
+    s = snap()
+    check('She is back: this tablet rejoins on its own, with a fresh copy of her world', not pg.locator('.sqbl-lost').is_visible()
+          and sorted(p['id'] for p in s['pieces']) == sorted(sib("return Array.from(S.lili.pieces.keys())")))
 
     # Lili closes her world: we land on our own menu, our worlds untouched.
     sib("S.lili.together.stopHosting(); await new Promise((r) => setTimeout(r, 80)); return true;")

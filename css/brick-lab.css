@@ -178,3 +178,10 @@
 .sqbl-crew-chip b{font-size:13px;font-weight:800;color:var(--sqbl-ink)}
 .sqbl-crew-chip.is-me{background:var(--sqbl-kid,#9ec3e6)}
 .sqbl-app.is-guest .sqbl-save-btn{visibility:hidden}
+/* Multiplayer plan slice 06: the guest's link dropped; the plate waits, calm, while we look. */
+.sqbl-lost{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;background:rgba(226,239,246,.72);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);text-align:center;color:var(--sqbl-ink)}
+.sqbl-lost[hidden]{display:none}
+.sqbl-lost-av{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:#fff;font-size:40px;box-shadow:0 6px 16px rgba(40,60,80,.12);animation:sqbl-look 1.6s ease-in-out infinite}
+.sqbl-lost b{font-size:18px;font-weight:800}
+@keyframes sqbl-look{50%{transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){.sqbl-lost-av{animation:none}}

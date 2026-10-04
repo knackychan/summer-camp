@@ -21,6 +21,8 @@ function fakeLab(kid) {
     ownChangeApplied: (op) => lab.events.push(["mine", op.type]),
     ownChangeRefused: (op, why) => lab.events.push(["refused", why]),
     sessionEnded: (reason, host) => lab.events.push(["ended", reason, host]),
+    connectionLost: (host) => lab.events.push(["lost", host]),
+    versionRefused: () => lab.events.push(["version"]),
   };
   return lab;
 }
@@ -42,7 +44,7 @@ async function family() {
   const guests = [];
   for (const kid of ["leo", "lili"]) {
     const lab = fakeLab(kid);
-    const together = new BrickTogether(lab, createLanSession(wifi.device()), kid);
+    const together = new BrickTogether(lab, createLanSession(wifi.device()), kid, { retryMs: 150 });
     together.startLooking();
     await flush();
     const [service] = together.joinable();
@@ -141,12 +143,41 @@ test("the host closes the world: every guest is sent home", async () => {
   assert.equal(leo.together.role, null);
 });
 
-test("the host drops off the wifi: guests are told the link was lost", async () => {
+test("the host drops off the wifi: guests look for it, then go home gently", async () => {
   const { wifi, leo } = await family();
   const hostDevice = Array.from(wifi.services.values())[0].device;
   hostDevice.drop();
   await flush();
-  assert.deepEqual(leo.lab.events.at(-1), ["ended", "lost", "maya"]);
+  assert.deepEqual(leo.lab.events.at(-1), ["lost", "maya"]);
+  assert.equal(leo.together.request({ type: "remove", id: "a" }), null, "nothing is sent while the host is gone");
+  await new Promise((done) => setTimeout(done, 250));
+  assert.deepEqual(leo.lab.events.at(-1), ["ended", "closed", "maya"]);
+  assert.equal(leo.together.role, null);
+});
+
+test("a guest's wifi blinks: it finds the same world again and gets a fresh copy", async () => {
+  const { maya, host, leo } = await family();
+  hostChange(maya, host, { type: "add", piece: brick("b", 4.5, 4) });
+  await flush();
+  /* Leo's link drops; the host keeps building meanwhile. */
+  const guestPeer = Array.from(host.peers.entries()).find(([, kid]) => kid === "leo")[0];
+  host.lan.close(guestPeer);
+  await flush();
+  hostChange(maya, host, { type: "add", piece: brick("c", 8.5, 4) });
+  await flush(12);
+  assert.ok(leo.lab.events.some((e) => e[0] === "lost"));
+  assert.equal(leo.together.role, "guest");
+  assert.equal(leo.together.lost, null, "found it again");
+  assert.deepEqual(plain(leo.lab.pieces), plain(maya.pieces));
+  assert.ok(Array.from(host.peers.values()).includes("leo"));
+});
+
+test("an app pause on the host sends every guest home", async () => {
+  const { host, leo, lili } = await family();
+  host.dispose();
+  await flush();
+  assert.deepEqual(leo.lab.events.at(-1), ["ended", "closed", "maya"]);
+  assert.deepEqual(lili.lab.events.at(-1), ["ended", "closed", "maya"]);
 });
 
 test("a different app version is refused cleanly", async () => {
@@ -171,6 +202,8 @@ test("the same kid on a second tablet replaces the first connection", async () =
   await flush();
   assert.equal(host.peers.size, 2);
   assert.deepEqual(host.roster.slice().sort(), ["leo", "lili", "maya"]);
+  await new Promise((done) => setTimeout(done, 400));
+  assert.equal(host.peers.size, 2, "the old connection goes home and does not fight back");
 });
 
 test("a guest that missed a change asks for a fresh copy", async () => {

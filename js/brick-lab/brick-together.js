@@ -17,8 +17,9 @@ import { PROTO, createClient, createUndo } from "./brick-share.js";
 export const GAME = "bricklab";
 
 export class BrickTogether {
-  /* lab: the BrickLabRuntime; lan: a lan-session; kid: this tablet's kid id. */
-  constructor(lab, lan, kid) {
+  /* lab: the BrickLabRuntime; lan: a lan-session; kid: this tablet's kid id.
+     retryMs: how long a guest keeps looking for a host it lost (D9). */
+  constructor(lab, lan, kid, { retryMs = 30000 } = {}) {
     this.lab = lab;
     this.lan = lan;
     this.kid = kid;
@@ -29,7 +30,9 @@ export class BrickTogether {
     this.pending = new Map(); /* guest: request id → op */
     this.found = new Map(); /* worlds open nearby, by service id */
     this.client = null;
-    this.hostInfo = null; /* guest: { kid, name, peer } */
+    this.hostInfo = null; /* guest: { kid, world, name, peer } */
+    this.lost = null; /* guest: { kid, world, timer } while looking for a lost host */
+    this.retryMs = retryMs;
     this.offs = [
       lan.onMessage((peer, message) => this.onMessage(peer, message)),
       lan.onPeer((peer, open) => this.onPeer(peer, open)),
@@ -59,8 +62,10 @@ export class BrickTogether {
   onFound(service) {
     const txt = service && service.txt;
     if (!txt || txt.game !== GAME) return;
-    this.found.set(service.id, { ...service, kid: txt.kid || "", world: txt.world || "", proto: Number(txt.proto) || 0 });
-    this.lab.renderJoin();
+    const world = { ...service, kid: txt.kid || "", world: txt.world || "", proto: Number(txt.proto) || 0 };
+    this.found.set(service.id, world);
+    if (this.lost && world.kid === this.lost.kid && world.world === this.lost.world) this.rejoin(world);
+    else this.lab.renderJoin();
   }
 
   onLost(service) {
@@ -97,6 +102,7 @@ export class BrickTogether {
     if (Number(message.proto) !== PROTO) {
       this.lan.send(peer, { t: "refuse", why: "proto" });
       setTimeout(() => this.lan.close(peer), 200);
+      this.lab.versionRefused();
       return;
     }
     const kid = typeof message.kid === "string" ? message.kid.slice(0, 64) : "";
@@ -104,8 +110,10 @@ export class BrickTogether {
     /* The same kid on a second connection replaces the first (D9). */
     for (const [other, otherKid] of this.peers) {
       if (otherKid === kid && other !== peer) {
+        /* Told first, so the old tablet goes home instead of looking again. */
         this.peers.delete(other);
-        this.lan.close(other);
+        this.lan.send(other, { t: "refuse", why: "replaced" });
+        setTimeout(() => this.lan.close(other), 200);
       }
     }
     const fresh = !Array.from(this.peers.values()).includes(kid);
@@ -167,7 +175,7 @@ export class BrickTogether {
     const peer = await this.lan.join(service);
     if (!peer) return false;
     this.role = "guest";
-    this.hostInfo = { kid: service.kid, name: service.world, peer };
+    this.hostInfo = { kid: service.kid, world: service.world, name: service.world, peer };
     this.pending.clear();
     this.undo.clear();
     this.lan.send(peer, { t: "hello", proto: PROTO, kid: this.kid });
@@ -176,12 +184,57 @@ export class BrickTogether {
 
   leave() {
     if (this.role !== "guest") return;
-    this.lan.send(this.hostInfo.peer, { t: "bye" });
+    if (this.hostInfo.peer) this.lan.send(this.hostInfo.peer, { t: "bye" });
     this.lan.leave();
+    if (this.lost) this.stopLooking();
     this.endGuest();
   }
 
+  /* The link to the host dropped (wifi, distance): keep the plate as it is and
+     look for that world again for a while; then go home (D9). */
+  lostHost() {
+    const info = this.hostInfo;
+    this.client = null;
+    this.pending.clear();
+    this.hostInfo = { ...info, peer: null };
+    clearTimeout(this.lost && this.lost.timer);
+    this.lost = { kid: info.kid, world: info.world, timer: setTimeout(() => this.giveUp(), this.retryMs) };
+    this.lab.connectionLost(info.kid);
+    this.startLooking();
+  }
+
+  async rejoin(service) {
+    if (this.rejoining) return;
+    this.rejoining = true;
+    this.stopLooking();
+    const peer = await this.lan.join(service);
+    this.rejoining = false;
+    if (!this.lost) {
+      if (peer) this.lan.leave();
+      return;
+    }
+    if (!peer) {
+      this.startLooking();
+      return;
+    }
+    clearTimeout(this.lost.timer);
+    this.lost = null;
+    this.hostInfo.peer = peer;
+    /* The welcome brings a fresh copy; own undo stays (its checks still hold). */
+    this.lan.send(peer, { t: "hello", proto: PROTO, kid: this.kid });
+  }
+
+  giveUp() {
+    if (!this.lost) return;
+    const kid = this.lost.kid;
+    this.stopLooking();
+    this.endGuest();
+    this.lab.sessionEnded("closed", kid);
+  }
+
   endGuest() {
+    if (this.lost) clearTimeout(this.lost.timer);
+    this.lost = null;
     this.role = null;
     this.client = null;
     this.hostInfo = null;
@@ -232,6 +285,7 @@ export class BrickTogether {
 
   /* Guest: send the op to the host; it shows when the host's change comes back. */
   request(op, meta = {}) {
+    if (!this.hostInfo || !this.hostInfo.peer) return null;
     const id = `${this.kid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     this.pending.set(id, { ...op, meta });
     this.lan.send(this.hostInfo.peer, { t: "req", id, op });
@@ -308,9 +362,7 @@ export class BrickTogether {
       if (!this.peers.size) this.lan.keepAwake(false);
       this.lab.sharedChanged();
     } else if (this.role === "guest" && this.hostInfo && peer === this.hostInfo.peer) {
-      const host = this.hostInfo.kid;
-      this.endGuest();
-      this.lab.sessionEnded("lost", host);
+      this.lostHost();
     }
   }
 
@@ -322,6 +374,7 @@ export class BrickTogether {
       peers: this.peers.size,
       seq: this.role === "guest" ? (this.client ? this.client.seq : 0) : (this.lab.sequencer ? this.lab.sequencer.seq : 0),
       pending: this.pending.size,
+      lost: !!this.lost,
       undo: this.undo.size,
       joinable: this.joinable().map((s) => ({ id: s.id, kid: s.kid, world: s.world })),
     };

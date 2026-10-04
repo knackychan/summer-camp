@@ -76,6 +76,7 @@ const MENU = {
   joined: (name) => [`${name} joined!`, `${name} 加入了！`],
   left: (name) => [`${name} left`, `${name} 離開了`],
   closed: (name) => [`${name}'s world closed`, `${name} 的世界關閉了`],
+  looking: (name) => [`Looking for ${name}'s world…`, `正在找 ${name} 的世界…`],
   update: ["Update the app on both tablets", "兩台平板都要更新"],
   newWorld: ["New world", "新世界"],
   open: ["Open", "打開"],
@@ -648,7 +649,7 @@ export class BrickLabRuntime {
     /* Home-wifi session (multiplayer plan D2): unavailable outside the app. */
     this.lan = createLanSession(options.lanTransport);
     this.kids = options.kids || {};
-    this.together = new BrickTogether(this, this.lan, this.kidId);
+    this.together = new BrickTogether(this, this.lan, this.kidId, options.lanRetryMs ? { retryMs: options.lanRetryMs } : {});
     this.worldId = null; /* the world being built; null while the menu shows */
     this.menuEdit = null; /* { id, step: "actions" | "rename" | "delete" } */
     this.mode = "build";
@@ -774,6 +775,7 @@ export class BrickLabRuntime {
             <div class="sqbl-info" data-info role="dialog" aria-modal="false" hidden></div>
             <div class="sqbl-explore-badge">🌍 ${pre ? "" : "Explore 探索"}</div>
             <div class="sqbl-crew" data-crew aria-live="polite" hidden></div>
+            <div class="sqbl-lost" data-lost role="status" hidden></div>
           </div>
 
           <div class="sqbl-menu" data-menu hidden>
@@ -804,6 +806,7 @@ export class BrickLabRuntime {
     this.worldsEl = this.root.querySelector("[data-worlds]");
     this.joinEl = this.root.querySelector("[data-join]");
     this.crewEl = this.root.querySelector("[data-crew]");
+    this.lostEl = this.root.querySelector("[data-lost]");
   }
 
   setupScene() {
@@ -1203,6 +1206,10 @@ export class BrickLabRuntime {
       if (this.infoPartId && !this.infoEl.contains(event.target)) this.hideInfo();
     };
     this.root.addEventListener("pointerdown", this.onOutsidePress, true);
+    this.onPause = () => this.onAppPause();
+    this.onResume = () => this.onAppResume();
+    window.addEventListener("summerquest:native-pause", this.onPause);
+    window.addEventListener("summerquest:native-resume", this.onResume);
     this.menuEl.addEventListener("click", (event) => this.onMenuClick(event));
     this.menuEl.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || !event.target.matches("[data-world-name]")) return;
@@ -1755,6 +1762,7 @@ export class BrickLabRuntime {
 
   /* Guest: the host's world arrives (welcome); nothing of it is saved here (D7). */
   loadShared(world) {
+    this.showLost(null);
     this.clearPlate();
     world.forEach((piece) => { if (piece && typeof piece.id === "string") this.addPiece(piece, false); });
     this.syncRails();
@@ -1769,6 +1777,7 @@ export class BrickLabRuntime {
 
   /* Guest back on its own menu: the host left, the link dropped, or Back. */
   endShared() {
+    this.showLost(null);
     this.clearPlate();
     this.sharedChanged();
     this.showMenu();
@@ -1778,6 +1787,47 @@ export class BrickLabRuntime {
     this.endShared();
     if (reason === "proto") this.toast(this.preReader ? "📱 ⟳" : say(MENU.update));
     else this.toast(this.preReader ? "👋" : say(MENU.closed(this.kidName(hostKid || ""))));
+  }
+
+  /* Guest: the link to the host dropped; the plate stays while we look (D9). */
+  connectionLost(hostKid) {
+    this.selectPiece(null);
+    this.moveId = null;
+    this.placementArmed = false;
+    this.ghost.visible = false;
+    if (this.drag) { this.drag = null; this.controls.enabled = true; }
+    this.showLost(hostKid);
+  }
+
+  showLost(hostKid) {
+    if (!this.lostEl) return;
+    this.lostEl.hidden = hostKid == null;
+    if (hostKid == null) return;
+    const look = this.kidLook(hostKid);
+    this.lostEl.innerHTML = `<span class="sqbl-lost-av" aria-hidden="true">${look.av}</span><b>${this.preReader ? "🛜 …" : escapeHtml(say(MENU.looking(look.name)))}</b>`;
+  }
+
+  versionRefused() {
+    this.toast(this.preReader ? "📱 ⟳" : say(MENU.update));
+  }
+
+  /* The app went to the background (home button, screen off): a hosted world
+     leaves the wifi until the app is back; a guest goes home (D9). */
+  onAppPause() {
+    if (this.together.role === "host") {
+      this.together.stopHosting();
+      this.hostPaused = true;
+      this.sharedChanged();
+    } else if (this.together.role === "guest") {
+      this.together.leave();
+      this.endShared();
+    }
+  }
+
+  onAppResume() {
+    if (!this.hostPaused) return;
+    this.hostPaused = false;
+    if (this.worldId) this.together.host(this.currentWorldName()).then(() => this.updateUndoUI());
   }
 
   crewToast(kid, joined) {
@@ -2785,6 +2835,8 @@ export class BrickLabRuntime {
     if (this.together) this.together.dispose();
     if (this.lan) this.lan.dispose();
     if (this.onOutsidePress) this.root.removeEventListener("pointerdown", this.onOutsidePress, true);
+    if (this.onPause) window.removeEventListener("summerquest:native-pause", this.onPause);
+    if (this.onResume) window.removeEventListener("summerquest:native-resume", this.onResume);
     if (this.onInput) INPUT_EVENTS.forEach((type) => this.root.removeEventListener(type, this.onInput, { capture: true }));
     if (this.controls) this.controls.dispose();
     if (this.scene) disposeTree(this.scene, true);
