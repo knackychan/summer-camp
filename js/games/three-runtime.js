@@ -22,6 +22,35 @@ export function graphicsContext(canvas){
   return {canvas:canvas,context:context,attributes:attributes,legacy:legacy,reduced:reduced||legacy};
 }
 
+/* Adreno 3xx on WebGL1 (Lenovo TB-8504F, Adreno 308, Chrome 138) loses any GLSL
+   struct that crosses a function call (out, inout, returned), so r162's lit
+   materials draw black. Same maths as macros: no struct crosses a call. Only
+   Lambert's light functions are rewritten; Phong/Standard stay broken there,
+   which is why reduced quality uses Lambert. Proven pixel-identical in SwiftShader. */
+var STRUCT_FREE_LIGHTS={
+  getDirectionalLightInfo:"#define getDirectionalLightInfo( directionalLight, light ) light.color = directionalLight.color; light.direction = directionalLight.direction; light.visible = true",
+  getPointLightInfo:"#define getPointLightInfo( pointLight, geometryPosition, light ) light.direction = normalize( pointLight.position - geometryPosition ); light.color = pointLight.color * getDistanceAttenuation( length( pointLight.position - geometryPosition ), pointLight.distance, pointLight.decay ); light.visible = ( light.color != vec3( 0.0 ) )",
+  getSpotLightInfo:"#define getSpotLightInfo( spotLight, geometryPosition, light ) light.direction = normalize( spotLight.position - geometryPosition ); light.color = spotLight.color * getSpotAttenuation( spotLight.coneCos, spotLight.penumbraCos, dot( light.direction, spotLight.direction ) ) * getDistanceAttenuation( length( spotLight.position - geometryPosition ), spotLight.distance, spotLight.decay ); light.visible = ( light.color != vec3( 0.0 ) )",
+  getHemisphereLightIrradiance:"#define getHemisphereLightIrradiance( hemiLight, normal ) ( mix( hemiLight.groundColor, hemiLight.skyColor, 0.5 * dot( normal, hemiLight.direction ) + 0.5 ) )"
+};
+export function structFreeLighting(chunks){
+  if(chunks.sqStructFree)return true;
+  var lights=chunks.lights_pars_begin,lambert=chunks.lights_lambert_pars_fragment;
+  for(var name in STRUCT_FREE_LIGHTS){
+    var next=lights.replace(new RegExp("\\t(?:void|vec3) "+name+"\\([\\s\\S]*?\\n\\t}\\n"),"\t"+STRUCT_FREE_LIGHTS[name]+"\n");
+    if(next===lights)return false;
+    lights=next;
+  }
+  var cut=lambert.indexOf("void RE_Direct_Lambert");
+  if(cut<0)return false;
+  chunks.lights_pars_begin=lights;
+  chunks.lights_lambert_pars_fragment=lambert.slice(0,cut)+
+    "#define RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight ) reflectedLight.directDiffuse += saturate( dot( geometryNormal, directLight.direction ) ) * directLight.color * BRDF_Lambert( material.diffuseColor )\n"+
+    "#define RE_IndirectDiffuse( irradiance, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight ) reflectedLight.indirectDiffuse += irradiance * BRDF_Lambert( material.diffuseColor )\n";
+  chunks.sqStructFree=true;
+  return true;
+}
+
 export async function loadThree(canvas,withControls){
   var runtime=graphicsContext(canvas);
   try{
@@ -32,6 +61,7 @@ export async function loadThree(canvas,withControls){
         import("../vendor/three-legacy/Timer.js"),
         withControls?import("../vendor/three-legacy/OrbitControls.js"):Promise.resolve(null)
       ]);
+      structFreeLighting(modules[0].ShaderChunk);
       runtime.THREE=Object.assign({},modules[0],{Timer:modules[1].Timer});
       runtime.OrbitControls=modules[2]&&modules[2].OrbitControls;
     }else{

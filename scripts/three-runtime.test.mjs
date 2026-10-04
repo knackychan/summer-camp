@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { graphicsContext, loadThree, createRenderer, firstFrame, observeResize } from "../js/games/three-runtime.js";
+import { graphicsContext, loadThree, structFreeLighting, createRenderer, firstFrame, observeResize } from "../js/games/three-runtime.js";
 
 function globalValue(t, key, value) {
   const before = Object.getOwnPropertyDescriptor(globalThis, key);
@@ -38,6 +38,12 @@ test("WebGL1-only graphics load the matching legacy renderer, controls and offic
   assert.equal(runtime.reduced, true);
   assert.equal(runtime.THREE.REVISION, "162");
   assert.equal(typeof runtime.OrbitControls, "function");
+  /* Adreno 3xx: no GLSL struct may cross a function call, or Lambert draws black. */
+  const chunks = runtime.THREE.ShaderChunk;
+  assert.equal(chunks.sqStructFree, true);
+  assert.doesNotMatch(chunks.lights_pars_begin, /out IncidentLight|const in (Directional|Point|Spot|Hemisphere)Light /);
+  assert.doesNotMatch(chunks.lights_lambert_pars_fragment, /inout ReflectedLight/);
+  assert.equal(structFreeLighting({ lights_pars_begin: "changed upstream", lights_lambert_pars_fragment: "" }), false);
   const timer = new runtime.THREE.Timer();
   timer.reset(); timer.update();
   assert.ok(timer.getDelta() >= 0);
