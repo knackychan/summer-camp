@@ -25,3 +25,12 @@
 - `codequest-renderer.test.mjs` (same stub canvas the renderer tests use): `drawLab` at 1280×800 and 1280×600 returns hits for all 8 jars, 4 bag items, cauldron, mortar, burner, spoon, frost plate, book and scroll; no two hit rects overlap; all ≥ 48 px; `paused` and `reduced` draws do not throw; palette indices 0–41 unchanged.
 - Screenshot saved under `test-results/codequest-lab/` and reviewed by Papa against the mock's mood: warm bench light, cool moon window, readable jars.
 - `node scripts/check.mjs` green.
+
+## Implementation notes (2026-10-04)
+
+- `drawLab(canvas, options)` takes the canvas (like `room-view.js`'s `drawRoom`), sizes it, and returns `{ hits, fit }`; `fitLab` and `hitAt` are exported for the screen controller. Hits carry `ingredient` (jars, bag) or `step` (tools). An `owl` hit was added (slice 04: tap the owl to hear the last line again).
+- Tests live in a new `scripts/codequest-lab-view.test.mjs` (7 tests: fit, every hit present, ≥ 48 CSS px and non-overlapping at 1280×440@1, 1280×640@1, 1280×440@2, 1024×520@1.5, palette-only fills, frozen frames while paused / reduced). `codequest-renderer.test.mjs` is untouched.
+- No palette additions: candle amber = `lava`/`yellow`, potion green = `green`, void violet = `purpleDark`/`magenta` already exist.
+- Light is stepped ellipse pools at low alpha (no rectangles); the scene is redrawn whole each frame (~1.5k fills). If slice 07 finds it slow on Android 8, cache the static wall/window/shelf/bench layer the way `room-view.js` does.
+- Screenshots for Papa: `test-results/codequest-lab/scene-1280x720.png` (Echo + Mushroom in the cauldron, Moon Berry lifted) and `scene-empty.png`.
+- `sw.js` entries for `lab-art.js` / `lab-view.js` come with slice 04, when something loads them.
