@@ -64,6 +64,9 @@ body.game-mode:has(.kq) .summer-companion{border:2px solid #0b0a1f;border-radius
 .kq-ticket li img{width:44px;height:44px}
 .kq-ticket li em{display:block;font-style:normal;font-size:12px;color:#b5309a;margin-top:1px}
 .kq-check{font-style:normal;font:900 18px ui-monospace,monospace;color:#2f9a4c;text-align:center}
+/* A row with no tick or cross gives that column back to its words, so "On the grill" fits on two lines, not four. */
+.kq-ticket li.nomark>button,.kq-ticket li.nomark>div{grid-template-columns:26px 44px minmax(0,1fr)}
+.kq-ticket li.nomark .kq-check{display:none}
 .kq-ticket li.next>div{opacity:1;border-color:#0b0a1f;background:#ffffff;animation:kq-next 1.2s steps(2,end) infinite}
 @keyframes kq-next{50%{border-color:#ff7a1f}}
 .kq-ticket li.matched>button{background:#c9ef6a;border-color:#2f9a4c}
