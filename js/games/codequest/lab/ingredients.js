@@ -3,7 +3,6 @@
    reaction comes from what is in the mix, not from a recipe list. Shelf jars are the
    Lab's own curiosity ingredients; the bag is the four dungeon ingredients. */
 import { ITEM_LABELS } from '../strings.js';
-import { CODEQUEST_INGREDIENTS } from '../progression.js';
 
 export const LAB_PROPERTIES = Object.freeze(['life', 'growth', 'fire', 'cold', 'water', 'echo', 'space', 'time', 'light', 'chaos', 'calm']);
 
@@ -25,13 +24,15 @@ const SHELF = [
   item('frostDew', 'shelf', ['Frost Dew', '霜露'], { cold: 2, water: 2, calm: 1 }),
   item('starDust', 'shelf', ['Star Dust', '星塵'], { fire: 1, time: 1, light: 2, chaos: 1 })
 ];
+// Same ids and order as progression.js INGREDIENT_IDS (tested). Not imported from there:
+// progression.js imports lab/journal.js, which imports this file.
 const BAG_PROPS = {
   sunHerb: { life: 2, light: 1 },
   moonBerry: { life: 1, calm: 2 },
   waterCrystal: { water: 2, echo: 1, calm: 1 },
   emberRoot: { growth: 1, fire: 2 }
 };
-const BAG = CODEQUEST_INGREDIENTS.map(id => item(id, 'bag', ITEM_LABELS[id], BAG_PROPS[id]));
+const BAG = Object.keys(BAG_PROPS).map(id => item(id, 'bag', ITEM_LABELS[id], BAG_PROPS[id]));
 
 export const LAB_INGREDIENTS = Object.freeze(Object.fromEntries([...SHELF, ...BAG].map(entry => [entry.id, entry])));
 export const SHELF_IDS = Object.freeze(SHELF.map(entry => entry.id));

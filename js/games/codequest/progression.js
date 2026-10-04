@@ -1,9 +1,12 @@
 /* Saved Code Quest progression. Profile v12 keeps the persistent Rune Library and
    splits bounded persistent behavior into independent Hero and Companion programs while
-   migrating every earlier save without discarding v11 behavior source. */
+   migrating every earlier save without discarding v11 behavior source. The Lab's
+   Curiosity Journal (`lab`) is additive inside v12: older builds ignore the field, while
+   a version bump would make them discard the whole save. */
 
 import { generateLootChoices, normalizeLootItem, rarityInfo } from './loot.js';
 import { normalizeDungeonRun, dungeonRunSummary } from './run.js';
+import { normalizeLab } from './lab/journal.js';
 
 const LIMIT = 1000000;
 const INGREDIENT_IDS = Object.freeze(['sunHerb', 'moonBerry', 'waterCrystal', 'emberRoot']);
@@ -116,6 +119,7 @@ export function normalizeProfile(raw, legacyBest = 0) {
     heroBehaviorSource, companionBehaviorSource, heroBehaviorEnabled, companionBehaviorEnabled,
     // Legacy mirrors are kept so old host/debug surfaces can still inspect the migrated behavior.
     behaviorSource: companionBehaviorSource, behaviorEnabled: companionBehaviorEnabled,
+    lab: normalizeLab(own(source, 'lab')),
     legacyBest: count(legacyBest)
   });
 }
@@ -264,11 +268,11 @@ function findRecipe(items) {
     return INGREDIENT_IDS.every(id => (got[id] || 0) === (need[id] || 0));
   });
 }
-function consumeRecipe(before, recipe) {
+function consumeRecipe(before, recipe, free = false) {
   const required = multiset(recipe.ingredients);
-  for (const [id, n] of Object.entries(required)) if (before.ingredients[id] < n) return { ok: false, reason: 'missing-ingredient', profile: before, recipe };
+  if (!free) for (const [id, n] of Object.entries(required)) if (before.ingredients[id] < n) return { ok: false, reason: 'missing-ingredient', profile: before, recipe };
   const ingredients = { ...before.ingredients };
-  for (const [id, n] of Object.entries(required)) ingredients[id] -= n;
+  if (!free) for (const [id, n] of Object.entries(required)) ingredients[id] -= n;
   const potions = { ...before.potions, [recipe.id]: before.potions[recipe.id] + 1 };
   const discovered = before.discoveredRecipes.includes(recipe.id) ? before.discoveredRecipes : before.discoveredRecipes.concat(recipe.id);
   return { ok: true, recipe, profile: normalizeProfile({ ...before, ingredients, potions, discoveredRecipes: discovered }) };
@@ -284,7 +288,8 @@ export function brew(raw, tray) {
   return consumeRecipe(before, recipe);
 }
 
-export function brewLab(raw, tray, steps) {
+/** `options.free` (Lab design D5): brew without the stock check and without using ingredients up. */
+export function brewLab(raw, tray, steps, options = {}) {
   const before = normalizeProfile(raw);
   const items = Array.isArray(tray) ? tray.filter(id => INGREDIENT_IDS.includes(id)).slice(0, 3) : [];
   const process = Array.isArray(steps) ? steps.filter(step => ALCHEMY_STEPS.includes(step)).slice(0, 5) : [];
@@ -294,7 +299,7 @@ export function brewLab(raw, tray, steps) {
   if (process.length !== recipe.process.length || process.some((step, i) => step !== recipe.process[i])) {
     return { ok: false, reason: 'wrong-process', profile: before, recipe, expected: recipe.process, got: Object.freeze([...process]) };
   }
-  return consumeRecipe(before, recipe);
+  return consumeRecipe(before, recipe, !!(options && options.free === true));
 }
 
 export function equip(raw, equipmentId) {

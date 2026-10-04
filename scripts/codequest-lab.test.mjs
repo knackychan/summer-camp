@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { LAB_PROPERTIES, LAB_INGREDIENTS, SHELF_IDS, BAG_IDS, LAB_FREE_INGREDIENTS } from '../js/games/codequest/lab/ingredients.js';
 import { LAB_RULES } from '../js/games/codequest/lab/rules.js';
 import { sumExperiment, resolveExperiment, mixHint } from '../js/games/codequest/lab/resolve.js';
-import { RECIPES, CODEQUEST_INGREDIENTS } from '../js/games/codequest/progression.js';
+import { RECIPES, CODEQUEST_INGREDIENTS, normalizeProfile, brewLab } from '../js/games/codequest/progression.js';
+import { normalizeLab, recordFound, recordSeen } from '../js/games/codequest/lab/journal.js';
+import { runAlchemyCode, recipeToAlchemyCode, recipeById } from '../js/games/codequest/alchemy-code.js';
 
 const resolve = (ingredients, steps = []) => resolveExperiment({ ingredients, steps, recipes: RECIPES });
 
@@ -130,4 +132,65 @@ test('mixHint tints toward the strongest property and shakes when unstable', () 
   assert.equal(mixHint(['echoCrystal', 'redMushroom'], []).tint, 'echo');
   assert.equal(mixHint(['frostDew'], []).shaky, false);
   assert.equal(mixHint(['voidDust', 'emberSeed'], []).shaky, true);
+});
+
+// Slice 02 — free brewing + Journal save.
+const healing = RECIPES.find(recipe => recipe.id === 'healing');
+
+test('brewLab free:true brews with zero stock and leaves counts unchanged', () => {
+  const empty = normalizeProfile({ version: 12 });
+  const result = brewLab(empty, healing.ingredients, healing.process, { free: true });
+  assert.equal(result.ok, true);
+  assert.equal(result.profile.potions.healing, 1);
+  assert.deepEqual(result.profile.ingredients, empty.ingredients);
+  assert.ok(result.profile.discoveredRecipes.includes('healing'));
+});
+
+test('brewLab without free still needs stock and still consumes it', () => {
+  const empty = normalizeProfile({ version: 12 });
+  assert.equal(brewLab(empty, healing.ingredients, healing.process).reason, 'missing-ingredient');
+  const stocked = normalizeProfile({ version: 12, ingredients: { sunHerb: 2, waterCrystal: 1 } });
+  const result = brewLab(stocked, healing.ingredients, healing.process);
+  assert.equal(result.ok, true);
+  assert.equal(result.profile.ingredients.sunHerb, 0);
+  assert.equal(result.profile.ingredients.waterCrystal, 0);
+});
+
+test('runAlchemyCode passes free through', () => {
+  const empty = normalizeProfile({ version: 12 });
+  const result = runAlchemyCode(empty, recipeToAlchemyCode(recipeById('healing')), { free: true });
+  assert.equal(result.ok, true);
+  assert.equal(result.profile.potions.healing, 1);
+  assert.equal(runAlchemyCode(empty, recipeToAlchemyCode(recipeById('healing'))).reason, 'missing-ingredient');
+});
+
+test('profiles carry a lab journal; old saves get an empty one', () => {
+  const old = normalizeProfile({ version: 11, completed: ['q01'], ingredients: { sunHerb: 3 } });
+  assert.deepEqual(old.lab, { found: [], seen: [] });
+  assert.deepEqual(old.completed, ['q01']);
+  assert.equal(old.ingredients.sunHerb, 3);
+  const saved = normalizeProfile({ version: 12, lab: { found: ['glow', 'fizzle'], seen: ['moonflower'] } });
+  assert.deepEqual(normalizeProfile(JSON.parse(JSON.stringify(saved))).lab, { found: ['glow', 'fizzle'], seen: ['moonflower'] });
+});
+
+test('normalizeLab drops unknown ids and duplicates and caps the lists', () => {
+  assert.deepEqual(normalizeLab(null), { found: [], seen: [] });
+  assert.deepEqual(normalizeLab({ found: ['glow', 'glow', 'nope', 7, '__proto__'], seen: ['frostDew', 'dragon', 'frostDew'] }), { found: ['glow'], seen: ['frostDew'] });
+  assert.deepEqual(normalizeLab({ found: 'glow', seen: {} }), { found: [], seen: [] });
+  assert.ok(Object.isFrozen(normalizeLab({ found: ['glow'] })));
+  const many = normalizeLab({ found: Array(500).fill(0).map((_, i) => LAB_RULES[i % LAB_RULES.length].id) });
+  assert.equal(many.found.length, LAB_RULES.length);
+});
+
+test('recordFound / recordSeen add once and return the same profile when nothing is new', () => {
+  const base = normalizeProfile({ version: 12 });
+  const one = recordFound(base, 'duplication');
+  assert.deepEqual(one.lab.found, ['duplication']);
+  assert.equal(recordFound(one, 'duplication'), one);
+  assert.equal(recordFound(one, 'notARule'), one);
+  const seen = recordSeen(one, ['echoCrystal', 'redMushroom', 'echoCrystal', 'bogus']);
+  assert.deepEqual(seen.lab.seen, ['echoCrystal', 'redMushroom']);
+  assert.deepEqual(seen.lab.found, ['duplication']);
+  assert.equal(recordSeen(seen, ['redMushroom']), seen);
+  assert.equal(seen.version, base.version);
 });

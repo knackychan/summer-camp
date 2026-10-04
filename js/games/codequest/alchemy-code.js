@@ -38,13 +38,13 @@ export function parseAlchemyCode(source) {
   return Object.freeze({ ok:true, operations:Object.freeze(operations), error:null });
 }
 
-export function runAlchemyCode(profile, source) {
+export function runAlchemyCode(profile, source, options = {}) {
   const parsed = parseAlchemyCode(source);
   if (!parsed.ok) return { ok:false, reason:'parse', profile, error:parsed.error };
   const tray = parsed.operations.filter(op => op.type === 'add').map(op => op.ingredient);
   const steps = parsed.operations.filter(op => STEPS.has(op.type)).map(op => op.type);
   if (tray.length !== 3) return { ok:false, reason:'need-three', profile };
-  return brewLab(profile, tray, steps);
+  return brewLab(profile, tray, steps, options);
 }
 
 export function recipeToAlchemyCode(recipe) {
