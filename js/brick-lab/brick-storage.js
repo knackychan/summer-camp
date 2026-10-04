@@ -10,6 +10,7 @@ export class BrickLabStorage {
   constructor(kidId = "local") {
     this.kidId = String(kidId || "local");
     this.key = `sq:brick-lab:v1:${this.kidId}`;
+    this.prefsKey = `sq:brick-lab:prefs:v1:${this.kidId}`;
   }
 
   load() {
@@ -37,5 +38,21 @@ export class BrickLabStorage {
 
   clear() {
     try { localStorage.removeItem(this.key); } catch {}
+  }
+
+  /* Tray favourites and recent parts (slice 11): part ids only, per kid,
+     beside the build so a cleared build keeps them. */
+  loadPrefs() {
+    let raw = null;
+    try { raw = localStorage.getItem(this.prefsKey); } catch { raw = null; }
+    const saved = safeParse(raw) || {};
+    const ids = (list) => (Array.isArray(list) ? list.filter((id) => typeof id === "string") : []);
+    return { favorites: ids(saved.favorites), recents: ids(saved.recents) };
+  }
+
+  savePrefs(prefs) {
+    const payload = { favorites: prefs.favorites.slice(), recents: prefs.recents.slice() };
+    try { localStorage.setItem(this.prefsKey, JSON.stringify(payload)); } catch { return null; }
+    return payload;
   }
 }

@@ -1093,6 +1093,36 @@ try {
   fail("solar data load", error.message);
 }
 
+// Brick Lab catalog (docs/plans/2026-10-03-brick-lab/ slices 09–11): unique part ids, every
+// part and category bilingual, no empty or unknown category, rail ends on whole studs.
+try {
+  var brickMod = await import(new URL("js/brick-lab/brick-catalog.js", root));
+  var seenParts = new Set();
+  var brickCats = new Set(brickMod.CATEGORIES.map(function (c) { return c.id; }));
+  brickMod.CATEGORIES.forEach(function (c) { assertPair(c.label, "bricklab.category." + c.id); });
+  brickMod.PARTS.forEach(function (part) {
+    if (seenParts.has(part.id)) fail("bricklab", "duplicate part id " + part.id);
+    seenParts.add(part.id);
+    assertPair(part.label, "bricklab.part." + part.id);
+    if (!/[\u3400-\u9fff]/.test(part.label[1])) fail("bricklab", part.id + " label needs 中文");
+    if (!brickCats.has(part.category)) fail("bricklab", part.id + " has unknown category " + part.category);
+    if (part.shape === "rail") {
+      (part.connectors || []).forEach(function (c) {
+        if (!Number.isInteger(c.x) || !Number.isInteger(c.z) || [0, 90, 180, 270].indexOf(c.dir) < 0) {
+          fail("bricklab", part.id + " rail end must sit on whole studs and face a side");
+        }
+      });
+      if (!part.connectors || part.connectors.length < 2) fail("bricklab", part.id + " needs at least two rail ends");
+    }
+  });
+  brickCats.forEach(function (id) {
+    if (!brickMod.PARTS.some(function (p) { return p.category === id; })) fail("bricklab", "category " + id + " has no parts");
+  });
+  Object.keys(brickMod.COLORS).forEach(function (id) { assertPair(brickMod.COLOR_NAMES[id], "bricklab.color." + id); });
+} catch (error) {
+  fail("bricklab catalog load", error.message);
+}
+
 // Brain Gym presentation runtime (slice 34 task 9; implementation-guidelines.md §12.3,
 // §12.4, §14). SCENE_LOADERS is the one place allowed to name a scene module, so its
 // keys/targets are checked against brain-data.GAMES and sw.js APP_SHELL here instead of

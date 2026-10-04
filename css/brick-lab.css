@@ -72,3 +72,63 @@
 .sqbl-app.is-hq .sqbl-lens i{display:block;-webkit-backdrop-filter:blur(2.5px);backdrop-filter:blur(2.5px)}
 .sqbl-lens-top{top:0;-webkit-mask-image:linear-gradient(#000,transparent);mask-image:linear-gradient(#000,transparent)}
 .sqbl-lens-bottom{bottom:0;-webkit-mask-image:linear-gradient(transparent,#000);mask-image:linear-gradient(transparent,#000)}
+/* Slice 09: eight categories — the list scrolls inside the rail when the
+   view is short, instead of clipping Structure and Nature. */
+.sqbl-left-rail{display:flex;flex-direction:column}
+.sqbl-category-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;align-content:start}
+.sqbl-category-list::-webkit-scrollbar{display:none}
+/* Slice 11: parts library. The header holds the count, a search box and a
+   size filter at one fixed height (D14: the dock never changes height). */
+.sqbl-tray-top{height:44px}
+.sqbl-tray-title{line-height:44px;flex:0 1 auto;min-width:0}
+.sqbl-search{display:flex;align-items:center;gap:6px;flex:1 1 180px;max-width:300px;min-width:110px;height:44px;padding:0 12px;border:1px solid var(--sqbl-line);border-radius:14px;background:#f9fbfd}
+.sqbl-search input{flex:1;min-width:0;height:100%;border:0;background:transparent;font:inherit;font-size:15px;color:var(--sqbl-ink);outline:none}
+.sqbl-search:focus-within{border-color:var(--sqbl-blue);box-shadow:0 0 0 3px rgba(40,121,232,.16)}
+.sqbl-size{flex:0 0 auto;height:44px;max-width:150px;padding:0 10px;border:1px solid var(--sqbl-line);border-radius:14px;background:#f9fbfd;font:inherit;font-size:14px;font-weight:700;color:var(--sqbl-ink)}
+.sqbl-focus-build{min-height:44px}
+/* Each tile sits in a slot with its favourite star as a sibling button
+   (never a button inside a button). */
+.sqbl-part-slot{position:relative;flex:0 0 86px;height:82px}
+.sqbl-part-slot .sqbl-part{width:100%;flex:none}
+.sqbl-fav{position:absolute;top:0;right:0;width:34px;height:34px;padding:0;border:0;background:transparent;border-radius:0 16px 0 12px;font-size:17px;line-height:34px;color:#9aa8b6;touch-action:manipulation}
+.sqbl-fav.is-on{color:#e9a400}
+.sqbl-fav:active{transform:scale(.9)}
+.sqbl-tray-sep{flex:0 0 auto;align-self:stretch;height:82px;display:grid;place-items:center;align-content:center;gap:2px;padding:0 6px;border-radius:12px;background:#eef3f8;color:var(--sqbl-muted);font-size:18px}
+.sqbl-tray-sep small{font-size:10px;font-weight:800;writing-mode:vertical-rl;max-height:52px;overflow:hidden}
+.sqbl-tray-sep[data-section=favorites]{color:#c48a00;background:#fff6dc}
+.sqbl-tray-empty{margin:0;align-self:center;padding:0 14px;color:var(--sqbl-muted);font-weight:700;font-size:13px;white-space:nowrap}
+.sqbl-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.sqbl-app.is-pre-reader .sqbl-part-slot{flex-basis:104px;height:88px}
+.sqbl-app.is-pre-reader .sqbl-fav{width:40px;height:40px;line-height:40px;font-size:20px}
+.sqbl-app.is-pre-reader .sqbl-tray-sep{height:88px}
+@media(max-width:760px){.sqbl-part-slot{flex-basis:78px}.sqbl-search{flex-basis:120px}.sqbl-size{max-width:110px}}
+@media(max-width:520px){.sqbl-part-slot{flex-basis:72px}.sqbl-size{display:none}}
+/* Info card: an overlay in the stage (no canvas resize), tap elsewhere closes it. */
+.sqbl-info{position:absolute;left:12px;bottom:58px;z-index:4;width:min(320px,calc(100% - 24px));padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.97);border:1px solid var(--sqbl-line);box-shadow:0 12px 30px rgba(42,60,74,.22);font-size:13px}
+.sqbl-info[hidden]{display:none}
+.sqbl-info-head{display:flex;align-items:center;gap:10px}
+.sqbl-info-head>div{flex:1;min-width:0}.sqbl-info-head strong{display:block;font-size:16px;line-height:1.2}.sqbl-info-head strong[lang]{font-size:14px;color:var(--sqbl-muted)}
+.sqbl-info-head .sqbl-part-preview{flex:0 0 auto}
+.sqbl-info-fav,.sqbl-info-close{flex:0 0 44px;width:44px;height:44px;border:1px solid var(--sqbl-line);border-radius:14px;background:#fff;font-size:20px;padding:0}
+.sqbl-info-fav.is-on{color:#e9a400;background:#fff6dc}
+.sqbl-info p{margin:7px 0 0;line-height:1.35}
+.sqbl-info-dims b{font-size:17px}
+.sqbl-info-swatches{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.sqbl-info-swatches i{width:16px;height:16px;border-radius:5px;border:1px solid rgba(30,50,70,.12)}
+/* Tray previews for the slice 09 parts. */
+.sqbl-part-preview[data-shape=peak]{clip-path:polygon(0 100%,0 80%,42% 6%,58% 6%,100% 80%,100% 100%);box-shadow:none}
+.sqbl-part-preview[data-shape=peak]:before{display:none!important}
+.sqbl-part-preview[data-shape=axle]{height:12px;margin-top:10px;border-radius:4px}
+.sqbl-part-preview[data-shape=axle]:after{content:"";position:absolute;left:-8px;right:-8px;top:7px;height:4px;border-radius:2px;background:#6c6e68}
+.sqbl-part-preview[data-preview=platform_4x4]{width:44px;height:22px}
+/* !important: the colour rule above wins on specificity (its :not() chain). */
+.sqbl-part-preview[data-preview=platform_4x4]:before{box-shadow:9px 0 var(--sqbl-piece,#c91a09),18px 0 var(--sqbl-piece,#c91a09),27px 0 var(--sqbl-piece,#c91a09)!important;left:3px}
+.sqbl-part-preview[data-preview=brick_1x3],.sqbl-part-preview[data-preview=plate_1x4]{width:46px}
+.sqbl-part-preview[data-shape=wheel][data-preview=wheel_med]{width:40px;height:40px;border-width:8px}
+.sqbl-part-preview[data-preview=rail_curve_90]{width:38px;height:38px;border-radius:0;background:radial-gradient(circle at 0 100%,transparent 0 11px,#575d65 11px 14px,#8a5c3b 14px 24px,#575d65 24px 27px,transparent 27px)}
+.sqbl-part-preview[data-preview=rail_cross]{width:38px;height:38px;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:#8a5c3b;border-radius:0}
+.sqbl-part-preview[data-preview=rail_junction_t]{width:38px;height:38px;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%);background:#8a5c3b;border-radius:0}
+/* A long tray row (favourites + recents + category) scrolls; it must never
+   widen the app past the stage (the grid column would grow to its content). */
+.sqbl-app{grid-template-columns:minmax(0,1fr)}
+.sqbl-bottom-tray,.sqbl-topbar,.sqbl-main{min-width:0}
