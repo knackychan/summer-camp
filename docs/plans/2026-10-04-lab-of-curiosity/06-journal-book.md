@@ -30,3 +30,5 @@
 - **Host-bar click guard.** The Code Quest host bar's keyboard path now also requires a click with no `pointerType`, as the Lab dock does since slice 04: under touch emulation the 中文 toggle flipped twice. `check-codequest-ui.py` still passes (48 checks).
 - **Tests:** 5 new in `scripts/codequest-lab.test.mjs` (30 total). Manual (scratch Playwright, 1280×800 and 1280×600): 3 reactions → 3 pages + 11 "Not found yet"; ingredients revealed = `lab.seen`; Put in cauldron → Brew → Healing +1; tap above closes without selecting; Back closes the Journal first; half-height with no page scroll; buttons ≥ 48 px; 中文. Screenshots `test-results/codequest-lab/journal-*.png`.
 - `sw.js` cache `summer-quest-v151-lab-06` (no new files).
+
+**Reviewed by Papa 2026-10-04** (chat, after the merge of knackychan/summer-camp#2: "im good with that") — screenshots in `test-results/codequest-lab/` accepted as they are.

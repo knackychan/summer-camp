@@ -30,3 +30,5 @@
 - **Tests** in `scripts/codequest-lab-view.test.mjs` (where slice 03 put the Lab renderer tests; `codequest-renderer.test.mjs` untouched), 3 new: every outcome × intensity 1–3 × reduced at t = 0, mid, end and lingering draws palette-only with identical hits; each outcome paints something mid-beat and only the 4 lingering ones remain after; reduced-motion pose is still and draws fewer particles.
 - **Screenshots for Papa:** `test-results/codequest-lab/fx-strip-mid.png` (all 15 mid-beat), `fx-strip-linger.png` (after the beat), `fx-strip-reduced.png`.
 - `sw.js`: `lab-fx.js` added; cache `summer-quest-v150-lab-05`.
+
+**Reviewed by Papa 2026-10-04** (chat, after the merge of knackychan/summer-camp#2: "im good with that") — screenshots in `test-results/codequest-lab/` accepted as they are.

@@ -34,3 +34,5 @@
 - Light is stepped ellipse pools at low alpha (no rectangles); the scene is redrawn whole each frame (~1.5k fills). If slice 07 finds it slow on Android 8, cache the static wall/window/shelf/bench layer the way `room-view.js` does.
 - Screenshots for Papa: `test-results/codequest-lab/scene-1280x720.png` (Echo + Mushroom in the cauldron, Moon Berry lifted) and `scene-empty.png`.
 - `sw.js` entries for `lab-art.js` / `lab-view.js` come with slice 04, when something loads them.
+
+**Reviewed by Papa 2026-10-04** (chat, after the merge of knackychan/summer-camp#2: "im good with that") — screenshots in `test-results/codequest-lab/` accepted as they are.
