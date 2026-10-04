@@ -18,7 +18,7 @@ const say = (pair) => `${pair[0]} · ${pair[1]}`;
 const label = (pair) => `${pair[0]} ${pair[1]}`;
 
 const HINTS = {
-  choose: ["Choose a piece from the tray, or tap a piece to edit it.", "從下面選一塊積木，或點一塊來修改。"],
+  choose: ["Choose a piece on the left, or tap a piece to edit it.", "從左邊選一塊積木，或點一塊來修改。"],
   place: ["Tap the baseplate to put the piece down.", "點底板，把積木放上去。"],
   placed: ["Placed! Pick another piece, or edit this one.", "放好了！再選一塊，或修改這一塊。"],
   selected: ["Tap it again to turn it, or drag it to move it.", "再點一下可以旋轉，拖著它可以移動。"],
@@ -40,6 +40,8 @@ const TRAY = {
   parts: (n) => [`${n} ${n === 1 ? "part" : "parts"}`, `${n} 種`],
   search: ["Find a part", "找積木"],
   results: ["Search", "搜尋"],
+  pieces: ["Pieces", "積木"],
+  back: ["Back to all pieces", "回到全部積木"],
   allSizes: ["All sizes", "全部尺寸"],
   favorites: ["Favourites", "最愛"],
   recents: ["Recent", "最近用過"],
@@ -613,6 +615,7 @@ export class BrickLabRuntime {
     this.sizeFilter = "";
     this.prefs = this.cleanPrefs(this.storage.loadPrefs());
     this.infoPartId = null;
+    this.railView = "categories"; /* slice 12: "categories" | "parts" */
     /* Slice 10: rail joins. `rails` is the last trace; `snap` the join the
        ghost or a dragged rail would make right now. */
     this.rails = { edges: [], linked: new Map(), free: [], circuit: new Set() };
@@ -675,9 +678,20 @@ export class BrickLabRuntime {
         </header>
 
         <div class="sqbl-main">
-          <aside class="sqbl-left-rail" aria-label="Pieces 積木種類">
-            <button type="button" class="sqbl-rail-collapse" data-action="toggle-left" aria-label="Fold 收起">‹</button>
+          <aside class="sqbl-left-rail" data-view="categories" aria-label="Pieces 積木種類">
+            <div class="sqbl-rail-head">
+              <button type="button" class="sqbl-rail-collapse" data-action="toggle-left" aria-label="Fold 收起">‹</button>
+              <button type="button" class="sqbl-rail-back" data-action="parts-back" aria-label="${escapeHtml(label(TRAY.back))}">←</button>
+              <div class="sqbl-tray-title" data-tray-title aria-live="polite"></div>
+            </div>
+            ${pre ? "" : `<label class="sqbl-search"><span aria-hidden="true">🔍</span><input type="search" data-search enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(label(TRAY.search))}" aria-label="${escapeHtml(label(TRAY.search))}"></label>
+            <select class="sqbl-size" data-size aria-label="${escapeHtml(label(TRAY.size))}">
+              <option value="">${escapeHtml(label(TRAY.allSizes))}</option>
+              ${Array.from(new Set(PARTS.map(partDims))).sort((a, b) => a.localeCompare(b, "en", { numeric: true })).map((dims) => `<option value="${dims}">${dims}</option>`).join("")}
+            </select>`}
             <div class="sqbl-category-list">${categoryButtons}</div>
+            <div class="sqbl-parts" data-parts></div>
+            <div class="sqbl-colors" data-colors></div>
           </aside>
 
           <div class="sqbl-stage-wrap">
@@ -697,19 +711,6 @@ export class BrickLabRuntime {
           </div>
         </div>
 
-        <footer class="sqbl-bottom-tray">
-          <div class="sqbl-tray-top">
-            <div class="sqbl-tray-title" data-tray-title aria-live="polite"></div>
-            ${pre ? "" : `<label class="sqbl-search"><span aria-hidden="true">🔍</span><input type="search" data-search enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(label(TRAY.search))}" aria-label="${escapeHtml(label(TRAY.search))}"></label>
-            <select class="sqbl-size" data-size aria-label="${escapeHtml(label(TRAY.size))}">
-              <option value="">${escapeHtml(label(TRAY.allSizes))}</option>
-              ${Array.from(new Set(PARTS.map(partDims))).sort((a, b) => a.localeCompare(b, "en", { numeric: true })).map((dims) => `<option value="${dims}">${dims}</option>`).join("")}
-            </select>`}
-            <button type="button" class="sqbl-focus-build" data-action="toggle-chrome" aria-label="Bigger build area 放大建造區">↕</button>
-          </div>
-          <div class="sqbl-parts" data-parts></div>
-          <div class="sqbl-colors" data-colors></div>
-        </footer>
         <div class="sqbl-toast" data-toast role="status" aria-live="polite"></div>
       </section>`;
 
@@ -721,7 +722,6 @@ export class BrickLabRuntime {
     this.toastEl = this.root.querySelector("[data-toast]");
     this.bubbleEl = this.root.querySelector("[data-bubble]");
     this.leftRail = this.root.querySelector(".sqbl-left-rail");
-    this.bottomTray = this.root.querySelector(".sqbl-bottom-tray");
     this.infoEl = this.root.querySelector("[data-info]");
     this.searchEl = this.root.querySelector("[data-search]");
     this.sizeEl = this.root.querySelector("[data-size]");
@@ -950,7 +950,8 @@ export class BrickLabRuntime {
         this.setFilters("", "", false);
         this.hideInfo();
         this.renderPartTray();
-        this.updateCategoryUI();
+        this.partsEl.scrollTop = 0;
+        this.setRailView("parts");
         this.placementArmed = false;
         this.ghost.visible = false;
         this.snap = null;
@@ -967,7 +968,10 @@ export class BrickLabRuntime {
     this.root.querySelector("[data-action=delete]").addEventListener("pointerdown", () => this.deleteSelected());
     this.root.querySelector("[data-action=move]").addEventListener("pointerdown", () => this.beginMoveSelected());
     this.root.querySelector("[data-action=toggle-left]").addEventListener("pointerdown", () => this.leftRail.classList.toggle("is-collapsed"));
-    this.root.querySelector("[data-action=toggle-chrome]").addEventListener("pointerdown", () => this.app.classList.toggle("is-build-focus"));
+    this.root.querySelector("[data-action=parts-back]").addEventListener("pointerdown", () => {
+      this.setFilters("", "");
+      this.setRailView("categories");
+    });
 
     /* Tray (slice 11): one delegated listener survives every re-render. The
        star toggles a favourite; the rest of a tile arms the part and opens its
@@ -1026,6 +1030,16 @@ export class BrickLabRuntime {
     });
   }
 
+  /* Slice 12 (D23): the rail shows the categories, or one category's parts
+     (or search results). Its width never changes between the two, so the 3D
+     view never resizes (D14); opening a category unfolds a folded rail. */
+  setRailView(view) {
+    this.railView = view;
+    this.leftRail.dataset.view = view;
+    if (view === "parts") this.leftRail.classList.remove("is-collapsed");
+    this.updateCategoryUI();
+  }
+
   updateCategoryUI() {
     this.root.querySelectorAll("[data-category]").forEach((button) => {
       button.classList.toggle("is-active", button.dataset.category === this.activeCategory);
@@ -1035,6 +1049,10 @@ export class BrickLabRuntime {
     if (!title) return;
     const searching = !!(this.query || this.sizeFilter);
     const count = this.trayCount || 0;
+    if (this.railView !== "parts") {
+      title.textContent = this.preReader ? "🧱" : label(TRAY.pieces);
+      return;
+    }
     /* "<category>: <count> parts" (slice 11); a search names itself instead. */
     if (this.preReader) title.textContent = `${searching ? "🔍" : (category && category.icon) || "🧱"} ${count}`;
     else title.textContent = `${label(searching ? TRAY.results : (category && category.label) || ["Pieces", "積木"])}: ${label(TRAY.parts(count))}`;
@@ -1042,7 +1060,7 @@ export class BrickLabRuntime {
 
   /* Slice 11: favourites and recents pinned at the front of the tray, then
      the category; a search or size filter shows matches from every category
-     instead. The row keeps its fixed height (D14), it only scrolls. */
+     instead. The rail keeps its fixed width (D14, D23), the grid only scrolls. */
   renderPartTray() {
     const filtering = !!(this.query || this.sizeFilter);
     const sections = [];
@@ -1072,7 +1090,7 @@ export class BrickLabRuntime {
     };
     this.partsEl.innerHTML = sections.map((section) => {
       const head = section.title
-        ? `<span class="sqbl-tray-sep" data-section="${section.id}" title="${escapeHtml(label(section.title))}"><span aria-hidden="true">${section.icon}</span><small>${this.preReader ? "" : escapeHtml(section.title[0])}</small><span class="sqbl-sr">${escapeHtml(label(section.title))}</span></span>`
+        ? `<span class="sqbl-tray-sep" data-section="${section.id}" title="${escapeHtml(label(section.title))}"><span aria-hidden="true">${section.icon}</span><small>${this.preReader ? "" : escapeHtml(label(section.title))}</small>${this.preReader ? `<span class="sqbl-sr">${escapeHtml(label(section.title))}</span>` : ""}</span>`
         : "";
       const body = section.parts.length ? section.parts.map(tile).join("")
         : `<p class="sqbl-tray-empty">${this.preReader ? "🔍 ∅" : escapeHtml(say(TRAY.none))}</p>`;
@@ -1091,6 +1109,7 @@ export class BrickLabRuntime {
     this.sizeFilter = size || "";
     if (this.searchEl && searchText(this.searchEl.value) !== this.query) this.searchEl.value = query || "";
     if (this.sizeEl && this.sizeEl.value !== this.sizeFilter) this.sizeEl.value = this.sizeFilter;
+    if (this.query || this.sizeFilter) this.setRailView("parts");
     if (render) this.renderPartTray();
   }
 
@@ -1101,9 +1120,9 @@ export class BrickLabRuntime {
     if (at >= 0) list.splice(at, 1);
     else list.push(partId);
     this.storage.savePrefs(this.prefs);
-    const scroll = this.partsEl.scrollLeft;
+    const scroll = this.partsEl.scrollTop;
     this.renderPartTray();
-    this.partsEl.scrollLeft = scroll;
+    this.partsEl.scrollTop = scroll;
     if (this.infoPartId === partId) this.showInfo(partId);
     this.haptic("tap");
   }
@@ -1115,9 +1134,9 @@ export class BrickLabRuntime {
     this.storage.savePrefs(this.prefs);
     /* Re-render only outside a search: the recents row is not shown then. */
     if (!this.query && !this.sizeFilter) {
-      const scroll = this.partsEl.scrollLeft;
+      const scroll = this.partsEl.scrollTop;
       this.renderPartTray();
-      this.partsEl.scrollLeft = scroll;
+      this.partsEl.scrollTop = scroll;
     }
   }
 
@@ -1962,7 +1981,7 @@ export class BrickLabRuntime {
         free: this.rails.free.map((end) => ({ id: end.id, x: end.x, z: end.z, dir: end.dir, screen: toScreen(end.x, STUD_H, end.z) })),
       },
       tray: {
-        category: this.activeCategory, query: this.query, size: this.sizeFilter, count: this.trayCount || 0,
+        view: this.railView, category: this.activeCategory, query: this.query, size: this.sizeFilter, count: this.trayCount || 0,
         parts: this.partsEl ? Array.from(this.partsEl.querySelectorAll("[data-part]"), (el) => el.dataset.part) : [],
         favorites: this.prefs.favorites.slice(), recents: this.prefs.recents.slice(), info: this.infoPartId,
       },

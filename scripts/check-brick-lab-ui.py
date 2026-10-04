@@ -8,7 +8,9 @@ rebuilds the colour tray, tapping the selected piece turns it, dragging it moves
 on the stud grid and an old save is re-settled. Explore -> tap -> Build selects that piece. Back tears the game down and
 reopening restores the build. Slices 09-11: every new part builds fast, a rail snaps onto a free rail end, four
 curves close a glowing circuit, rails never overlap, and the tray searches (EN + 中文), filters by size, pins
-favourites and recents and opens an info card. A pre-reader profile shows the icon-first UI.
+favourites and recents and opens an info card. Slice 12: the parts browser lives in the left rail
+(categories, then a category's parts with a Back arrow), the rail keeps one width so the view never
+resizes, and there is no bottom tray. A pre-reader profile shows the icon-first UI.
 Requires Python Playwright. --target web checks dist/android-web after a build.
 """
 import argparse
@@ -31,6 +33,14 @@ SNAP = "SQGames.get('bricklab').snapshot()"
 STARTER = 59  # pieces in the starter village (slice 06)
 
 
+def pick(page, category):
+    """Open a category from the left rail (slice 12): Back to the list first if a parts view is open."""
+    back = page.locator('.sqbl-rail-back')
+    if back.is_visible():
+        back.click()
+    page.locator(f'.sqbl-category[data-category="{category}"]').click()
+
+
 NEW_PARTS = ('brick_1x3', 'brick_2x5', 'plate_1x4', 'plate_2x6', 'slope_45', 'wheel_med', 'axle',
              'rail_curve_90', 'rail_junction_t', 'rail_cross', 'platform_4x4')
 
@@ -51,7 +61,7 @@ def lab_slices_09_11(page, snap, check, out):
     slow = []
     for part in NEW_PARTS:
         for c in ('bricks', 'plates', 'slopes', 'wheels', 'connectors', 'rails', 'structure'):
-            page.locator(f'.sqbl-category[data-category="{c}"]').click()
+            pick(page, c)
             if page.locator(f'.sqbl-part[data-part="{part}"]').count():
                 break
         ms = page.evaluate(f"(() => {{ const t = performance.now(); document.querySelector('.sqbl-part[data-part=\"{part}\"]').click(); return performance.now() - t; }})()")
@@ -78,7 +88,7 @@ def lab_slices_09_11(page, snap, check, out):
     end = max(s['rails']['free'], key=lambda e: e['z'])
     rail = next(p for p in s['pieces'] if p['id'] == end['id'])
     links0 = s['rails']['links']
-    page.locator('.sqbl-category[data-category="rails"]').click()
+    pick(page, 'rails')
     check('Rails tray: four rails, count in the header', snap()['tray']['count'] == 4
           and '4' in page.locator('.sqbl-tray-title').inner_text())
     page.locator('.sqbl-part[data-part="rail_straight"]').click()
@@ -132,14 +142,17 @@ def lab_slices_09_11(page, snap, check, out):
     parts = set(snap()['tray']['parts'])
     check('Size filter shows every 2×2 part', {'brick_2x2', 'plate_2x2', 'slope_2x2', 'slope_45', 'rail_cross', 'tree_small'} <= parts
           and 'brick_2x4' not in parts)
-    page.locator('.sqbl-category[data-category="bricks"]').click()
-    check('Picking a category clears the filters', snap()['tray']['size'] == '' and snap()['tray']['category'] == 'bricks')
+    check('A search shows its results in the parts view', snap()['tray']['view'] == 'parts')
+    page.locator('.sqbl-rail-back').click()
+    check('Back clears the filters and shows the categories', snap()['tray']['size'] == '' and snap()['tray']['view'] == 'categories')
+    pick(page, 'bricks')
+    check('Picking a category opens its parts', snap()['tray']['category'] == 'bricks' and snap()['tray']['view'] == 'parts')
     page.locator('.sqbl-fav[data-fav="brick_1x3"]').first.click()
     s = snap()
     check('Star pins a favourite at the front of the tray', s['tray']['favorites'] == ['brick_1x3'] and s['tray']['parts'][0] == 'brick_1x3'
           and page.locator('.sqbl-tray-sep[data-section="favorites"]').count() == 1)
     app = page.locator('.sqbl-app').bounding_box()
-    check('A long tray row scrolls instead of widening the app', page.locator('.sqbl-parts').evaluate('e => e.scrollWidth > e.clientWidth')
+    check('A long parts list scrolls inside the rail instead of widening the app', page.locator('.sqbl-parts').evaluate('e => e.scrollHeight > e.clientHeight')
           and app['x'] + app['width'] <= page.viewport_size['width'] + 1
           and page.locator('.sqbl-save-btn').bounding_box()['x'] + page.locator('.sqbl-save-btn').bounding_box()['width'] <= app['x'] + app['width'])
     check('Favourites and recents are saved per kid', page.evaluate(
@@ -218,13 +231,30 @@ def run(args):
                       and '積木' in page.locator('.sqbl-tray-title').inner_text())
                 page.screenshot(path=str(out / 'open.png'))
 
-                # Slice 08: the dock keeps one height for every category, so the 3D view never resizes (flash).
-                sizes = set()
+                # Slice 12: the parts browser is the left rail; the 3D view runs to the bottom of the app.
+                app = page.locator('.sqbl-app').bounding_box()
+                b = page.locator('.sqbl-stage canvas').bounding_box()
+                check('No bottom tray: the 3D view reaches the bottom of the app', page.locator('.sqbl-bottom-tray').count() == 0
+                      and abs((b['y'] + b['height']) - (app['y'] + app['height'])) <= 1)
+                check('The rail opens on the categories', snap()['tray']['view'] == 'categories'
+                      and page.locator('.sqbl-category-list').is_visible() and not page.locator('.sqbl-parts').is_visible()
+                      and not page.locator('.sqbl-rail-back').is_visible() and page.locator('.sqbl-colors').is_visible())
+                # Slice 08 / 12: neither switching category nor switching rail view resizes the 3D view (flash).
+                sizes = {(round(b['width']), round(b['height']))}
+                rail = page.locator('.sqbl-left-rail').bounding_box()['width']
                 for cat in ('plates', 'slopes', 'wheels', 'connectors', 'rails', 'structure', 'nature', 'bricks'):
-                    page.locator(f'.sqbl-category[data-category="{cat}"]').click()
+                    pick(page, cat)
                     b = page.locator('.sqbl-stage canvas').bounding_box()
                     sizes.add((round(b['width']), round(b['height'])))
-                check('Switching category keeps the 3D view size (no flash)', len(sizes) == 1)
+                check('Switching category or rail view keeps the 3D view size (no flash)', len(sizes) == 1
+                      and page.locator('.sqbl-left-rail').bounding_box()['width'] == rail)
+                slots = page.locator('.sqbl-part-slot')
+                xs = {round(slots.nth(i).bounding_box()['x']) for i in range(min(4, slots.count()))}
+                check('A category opens its parts in two columns, with Back and colours', snap()['tray']['view'] == 'parts'
+                      and len(xs) == 2 and page.locator('.sqbl-rail-back').is_visible()
+                      and not page.locator('.sqbl-category-list').is_visible() and page.locator('.sqbl-colors').is_visible())
+                check('Rail targets are tablet-sized', all(min(page.locator(sel).bounding_box()['width'], page.locator(sel).bounding_box()['height']) >= 44
+                      for sel in ('.sqbl-rail-back', '.sqbl-part-slot >> nth=0')))
                 box = page.locator('.sqbl-stage canvas').bounding_box()
                 cx, cy = box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.62
                 page.locator('.sqbl-part[data-part="brick_2x2"]').click()
@@ -307,7 +337,7 @@ def run(args):
                 page.wait_for_timeout(900)
                 page.locator('.sqbl-mode-toggle [data-mode-button="explore"]').click()
                 check('Explore keeps the scene full size', page.locator('.sqbl-stage canvas').bounding_box()['height'] > 500)
-                check('Explore hides the tray', snap()['mode'] == 'explore' and not page.locator('.sqbl-bottom-tray').is_visible())
+                check('Explore hides the parts rail', snap()['mode'] == 'explore' and not page.locator('.sqbl-left-rail').is_visible())
                 act('home-view')
                 page.wait_for_timeout(900)
                 target = next(p for p in snap()['pieces'] if p['id'] == placed)
