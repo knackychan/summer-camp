@@ -37,3 +37,34 @@ const BAG = Object.keys(BAG_PROPS).map(id => item(id, 'bag', ITEM_LABELS[id], BA
 export const LAB_INGREDIENTS = Object.freeze(Object.fromEntries([...SHELF, ...BAG].map(entry => [entry.id, entry])));
 export const SHELF_IDS = Object.freeze(SHELF.map(entry => entry.id));
 export const BAG_IDS = Object.freeze(BAG.map(entry => entry.id));
+
+/* Phase 2 (docs/plans/2026-10-04-lab-states, D2/D3): one state per ingredient, set by
+   lifting it and tapping a tool. A state changes that ingredient's own points before
+   the mix is summed; whole-cauldron steps still apply on top. */
+export const LAB_STATES = Object.freeze(['raw', 'crushed', 'heated', 'frozen']);
+export const STATE_TOOL = Object.freeze({ grind: 'crushed', heat: 'heated', cool: 'frozen' });
+
+/** An ingredient's points in a state: crushed = stronger but wilder, heated = hotter, frozen = cold and asleep. */
+export function applyState(props, state) {
+  const out = { ...props };
+  if (state === 'crushed') {
+    let best = null;
+    for (const prop of LAB_PROPERTIES) {
+      if (prop === 'chaos' || prop === 'calm' || !(out[prop] > 0)) continue;
+      if (best === null || out[prop] > out[best]) best = prop;
+    }
+    if (best) out[best] += 1;
+    out.chaos = (out.chaos || 0) + 1;
+  } else if (state === 'heated') {
+    out.fire = (out.fire || 0) + 2;
+    out.cold = 0;
+    out.water = Math.max(0, (out.water || 0) - 1);
+    out.chaos = (out.chaos || 0) + 1;
+  } else if (state === 'frozen') {
+    out.cold = (out.cold || 0) + 2;
+    out.calm = (out.calm || 0) + 1;
+    out.fire = 0; out.life = 0; out.growth = 0;
+  }
+  for (const key of Object.keys(out)) if (!out[key]) delete out[key];
+  return Object.freeze(out);
+}

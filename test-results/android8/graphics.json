@@ -1,6 +1,6 @@
 {
   "browser": "138.0.7204.183",
-  "target": "source",
+  "target": "web",
   "scope": "Desktop Chromium engine, emulated Android 8 identity and 2GB memory, real WebGL rendering; no Android 8 hardware attached.",
   "cases": [
     {
@@ -10,7 +10,7 @@
         {
           "id": "solar",
           "kind": "webgl2",
-          "draws": 234,
+          "draws": 312,
           "width": 1004,
           "cssWidth": 1004,
           "antialias": false,
@@ -20,7 +20,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl2",
-          "draws": 93,
+          "draws": 107,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -30,7 +30,7 @@
         {
           "id": "bricklab",
           "kind": "webgl2",
-          "draws": 56,
+          "draws": 623,
           "width": 862,
           "cssWidth": 862,
           "antialias": false,
@@ -39,6 +39,12 @@
         }
       ],
       "pageErrors": [],
+      "codequestLab": {
+        "width": 986,
+        "height": 564,
+        "alpha": 255,
+        "hits": 20
+      },
       "legacyDownloaded": false,
       "ok": true
     },
@@ -49,7 +55,7 @@
         {
           "id": "solar",
           "kind": "webgl",
-          "draws": 312,
+          "draws": 234,
           "width": 1004,
           "cssWidth": 1004,
           "antialias": false,
@@ -59,7 +65,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 133,
+          "draws": 143,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -69,7 +75,7 @@
         {
           "id": "bricklab",
           "kind": "webgl",
-          "draws": 39,
+          "draws": 429,
           "width": 862,
           "cssWidth": 862,
           "antialias": false,
@@ -78,6 +84,12 @@
         }
       ],
       "pageErrors": [],
+      "codequestLab": {
+        "width": 986,
+        "height": 564,
+        "alpha": 255,
+        "hits": 20
+      },
       "legacyDownloaded": true,
       "ok": true
     },
@@ -98,7 +110,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 91,
+          "draws": 122,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -108,7 +120,7 @@
         {
           "id": "bricklab",
           "kind": "webgl",
-          "draws": 39,
+          "draws": 429,
           "width": 862,
           "cssWidth": 862,
           "antialias": false,
@@ -117,6 +129,12 @@
         }
       ],
       "pageErrors": [],
+      "codequestLab": {
+        "width": 986,
+        "height": 564,
+        "alpha": 255,
+        "hits": 20
+      },
       "legacyDownloaded": true,
       "ok": true
     },
@@ -137,7 +155,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 104,
+          "draws": 95,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -147,7 +165,7 @@
         {
           "id": "bricklab",
           "kind": "webgl",
-          "draws": 52,
+          "draws": 429,
           "width": 862,
           "cssWidth": 862,
           "antialias": false,
@@ -156,6 +174,12 @@
         }
       ],
       "pageErrors": [],
+      "codequestLab": {
+        "width": 986,
+        "height": 564,
+        "alpha": 255,
+        "hits": 20
+      },
       "legacyDownloaded": true,
       "ok": true
     }

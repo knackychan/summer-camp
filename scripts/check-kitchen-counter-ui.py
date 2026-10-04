@@ -36,6 +36,12 @@ def run(args):
     brain_ids = json.loads(subprocess.check_output(['node', '-e',
         'process.stdout.write(JSON.stringify(Object.keys(require(process.argv[1]).GAMES)))',
         str(directory / 'js/brain-data.js')], text=True))
+    # The expected Games / Practice split comes from the manifest, so adding a game never stales this script.
+    split = json.loads(subprocess.check_output(['node', '--input-type=module', '-e',
+        "import('file://' + process.argv[1]).then(m => process.stdout.write(JSON.stringify({"
+        "games: m.MANIFEST.filter(e => !e.brain && !e.practice).map(e => e.id),"
+        "practice: m.MANIFEST.filter(e => e.brain || e.practice).map(e => e.id)})))",
+        str(directory / 'js/games/index.js')], text=True))
     report = {'target': args.target, 'checks': [], 'pageErrors': [], 'consoleErrors': [], 'layouts': {}}
 
     def check(name, condition):
@@ -61,7 +67,7 @@ def run(args):
                         options.update(viewport={'width': width, 'height': height}, has_touch=True, service_workers='block')
                         return browser.new_context(**options)
 
-                context = RECOVERY['context_for'](Touch(), seed=V07['fixture'](16), offline=True)
+                context = RECOVERY['context_for'](Touch(), seed=V07['fixture'](16, pin='counter-ui-26'), offline=True)
                 context.route('https://fonts.googleapis.com/**', lambda route: route.fulfill(body='', content_type='text/css'))
                 # Today's Brain Gym trio is done, so games are open; the lock test re-closes it.
                 context.add_init_script("""(() => {
@@ -112,13 +118,15 @@ def run(args):
                     page.evaluate("SummerQuest.navigate('practice')")
                     practice = page.evaluate("[...document.querySelectorAll('#practiceRow .gamecard')].map(c=>c.dataset.l)")
                     report['games'], report['practice'] = games, practice
-                    check('Games tab has the arcade, cooking and 3D games only', set(games) == {'machines', 'monster-truck', 'kitchen', 'balloon', 'race', 'orc', 'solar', 'paint'})
-                    check('Practice tab has Brain Gym plus typing and word drills', {'calc', 'hunt', 'home', 'vocab'} <= set(practice) and not set(practice) & set(games))
+                    # Music Room instruments (pads, piano, moog) are manifest games reached through their own tile, so the tab may list fewer.
+                    check('Games tab lists manifest games only, with the core arcade and Kitchen', {'kitchen', 'machines', 'monster-truck', 'solar'} <= set(games) <= set(split['games']))
+                    check('Practice tab has Brain Gym plus typing and word drills', {'calc', 'hunt', 'home', 'vocab'} <= set(practice) <= set(split['practice']) and not set(practice) & set(games))
                     check('Dig Site and Change Maker are gone', 'dig' not in games + practice and 'change' not in games + practice)
                     check('Dig Site and Change Maker no longer open', page.evaluate("Promise.all([SQContentRegistry.open('game:dig'),SQContentRegistry.open('game:change')]).then(r=>r.every(x=>!x.ok))"))
                     page.evaluate("progress.luis.brain.done={}; SummerQuest.navigate('games')")
                     page.wait_for_selector('#lockToPractice')
                     check('Brain-locked Games tab points to Practice', page.locator('#gamesLockCard').count() == 1)
+                    page.wait_for_function("document.querySelectorAll('.sqtoast').length === 0", timeout=20000)  # the fixture's achievement toast covers the button
                     tap('#lockToPractice')
                     check('Practice button opens the Practice tab', page.evaluate('hubTab') == 'practice' and not page.locator('#tab-practice').evaluate('el=>el.classList.contains("hidden")'))
                     page.evaluate("progress.luis.brain.done=Object.fromEntries(brainTrio('luis').map(id=>[id,{score:8,ms:1}]))")
@@ -183,13 +191,32 @@ def run(args):
                 tap('.kq-tray[data-action="cookPatty"]')
                 s = state()
                 check('Raw patty reserves its place and opens the grill', s['layers'][0]['pending'] and s['view'] == 'grill' and s['kitchen']['grill'][0]['phase'] == 'side-one')
+
+                def patty_words():
+                    # What the plate's reserved patty is called on the ticket, on the customer card and in the hint.
+                    return page.evaluate('''() => ({
+                      heat: document.querySelector('.kq-ticket li.pending').dataset.heat,
+                      row: document.querySelector('.kq-ticket li.pending em').innerText,
+                      card: document.querySelector('.kq-queue .kq-order[aria-pressed="true"] .kq-order-status').innerText,
+                      hint: document.querySelector('.kq-hint').innerText })''')
+                words = patty_words()
+                check('While the patty cooks, the ticket, the customer card and the hint say it is on the grill',
+                      words == {'heat': 'side-one', 'row': 'On the grill', 'card': 'On the grill', 'hint': 'Patty on the grill. It needs a flip soon.'})
                 wait("s.kitchen.grill[0].phase === 'flip'")
+                page.wait_for_timeout(250)
+                words = patty_words()
+                check('When the pan needs a flip, the ticket, the customer card and the hint all say flip',
+                      words == {'heat': 'flip', 'row': 'Flip it!', 'card': 'Flip it!', 'hint': 'Flip the patty!'})
                 check('A busy pan shows in full in the strip', page.locator('.kq-strip [data-pan="0"]').count() == 1)
                 check('A big FLIP prompt appears on the grill', page.evaluate("(() => { const p = document.querySelector('.kq-prompt'); return p.hidden ? null : p.dataset.action; })()") == 'grill:0')
                 tap('.kq-station [data-action="grill:0"]')
                 check('Flip on the pan button', state()['kitchen']['grill'][0]['phase'] == 'side-two')
                 wait("s.kitchen.grill[0].phase === 'ready'")
                 check('A big TAKE IT OUT prompt appears when the patty is done', page.evaluate("(() => { const p = document.querySelector('.kq-prompt'); return p.hidden ? null : p.dataset.action; })()") == 'grill:0')
+                page.wait_for_timeout(250)
+                words = patty_words()
+                check('When the patty is done, the ticket, the customer card and the hint all say ready',
+                      words == {'heat': 'ready', 'row': 'Ready!', 'card': 'Ready!', 'hint': 'Take the patty out of the pan!'})
                 page.screenshot(path=str(out / 'grill-ready.png'))
                 tap('.kq-station [data-action="grill:0"]')
                 s = state()

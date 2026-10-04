@@ -99,3 +99,74 @@ test('idle life animates, but not while paused or under reduced motion', () => {
   assert.equal(ops({ paused: true, time: 0.3 }), ops({ paused: true, time: 4.1 }));
   assert.equal(ops({ reduced: true, time: 0.3 }), ops({ reduced: true, time: 4.1 }));
 });
+
+/* ---------- slice 05: reaction effects ---------- */
+import { FX_IDS, FX_LINGER, FX_BEAT, fxPose } from '../js/games/codequest/lab/lab-fx.js';
+
+const fxDraw = (ruleId, t, extra = {}) => draw(1280, 440, 1, {
+  now: 50000 + t, mix: ['echoCrystal', 'redMushroom'], ...extra,
+  effect: { ruleId, intensity: extra.intensity || 2, start: 50000, potionId: 'focus', lastIngredient: 'voidDust' }
+});
+
+test('every outcome draws at start, mid, end and lingering, with the hits unchanged', () => {
+  assert.equal(FX_IDS.length, 19, 'potion + all 18 rules have an effect');
+  const base = draw(1280, 440, 1).out.hits;
+  for (const id of FX_IDS) for (const intensity of [1, 2, 3]) for (const reduced of [false, true]) {
+    for (const t of [0, FX_BEAT / 2, FX_BEAT - 1, FX_BEAT * 3]) {
+      const { canvas, out } = fxDraw(id, t, { intensity, reduced });
+      assert.deepEqual(canvas.ctx.bad, [], `${id} k=${intensity} t=${t} reduced=${reduced}`);
+      assert.deepEqual(out.hits, base, `${id} moved a tap target`);
+    }
+  }
+});
+
+test('each outcome paints something mid-beat; only the lingering ones stay after it', () => {
+  const plain = t => draw(1280, 440, 1, { now: 50000 + t, mix: ['echoCrystal', 'redMushroom'] }).canvas.ctx.ops;
+  for (const id of FX_IDS) {
+    const mid = id === 'fizzle' ? 300 : 900;
+    assert.ok(fxDraw(id, mid).canvas.ctx.ops > plain(mid), id + ' shows nothing mid-beat');
+    const after = fxDraw(id, FX_BEAT * 3).canvas.ctx.ops, idle = plain(FX_BEAT * 3);
+    if (FX_LINGER.includes(id)) assert.ok(after > idle, id + ' should linger');
+    else assert.equal(after, idle, id + ' should be gone after its beat');
+  }
+});
+
+test('reduced motion: no shake, no hop, no leap; the explosion is a puff without the flash', () => {
+  for (const id of FX_IDS) for (const t of [0, 120, 400, 800]) {
+    const pose = fxPose({ ruleId: id, intensity: 3, start: 0 }, t, true);
+    assert.equal(pose.shakeX + pose.shakeY + pose.owlDy + pose.catDy, 0, id + ' moves under reduced motion');
+  }
+  assert.notEqual(fxPose({ ruleId: 'explosion', intensity: 2 }, 60, false).shakeX, 0);
+  assert.ok(fxPose({ ruleId: 'fireball', intensity: 1 }, 450, false).catDy < 0, 'the cat leaps at a fireball');
+  assert.equal(fxPose({ ruleId: 'explosion', intensity: 1 }, 9000, true).soot, true, 'soot stays');
+  assert.ok(fxDraw('explosion', 50, { reduced: true }).canvas.ctx.ops < fxDraw('explosion', 50).canvas.ctx.ops, 'reduced draws fewer particles');
+});
+
+/* ---------- Phase 2 slice 03: ingredient forms and tool use ---------- */
+test('every ingredient in every state draws lifted, in the cauldron and with a tool, hits unchanged', () => {
+  const base = draw(1280, 440, 1).out.hits;
+  for (const id of [...SHELF_IDS, ...BAG_IDS]) for (const state of ['raw', 'crushed', 'heated', 'frozen']) {
+    const key = state === 'raw' ? id : id + ':' + state;
+    for (const step of ['grind', 'heat', 'cool', 'stir']) for (const reduced of [false, true]) {
+      const { canvas, out } = draw(1280, 440, 1, { now: 2000, selection: (SHELF_IDS.includes(id) ? 'jar:' : 'bag:') + id, held: key, mix: [key, 'sunHerb:frozen'], tool: { step, start: 1800 }, reduced });
+      assert.deepEqual(canvas.ctx.bad, [], `${key} ${step}`);
+      assert.deepEqual(out.hits, base, `${key} moved a tap target`);
+    }
+  }
+});
+
+test('a changed form looks different from the fresh one, and a tool use shows then fades', () => {
+  const ops = extra => draw(1280, 440, 1, { now: 2000, ...extra }).canvas.ctx.ops;
+  const fresh = ops({ selection: 'jar:redMushroom', held: 'redMushroom' });
+  for (const state of ['crushed', 'heated', 'frozen']) assert.notEqual(ops({ selection: 'jar:redMushroom', held: 'redMushroom:' + state }), fresh, state);
+  // A frozen bit in the cauldron changes colour, not the number of fills: compare what is painted.
+  const fills = extra => {
+    const canvas = new FakeCanvas(), log = [], fillRect = canvas.ctx.fillRect.bind(canvas.ctx);
+    canvas.ctx.fillRect = (...rect) => { log.push(canvas.ctx.fillStyle + rect.join(',')); fillRect(...rect); };
+    drawLab(canvas, { cssWidth: 1280, cssHeight: 440, dpr: 1, now: 2000, ...extra });
+    return log.join(';');
+  };
+  assert.notEqual(fills({ mix: ['redMushroom:frozen'] }), fills({ mix: ['redMushroom'] }));
+  assert.ok(ops({ tool: { step: 'cool', start: 1900 } }) > ops({}));
+  assert.equal(ops({ tool: { step: 'cool', start: 0 } }), ops({}), 'gone after 600 ms');
+});

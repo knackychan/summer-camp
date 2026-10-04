@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v149-cq-sheet-close";
+const CACHE_NAME = "summer-quest-v158-states-kitchen-bricklab-sheet-close";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -199,6 +199,10 @@ const APP_SHELL = [
   "./js/games/codequest/lab/rules.js",
   "./js/games/codequest/lab/resolve.js",
   "./js/games/codequest/lab/journal.js",
+  "./js/games/codequest/lab/lab-art.js",
+  "./js/games/codequest/lab/lab-view.js",
+  "./js/games/codequest/lab/lab-fx.js",
+  "./js/games/codequest/lab/lab-screen.js",
   "./js/games/codequest/bubble.js",
   "./js/games/codequest/strip-edit.js",
   "./js/games/codequest/preview.js",
@@ -223,6 +227,7 @@ const APP_SHELL = [
   "./js/games/bricklab.js",
   "./js/brick-lab/brick-lab.js",
   "./js/brick-lab/brick-catalog.js",
+  "./js/brick-lab/brick-rails.js",
   "./js/brick-lab/brick-storage.js",
   "./js/world/world-explorer.js",
   "./js/world/planet-palette.js",
