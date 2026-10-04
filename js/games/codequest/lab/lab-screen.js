@@ -7,35 +7,54 @@
 import { createScheduler } from '../../../game-services/scheduler.js';
 import { RECIPES, ALCHEMY_STEPS, brewLab } from '../progression.js';
 import { runAlchemyCode, recipeToAlchemyCode, recipeById } from '../alchemy-code.js';
-import { ALCHEMY_LABELS, LAB, LAB_PROPS, LAB_FAMILIES, UI, MESSAGES, labMadeLine, labPagesLine, pairHTML, t } from '../strings.js';
+import { ALCHEMY_LABELS, LAB, LAB_PROPS, LAB_FAMILIES, LAB_STATE_NAMES, UI, MESSAGES, labMadeLine, labPagesLine, labFormName, pairHTML, t } from '../strings.js';
 import { spriteURL } from '../pixel-art.js';
 import { placeBubbleRect } from '../bubble.js';
-import { LAB_INGREDIENTS, LAB_FREE_INGREDIENTS } from './ingredients.js';
+import { LAB_INGREDIENTS, LAB_FREE_INGREDIENTS, STATE_TOOL } from './ingredients.js';
 import { LAB_RULES } from './rules.js';
-import { resolveExperiment, mixHint, LAB_MAX_INGREDIENTS, LAB_MAX_STEPS } from './resolve.js';
-import { normalizeLab, recordFound, recordSeen, journalReactions, journalPotions, journalIngredients } from './journal.js';
+import { resolveExperiment, mixHint, labEntries, labKey, LAB_MAX_INGREDIENTS, LAB_MAX_STEPS } from './resolve.js';
+import { normalizeLab, recordFound, recordSeen, recordStates, journalReactions, journalPotions, journalIngredients } from './journal.js';
 import { drawLab, hitAt } from './lab-view.js';
 import { drawLabSprite, labSpriteSize } from './lab-art.js';
 
 const RULE = Object.fromEntries(LAB_RULES.map(rule => [rule.id, rule]));
 
-/* ---------- pure experiment state ---------- */
+/* ---------- pure experiment state ----------
+   `mix` and `held` use the compact key of resolve.js: the bare id for a fresh ingredient,
+   "id:state" for a crushed / heated / frozen one (lab-states D6). */
 
 export function createLabState() {
-  return Object.freeze({ mix: Object.freeze([]), steps: Object.freeze([]), selection: null, effect: null, lastResult: null, line: LAB.welcome, newPage: false });
+  return Object.freeze({ mix: Object.freeze([]), steps: Object.freeze([]), selection: null, held: null, effect: null, lastResult: null, line: LAB.welcome, newPage: false });
 }
 const next = (state, patch) => Object.freeze({ ...state, ...patch });
 
-/** Lift a jar / bag item (`jar:<id>` or `bag:<id>`), or put it down again with null. */
+/** Lift a jar / bag item (`jar:<id>` or `bag:<id>`), or put it down again with null.
+    Pressing the item already lifted keeps it (and its state) in hand. */
 export function labSelect(state, hitId) {
-  // The first time only: once something is in the cauldron the kid knows the move.
-  return next(state, { selection: hitId || null, line: hitId && !state.mix.length ? LAB.picked : state.line });
+  if (!hitId) return next(state, { selection: null, held: null });
+  if (hitId === state.selection && state.held) return state;
+  const id = String(hitId).split(':')[1];
+  // The first time only: once something is in the cauldron the kid knows the moves.
+  return next(state, { selection: hitId, held: Object.hasOwn(LAB_INGREDIENTS, id) ? id : null, line: !state.mix.length ? LAB.pickToChange : state.line });
 }
 
-export function labAdd(state, id) {
-  if (!Object.hasOwn(LAB_INGREDIENTS, id)) return next(state, { selection: null });
-  if (state.mix.length >= LAB_MAX_INGREDIENTS) return next(state, { selection: null, line: LAB.full });
-  return next(state, { mix: Object.freeze([...state.mix, id]), selection: null });
+/** A tool tap (lab-states D1): with something lifted, mortar / burner / frost plate change *it*
+    and it stays lifted; the spoon, or any tool with empty hands, is a whole-cauldron step. */
+export function labProcess(state, step) {
+  const form = STATE_TOOL[step];
+  if (!state.held || !form) return labStep(state, step);
+  const [entry] = labEntries([state.held]);
+  if (!entry) return labStep(state, step);
+  const name = labFormName(LAB_INGREDIENTS[entry.id].label, form);
+  return next(state, { held: labKey(entry.id, form), line: [name[0] + '!', name[1] + '！'] });
+}
+
+/** Drops an ingredient (an id or an "id:state" key) into the cauldron and empties the hand. */
+export function labAdd(state, item) {
+  const [entry] = labEntries([item]);
+  if (!entry) return next(state, { selection: null, held: null });
+  if (state.mix.length >= LAB_MAX_INGREDIENTS) return next(state, { selection: null, held: null, line: LAB.full });
+  return next(state, { mix: Object.freeze([...state.mix, labKey(entry.id, entry.state)]), selection: null, held: null });
 }
 
 export function labRemove(state, index) {
@@ -57,12 +76,12 @@ export function labUndo(state) {
 export function labLoad(state, ingredients, steps) {
   const mix = ingredients.filter(id => Object.hasOwn(LAB_INGREDIENTS, id)).slice(0, LAB_MAX_INGREDIENTS);
   const process = steps.filter(step => ALCHEMY_STEPS.includes(step)).slice(0, LAB_MAX_STEPS);
-  return next(state, { mix: Object.freeze(mix), steps: Object.freeze(process), selection: null, effect: null, line: LAB.ready });
+  return next(state, { mix: Object.freeze(mix), steps: Object.freeze(process), selection: null, held: null, effect: null, line: LAB.ready });
 }
 
 /** ✕ clears the experiment and whatever the last Brew left in the room. */
 export function labClear(state) {
-  return next(state, { mix: Object.freeze([]), steps: Object.freeze([]), selection: null, effect: null, newPage: false });
+  return next(state, { mix: Object.freeze([]), steps: Object.freeze([]), selection: null, held: null, effect: null, newPage: false });
 }
 
 /**
@@ -72,17 +91,18 @@ export function labClear(state) {
  * thing and brew again.
  */
 export function labBrew(state, profile, { free = LAB_FREE_INGREDIENTS, now = 0 } = {}) {
-  const mix = [...state.mix], steps = [...state.steps];
-  if (!mix.length) return { state: next(state, { selection: null, line: LAB.empty }), profile, changed: false, potionId: null, newRule: false };
-  const lastIngredient = mix[mix.length - 1];
+  const mix = [...state.mix], steps = [...state.steps], entries = labEntries(mix);
+  if (!entries.length) return { state: next(state, { selection: null, held: null, line: LAB.empty }), profile, changed: false, potionId: null, newRule: false };
+  const lastIngredient = entries[entries.length - 1].id;
   let result = resolveExperiment({ ingredients: mix, steps, recipes: RECIPES });
   let practice = false;
   if (result.kind === 'potion') {
-    const brewed = brewLab(profile, mix, steps, { free });
+    // A potion only comes from fresh ingredients (lab-states D5), so ids are the whole story.
+    const brewed = brewLab(profile, entries.map(entry => entry.id), steps, { free });
     if (brewed.ok) {
       const recipe = recipeById(result.potionId);
       return {
-        state: next(state, { selection: null, lastResult: result, newPage: false, line: labMadeLine(recipe.label),
+        state: next(state, { selection: null, held: null, lastResult: result, newPage: false, line: labMadeLine(recipe.label),
           effect: Object.freeze({ ruleId: 'potion', potionId: result.potionId, intensity: 1, start: now, lastIngredient }) }),
         profile: brewed.profile, changed: true, potionId: result.potionId, newRule: false
       };
@@ -92,10 +112,10 @@ export function labBrew(state, profile, { free = LAB_FREE_INGREDIENTS, now = 0 }
     practice = true;
   }
   const fresh = !normalizeLab(profile.lab).found.includes(result.ruleId);
-  const recorded = recordFound(recordSeen(profile, mix), result.ruleId);
-  const line = practice ? LAB.practice : result.hint === 'order' ? LAB.orderHint : RULE[result.ruleId].line;
+  const recorded = recordStates(recordFound(recordSeen(profile, entries), result.ruleId), entries);
+  const line = practice ? LAB.practice : result.hint === 'fresh' ? LAB.freshHint : result.hint === 'order' ? LAB.orderHint : RULE[result.ruleId].line;
   return {
-    state: next(state, { selection: null, lastResult: practice ? Object.freeze({ ...result, practice: true }) : result, newPage: state.newPage || fresh, line,
+    state: next(state, { selection: null, held: null, lastResult: practice ? Object.freeze({ ...result, practice: true }) : result, newPage: state.newPage || fresh, line,
       effect: Object.freeze({ ruleId: result.ruleId, intensity: result.intensity, start: now, lastIngredient }) }),
     profile: recorded, changed: recorded !== profile, potionId: null, newRule: fresh
   };
@@ -109,7 +129,10 @@ const PROP_ICON = Object.freeze({ life: '💚', growth: '🌱', fire: '🔥', co
 const FAMILY_ICON = Object.freeze({ reality: '🌌', instability: '💥', time: '⏳', space: '🕳️', creature: '👾', replication: '🔁', biological: '🌿', elemental: '🔥', light: '💡', fallback: '💨' });
 const JOURNAL_TABS = Object.freeze(['reactions', 'potions', 'ingredients']);
 // Existing host sounds only (lab design D13); per-family audio is a later phase.
-const REACTION_SOUND = Object.freeze({ explosion: 'hit', fireball: 'zap', singularity: 'zap' });
+const REACTION_SOUND = Object.freeze({ explosion: 'hit', fireball: 'zap', singularity: 'zap', thermalShock: 'hit' });
+// A small badge on a changed ingredient in the strip and the drag ghost (lab-states D8).
+const STATE_BADGE = Object.freeze({ crushed: '🔨', heated: '🔥', frozen: '🧊' });
+const TOOL_MS = 600;
 const DRAG_PX = 8;
 const BUBBLE_SIDE_CLASSES = ['below', 'side-left', 'side-right', 'caption'];
 const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -169,6 +192,13 @@ export function mountLab(root, api) {
     draw();
   }
 
+  /** Strip / ghost icon: the ingredient plus its state badge. */
+  function formIcon(entry) {
+    return '<img src="' + iconURL(entry.id, accent()) + '" alt="">' + (STATE_BADGE[entry.state] ? '<i class="cq-lab-badge" aria-hidden="true">' + STATE_BADGE[entry.state] + '</i>' : '');
+  }
+  let tool = null;   // { step, start }: the tool the kid just used, for its little animation
+  function useTool(step) { tool = { step, start: performance.now() }; }
+
   /* ----- drawing ----- */
   function draw(time = performance.now()) {
     if (destroyed) return;
@@ -177,8 +207,8 @@ export function mountLab(root, api) {
     const hint = mixHint(state.mix, state.steps);
     view = drawLab(canvas, {
       cssWidth: box.width, cssHeight: box.height, dpr: window.devicePixelRatio || 1, now: time,
-      mix: state.mix, steps: state.steps, tint: hint.tint, shaky: hint.shaky, selection: state.selection,
-      effect: state.effect, reduced: !!api.reduced
+      mix: state.mix, steps: state.steps, tint: hint.tint, shaky: hint.shaky, selection: state.selection, held: state.held,
+      tool: tool && time - tool.start < TOOL_MS ? tool : null, effect: state.effect, reduced: !!api.reduced
     });
     placeBubble(time, box);
     placeTag();
@@ -221,9 +251,9 @@ export function mountLab(root, api) {
   function renderDock() {
     const slots = [];
     for (let i = 0; i < LAB_MAX_INGREDIENTS; i++) {
-      const id = state.mix[i];
-      slots.push(id
-        ? button('remove:' + i, '<img src="' + iconURL(id, accent()) + '" alt="">', 'class="cq-lab-slot" aria-label="' + esc(t(LAB.takeOut) + ': ' + t(LAB_INGREDIENTS[id].label)) + '"')
+      const [entry] = labEntries([state.mix[i]]);
+      slots.push(entry
+        ? button('remove:' + i, formIcon(entry), 'class="cq-lab-slot" aria-label="' + esc(t(LAB.takeOut) + ': ' + t(labFormName(LAB_INGREDIENTS[entry.id].label, entry.state))) + '"')
         : '<span class="cq-lab-slot empty" aria-hidden="true"></span>');
     }
     const slotBox = el.querySelector('.cq-lab-slots');
@@ -261,7 +291,9 @@ export function mountLab(root, api) {
     if (!tokens.length) return '<span class="cq-lab-formula"><i aria-hidden="true">❔</i></span>';
     return '<span class="cq-lab-formula">' + tokens.map(token => token.startsWith('ing:')
       ? '<img src="' + iconURL(token.slice(4), accent()) + '" alt="' + esc(t(LAB_INGREDIENTS[token.slice(4)].label)) + '">'
-      : '<i title="' + esc(t(LAB_PROPS[token])) + '">' + PROP_ICON[token] + '</i>').join('<b>+</b>') + '</span>';
+      : token.startsWith('state:')
+        ? '<i class="cq-lab-state" title="' + esc(t(LAB_STATE_NAMES[token.slice(6)])) + '">' + STATE_BADGE[token.slice(6)] + '</i>'
+        : '<i title="' + esc(t(LAB_PROPS[token])) + '">' + PROP_ICON[token] + '</i>').join('<b>+</b>') + '</span>';
   }
   function journalPage() {
     const profile = api.profile();
@@ -276,7 +308,10 @@ export function mountLab(root, api) {
     if (journal.tab === 'ingredients') {
       return '<div class="cq-lab-cards">' + journalIngredients(profile.lab).map(page =>
         '<article class="cq-lab-card' + (page.seen ? '' : ' unseen') + '"><header><img src="' + iconURL(page.id, accent()) + '" alt=""><b>' + pairHTML(page.label) + '</b><small>' + pairHTML(page.where === 'bag' ? LAB.bag : LAB.shelf) + '</small></header>' +
-        (page.seen ? '<span class="cq-lab-props">' + page.props.map(([prop, n]) => chip(prop, n)).join('') + '</span>' : '<p>' + pairHTML(LAB.unseen) + '</p>') + '</article>').join('') + '</div>';
+        (page.seen ? '<span class="cq-lab-props">' + page.props.map(([prop, n]) => chip(prop, n)).join('') + '</span>' : '<p>' + pairHTML(LAB.unseen) + '</p>') +
+        // Forms the kid has brewed with (lab-states D7): one row each, never a hint of the others.
+        page.forms.map(form => '<div class="cq-lab-form"><b><i aria-hidden="true">' + STATE_BADGE[form.state] + '</i>' + pairHTML(LAB_STATE_NAMES[form.state]) + '</b><span class="cq-lab-props">' + form.props.map(([prop, n]) => chip(prop, n)).join('') + '</span></div>').join('') +
+        '</article>').join('') + '</div>';
     }
     const book = journalReactions(profile.lab);
     return '<p class="cq-lab-count">' + pairHTML(labPagesLine(book.found, book.total)) + '</p><div class="cq-lab-cards">' + book.pages.map(page => page.found
@@ -327,14 +362,25 @@ export function mountLab(root, api) {
     // The same line twice in a row (brew again) still needs the owl to speak.
     if (out.state.lastResult) say(out.state.line);
   }
+  function dropHeld() {
+    if (!state.held) return;
+    const before = state.mix.length;
+    apply(labAdd(state, state.held));
+    if (state.mix.length > before) sfx('pop');
+  }
+  /** A tool on the lifted ingredient, or a whole-cauldron step with empty hands (lab-states D1). */
+  function processWith(step) {
+    const holding = !!state.held && !!STATE_TOOL[step], before = state.steps.length;
+    const after = labProcess(state, step);
+    if (holding || after.steps.length > before) { useTool(step); sfx('pop'); }
+    apply(after);
+    // The owl names the form every time, even when it is the same form again.
+    if (holding) say(after.line);
+  }
   function tapHit(hit) {
     if (!hit) return;
-    if (hit.kind === 'cauldron') {
-      const picked = view && state.selection ? view.hits.find(h => h.id === state.selection) : null;
-      if (picked && picked.ingredient) { const before = state.mix.length; apply(labAdd(state, picked.ingredient)); if (state.mix.length > before) sfx('pop'); }
-      return;
-    }
-    if (hit.kind === 'prop') { const before = state.steps.length; apply(labStep(state, hit.step)); if (state.steps.length > before) sfx('pop'); return; }
+    if (hit.kind === 'cauldron') { dropHeld(); return; }
+    if (hit.kind === 'prop') { processWith(hit.step); return; }
     if (hit.kind === 'owl') { say(state.line); return; }
     if (hit.kind === 'book') { openJournal(); return; }
     if (hit.kind === 'scroll') {
@@ -390,7 +436,7 @@ export function mountLab(root, api) {
     if (!press.moved && Math.abs(e.clientX - press.x0) + Math.abs(e.clientY - press.y0) > DRAG_PX) {
       press.moved = true;
       ghost = document.createElement('div'); ghost.className = 'cq-drag-ghost';
-      ghost.innerHTML = '<img src="' + iconURL(press.hit.ingredient, accent()) + '" alt="">';
+      ghost.innerHTML = formIcon(labEntries([state.held || press.hit.ingredient])[0]);
       el.appendChild(ghost);
     }
     if (ghost) ghost.style.transform = 'translate(' + (e.clientX - 24) + 'px,' + (e.clientY - 24) + 'px)';
@@ -401,7 +447,9 @@ export function mountLab(root, api) {
     if (ghost) { ghost.remove(); ghost = null; }
     if (!done.moved) { if (done.wasSelected) apply(labSelect(state, null)); return; }
     const p = local(e), over = e.type === 'pointerup' ? hitAt(view && view.hits, p.x, p.y) : null;
-    if (over && over.kind === 'cauldron') { const before = state.mix.length; apply(labAdd(state, done.hit.ingredient)); if (state.mix.length > before) sfx('pop'); }
+    if (over && over.kind === 'cauldron') dropHeld();
+    // Dropped on the mortar, burner or frost plate: changed, and still in hand over the tool.
+    else if (over && over.kind === 'prop' && STATE_TOOL[over.step]) processWith(over.step);
     else apply(labSelect(state, null));
   }
   function onDockDown(e) {
@@ -449,7 +497,7 @@ export function mountLab(root, api) {
     },
     snapshot() {
       return {
-        open: true, mix: [...state.mix], steps: [...state.steps], selection: state.selection, effect: state.effect,
+        open: true, mix: [...state.mix], steps: [...state.steps], selection: state.selection, held: state.held, effect: state.effect,
         lastResult: state.lastResult, newPage: state.newPage, line: state.line, script: script.open, journal: journal.open ? journal.tab : null,
         hits: view ? view.hits.map(hit => ({ id: hit.id, kind: hit.kind, x: hit.x, y: hit.y, w: hit.w, h: hit.h })) : []
       };

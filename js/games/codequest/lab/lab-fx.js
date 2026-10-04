@@ -11,9 +11,8 @@ import { LAB_INGREDIENTS } from './ingredients.js';
 import { LAB_RULES } from './rules.js';
 
 export const FX_BEAT = 3000;
-export const FX_IDS = Object.freeze(['potion', ...LAB_RULES.map(rule => rule.id)]);
-export const FX_LINGER = Object.freeze(['explosion', 'monstrosity', 'duplication', 'overgrowth']);
-const STARTLE = ['explosion', 'fireball', 'singularity'];
+export const FX_LINGER = Object.freeze(['explosion', 'monstrosity', 'duplication', 'overgrowth', 'snowflakeCopies', 'flamingVines']);
+const STARTLE = ['explosion', 'fireball', 'singularity', 'thermalShock'];
 
 const CX = 160, SURFACE = 86;   // cauldron centre and liquid surface (lab-view.js)
 const ORB = { x: 160, y: 56 };  // above the cauldron, in front of the window
@@ -191,7 +190,8 @@ function monstrosity(ctx, e, t, o) {
 
 const COPY_SPOTS = [[86, 104], [214, 104], [100, 104], [240, 104], [72, 104], [254, 104], [112, 104], [266, 104]];
 function duplication(ctx, e, t, o) {
-  const organic = (o.mix || []).find(id => LAB_INGREDIENTS[id] && (LAB_INGREDIENTS[id].props.life || 0) + (LAB_INGREDIENTS[id].props.growth || 0) > 0) || e.lastIngredient;
+  // Mix items may be "id:state" keys (lab-states); the copies are of the plain ingredient.
+  const organic = (o.mix || []).map(key => String(key).split(':')[0]).find(id => LAB_INGREDIENTS[id] && (LAB_INGREDIENTS[id].props.life || 0) + (LAB_INGREDIENTS[id].props.growth || 0) > 0) || e.lastIngredient;
   if (!LAB_INGREDIENTS[organic]) return;
   const copies = Math.min(8, 2 ** Math.max(1, e.intensity));
   for (let i = 0; i < copies; i++) {
@@ -217,6 +217,92 @@ function overgrowth(ctx, e, t, o) {
       if (y % 8 === 4) { px(ctx, Q.green, x + dx + (y % 16 === 4 ? 2 : -3), base + 10 - y, 3, 2); px(ctx, Q.greenLit, x + dx + (y % 16 === 4 ? 3 : -2), base + 10 - y, 1, 1); }
       if (y % 22 === 14 && grow > 0.8) px(ctx, Q.pink, x + dx + 2, base + 9 - y, 2, 2);
     }
+  }
+}
+
+/* ---------- Phase 2 state reactions (lab-states slice 04) ---------- */
+
+function thermalShock(ctx, e, t, o) {
+  if (t >= FX_BEAT) return;
+  // Ice shards crack off the rim and fly out; little pops ring where they burst; a hiss of steam.
+  const n = count(10 + e.intensity * 4, o.reduced);
+  for (let i = 0; i < n; i++) {
+    const age = t - i * 40;
+    if (age < 0 || age > 1100) continue;
+    const q = easeOut(age / 1100), ang = Math.PI + (i / (n - 1 || 1)) * Math.PI + (rand(i, 21) - 0.5) * 0.4, r = 8 + q * (34 + e.intensity * 6);
+    const x = CX + Math.cos(ang) * r * 1.3, y = 87 + Math.sin(ang) * r * 0.6 + q * q * 22;
+    alpha(ctx, 1 - q * 0.6, () => { px(ctx, Q.white, x, y, 3, 2); px(ctx, Q.ice, x + 1, y + 2, 2, 2); px(ctx, Q.oceanLit, x + 3, y + 1); });
+    if (age > 700 && age < 900) ring(ctx, Q.white, x, y, 2 + (age - 700) / 60);
+  }
+  // Cracks race across the frosted rim first.
+  if (t < 900) alpha(ctx, 1 - t / 900, () => { ring(ctx, Q.white, CX, 87, 30, 7); for (const dx of [-22, -9, 6, 19]) px(ctx, Q.ice, CX + dx, 82, 1, 4); });
+  for (let i = 0; i < count(5, o.reduced); i++) {
+    const age = t - 200 - i * 120;
+    if (age < 0 || age > 1600) continue;
+    const q = age / 1600;
+    alpha(ctx, 0.7 * (1 - q), () => disc(ctx, i % 2 ? Q.white : Q.snowShade, CX - 12 + i * 6, SURFACE - 6 - q * 40, 3 + q * 7));
+  }
+}
+
+/** A six-armed pixel snowflake centred on (x, y). */
+function snowflake(ctx, x, y, big) {
+  const a = big ? 5 : 4;
+  px(ctx, Q.white, x - a, y, a * 2 + 1, 1); px(ctx, Q.white, x, y - a, 1, a * 2 + 1);
+  for (let d = 1; d < a - 1; d++) for (const [sx, sy] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) px(ctx, Q.ice, x + sx * d, y + sy * d);
+  // Little branch tips on the four main arms.
+  for (const [dx, dy] of [[a - 1, 1], [a - 1, -1], [1 - a, 1], [1 - a, -1], [1, a - 1], [-1, a - 1], [1, 1 - a], [-1, 1 - a]]) px(ctx, Q.snowShade, x + dx, y + dy);
+  px(ctx, Q.oceanLit, x, y);
+}
+const FLAKE_SPOTS = [[90, 104], [214, 104], [108, 103], [236, 104], [72, 104], [254, 103], [122, 104], [270, 104]];
+function snowflakeCopies(ctx, e, t, o) {
+  // One flake rises from the cauldron, splits 2 → 4 → 8 in front of the window, then each drifts down to the bench.
+  const copies = Math.min(8, 2 ** Math.max(1, e.intensity)), top = { x: CX, y: 44 };
+  if (t < 600) { const p = easeOut(t / 600); snowflake(ctx, CX, Math.round(lerp(SURFACE - 6, top.y, p)), true); return; }
+  for (let i = 0; i < copies; i++) {
+    const [sx, sy] = FLAKE_SPOTS[i], age = t - 600 - Math.floor(Math.log2(i + 1)) * 250;
+    if (age < 0) continue;
+    const split = easeOut(clamp01(age / 300)), fall = easeOut(clamp01((age - 300) / 1300));
+    const spread = { x: top.x + (i - (copies - 1) / 2) * 15, y: top.y + (i % 2) * 8 };
+    let x = lerp(top.x, spread.x, split), y = lerp(top.y, spread.y, split);
+    if (fall > 0) { x = lerp(spread.x, sx, fall) + Math.sin(fall * 6 + i) * 3 * (1 - fall); y = lerp(spread.y, sy, fall); }
+    // Settled flakes twinkle gently.
+    const twinkle = fall >= 1 && !o.still && (Math.floor(o.now / 400) + i) % 4 === 0;
+    snowflake(ctx, Math.round(x), Math.round(y), !twinkle);
+  }
+}
+
+function flamingVines(ctx, e, t, o) {
+  // Vines like Overgrowth, burning at the tips: orange leaves and flickering flame crowns.
+  const n = Math.min(VINES.length, 2 + e.intensity * 2);
+  for (let v = 0; v < n; v++) {
+    const [x, base] = VINES[v], full = 50 + Math.round(rand(v, 9) * 24), grow = easeOut(clamp01((t - v * 120) / 1800));
+    const h = Math.round(full * grow), flick = o.still ? 0 : Math.floor((o.now / 140 + v) % 3);
+    for (let y = 0; y < h; y += 2) {
+      const dx = Math.floor(y / 6) % 2 ? 1 : 0;
+      px(ctx, Q.woodDark, x + dx, base + 10 - y, 2, 2);
+      if (y % 8 === 4) px(ctx, y % 16 === 4 ? Q.lava : Q.red, x + dx + (y % 16 === 4 ? 2 : -3), base + 10 - y, 3, 2);
+    }
+    if (h > 4) {
+      const tipX = x + (Math.floor(h / 6) % 2 ? 1 : 0), tipY = base + 10 - h;
+      px(ctx, Q.red, tipX - 1, tipY - 3 - flick, 4, 4 + flick);
+      px(ctx, Q.lava, tipX, tipY - 2 - flick, 2, 3 + flick);
+      px(ctx, Q.yellow, tipX, tipY - 1, 1, 2);
+    }
+  }
+}
+
+function glitterStorm(ctx, e, t, o) {
+  if (t >= FX_BEAT) return;
+  // Sparkles swirl round the room, then drift down and wink out.
+  const n = count(24 + e.intensity * 10, o.reduced), colours = [Q.yellow, Q.white, Q.pink, Q.lilac, Q.sandLit];
+  const spin = t / (o.reduced ? 1400 : 600), drop = clamp01((t - 1600) / 1400);
+  for (let i = 0; i < n; i++) {
+    const r = 30 + rand(i, 13) * 90, ang = rand(i, 17) * Math.PI * 2 + spin * (0.6 + rand(i, 19) * 0.6);
+    const x = 160 + Math.cos(ang) * r, y = 70 + Math.sin(ang) * r * 0.45 + drop * (40 + rand(i, 23) * 50);
+    if (drop > rand(i, 29) * 1.1 + 0.4) continue;
+    const winkle = (Math.floor(t / 90) + i) % 3 === 0;
+    px(ctx, colours[i % colours.length], x, y, 2, 2);
+    if (winkle && !o.reduced) { px(ctx, Q.white, x - 1, y); px(ctx, Q.white, x + 2, y + 1); }
   }
 }
 
@@ -306,7 +392,9 @@ function fizzle(ctx, e, t, o) {
   if (t < 900) alpha(ctx, 0.6 * (1 - t / 900), () => disc(ctx, Q.grey, CX + 4, SURFACE - 6 - t / 60, 2 + t / 300));
 }
 
-const DRAW = { potion, pocketUniverse, explosion, temporalRupture, singularity, monstrosity, duplication, overgrowth, fireball, iceBurst, glow, steam, bubbles, smoke, fizzle };
+const DRAW = { potion, pocketUniverse, explosion, thermalShock, temporalRupture, singularity, snowflakeCopies, monstrosity, duplication, overgrowth, flamingVines, fireball, iceBurst, glitterStorm, glow, steam, bubbles, smoke, fizzle };
+// Outcomes with a drawn effect; a rule without one (until its effect slice ships) just shows the room.
+export const FX_IDS = Object.freeze(['potion', ...LAB_RULES.map(rule => rule.id).filter(id => Object.hasOwn(DRAW, id))]);
 
 /**
  * Draws the active effect over the room. `o`: { t, now, reduced, still, mix, home(id) → {x, y} },

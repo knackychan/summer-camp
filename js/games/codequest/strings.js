@@ -146,8 +146,20 @@ export const LAB = Object.freeze({
   // Curiosity Journal sheet (slice 06).
   journal: ['Curiosity Journal', '好奇日誌'], tabReactions: ['Reactions', '反應'], tabPotions: ['Potions', '藥水'], tabIngredients: ['Ingredients', '材料'],
   notFound: ['Not found yet', '還沒發現'], putIn: ['Put in cauldron', '放進鍋子'], ready: ['Ready — tap Brew!', '準備好了——按釀造！'],
-  unseen: ['Use it in a reaction to learn its powers.', '用它做一次反應，就能知道它的力量。'], shelf: ['Shelf', '架子'], bag: ['Bag', '背包']
+  unseen: ['Use it in a reaction to learn its powers.', '用它做一次反應，就能知道它的力量。'], shelf: ['Shelf', '架子'], bag: ['Bag', '背包'],
+  // Phase 2 ingredient states (lab-states slice 03).
+  freshHint: ['That recipe likes its ingredients fresh!', '這個配方要用新鮮的材料！'],
+  pickToChange: ['Tap a tool to change it, or the cauldron to drop it in.', '點工具可以改變它，點鍋子就放進去。']
 });
+/* Ingredient states (lab-states D2). Names read before the ingredient: "Frozen Moon Berry", 「冰凍的月光莓」. */
+export const LAB_STATE_NAMES = Object.freeze({
+  crushed: ['Crushed', '碾碎的'], heated: ['Heated', '加熱過的'], frozen: ['Frozen', '冰凍的']
+});
+/** An ingredient's name in a state, e.g. Frozen Red Mushroom / 冰凍的紅蘑菇 (fresh: just the name). */
+export function labFormName(label, state) {
+  const name = LAB_STATE_NAMES[state];
+  return name ? [`${name[0]} ${label[0]}`, `${name[1]}${label[1]}`] : label;
+}
 /* Property and reaction-family names for the Journal's icon formulas. */
 export const LAB_PROPS = Object.freeze({
   life: ['Life', '生命'], growth: ['Growth', '生長'], fire: ['Fire', '火'], cold: ['Cold', '寒冷'], water: ['Water', '水'],

@@ -58,6 +58,38 @@
       "ok": true
     },
     {
+      "name": "1280x800: S lift + frost plate → frozen, still in hand",
+      "ok": true
+    },
+    {
+      "name": "1280x800: S Frozen Mushroom + Echo Crystal → Snowflake Copies",
+      "ok": true
+    },
+    {
+      "name": "1280x800: S the fresh pair is still Duplication",
+      "ok": true
+    },
+    {
+      "name": "1280x800: S drag onto the mortar → crushed, still in hand",
+      "ok": true
+    },
+    {
+      "name": "1280x800: S crushed Moonflower dragged in → Glitter Storm",
+      "ok": true
+    },
+    {
+      "name": "1280x800: S a crushed Sun Herb in Healing → fresh hint, no potion",
+      "ok": true
+    },
+    {
+      "name": "1280x800: S Journal shows the brewed forms",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 8 bubble never covers the cauldron or the strip (states)",
+      "ok": true
+    },
+    {
       "name": "1280x800: 7 host Back returns to the dungeon, not out of Code Quest",
       "ok": true
     },
@@ -131,6 +163,38 @@
     },
     {
       "name": "1280x600: 8 bubble never covers the cauldron or the strip",
+      "ok": true
+    },
+    {
+      "name": "1280x600: S lift + frost plate → frozen, still in hand",
+      "ok": true
+    },
+    {
+      "name": "1280x600: S Frozen Mushroom + Echo Crystal → Snowflake Copies",
+      "ok": true
+    },
+    {
+      "name": "1280x600: S the fresh pair is still Duplication",
+      "ok": true
+    },
+    {
+      "name": "1280x600: S drag onto the mortar → crushed, still in hand",
+      "ok": true
+    },
+    {
+      "name": "1280x600: S crushed Moonflower dragged in → Glitter Storm",
+      "ok": true
+    },
+    {
+      "name": "1280x600: S a crushed Sun Herb in Healing → fresh hint, no potion",
+      "ok": true
+    },
+    {
+      "name": "1280x600: S Journal shows the brewed forms",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 8 bubble never covers the cauldron or the strip (states)",
       "ok": true
     },
     {
