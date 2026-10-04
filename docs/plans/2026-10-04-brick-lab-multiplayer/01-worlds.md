@@ -17,3 +17,12 @@
 - `scripts/check-brick-lab-ui.py` — menu shows, new world opens empty, Back returns to the menu with the new card, migration from a seeded old build.
 
 **DONE WHEN:** `node scripts/check.mjs` green; both tests pass; an existing build on a real tablet shows up as world 1 after updating.
+
+## As built (2026-10-04)
+- Worlds are listed most recently played first (a `played` counter in the index, so two saves in the same millisecond keep their order).
+- The menu is an overlay over the plate, under the top bar; while it shows, the plate is empty and the mode toggle / undo / save are hidden. Pre-readers see pictures and brick counts only, and their card actions have no Rename (they delete with icons, after the same "are you sure" step).
+- Host Back: closes an open card action first, then leaves the world for the menu (saving it with a 200 px JPEG of the current view), then leaves Brick Lab. `js/games/bricklab.js` gained `back()`.
+- A world's picture is taken when the world is left (Back or closing Brick Lab); until then its card shows a brick.
+- `brick-storage.js` now exports the build shape (`readBuild`, `buildPayload`) for `brick-worlds.js` and keeps the tray prefs; builds no longer go through `BrickLabStorage.save`.
+
+**Verified 2026-10-04:** `check.mjs` green (includes `scripts/brick-worlds.test.mjs`, 8 tests); `check-brick-lab-ui.py` 104/104 (Edge headless, SwiftShader) — menu on open, new world empty and listed first, rename, delete with a confirm step, Back closes card actions / leaves the world with its picture / leaves Brick Lab, an old single save (Lucien) becomes world 1 and is re-settled, the old key left in place; every older check still passes after opening a world. `check-android8-ui.py` passes with Playwright Chromium 1228 (not Chrome 138). Screenshots: `.tmp/brick-lab-ui/menu.png`, `menu-pre-reader.png`. Not yet done: updating a real tablet and seeing its build as world 1.

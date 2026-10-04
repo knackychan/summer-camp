@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v165-brick-icons";
+const CACHE_NAME = "summer-quest-v166-brick-worlds";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -231,6 +231,7 @@ const APP_SHELL = [
   "./js/brick-lab/brick-rails.js",
   "./js/brick-lab/brick-storage.js",
   "./js/brick-lab/brick-thumbs.js",
+  "./js/brick-lab/brick-worlds.js",
   "./js/world/world-explorer.js",
   "./js/world/planet-palette.js",
   "./js/world/planet-map.js",

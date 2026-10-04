@@ -137,3 +137,31 @@
 .sqbl-topbar,.sqbl-main{min-width:0}
 /* Multiplayer plan D12 (slice 08): the icon is the real part, drawn by the lab; the CSS drawing above stands in until it is ready. */
 .sqbl-part-preview.has-pic{width:56px!important;height:36px!important;margin:0!important;padding:0!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;clip-path:none!important}.sqbl-part-preview.has-pic:before,.sqbl-part-preview.has-pic:after{display:none!important}.sqbl-part-preview>img{display:block;width:56px;height:36px;pointer-events:none;-webkit-user-drag:none}
+/* Multiplayer plan slice 01 (D3): the world menu sits over the plate, under the top bar. */
+.sqbl-menu{position:absolute;inset:0;z-index:5;overflow-y:auto;overscroll-behavior:contain;padding:84px max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:rgba(226,239,246,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.sqbl-menu[hidden]{display:none}
+.sqbl-menu-panel{max-width:960px;margin:0 auto}
+.sqbl-menu-title{margin:6px 4px 12px;font-size:20px;font-weight:900;color:var(--sqbl-ink)}
+.sqbl-menu-title span[lang]{font-weight:800;color:var(--sqbl-muted)}
+.sqbl-worlds{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:26px}
+.sqbl-world,.sqbl-world-new{position:relative;min-width:0;border-radius:20px;background:#fff;border:1px solid var(--sqbl-line);box-shadow:0 6px 16px rgba(40,60,80,.1);overflow:hidden}
+.sqbl-world-open,.sqbl-world-new{display:grid;gap:6px;align-content:start;width:100%;min-height:48px;padding:10px 10px 12px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;touch-action:manipulation}
+.sqbl-world-open:disabled{opacity:1}
+.sqbl-world-new{place-items:center;align-content:center;text-align:center;border:2px dashed #9ec3e6;background:rgba(255,255,255,.72);box-shadow:none;font-size:16px;font-weight:800;color:#1f5fb4}
+.sqbl-world-pic{display:grid;place-items:center;width:100%;aspect-ratio:16/10;border-radius:14px;background:linear-gradient(160deg,#cfe6c9,#9fcf8f);font-size:40px;overflow:hidden}
+.sqbl-world-new .sqbl-world-pic{background:#eef6ff;color:var(--sqbl-blue);font-size:52px;font-weight:900}
+.sqbl-world-pic img{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
+.sqbl-world-name{font-size:16px;font-weight:800;line-height:1.2;overflow-wrap:anywhere}
+.sqbl-world-count{font-size:13px;font-weight:700;color:var(--sqbl-muted)}
+.sqbl-world-more{position:absolute;top:8px;right:8px;width:48px;height:48px;padding:0;border:0;border-radius:14px;background:rgba(255,255,255,.9);box-shadow:0 2px 6px rgba(0,0,0,.12);font-size:24px;font-weight:900;line-height:48px;color:var(--sqbl-ink);touch-action:manipulation}
+.sqbl-world-actions{display:flex;flex-wrap:wrap;gap:8px;padding:0 10px 12px}
+.sqbl-menu-btn{min-height:48px;padding:0 14px;border:1px solid var(--sqbl-line);border-radius:14px;background:#f4f8fb;color:var(--sqbl-ink);font:inherit;font-size:14px;font-weight:800;touch-action:manipulation}
+.sqbl-menu-btn.is-primary{background:var(--sqbl-blue);border-color:var(--sqbl-blue);color:#fff}
+.sqbl-world-name-input{display:block;box-sizing:border-box;width:calc(100% - 20px);min-height:48px;margin:0 10px 8px;padding:0 12px;border:2px solid var(--sqbl-blue);border-radius:12px;font:inherit;font-size:16px;color:var(--sqbl-ink)}
+.sqbl-world-ask{margin:0 12px 8px;font-weight:800;color:var(--sqbl-ink)}
+.sqbl-join-note{margin:0 4px;padding:16px 18px;border-radius:16px;background:rgba(255,255,255,.72);font-weight:700;color:var(--sqbl-muted)}
+.sqbl-app.is-menu .sqbl-mode-toggle,.sqbl-app.is-menu .sqbl-global-actions{visibility:hidden}
+.sqbl-app.is-pre-reader .sqbl-worlds{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.sqbl-app.is-pre-reader .sqbl-world-count{font-size:18px;text-align:center}
+.sqbl-app.is-pre-reader .sqbl-join-note{font-size:28px;text-align:center}
+@media (max-width:640px){.sqbl-worlds{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}.sqbl-menu{padding-top:76px}}

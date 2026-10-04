@@ -15,6 +15,8 @@ gets the reduced tier (studs painted on the plate, Lambert light, a fraction of 
 places pieces. Slice 14: a standard tablet that can't keep up steps down (painted studs, no shadows)
 without resizing the view. Slice 15: a part slid sideways out of the rail places where it is let go.
 Multiplayer plan slice 08: part icons are the real part, in the picked colour, drawn on the lab's own canvas.
+Multiplayer plan slice 01: the lab opens on the kid's worlds (the old single build becomes world 1); a new
+world starts empty; rename and delete from a card; Back leaves a world for the menu with its picture saved.
 A pre-reader profile shows the icon-first UI.
 Requires Python Playwright. --target web checks dist/android-web after a build.
 """
@@ -36,6 +38,31 @@ sys.stdout.reconfigure(encoding='utf-8')
 RECOVERY = runpy.run_path(str(ROOT / 'scripts/check-architecture-recovery.py'))
 SNAP = "SQGames.get('bricklab').snapshot()"
 STARTER = 59  # pieces in the starter village (slice 06)
+
+
+def enter_world(page, nth=0):
+    """Brick Lab opens on the world menu (multiplayer plan slice 01): open a world from it."""
+    page.wait_for_function(f"window.SQGames && SQGames.get('bricklab') && {SNAP} && {SNAP}.menu")
+    page.locator('.sqbl-world-open').nth(nth).click()
+    page.wait_for_function(f"{SNAP} && !{SNAP}.menu && {SNAP}.world")
+
+
+def leave_lab(page):
+    """Back out of a world, then out of Brick Lab."""
+    for _ in range(3):
+        if not page.locator('#stage .sqbl-app').count():
+            return
+        page.evaluate('SQPlatform.triggerBack()')
+        page.wait_for_timeout(120)
+    page.wait_for_function("!document.querySelector('#stage .sqbl-app')")
+
+
+def world_build(page, kid, field):
+    """A field of a kid's most recently played world, read from storage."""
+    return page.evaluate("""([kid, field]) => {
+      const list = JSON.parse(localStorage.getItem('sq:brick-lab:worlds:v1:' + kid));
+      const top = list.slice().sort((a, b) => b.played - a.played)[0];
+      return JSON.parse(localStorage.getItem('sq:brick-lab:world:v1:' + kid + ':' + top.id))[field]; }""", [kid, field])
 
 
 def pick(page, category):
@@ -237,7 +264,15 @@ def run(args):
                 page.locator('[data-adventure="games"]').click()
                 page.locator('#gameRow [data-l="bricklab"]').click()
                 page.wait_for_selector('#stage .sqbl-app canvas')
-                page.wait_for_function(SNAP + ' && ' + SNAP + '.pieces.length > 0')
+                page.wait_for_function(f"window.SQGames && SQGames.get('bricklab') && {SNAP} && {SNAP}.menu")
+                s = snap()
+                check('Brick Lab opens on the world menu: one world, the starter village', s['menu'] and s['world'] is None
+                      and [w['count'] for w in s['worlds']] == [STARTER] and len(s['pieces']) == 0
+                      and '我的世界' in page.locator('.sqbl-menu').inner_text() and '加入' in page.locator('.sqbl-menu').inner_text())
+                check('World cards are tablet-sized', all(page.locator(sel).first.bounding_box()['height'] >= 48
+                      for sel in ('.sqbl-world-open', '.sqbl-world-new', '.sqbl-world-more')))
+                page.screenshot(path=str(out / 'menu.png'))
+                enter_world(page)
                 s = snap()
                 check('Games tile opens Brick Lab (no iframe, own Back gone)', page.locator('iframe').count() == 0
                       and page.locator('.sqbl-app [data-action="exit"]').count() == 0)
@@ -440,15 +475,44 @@ def run(args):
                 act('undo')
 
                 check('Back handled', page.evaluate('SQPlatform.triggerBack()') is True)
+                s = snap()
+                check('Back leaves the world for the menu, saved with its picture', s['menu'] and s['world'] is None
+                      and len(s['pieces']) == 0 and s['worlds'][0]['count'] == STARTER + 1 and s['worlds'][0]['thumb']
+                      and page.locator('.sqbl-world-pic img').count() == 1)
+                # Slice 01: a new world starts empty and goes to the front; rename and delete from its card.
+                page.locator('.sqbl-world-new').click()
+                page.wait_for_function(f"{SNAP} && !{SNAP}.menu")
+                s = snap()
+                check('A new world opens empty', len(s['pieces']) == 0 and s['world'] and s['mode'] == 'build')
+                page.evaluate('SQPlatform.triggerBack()')
+                s = snap()
+                check('The new world is listed first, named World 2 · 世界 2', s['menu'] and len(s['worlds']) == 2
+                      and s['worlds'][0]['name'] == 'World 2 · 世界 2' and s['worlds'][1]['count'] == STARTER + 1)
+                card = page.locator('.sqbl-world').first
+                card.locator('.sqbl-world-more').click()
+                check('Back closes a card\'s actions and stays in Brick Lab', page.evaluate('SQPlatform.triggerBack()') is True
+                      and snap()['menu'] and page.locator('.sqbl-world.is-editing').count() == 0)
+                card.locator('.sqbl-world-more').click()
+                card.locator('[data-world-act="rename"]').click()
+                page.locator('[data-world-name]').fill('Castle 城堡')
+                page.locator('[data-world-name]').press('Enter')
+                check('Rename a world', snap()['worlds'][0]['name'] == 'Castle 城堡'
+                      and 'Castle 城堡' in page.locator('.sqbl-world').first.inner_text())
+                card.locator('.sqbl-world-more').click()
+                card.locator('[data-world-act="delete"]').click()
+                check('Delete asks first, in both languages', '要刪除' in card.inner_text() and len(snap()['worlds']) == 2)
+                card.locator('[data-world-act="delete-yes"]').click()
+                check('Delete removes the world and its build', [w['count'] for w in snap()['worlds']] == [STARTER + 1]
+                      and page.evaluate("Object.keys(localStorage).filter((k) => k.startsWith('sq:brick-lab:world:v1:luis:')).length") == 1)
+                check('Back on the menu leaves Brick Lab', page.evaluate('SQPlatform.triggerBack()') is True)
                 page.wait_for_function("!document.querySelector('#stage .sqbl-app')")
                 check('Stage cleaned on Back', page.locator('#stage .sqbl-host').count() == 0)
-                saved = page.evaluate("JSON.parse(localStorage.getItem('sq:brick-lab:v1:luis')).pieces.length")
-                check('Build saved per kid', saved == STARTER + 1)
+                check('Build saved per kid, in its world', len(world_build(page, 'luis', 'pieces')) == STARTER + 1)
                 check('Reopen restores the build', page.evaluate("SummerQuest.openGame('bricklab')")['ok'])
-                page.wait_for_function(SNAP + ' && ' + SNAP + f'.pieces.length === {STARTER + 1}')
+                enter_world(page)
+                check('The world comes back as it was left', len(snap()['pieces']) == STARTER + 1)
                 lab_slices_09_11(page, snap, check, out)
-                page.evaluate('SQPlatform.triggerBack()')
-                page.wait_for_function("!document.querySelector('#stage .sqbl-app')")
+                leave_lab(page)
 
                 # Same door as Paint: through the Games category lock, stopped only by a Papa app pause.
                 page.evaluate("SQHost.store.familySettings.catlock_luis_games='Synthetic pause'")
@@ -469,15 +533,18 @@ def run(args):
                 RECOVERY['ready'](page)
                 RECOVERY['wait_screen'](page, 'hub')
                 check('Lucien opens Brick Lab', page.evaluate("SummerQuest.openGame('bricklab')")['ok'])
-                page.wait_for_function(SNAP + ' && ' + SNAP + '.pieces.length > 0')
+                page.wait_for_function(f"window.SQGames && SQGames.get('bricklab') && {SNAP} && {SNAP}.menu")
+                check('His old single build is his world 1, the old save left in place', [w['count'] for w in snap()['worlds']] == [3]
+                      and page.evaluate("localStorage.getItem('sq:brick-lab:v1:lucien')") is not None)
+                page.screenshot(path=str(out / 'menu-pre-reader.png'))
+                enter_world(page)
                 check('Pre-reader UI is icon-first', page.evaluate(SNAP + '.preReader') and page.locator('.sqbl-app.is-pre-reader').count() == 1
                       and 'Build' not in page.locator('.sqbl-mode-toggle').inner_text())
                 ys = {p['id']: (p['x'], p['y'], p['z']) for p in snap()['pieces']}
                 check('Each kid has their own build, an old save re-settled to brick proportions',
                       ys == {'a': (1, 0.6, 1), 'b': (1, 1.4, 1), 'c': (-1.5, 0.6, 3.5)})
                 page.wait_for_timeout(400)
-                check('Re-settled save is stored with the new grid', page.evaluate(
-                      "JSON.parse(localStorage.getItem('sq:brick-lab:v1:lucien')).grid") == 2)
+                check('Re-settled save is stored with the new grid', world_build(page, 'lucien', 'grid') == 2)
                 page.screenshot(path=str(out / 'pre-reader.png'))
                 page.evaluate('SQPlatform.triggerBack()')
 
@@ -492,7 +559,7 @@ def run(args):
                 RECOVERY['ready'](wp)
                 RECOVERY['wait_screen'](wp, 'hub')
                 check('Low-memory tablet opens Brick Lab', wp.evaluate("SummerQuest.openGame('bricklab')")['ok'])
-                wp.wait_for_function(SNAP + ' && ' + SNAP + '.pieces.length > 0')
+                enter_world(wp)
                 wp.wait_for_timeout(400)
                 r = wp.evaluate(SNAP)['render']
                 check(f'Reduced tier: studs painted, under 60k triangles {r}', r['quality'] == 'reduced'
@@ -518,7 +585,7 @@ def run(args):
                 RECOVERY['ready'](sp)
                 RECOVERY['wait_screen'](sp, 'hub')
                 sp.evaluate("SummerQuest.openGame('bricklab')")
-                sp.wait_for_function(SNAP + ' && ' + SNAP + '.pieces.length > 0')
+                enter_world(sp)
                 r = sp.evaluate(SNAP)['render']
                 check('Standard tier opens with full detail', r['quality'] == 'standard' and r['studs'] == 'mesh'
                       and r['shadows'] and r['level'] == 0)
@@ -561,7 +628,7 @@ def run(args):
                 RECOVERY['ready'](tp)
                 RECOVERY['wait_screen'](tp, 'hub')
                 tp.evaluate("SummerQuest.openGame('bricklab')")
-                tp.wait_for_function(SNAP + ' && ' + SNAP + '.pieces.length > 0')
+                enter_world(tp)
                 lst = tp.locator('.sqbl-category-list')
                 lb = lst.bounding_box()
                 check('A short rail shows there is more to scroll', 'has-more' in lst.get_attribute('class')

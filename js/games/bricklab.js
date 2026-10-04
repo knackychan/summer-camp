@@ -43,5 +43,7 @@ export default {
   bestKey: null,
   init: init,
   stop: stop,
+  /* Host Back goes to the world menu first (multiplayer plan slice 01). */
+  back: function () { return !!(lab && !lab.destroyed && lab.back()); },
   snapshot: function () { return lab && !lab.destroyed ? lab.snapshot() : null; }
 };

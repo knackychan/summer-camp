@@ -10,6 +10,7 @@ import {
 import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, worldConnectors } from "./brick-rails.js";
 import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
+import { BrickWorlds } from "./brick-worlds.js";
 
 let THREE = null;
 let OrbitControls = null;
@@ -56,6 +57,26 @@ const TRAY = {
   ownColours: ["Comes in its own colours", "有自己固定的顏色"],
   railEnds: (n) => [`${n} rail ends`, `${n} 個軌道接頭`],
   flat: ["Lies flat on the baseplate", "平放在底板上"],
+};
+
+/* World menu (multiplayer plan D3, slice 01). */
+const MENU = {
+  worlds: ["My worlds", "我的世界"],
+  join: ["Join a world", "加入世界"],
+  joinSoon: ["Coming soon: build together on the home wifi", "即將推出：在家裡的 Wi-Fi 一起蓋"],
+  newWorld: ["New world", "新世界"],
+  open: ["Open", "打開"],
+  more: ["More", "更多"],
+  rename: ["Rename", "改名"],
+  remove: ["Delete", "刪除"],
+  close: ["Close", "關閉"],
+  save: ["Done", "好了"],
+  cancel: ["Cancel", "取消"],
+  keep: ["Keep it", "保留"],
+  sure: ["Delete this world?", "要刪除這個世界嗎？"],
+  name: ["World name", "世界名稱"],
+  bricks: (n) => [`${n} ${n === 1 ? "brick" : "bricks"}`, `${n} 塊積木`],
+  removed: ["World deleted.", "世界刪除了。"],
 };
 
 const SNAP_GUIDES = {
@@ -609,6 +630,9 @@ export class BrickLabRuntime {
     this.kidId = String(options.kidId || "local");
     this.preReader = !!options.preReader;
     this.storage = new BrickLabStorage(this.kidId);
+    this.worlds = new BrickWorlds(this.kidId);
+    this.worldId = null; /* the world being built; null while the menu shows */
+    this.menuEdit = null; /* { id, step: "actions" | "rename" | "delete" } */
     this.mode = "build";
     this.activeCategory = "bricks";
     this.activePartId = "brick_2x4";
@@ -659,11 +683,13 @@ export class BrickLabRuntime {
     this.setupScene();
     this.setupThumbs();
     this.bindUI();
-    this.loadInitialState();
+    this.worlds.ensure(() => (this.options.seedDemo === false ? [] : this.settle(createStarterPieces())));
+    this.homeView(false);
     this.renderPartTray();
     this.renderColorTray();
     this.updateModeUI();
     this.updateSelectionUI();
+    this.showMenu();
     firstFrame(this.renderer, this.scene, this.camera);
     this.startLoop();
     return this;
@@ -730,6 +756,15 @@ export class BrickLabRuntime {
             <div class="sqbl-info" data-info role="dialog" aria-modal="false" hidden></div>
             <div class="sqbl-explore-badge">🌍 ${pre ? "" : "Explore 探索"}</div>
           </div>
+
+          <div class="sqbl-menu" data-menu hidden>
+            <div class="sqbl-menu-panel">
+              <h2 class="sqbl-menu-title"><span aria-hidden="true">🗺️</span> ${escapeHtml(MENU.worlds[0])} <span lang="zh-TW">${escapeHtml(MENU.worlds[1])}</span></h2>
+              <div class="sqbl-worlds" data-worlds></div>
+              <h2 class="sqbl-menu-title"><span aria-hidden="true">👋</span> ${escapeHtml(MENU.join[0])} <span lang="zh-TW">${escapeHtml(MENU.join[1])}</span></h2>
+              <p class="sqbl-join-note" data-join>${pre ? "🛜 ⏳" : escapeHtml(say(MENU.joinSoon))}</p>
+            </div>
+          </div>
         </div>
 
         <div class="sqbl-toast" data-toast role="status" aria-live="polite"></div>
@@ -746,6 +781,8 @@ export class BrickLabRuntime {
     this.infoEl = this.root.querySelector("[data-info]");
     this.searchEl = this.root.querySelector("[data-search]");
     this.sizeEl = this.root.querySelector("[data-size]");
+    this.menuEl = this.root.querySelector("[data-menu]");
+    this.worldsEl = this.root.querySelector("[data-worlds]");
   }
 
   setupScene() {
@@ -1145,6 +1182,12 @@ export class BrickLabRuntime {
       if (this.infoPartId && !this.infoEl.contains(event.target)) this.hideInfo();
     };
     this.root.addEventListener("pointerdown", this.onOutsidePress, true);
+    this.menuEl.addEventListener("click", (event) => this.onMenuClick(event));
+    this.menuEl.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || !event.target.matches("[data-world-name]")) return;
+      event.preventDefault();
+      event.target.closest("[data-world]").querySelector('[data-world-act="rename-save"]').click();
+    });
     /* Every scene change starts from input; any input keeps frames coming
        for a moment (slice 13). A restored GL context needs a fresh frame. */
     this.onInput = () => this.invalidate();
@@ -1478,17 +1521,164 @@ export class BrickLabRuntime {
     if (this.shownPreviews) this.shownPreviews.forEach((el) => this.paintPreview(el));
   }
 
-  loadInitialState() {
-    const saved = this.storage.load();
-    const fresh = !(saved && saved.pieces.length);
-    const source = fresh ? (this.options.seedDemo === false ? [] : createStarterPieces()) : saved.pieces;
-    const pieces = fresh || saved.grid !== GRID_VERSION ? this.settle(source) : source;
+  /* Multiplayer plan slice 01 (D3): the lab opens on the kid's worlds.
+     Opening one loads it onto the plate; Back saves it, keeps a small
+     picture for its card and comes back here. */
+  showMenu() {
+    this.menuEdit = null;
+    this.renderMenu();
+    this.menuEl.hidden = false;
+    this.app.classList.add("is-menu");
+    this.hideInfo();
+    this.invalidate();
+  }
+
+  hideMenu() {
+    this.menuEl.hidden = true;
+    this.app.classList.remove("is-menu");
+    this.menuEdit = null;
+  }
+
+  renderMenu() {
+    const pre = this.preReader;
+    const button = (attrs, icon, pair, cls = "") => `<button type="button" class="sqbl-menu-btn${cls}" ${attrs} aria-label="${escapeHtml(label(pair))}"><span aria-hidden="true">${icon}</span>${pre ? "" : ` ${escapeHtml(label(pair))}`}</button>`;
+    const card = (world) => {
+      const edit = this.menuEdit && this.menuEdit.id === world.id ? this.menuEdit.step : "";
+      const pic = world.thumb ? `<img src="${escapeHtml(world.thumb)}" alt="" draggable="false">` : `<span aria-hidden="true">🧱</span>`;
+      const name = escapeHtml(world.name);
+      let foot = "";
+      if (edit === "rename") {
+        foot = `<input type="text" class="sqbl-world-name-input" data-world-name maxlength="40" value="${name}" aria-label="${escapeHtml(label(MENU.name))}" enterkeyhint="done" autocomplete="off" spellcheck="false">
+          <div class="sqbl-world-actions">${button('data-world-act="rename-save"', "✓", MENU.save, " is-primary")}${button('data-world-act="cancel"', "✕", MENU.cancel)}</div>`;
+      } else if (edit === "delete") {
+        foot = `<p class="sqbl-world-ask">${pre ? "🗑 ?" : escapeHtml(say(MENU.sure))}</p>
+          <div class="sqbl-world-actions">${button('data-world-act="delete-yes"', "🗑", MENU.remove)}${button('data-world-act="cancel"', "↩", MENU.keep, " is-primary")}</div>`;
+      } else if (edit === "actions") {
+        foot = `<div class="sqbl-world-actions">${pre ? "" : button('data-world-act="rename"', "✏️", MENU.rename)}${button('data-world-act="delete"', "🗑", MENU.remove)}${button('data-world-act="cancel"', "✕", MENU.close)}</div>`;
+      }
+      return `
+      <div class="sqbl-world${edit ? " is-editing" : ""}" data-world="${escapeHtml(world.id)}">
+        <button type="button" class="sqbl-world-open" data-world-open="${escapeHtml(world.id)}" aria-label="${escapeHtml(label(MENU.open))} · ${name}"${edit ? " disabled" : ""}>
+          <span class="sqbl-world-pic">${pic}</span>
+          ${pre ? "" : `<b class="sqbl-world-name">${name}</b>`}
+          <small class="sqbl-world-count">🧱 ${pre ? world.count : escapeHtml(say(MENU.bricks(world.count)))}</small>
+        </button>
+        ${edit ? "" : `<button type="button" class="sqbl-world-more" data-world-act="more" aria-label="${escapeHtml(label(MENU.more))} · ${name}">⋯</button>`}
+        ${foot}
+      </div>`;
+    };
+    this.worldsEl.innerHTML = `
+      <button type="button" class="sqbl-world-new" data-world-new aria-label="${escapeHtml(label(MENU.newWorld))}">
+        <span class="sqbl-world-pic" aria-hidden="true">＋</span>${pre ? "" : `<b>${escapeHtml(label(MENU.newWorld))}</b>`}
+      </button>
+      ${this.worlds.list().map(card).join("")}`;
+    const input = this.worldsEl.querySelector("[data-world-name]");
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }
+
+  onMenuClick(event) {
+    const target = event.target.closest("button");
+    if (!target || !this.menuEl.contains(target)) return;
+    if (target.hasAttribute("data-world-new")) {
+      const world = this.worlds.create(this.worlds.nextName());
+      if (world) this.openWorld(world.id);
+      return;
+    }
+    if (target.dataset.worldOpen) {
+      this.openWorld(target.dataset.worldOpen);
+      return;
+    }
+    const act = target.dataset.worldAct;
+    const card = target.closest("[data-world]");
+    if (!act || !card) return;
+    const id = card.dataset.world;
+    if (act === "more") this.menuEdit = { id, step: "actions" };
+    else if (act === "rename") this.menuEdit = { id, step: "rename" };
+    else if (act === "delete") this.menuEdit = { id, step: "delete" };
+    else if (act === "rename-save") {
+      const input = card.querySelector("[data-world-name]");
+      if (input) this.worlds.rename(id, input.value);
+      this.menuEdit = null;
+    } else if (act === "delete-yes") {
+      this.worlds.remove(id);
+      this.menuEdit = null;
+      this.toast(this.preReader ? "🗑" : say(MENU.removed));
+    } else this.menuEdit = null;
+    this.renderMenu();
+  }
+
+  /* Back: close an open card action first, then leave the world for the menu;
+     on the menu itself Back belongs to the host. */
+  back() {
+    if (this.destroyed || !this.menuEl) return false;
+    if (!this.menuEl.hidden) {
+      if (!this.menuEdit) return false;
+      this.menuEdit = null;
+      this.renderMenu();
+      return true;
+    }
+    return this.leaveWorld();
+  }
+
+  clearPlate() {
+    this.selectPiece(null);
+    this.moveId = null;
+    this.snap = null;
+    this.placementArmed = false;
+    this.ghost.visible = false;
+    for (const id of Array.from(this.pieces.keys())) this.removePiece(id, false);
+    this.history = [];
+    this.updateUndoUI();
+    this.syncRails();
+  }
+
+  openWorld(id) {
+    const saved = this.worlds.load(id);
+    if (!saved) { this.renderMenu(); return false; }
+    this.clearPlate();
+    this.worldId = id;
+    const stale = saved.grid !== GRID_VERSION;
+    const pieces = stale ? this.settle(saved.pieces) : saved.pieces;
     pieces.forEach((instance) => this.addPiece(instance, false));
     this.syncRails();
-    if (pieces.length && (fresh || saved.grid !== GRID_VERSION)) this.scheduleSave();
+    if (stale && pieces.length) this.scheduleSave();
+    this.setMode("build", { quiet: true });
     this.homeView(false);
-    this.placementArmed = false;
     this.setHint("🧱", HINTS.choose);
+    this.hideMenu();
+    this.invalidate(1000);
+    return true;
+  }
+
+  leaveWorld() {
+    if (!this.worldId) return false;
+    clearTimeout(this.saveTimer);
+    this.saveNow(false, this.captureThumb());
+    this.worldId = null;
+    this.clearPlate();
+    this.showMenu();
+    return true;
+  }
+
+  /* The world's card picture: one fresh frame of the current view, scaled down. */
+  captureThumb() {
+    try {
+      this.selectPiece(null);
+      this.ghost.visible = false;
+      this.renderer.render(this.scene, this.camera);
+      const src = this.renderer.domElement;
+      if (!src.width || !src.height) return "";
+      const canvas = document.createElement("canvas");
+      canvas.width = 200;
+      canvas.height = Math.max(1, Math.round(200 * src.height / src.width));
+      canvas.getContext("2d").drawImage(src, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.72);
+    } catch {
+      return "";
+    }
   }
 
   /* Snap x/z to the stud grid and stack bottom-up with today's heights (D11):
@@ -2176,9 +2366,10 @@ export class BrickLabRuntime {
     this.saveTimer = setTimeout(() => this.saveNow(false), 180);
   }
 
-  saveNow(notify = false) {
+  saveNow(notify = false, thumb) {
+    if (!this.worldId) return;
     const pieces = Array.from(this.pieces.values()).map((piece) => ({ ...piece }));
-    this.storage.save({ name: "My Brick World", mode: this.mode, grid: GRID_VERSION, pieces, assemblies: [] });
+    this.worlds.save(this.worldId, { mode: this.mode, grid: GRID_VERSION, pieces, assemblies: [] }, thumb);
     if (notify) this.toast(this.preReader ? "✓ 💾" : say(HINTS.saved));
   }
 
@@ -2280,6 +2471,9 @@ export class BrickLabRuntime {
       return out;
     });
     return {
+      menu: !!(this.menuEl && !this.menuEl.hidden),
+      world: this.worldId,
+      worlds: this.worlds.list().map((w) => ({ id: w.id, name: w.name, count: w.count, thumb: !!w.thumb })),
       mode: this.mode,
       preReader: this.preReader,
       selectedId: this.selectedId,
@@ -2318,7 +2512,7 @@ export class BrickLabRuntime {
      GL context. */
   destroy() {
     if (this.destroyed) return;
-    if (this.scene) this.saveNow(false);
+    if (this.scene && this.worldId) this.saveNow(false, this.captureThumb());
     this.destroyed = true;
     clearTimeout(this.saveTimer);
     clearTimeout(this.toastTimer);

@@ -1,9 +1,34 @@
-/* Per-kid local save. Builds stay on this tablet and never sync (design.md D6). */
-const FORMAT = "summer-quest-brick-build";
-const VERSION = 1;
+/* Per-kid local save. Builds stay on this tablet and never sync (design.md D6;
+   amended by the multiplayer plan's D8: a shared world is saved on the host's
+   tablet only). Since the multiplayer plan's slice 01 a kid's builds live in
+   brick-worlds.js; this file keeps the build shape and the tray prefs. */
+export const BUILD_FORMAT = "summer-quest-brick-build";
+export const BUILD_VERSION = 1;
+const FORMAT = BUILD_FORMAT;
+const VERSION = BUILD_VERSION;
 
 function safeParse(raw) {
   try { return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+
+/* A stored build string → the build, or null when it isn't one. */
+export function readBuild(raw) {
+  const saved = safeParse(raw);
+  if (!saved || saved.format !== FORMAT || saved.version !== VERSION || !Array.isArray(saved.pieces)) return null;
+  return saved;
+}
+
+export function buildPayload(state) {
+  return {
+    format: FORMAT,
+    version: VERSION,
+    savedAt: new Date().toISOString(),
+    name: state.name || "My Brick World",
+    mode: state.mode || "build",
+    grid: state.grid || 1,
+    pieces: Array.isArray(state.pieces) ? state.pieces : [],
+    assemblies: Array.isArray(state.assemblies) ? state.assemblies : [],
+  };
 }
 
 export class BrickLabStorage {
@@ -16,22 +41,11 @@ export class BrickLabStorage {
   load() {
     let raw = null;
     try { raw = localStorage.getItem(this.key); } catch { return null; }
-    const saved = safeParse(raw);
-    if (!saved || saved.format !== FORMAT || saved.version !== VERSION || !Array.isArray(saved.pieces)) return null;
-    return saved;
+    return readBuild(raw);
   }
 
   save(state) {
-    const payload = {
-      format: FORMAT,
-      version: VERSION,
-      savedAt: new Date().toISOString(),
-      name: state.name || "My Brick World",
-      mode: state.mode || "build",
-      grid: state.grid || 1,
-      pieces: Array.isArray(state.pieces) ? state.pieces : [],
-      assemblies: Array.isArray(state.assemblies) ? state.assemblies : [],
-    };
+    const payload = buildPayload(state);
     try { localStorage.setItem(this.key, JSON.stringify(payload)); } catch { return null; }
     return payload;
   }
