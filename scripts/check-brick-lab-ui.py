@@ -12,7 +12,8 @@ favourites and recents and opens an info card. Slice 12: the parts browser lives
 (categories, then a category's parts with a Back arrow), the rail keeps one width so the view never
 resizes, and there is no bottom tray. Slice 13: an idle lab draws no frames, and a low-memory tablet
 gets the reduced tier (studs painted on the plate, Lambert light, a fraction of the triangles) and still
-places pieces. A pre-reader profile shows the icon-first UI.
+places pieces. Slice 14: a standard tablet that can't keep up steps down (painted studs, no shadows)
+without resizing the view. A pre-reader profile shows the icon-first UI.
 Requires Python Playwright. --target web checks dist/android-web after a build.
 """
 import argparse
@@ -439,6 +440,47 @@ def run(args):
                 wp.screenshot(path=str(out / 'reduced.png'))
                 wp.evaluate('SQPlatform.triggerBack()')
                 weak.close()
+
+                # Slice 14: a standard-tier tablet that can't keep up steps down quietly while the view moves.
+                slow = RECOVERY['context_for'](browser, seed=RECOVERY['saved_fixture']('hub'))
+                sp = slow.new_page()
+                sp.set_viewport_size({'width': 1280, 'height': 800})
+                sp.on('pageerror', lambda error: report['pageErrors'].append(str(error)))
+                sp.on('console', console)
+                sp.goto(base + '/index.html', wait_until='domcontentloaded')
+                RECOVERY['ready'](sp)
+                RECOVERY['wait_screen'](sp, 'hub')
+                sp.evaluate("SummerQuest.openGame('bricklab')")
+                sp.wait_for_function(SNAP + ' && ' + SNAP + '.pieces.length > 0')
+                r = sp.evaluate(SNAP)['render']
+                check('Standard tier opens with full detail', r['quality'] == 'standard' and r['studs'] == 'mesh'
+                      and r['shadows'] and r['level'] == 0)
+                # Every animation frame now costs 45 ms: a GPU that can't keep up.
+                sp.evaluate("""(() => { const raf = window.requestAnimationFrame.bind(window);
+                  window.requestAnimationFrame = (cb) => raf((t) => { const end = performance.now() + 45; while (performance.now() < end); cb(t); }); })()""")
+                sb = sp.locator('.sqbl-stage canvas').bounding_box()
+                size0 = (round(sb['width']), round(sb['height']))
+                sp.mouse.move(sb['x'] + 300, sb['y'] + 420)
+                sp.mouse.down()
+                for step in range(400):
+                    sp.mouse.move(sb['x'] + 300 + (step % 120) * 3, sb['y'] + 420)
+                    if step % 20 == 0 and sp.evaluate(SNAP)['render']['level'] >= 3:
+                        break
+                sp.mouse.up()
+                r = sp.evaluate(SNAP)['render']
+                sb = sp.locator('.sqbl-stage canvas').bounding_box()
+                check(f'A slow standard tablet steps down: painted studs, then no shadows {r}', r['level'] == 3
+                      and r['studs'] == 'painted' and not r['shadows'] and r['pixelRatio'] == 1
+                      and (round(sb['width']), round(sb['height'])) == size0)
+                n0 = len(sp.evaluate(SNAP)['pieces'])
+                pick(sp, 'plates')
+                sp.locator('.sqbl-part[data-part="plate_2x2"]').click()
+                sp.mouse.click(sb['x'] + sb['width'] * 0.5, sb['y'] + sb['height'] * 0.62)
+                sp.wait_for_timeout(300)
+                check('Stepped-down lab still places a piece', len(sp.evaluate(SNAP)['pieces']) == n0 + 1)
+                sp.screenshot(path=str(out / 'stepped-down.png'))
+                sp.evaluate('SQPlatform.triggerBack()')
+                slow.close()
             except Exception as error:
                 report['failure'] = str(error)
                 report['traceback'] = traceback.format_exc()

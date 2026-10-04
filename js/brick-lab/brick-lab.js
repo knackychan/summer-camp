@@ -82,6 +82,8 @@ const SEAM = 0.02;
 const BASE_HALF = 32;
 /* Render on demand (slice 13): keep drawing this long after the last input. */
 const RENDER_HOLD = 500;
+/* Step-down (slice 14): average frame time that counts as "can't keep up". */
+const SLOW_FRAME_MS = 28;
 const INPUT_EVENTS = ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "keydown", "input", "change", "click"];
 const SEA_BLUE = 0x2b5d93;
 const HOME_TARGET = [5, -8, 7];
@@ -628,6 +630,8 @@ export class BrickLabRuntime {
     this.prefs = this.cleanPrefs(this.storage.loadPrefs());
     this.infoPartId = null;
     this.railView = "categories"; /* slice 12: "categories" | "parts" */
+    this.studsPainted = false; /* slice 13/14: baseplate studs as a texture */
+    this.perf = { level: 0, sum: 0, count: 0, last: 0 }; /* slice 14 step-down */
     this.finding = false; /* slice 12: search + size shown under the rail head */
     /* Slice 10: rail joins. `rails` is the last trace; `snap` the join the
        ghost or a dragged rail would make right now. */
@@ -798,6 +802,7 @@ export class BrickLabRuntime {
     sun.shadow.bias = -0.0005;
     sun.shadow.normalBias = 0.02;
     this.scene.add(sun);
+    this.sun = sun;
     if (!cheap) {
       const fill = new THREE.DirectionalLight(0x9fb6ff, 0.65);
       fill.position.set(-10, 7, -8);
@@ -808,15 +813,15 @@ export class BrickLabRuntime {
 
     /* Matter than the bricks: a big glossy plate turns into one white glare. */
     const plastic = this.kit.mat(BASEPLATE_GREEN, 0.55);
-    /* Reduced quality paints the studs on the plate's top face (group 0 of
-       the extrusion); the sides stay plain plastic. */
-    const base = mesh(bevelBox(BASE_HALF * 2, 0.42, BASE_HALF * 2, 0.06), cheap ? [this.paintedStuds(), plastic] : plastic, false);
+    const base = mesh(bevelBox(BASE_HALF * 2, 0.42, BASE_HALF * 2, 0.06), plastic, false);
     base.position.y = -0.21;
     base.userData.sqblGround = true;
     this.scene.add(base);
     this.ground = base;
-    if (cheap) this.baseplateStuds = BASE_HALF * 2 * BASE_HALF * 2;
-    else this.addBaseplateStuds(plastic);
+    if (cheap) {
+      this.baseplateStuds = BASE_HALF * 2 * BASE_HALF * 2;
+      this.paintStuds();
+    } else this.addBaseplateStuds(plastic);
 
     this.selectionBox = new THREE.Box3();
     this.selectionHelper = new THREE.Box3Helper(this.selectionBox, 0x3c8df6);
@@ -922,7 +927,7 @@ export class BrickLabRuntime {
     water(new THREE.CircleGeometry(520, 48), SEA_BLUE, sea);
   }
 
-  /* Reduced quality (slice 13): the 64×64 studs as a repeating texture, not
+  /* Reduced quality (slice 13), or a step-down (slice 14): the 64×64 studs as a repeating texture, not
      ~147k triangles of geometry. The extrusion's lid UVs are world units, so
      one tile is one stud, centred on the half-units like the real ones. Seen
      from the home view (+x/+z, also where the sun is) a stud shows its sunlit
@@ -949,10 +954,63 @@ export class BrickLabRuntime {
       const map = this.kit.custom("plate:studs", () => new THREE.CanvasTexture(canvas));
       map.wrapS = map.wrapT = THREE.RepeatWrapping;
       map.colorSpace = THREE.SRGBColorSpace;
-      const material = new THREE.MeshLambertMaterial({ color: BASEPLATE_GREEN, map });
+      const material = litMaterial(this.kit.cheap, { color: BASEPLATE_GREEN, roughness: 0.55, map });
       material.color.multiplyScalar(1.31); /* #e2 in sRGB is 0.76 linear */
       return material;
     });
+  }
+
+  /* The plate's top face (group 0 of the extrusion) takes the painted studs;
+     the sides stay plain plastic. */
+  paintStuds() {
+    if (this.studsPainted) return false;
+    this.ground.material = [this.paintedStuds(), this.ground.material];
+    if (this.baseStudMesh) this.baseStudMesh.visible = false;
+    this.studsPainted = true;
+    return true;
+  }
+
+  /* Step-down (slice 14): a standard-tier tablet that can't keep up while the
+     view moves quietly loses detail, one step per slow 2 s of drawing: pixel
+     ratio 1, then painted studs, then no shadows. Only frames drawn back to
+     back count; a pause (idle, a shader compile) starts the count over. It
+     never steps back up during a visit. */
+  measureFrame(time) {
+    const perf = this.perf;
+    const gap = time - perf.last;
+    perf.last = time;
+    if (this.kit.cheap || perf.level >= 3 || gap > 250) {
+      perf.sum = 0;
+      perf.count = 0;
+      return;
+    }
+    perf.sum += gap;
+    perf.count += 1;
+    if (perf.sum < 2000) return;
+    const slow = perf.sum / perf.count > SLOW_FRAME_MS;
+    perf.sum = 0;
+    perf.count = 0;
+    if (slow) this.stepDown();
+  }
+
+  stepDown() {
+    const steps = [
+      () => {
+        if (this.renderer.getPixelRatio() <= 1) return false;
+        this.renderer.setPixelRatio(1);
+        this.resize();
+        return true;
+      },
+      () => this.paintStuds(),
+      () => {
+        if (!this.sun.castShadow) return false;
+        this.sun.castShadow = false; /* the lights change, so materials rebuild without shadows */
+        return true;
+      },
+    ];
+    while (this.perf.level < steps.length) {
+      if (steps[this.perf.level++]()) break;
+    }
   }
 
   /* One instanced mesh for the 32×32 studs: a single draw call. WebGL1 needs
@@ -975,6 +1033,7 @@ export class BrickLabRuntime {
     studs.frustumCulled = false;
     studs.raycast = () => {};
     this.scene.add(studs);
+    this.baseStudMesh = studs;
     this.baseplateStuds = count;
   }
 
@@ -2059,6 +2118,7 @@ export class BrickLabRuntime {
       }
       this.renderer.render(this.scene, this.camera);
       this.frames = (this.frames || 0) + 1;
+      this.measureFrame(time);
     };
     this.raf = requestAnimationFrame(loop);
   }
@@ -2090,7 +2150,8 @@ export class BrickLabRuntime {
       graphics: this.renderer ? this.renderer.domElement.dataset.sqGraphics : null,
       /* Last frame's cost, for the low-end check (slice 13). */
       render: this.renderer ? { quality: this.renderer.domElement.dataset.sqGraphicsQuality, calls: this.renderer.info.render.calls,
-        triangles: this.renderer.info.render.triangles, studs: this.kit.cheap ? "painted" : "mesh", frames: this.frames || 0 } : null,
+        triangles: this.renderer.info.render.triangles, studs: this.studsPainted ? "painted" : "mesh", frames: this.frames || 0,
+        level: this.perf.level, pixelRatio: this.renderer.getPixelRatio(), shadows: !!(this.renderer.shadowMap.enabled && this.sun.castShadow) } : null,
       canvas: rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
       camera: this.camera ? { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, aspect: this.camera.aspect } : null,
       target: this.controls ? { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z } : null,
