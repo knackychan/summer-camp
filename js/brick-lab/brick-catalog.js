@@ -51,33 +51,79 @@ const rect = (id, label, size, w, d, h = BRICK_HEIGHT, category = "bricks") => (
   studs: true,
 });
 
-/* size is the short tray caption shown to pre-readers ("" = icon only). */
+/* Rail track layout (slice 09, D17): centre-line segments the geometry is
+   built from, and the connectors other rails snap to. A connector is a point
+   on the footprint edge plus the direction it faces, in degrees from +z
+   towards +x (0 = +z, 90 = +x), the same sense as a piece's rotation. Every
+   rail is 2 studs wide on an even footprint, so its centre and every
+   connector sit on whole units and joined rails line up on the stud grid. */
+const RAIL_HEIGHT = 0.18;
+const rail = (id, label, width, depth, track, connectors) => ({
+  id, label, size: "", category: "rails", shape: "rail", width, depth, height: RAIL_HEIGHT, studs: false,
+  track: Object.freeze(track.map((segment) => Object.freeze(segment))),
+  connectors: Object.freeze(connectors.map(([x, z, dir]) => Object.freeze({ x, z, dir }))),
+});
+
+/* size is the short tray caption shown to pre-readers ("" = icon only).
+   Every id is stable: saved builds use them. */
 export const PARTS = Object.freeze([
   rect("brick_1x1", ["Brick 1×1", "積木 1×1"], "1×1", 1, 1),
   rect("brick_1x2", ["Brick 1×2", "積木 1×2"], "1×2", 1, 2),
+  rect("brick_1x3", ["Brick 1×3", "積木 1×3"], "1×3", 1, 3),
   rect("brick_1x4", ["Brick 1×4", "積木 1×4"], "1×4", 1, 4),
   rect("brick_2x2", ["Brick 2×2", "積木 2×2"], "2×2", 2, 2),
   rect("brick_2x3", ["Brick 2×3", "積木 2×3"], "2×3", 2, 3),
   rect("brick_2x4", ["Brick 2×4", "積木 2×4"], "2×4", 2, 4),
+  rect("brick_2x5", ["Brick 2×5", "積木 2×5"], "2×5", 2, 5),
   rect("brick_2x6", ["Brick 2×6", "積木 2×6"], "2×6", 2, 6),
   rect("plate_1x2", ["Plate 1×2", "薄板 1×2"], "1×2", 1, 2, PLATE_HEIGHT, "plates"),
+  rect("plate_1x4", ["Plate 1×4", "薄板 1×4"], "1×4", 1, 4, PLATE_HEIGHT, "plates"),
   rect("plate_2x2", ["Plate 2×2", "薄板 2×2"], "2×2", 2, 2, PLATE_HEIGHT, "plates"),
   rect("plate_2x4", ["Plate 2×4", "薄板 2×4"], "2×4", 2, 4, PLATE_HEIGHT, "plates"),
+  rect("plate_2x6", ["Plate 2×6", "薄板 2×6"], "2×6", 2, 6, PLATE_HEIGHT, "plates"),
   { id: "slope_2x2", label: ["Slope 2×2", "斜坡 2×2"], size: "", category: "slopes", shape: "slope", width: 2, depth: 2, height: BRICK_HEIGHT, studs: true },
+  /* Two 45° faces meeting at a ridge: the top of a roof (slice 09). */
+  { id: "slope_45", label: ["Roof Peak 45°", "屋脊 45°"], size: "", category: "slopes", shape: "peak", width: 2, depth: 2, height: BRICK_HEIGHT, studs: false },
   { id: "wheel_small", label: ["Wheel", "輪子"], size: "", category: "wheels", shape: "wheel", width: 1, depth: 1, height: 0.68, studs: false },
-  { id: "rail_straight", label: ["Straight Rail", "直軌道"], size: "", category: "rails", shape: "rail", width: 2, depth: 6, height: 0.18, studs: false },
+  { id: "wheel_med", label: ["Medium Wheel", "中輪子"], size: "", category: "wheels", shape: "wheel", width: 1, depth: 1, height: 1.2, studs: false, wheelScale: 1.35 },
+  rail("rail_straight", ["Straight Rail", "直軌道"], 2, 6,
+    [{ type: "line", from: [0, -3], to: [0, 3] }],
+    [[0, 3, 0], [0, -3, 180]]),
+  /* A quarter circle of radius 2 around the footprint's corner: four make a ring. */
+  rail("rail_curve_90", ["Curved Rail", "彎軌道"], 4, 4,
+    [{ type: "arc", centre: [-2, -2], radius: 2, from: 0, to: 90 }],
+    [[0, -2, 180], [-2, 0, 270]]),
+  rail("rail_junction_t", ["T-Rail", "T型軌道"], 4, 4,
+    [{ type: "line", from: [0, -2], to: [0, 2] }, { type: "line", from: [0.62, 0], to: [2, 0] }],
+    [[0, -2, 180], [0, 2, 0], [2, 0, 90]]),
+  /* Two short tracks crossing on one square pad (no sleepers to overlap). */
+  rail("rail_cross", ["Cross Rail", "十字軌道"], 2, 2,
+    [{ type: "line", from: [0, -1], to: [0, 1], sleepers: false }, { type: "line", from: [-1, 0], to: [1, 0], sleepers: false }, { type: "pad" }],
+    [[0, 1, 0], [0, -1, 180], [1, 0, 90], [-1, 0, 270]]),
+  { id: "axle", label: ["Axle", "車軸"], size: "", category: "connectors", shape: "axle", width: 1, depth: 2, height: PLATE_HEIGHT, studs: true },
+  rect("platform_4x4", ["Platform 4×4", "平台 4×4"], "4×4", 4, 4, PLATE_HEIGHT * 2, "structure"),
   { id: "tree_small", label: ["Small Tree", "小樹"], size: "", category: "nature", shape: "tree", width: 2, depth: 2, height: 4, studs: false },
   { id: "flower", label: ["Flower", "花"], size: "", category: "nature", shape: "flower", width: 1, depth: 1, height: 0.9, studs: false },
 ]);
+
+/* Parts drawn in their own fixed colours: the palette does not recolour them. */
+export const FIXED_COLOR_SHAPES = Object.freeze(["rail", "tree"]);
 
 export const CATEGORIES = Object.freeze([
   { id: "bricks", label: ["Bricks", "積木"], icon: "🧱" },
   { id: "plates", label: ["Plates", "薄板"], icon: "▤" },
   { id: "slopes", label: ["Slopes", "斜坡"], icon: "◩" },
   { id: "wheels", label: ["Wheels", "輪子"], icon: "🛞" },
+  { id: "connectors", label: ["Connectors", "連接件"], icon: "🔩" },
   { id: "rails", label: ["Rails", "軌道"], icon: "🛤️" },
+  { id: "structure", label: ["Structure", "結構"], icon: "🏗️" },
   { id: "nature", label: ["Nature", "自然"], icon: "🌳" },
 ]);
+
+/* Footprint in studs, "width×depth": the tray's size filter and the info card. */
+export function partDims(part) {
+  return `${part.width}×${part.depth}`;
+}
 
 export function getPart(partId) {
   return PARTS.find((part) => part.id === partId) || PARTS[0];

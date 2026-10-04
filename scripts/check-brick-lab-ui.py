@@ -6,7 +6,9 @@ door, D4), and a Papa app pause still blocking it. Then place, rotate, undo, mov
 a piece; slice 05: the tool bubble sits by the piece, selecting never resizes the view or
 rebuilds the colour tray, tapping the selected piece turns it, dragging it moves it, pieces sit
 on the stud grid and an old save is re-settled. Explore -> tap -> Build selects that piece. Back tears the game down and
-reopening restores the build. A pre-reader profile shows the icon-first UI.
+reopening restores the build. Slices 09-11: every new part builds fast, a rail snaps onto a free rail end, four
+curves close a glowing circuit, rails never overlap, and the tray searches (EN + 中文), filters by size, pins
+favourites and recents and opens an info card. A pre-reader profile shows the icon-first UI.
 Requires Python Playwright. --target web checks dist/android-web after a build.
 """
 import argparse
@@ -27,6 +29,124 @@ sys.stdout.reconfigure(encoding='utf-8')
 RECOVERY = runpy.run_path(str(ROOT / 'scripts/check-architecture-recovery.py'))
 SNAP = "SQGames.get('bricklab').snapshot()"
 STARTER = 59  # pieces in the starter village (slice 06)
+
+
+NEW_PARTS = ('brick_1x3', 'brick_2x5', 'plate_1x4', 'plate_2x6', 'slope_45', 'wheel_med', 'axle',
+             'rail_curve_90', 'rail_junction_t', 'rail_cross', 'platform_4x4')
+
+
+def lab_slices_09_11(page, snap, check, out):
+    """Slices 09-11 on the reopened lab (starter village + 1 piece)."""
+    def tap(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(120)
+
+    def toast():
+        return page.locator('.sqbl-toast').inner_text()
+
+    pieces0 = len(snap()['pieces'])
+    box = page.locator('.sqbl-stage canvas').bounding_box()
+
+    # Slice 09: each new part is in its category, bilingual, and builds in < 50 ms.
+    slow = []
+    for part in NEW_PARTS:
+        for c in ('bricks', 'plates', 'slopes', 'wheels', 'connectors', 'rails', 'structure'):
+            page.locator(f'.sqbl-category[data-category="{c}"]').click()
+            if page.locator(f'.sqbl-part[data-part="{part}"]').count():
+                break
+        ms = page.evaluate(f"(() => {{ const t = performance.now(); document.querySelector('.sqbl-part[data-part=\"{part}\"]').click(); return performance.now() - t; }})()")
+        page.mouse.move(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.55)
+        page.wait_for_timeout(60)
+        if ms >= 50:
+            slow.append((part, round(ms, 1)))
+    check(f'Every new part arms and builds its geometry in < 50 ms {slow}', not slow)
+    info = page.locator('.sqbl-info')
+    check('Tapping a part opens its info card (name EN + 中文, size, colours)', info.is_visible()
+          and '平台' in info.inner_text() and '4×4' in info.inner_text() and snap()['tray']['info'] == 'platform_4x4')
+    page.locator('.sqbl-tray-title').click()
+    check('Tapping elsewhere closes the card', not info.is_visible() and snap()['tray']['info'] is None)
+    tap(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.62)
+    s = snap()
+    check('A new part places and is selected', len(s['pieces']) == pieces0 + 1
+          and next(p for p in s['pieces'] if p['id'] == s['selectedId'])['partId'] == 'platform_4x4')
+    page.locator('.sqbl-app [data-action="delete"]').click()
+
+    # Slice 10: rail joins. Extend the starter line: hover a straight rail one length past a free end.
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+    s = snap()
+    end = max(s['rails']['free'], key=lambda e: e['z'])
+    rail = next(p for p in s['pieces'] if p['id'] == end['id'])
+    links0 = s['rails']['links']
+    page.locator('.sqbl-category[data-category="rails"]').click()
+    check('Rails tray: four rails, count in the header', snap()['tray']['count'] == 4
+          and '4' in page.locator('.sqbl-tray-title').inner_text())
+    page.locator('.sqbl-part[data-part="rail_straight"]').click()
+    hx = end['screen']['x'] + (end['screen']['x'] - rail['screen']['x']) * 0.9
+    hy = end['screen']['y'] + (end['screen']['y'] - rail['screen']['y']) * 0.9
+    page.mouse.move(hx, hy)
+    page.wait_for_timeout(120)
+    s = snap()
+    check('A rail near a free end snaps: rail ends glow, the join guide shows', s['rails']['guide'] and s['rails']['markers'] >= 2)
+    tap(hx, hy)
+    s = snap()
+    joined = next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+    check('Dropped rail joins the line end to end', s['rails']['links'] == links0 + 1
+          and (joined['x'], joined['z']) == (end['x'], end['z'] + 3) and 'Rails connected' in toast())
+    check('Recent shows the last placed part first', s['tray']['recents'][:1] == ['rail_straight'])
+    check('A selected rail shows its two ends', s['rails']['markers'] == 2)
+
+    # Rails never overlap: moving the new rail onto the middle of the line is refused.
+    middle = next(p for p in s['pieces'] if p['partId'] == 'rail_straight' and (p['x'], p['z']) == (end['x'], end['z'] - 3))
+    page.locator('.sqbl-app [data-action="move"]').click()
+    tap(middle['screen']['x'], middle['screen']['y'])
+    s = snap()
+    check('A rail cannot be dropped onto another rail', s['moving'] and '軌道不能疊在一起' in page.locator('[data-stage-hint]').inner_text()
+          and next(p for p in s['pieces'] if p['id'] == joined['id'])['z'] == joined['z'])
+    tap(joined['screen']['x'], joined['screen']['y'])
+    check('…and drops back where it fits', not snap()['moving'])
+
+    # A ring of four curves: place one beside a far tree, Copy three times.
+    tree = next(p for p in s['pieces'] if p['partId'] == 'tree_small' and (p['x'], p['z']) == (-12, 12))
+    page.locator('.sqbl-part[data-part="rail_curve_90"]').click()
+    tap(tree['screen']['x'], tree['screen']['y'])
+    for _ in range(3):
+        page.locator('.sqbl-app [data-action="duplicate"]').click()
+        page.wait_for_timeout(150)
+    s = snap()
+    curves = [p for p in s['pieces'] if p['partId'] == 'rail_curve_90']
+    check('Copying a curve continues the track: four curves close a circuit', len(curves) == 4
+          and all(c['id'] in s['rails']['circuit'] for c in curves) and 'Circuit complete' in toast())
+    page.wait_for_timeout(700)
+    page.screenshot(path=str(out / 'circuit.png'))
+
+    # Slice 11: search (EN + 中文, "2x4" finds 2×4), size filter, favourites.
+    search = page.locator('.sqbl-search input')
+    search.fill('軌道')
+    check('Search finds parts by their 中文 name', sorted(snap()['tray']['parts']) == sorted(
+          ['rail_straight', 'rail_curve_90', 'rail_junction_t', 'rail_cross']))
+    search.fill('2x4')
+    check('Search reads 2x4 as 2×4', set(snap()['tray']['parts']) == {'brick_2x4', 'plate_2x4'})
+    search.fill('')
+    page.locator('.sqbl-size').select_option('2×2')
+    parts = set(snap()['tray']['parts'])
+    check('Size filter shows every 2×2 part', {'brick_2x2', 'plate_2x2', 'slope_2x2', 'slope_45', 'rail_cross', 'tree_small'} <= parts
+          and 'brick_2x4' not in parts)
+    page.locator('.sqbl-category[data-category="bricks"]').click()
+    check('Picking a category clears the filters', snap()['tray']['size'] == '' and snap()['tray']['category'] == 'bricks')
+    page.locator('.sqbl-fav[data-fav="brick_1x3"]').first.click()
+    s = snap()
+    check('Star pins a favourite at the front of the tray', s['tray']['favorites'] == ['brick_1x3'] and s['tray']['parts'][0] == 'brick_1x3'
+          and page.locator('.sqbl-tray-sep[data-section="favorites"]').count() == 1)
+    app = page.locator('.sqbl-app').bounding_box()
+    check('A long tray row scrolls instead of widening the app', page.locator('.sqbl-parts').evaluate('e => e.scrollWidth > e.clientWidth')
+          and app['x'] + app['width'] <= page.viewport_size['width'] + 1
+          and page.locator('.sqbl-save-btn').bounding_box()['x'] + page.locator('.sqbl-save-btn').bounding_box()['width'] <= app['x'] + app['width'])
+    check('Favourites and recents are saved per kid', page.evaluate(
+          "JSON.parse(localStorage.getItem('sq:brick-lab:prefs:v1:luis')).favorites") == ['brick_1x3'])
+    page.locator('.sqbl-fav[data-fav="brick_1x3"]').first.click()
+    check('Star again removes it', snap()['tray']['favorites'] == [])
+    page.screenshot(path=str(out / 'library.png'))
 
 
 def run(args):
@@ -100,7 +220,7 @@ def run(args):
 
                 # Slice 08: the dock keeps one height for every category, so the 3D view never resizes (flash).
                 sizes = set()
-                for cat in ('plates', 'slopes', 'wheels', 'rails', 'nature', 'bricks'):
+                for cat in ('plates', 'slopes', 'wheels', 'connectors', 'rails', 'structure', 'nature', 'bricks'):
                     page.locator(f'.sqbl-category[data-category="{cat}"]').click()
                     b = page.locator('.sqbl-stage canvas').bounding_box()
                     sizes.add((round(b['width']), round(b['height'])))
@@ -162,7 +282,9 @@ def run(args):
 
                 # Slice 07: the view pans along the ground in Build too, and never leaves the island.
                 act('home-view')
-                page.wait_for_timeout(900)
+                # The Home camera tween can finish late on a slow GPU; a fixed wait read it mid-flight.
+                page.wait_for_function(SNAP + '.target && Math.abs(' + SNAP + '.target.y + 8) < 1e-6 && Math.abs(' + SNAP + '.target.x - 5) < 1e-6')
+                page.wait_for_timeout(300)
                 start = snap()['target']
                 page.mouse.move(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.5)
                 page.mouse.down(button='right')
@@ -201,6 +323,7 @@ def run(args):
                 check('Build saved per kid', saved == STARTER + 1)
                 check('Reopen restores the build', page.evaluate("SummerQuest.openGame('bricklab')")['ok'])
                 page.wait_for_function(SNAP + ' && ' + SNAP + f'.pieces.length === {STARTER + 1}')
+                lab_slices_09_11(page, snap, check, out)
                 page.evaluate('SQPlatform.triggerBack()')
                 page.wait_for_function("!document.querySelector('#stage .sqbl-app')")
 
