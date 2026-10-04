@@ -194,3 +194,182 @@ test('recordFound / recordSeen add once and return the same profile when nothing
   assert.equal(recordSeen(seen, ['redMushroom']), seen);
   assert.equal(seen.version, base.version);
 });
+
+/* ---------- slice 04: lab-screen state helpers (no DOM) ---------- */
+import { createLabState, labAdd, labRemove, labStep, labUndo, labClear, labSelect, labBrew } from '../js/games/codequest/lab/lab-screen.js';
+import { LAB, labMadeLine, labPagesLine } from '../js/games/codequest/strings.js';
+
+const fill = (ids, steps = []) => steps.reduce(labStep, ids.reduce(labAdd, createLabState()));
+const emptyProfile = () => normalizeProfile({ version: 12 });
+
+test('lab screen: add / remove / caps, and the owl says the cauldron is full', () => {
+  let s = fill(['echoCrystal', 'redMushroom', 'sunHerb', 'sunHerb']);
+  assert.deepEqual([...s.mix], ['echoCrystal', 'redMushroom', 'sunHerb', 'sunHerb']);
+  s = labAdd(s, 'moonflower');
+  assert.equal(s.mix.length, 4);
+  assert.equal(s.line, LAB.full);
+  assert.deepEqual([...labRemove(s, 1).mix], ['echoCrystal', 'sunHerb', 'sunHerb']);
+  assert.equal(labRemove(s, 9), s);
+  assert.equal(labAdd(createLabState(), 'notAThing').mix.length, 0);
+  let steps = ['grind', 'heat', 'stir', 'cool', 'stir'].reduce(labStep, createLabState());
+  assert.equal(steps.steps.length, 5);
+  steps = labStep(steps, 'heat');
+  assert.equal(steps.steps.length, 5);
+  assert.equal(steps.line, LAB.full);
+  assert.equal(labStep(createLabState(), 'bottle').steps.length, 0);
+  assert.deepEqual([...labUndo(steps).steps], ['grind', 'heat', 'stir', 'cool']);
+  const cleared = labClear(fill(['sunHerb'], ['grind']));
+  assert.equal(cleared.mix.length + cleared.steps.length, 0);
+  assert.equal(cleared.effect, null);
+});
+
+test('lab screen: selecting lifts an item and adding puts it down', () => {
+  let s = labSelect(createLabState(), 'jar:echoCrystal');
+  assert.equal(s.selection, 'jar:echoCrystal');
+  assert.equal(s.line, LAB.picked);
+  s = labAdd(s, 'echoCrystal');
+  assert.equal(s.selection, null);
+  const withOne = labAdd(createLabState(), 'echoCrystal');
+  assert.equal(labSelect(withOne, 'jar:redMushroom').line, LAB.welcome, 'the hint only shows before the first ingredient');
+  assert.equal(labSelect(withOne, null).selection, null);
+});
+
+test('lab screen brew: empty cauldron asks for an ingredient and changes nothing', () => {
+  const profile = emptyProfile();
+  const out = labBrew(createLabState(), profile);
+  assert.equal(out.changed, false);
+  assert.equal(out.profile, profile);
+  assert.equal(out.state.line, LAB.empty);
+});
+
+test('lab screen brew: Echo Crystal + Red Mushroom is duplication, a new Journal page, saved once', () => {
+  const profile = emptyProfile();
+  const out = labBrew(fill(['echoCrystal', 'redMushroom']), profile, { now: 5 });
+  assert.equal(out.state.lastResult.ruleId, 'duplication');
+  assert.equal(out.state.newPage, true);
+  assert.equal(out.newRule, true);
+  assert.equal(out.changed, true);
+  assert.deepEqual([...out.profile.lab.found], ['duplication']);
+  assert.deepEqual([...out.profile.lab.seen], ['echoCrystal', 'redMushroom']);
+  assert.equal(out.state.effect.ruleId, 'duplication');
+  assert.equal(out.state.effect.lastIngredient, 'redMushroom');
+  assert.equal(out.state.line, LAB_RULES.find(rule => rule.id === 'duplication').line);
+  assert.deepEqual([...out.state.mix], ['echoCrystal', 'redMushroom'], 'mix stays after Brew');
+  const again = labBrew(labClear(out.state), out.profile);
+  assert.equal(again.changed, false, 'nothing to save the second time');
+  const repeat = labBrew(fill(['echoCrystal', 'redMushroom']), out.profile);
+  assert.equal(repeat.changed, false);
+  assert.equal(repeat.profile, out.profile);
+  assert.equal(repeat.state.newPage, false);
+  assert.equal(repeat.newRule, false);
+});
+
+test('lab screen brew: Healing recipe in order bottles a potion without using the bag (D5)', () => {
+  const profile = emptyProfile();
+  assert.equal(profile.ingredients.sunHerb, 0);
+  const before = profile.potions.healing;
+  const out = labBrew(fill(['sunHerb', 'sunHerb', 'waterCrystal'], ['grind', 'stir']), profile, { free: true });
+  assert.equal(out.potionId, 'healing');
+  assert.equal(out.changed, true);
+  assert.equal(out.profile.potions.healing, before + 1);
+  assert.deepEqual(out.profile.ingredients, profile.ingredients);
+  assert.ok(out.profile.discoveredRecipes.includes('healing'));
+  assert.equal(out.state.effect.ruleId, 'potion');
+  assert.deepEqual(out.state.line, labMadeLine(RECIPES.find(recipe => recipe.id === 'healing').label));
+});
+
+test('lab screen brew: Healing mix in the wrong order is a reaction plus the order hint, no potion', () => {
+  const profile = emptyProfile();
+  const out = labBrew(fill(['sunHerb', 'sunHerb', 'waterCrystal'], ['stir', 'grind']), profile, { free: true });
+  assert.equal(out.potionId, null);
+  assert.equal(out.state.lastResult.kind, 'reaction');
+  assert.equal(out.state.lastResult.hint, 'order');
+  assert.equal(out.state.line, LAB.orderHint);
+  assert.equal(out.profile.potions.healing, profile.potions.healing);
+});
+
+test('lab screen brew: with free off and an empty bag the recipe plays as a practice brew', () => {
+  const profile = emptyProfile();
+  const out = labBrew(fill(['sunHerb', 'sunHerb', 'waterCrystal'], ['grind', 'stir']), profile, { free: false });
+  assert.equal(out.potionId, null);
+  assert.equal(out.state.lastResult.kind, 'reaction');
+  assert.equal(out.state.lastResult.practice, true);
+  assert.equal(out.state.line, LAB.practice);
+  assert.equal(out.profile.potions.healing, 0);
+  // With stock it bottles and spends the bag, exactly as the Camp bench did.
+  const stocked = normalizeProfile({ ...profile, ingredients: { sunHerb: 2, moonBerry: 0, waterCrystal: 1, emberRoot: 0 } });
+  const paid = labBrew(fill(['sunHerb', 'sunHerb', 'waterCrystal'], ['grind', 'stir']), stocked, { free: false });
+  assert.equal(paid.potionId, 'healing');
+  assert.equal(paid.profile.ingredients.sunHerb, 0);
+});
+
+test('lab screen strings ship EN + 中文', () => {
+  const pairs = [...Object.entries(LAB), ['made', labMadeLine(['Healing Potion', '治療藥水'])], ['pages', labPagesLine(1, 14)]];
+  for (const [where, pair] of pairs) {
+    assert.ok(Array.isArray(pair) && pair.length === 2, where);
+    assert.ok(pair[0].trim() && pair[1].trim(), where + ' missing a language');
+    assert.match(pair[1], /[一-鿿]/, where + ' has no 中文');
+  }
+});
+
+/* ---------- slice 06: Journal page builders ---------- */
+import { journalReactions, journalPotions, journalIngredients } from '../js/games/codequest/lab/journal.js';
+import { labLoad } from '../js/games/codequest/lab/lab-screen.js';
+import { LAB_PROPS, LAB_FAMILIES } from '../js/games/codequest/strings.js';
+
+test('Journal reactions: counts match lab.found, unfound pages never leak label or line', () => {
+  const book = journalReactions({ found: ['glow', 'duplication', 'fizzle'], seen: [] });
+  assert.equal(book.found, 3);
+  assert.equal(book.total, LAB_RULES.length);
+  assert.equal(book.pages.length, LAB_RULES.length);
+  assert.deepEqual(book.pages.filter(page => page.found).map(page => page.id), ['duplication', 'glow', 'fizzle']);
+  const secrets = LAB_RULES.flatMap(rule => [rule.id, ...rule.label, ...rule.line]);
+  for (const page of book.pages.filter(p => !p.found)) {
+    assert.deepEqual(Object.keys(page).sort(), ['family', 'found', 'index']);
+    const text = JSON.stringify(page);
+    for (const secret of secrets) assert.ok(!text.includes(secret) || secret === page.family, 'unfound page leaks ' + secret);
+    assert.ok(LAB_FAMILIES[page.family], page.family + ' has a family name');
+  }
+  const glow = book.pages.find(page => page.id === 'glow');
+  assert.deepEqual(glow.label, LAB_RULES.find(rule => rule.id === 'glow').label);
+  assert.deepEqual([...glow.formula], ['light', 'light']);
+  for (const rule of LAB_RULES) {
+    const page = journalReactions({ found: [rule.id] }).pages.find(p => p.found);
+    for (const token of page.formula) assert.ok(token.startsWith('ing:') ? LAB_INGREDIENTS[token.slice(4)] : LAB_PROPS[token], rule.id + ' formula token ' + token);
+  }
+  assert.equal(journalReactions(undefined).found, 0);
+});
+
+test('Journal potions: discovered recipes show ingredients and steps, the rest show nothing', () => {
+  const pages = journalPotions({ discoveredRecipes: ['ward'] }, RECIPES);
+  assert.equal(pages.length, 4);
+  const ward = pages.find(page => page.found);
+  assert.equal(ward.id, 'ward');
+  assert.deepEqual([...ward.process], ['heat', 'stir', 'cool']);
+  for (const page of pages.filter(p => !p.found)) assert.deepEqual(Object.keys(page).sort(), ['found', 'index']);
+});
+
+test('Journal ingredients: all twelve, property points hidden until seen', () => {
+  const pages = journalIngredients({ seen: ['frostDew'] });
+  assert.equal(pages.length, 12);
+  for (const page of pages) {
+    if (page.id === 'frostDew') assert.deepEqual(Object.fromEntries(page.props), { cold: 2, water: 2, calm: 1 });
+    else { assert.equal(page.seen, false); assert.equal(page.props, null); }
+  }
+});
+
+test('Journal "Put in cauldron" loads a recipe; Brew then makes that potion', () => {
+  const ward = RECIPES.find(recipe => recipe.id === 'ward');
+  const loaded = labLoad(fill(['voidDust'], ['grind']), ward.ingredients, ward.process);
+  assert.deepEqual([...loaded.mix], [...ward.ingredients]);
+  assert.deepEqual([...loaded.steps], [...ward.process]);
+  assert.equal(loaded.line, LAB.ready);
+  const out = labBrew(loaded, emptyProfile(), { free: true });
+  assert.equal(out.potionId, 'ward');
+});
+
+test('Journal strings ship EN + 中文', () => {
+  for (const [where, pair] of [...Object.entries(LAB_PROPS), ...Object.entries(LAB_FAMILIES)]) {
+    assert.ok(pair[0].trim() && /[一-鿿]/.test(pair[1]), where);
+  }
+});

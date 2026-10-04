@@ -57,6 +57,11 @@ export const LAB_SPRITES = Object.freeze({
     '....KKTTTTTTKK......', '.....KYK..KYK.......'
   ]),
   owlBlink: null,
+  // Slice 05: the cute monstrosity that hops out of the cauldron.
+  blob: frame([
+    '....KKKK....', '..KKIIGGKK..', '.KIIGGGGGGK.', '.KIWKGGWKGK.', 'KGIWKGGWKGGK', 'KGGGGGGGGGGK',
+    'KGGPGGGGPGGK', 'KGGGGKKGGGGK', '.KKKKKKKKKK.'
+  ]),
   cat: frame([
     '....K.K.................', '...KVKVK................', '..KVVVVVK..KKKKKKK......', '..KVKVKVKKKVVVVVVVKK....',
     '..KVVVVVVVVVVVVVVVVVK...', '...KVVPVVVVVVVVVVVVVVK..', '...KVVVVVVVVVVVVVVVVVK..', '....KKVVVVVVVVVVVVVVVK..',
@@ -83,11 +88,11 @@ export function labSpriteSize(id) {
   return rows ? { width: rows[0].length, height: rows.length } : { width: 0, height: 0 };
 }
 
-/** Draws a lab bitmap at logical (x, y); `outline` recolours the K pixels (selection glow). */
+/** Draws a lab bitmap at logical (x, y); `outline` recolours the K pixels (selection glow), `scale` sizes it up. */
 export function drawLabSprite(ctx, id, x, y, options = {}) {
   const rows = SPRITES[id];
   if (!rows) return;
-  const flip = !!options.flip;
+  const flip = !!options.flip, s = Math.max(1, Math.round(Number(options.scale) || 1));
   for (let row = 0; row < rows.length; row++) {
     const line = rows[row];
     for (let col = 0; col < line.length; col++) {
@@ -95,7 +100,7 @@ export function drawLabSprite(ctx, id, x, y, options = {}) {
       if (char === '.') continue;
       const color = char === 'K' && options.outline != null ? options.outline : CH[char];
       if (color == null) continue;
-      px(ctx, color, x + (flip ? line.length - 1 - col : col), y + row);
+      px(ctx, color, x + (flip ? line.length - 1 - col : col) * s, y + row * s, s, s);
     }
   }
 }

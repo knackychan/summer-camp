@@ -4,9 +4,10 @@
    projection of the state it is given; it returns the tap targets (CSS px) so the
    screen controller never has to know the layout. */
 import { Q } from '../palette.js';
-import { drawSprite } from '../pixel-art.js';
+import { drawSprite, spriteSize } from '../pixel-art.js';
 import { px, drawLabSprite } from './lab-art.js';
 import { LAB_INGREDIENTS, SHELF_IDS, BAG_IDS } from './ingredients.js';
+import { fxTime, fxPose, drawEffect } from './lab-fx.js';
 
 export const LAB_W = 320;
 export const LAB_H = 180;
@@ -172,8 +173,8 @@ function drawShelf(ctx) {
   px(ctx, Q.sandLit, 300, 96, 14, 10); px(ctx, Q.sand, 302, 99, 10, 1); px(ctx, Q.sand, 302, 102, 8, 1);
 }
 
-function drawJar(ctx, hit, selected) {
-  const x = hit.x, y = hit.y - (selected ? 3 : 0);
+function drawJar(ctx, hit, selected, lean = 0) {
+  const x = hit.x + lean, y = hit.y - (selected ? 3 : 0);
   const edge = selected ? Q.yellow : Q.outline;
   px(ctx, edge, x + 2, y + 3, 21, 21);
   px(ctx, Q.space2, x + 3, y + 4, 19, 19);
@@ -209,9 +210,9 @@ function drawBookStack(ctx) {
   }
 }
 
-function drawOwl(ctx, now, still) {
-  const blink = !still && (now % 4200) < 160;
-  drawLabSprite(ctx, blink ? 'owlBlink' : 'owl', 20, 71);
+function drawOwl(ctx, now, still, pose) {
+  const blink = pose.owlBlink || (!still && (now % 4200) < 160);
+  drawLabSprite(ctx, blink ? 'owlBlink' : 'owl', 20, 71 + pose.owlDy);
 }
 
 function drawJournal(ctx) {
@@ -232,12 +233,12 @@ function drawJournal(ctx) {
   px(ctx, Q.red, b.x + 29, b.y + b.h - 4, 2, 6);
 }
 
-function drawCat(ctx, now, still) {
+function drawCat(ctx, now, still, pose) {
   px(ctx, Q.outline, 282, 146, 34, 6);
   px(ctx, Q.greenDark, 283, 147, 32, 4);
   px(ctx, Q.sandLit, 312, 148, 2, 2);
-  const awake = !still && (now % 6400) > 5600;
-  drawLabSprite(ctx, awake ? 'catAwake' : 'cat', 286, 136);
+  const awake = pose.catAwake || (!still && (now % 6400) > 5600);
+  drawLabSprite(ctx, awake ? 'catAwake' : 'cat', 286, 136 + pose.catDy);
   const flick = !still && (now % 2600) < 400;
   px(ctx, Q.outline, 307, flick ? 137 : 141, 3, 2);
   px(ctx, Q.purpleDark, 308, flick ? 138 : 142, 4, 2);
@@ -377,11 +378,22 @@ function drawLight(ctx) {
   });
 }
 
+/** Where an ingredient lives — the centre of its jar or bag slot — for effects that send it home. */
+function homeOf(id) {
+  const jar = AT['jar:' + id];
+  if (jar) return { x: jar.x + 12, y: jar.y + 13 };
+  const bag = AT['bag:' + id];
+  if (!bag) return null;
+  const { width, height } = spriteSize(id, 1);
+  return { x: bag.x + 7 + width / 2, y: bag.y + 7 + height / 2 };
+}
+
 /**
  * Draws the lab and returns `{ hits, fit }`. `hits` are CSS-px tap targets:
  * `{ id, kind: 'jar'|'bag'|'cauldron'|'prop'|'scroll'|'book'|'owl', x, y, w, h, ingredient?, step? }`.
  * Options: cssWidth, cssHeight, dpr, time (s), now (ms), mix, steps, tint, shaky, selection,
- * effect (drawn by slice 05), paused, reduced.
+ * effect ({ ruleId | 'potion', intensity, start (ms, same clock as now), potionId?, lastIngredient? },
+ * drawn by lab-fx.js), paused, reduced. Effects never change the hits.
  */
 export function drawLab(canvas, options = {}) {
   if (!canvas) return null;
@@ -395,20 +407,24 @@ export function drawLab(canvas, options = {}) {
   const now = still ? 0 : (Number(options.now) || (Number(options.time) || 0) * 1000);
   const frame = Math.floor(now / 300);
   const selection = options.selection || null;
+  // Effects keep their own clock: a reaction still plays under reduced motion, just calmer.
+  const clock = Number(options.now) || (Number(options.time) || 0) * 1000;
+  const effect = options.effect || null, t = fxTime(effect, clock), pose = fxPose(effect, t, !!options.reduced);
 
   drawBackdrop(ctx, fit);
-  ctx.setTransform(fit.device, 0, 0, fit.device, fit.ox, fit.oy);
+  ctx.setTransform(fit.device, 0, 0, fit.device, fit.ox + pose.shakeX * fit.device, fit.oy + pose.shakeY * fit.device);
   drawWall(ctx);
   drawWindow(ctx, frame, still);
   drawLantern(ctx, frame, still);
   drawPlants(ctx, frame, still);
   drawShelf(ctx);
-  for (const id of SHELF_IDS) drawJar(ctx, AT['jar:' + id], selection === 'jar:' + id);
+  // Jars lean toward a singularity (every jar sits right of it).
+  for (const id of SHELF_IDS) drawJar(ctx, AT['jar:' + id], selection === 'jar:' + id, -pose.lean);
   drawBench(ctx);
   drawBookStack(ctx);
-  drawOwl(ctx, now, still);
+  drawOwl(ctx, now, still, pose);
   drawJournal(ctx);
-  drawCat(ctx, now, still);
+  drawCat(ctx, now, still, pose);
   drawBurner(ctx, frame, still);
   drawCauldron(ctx, options, frame, now, still);
   drawMortar(ctx);
@@ -417,6 +433,7 @@ export function drawLab(canvas, options = {}) {
   drawScroll(ctx);
   drawBag(ctx, selection);
   drawLight(ctx);
+  drawEffect(ctx, effect, { t, now: clock, reduced: !!options.reduced, still, mix: options.mix || [], home: homeOf });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
   const k = fit.device / fit.dpr;
