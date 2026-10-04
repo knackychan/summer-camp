@@ -3,15 +3,15 @@ import { CodeQuestModel } from './codequest/model.js';
 import { LEVELS, generateEndless } from './codequest/levels.js';
 import { action, repeat, ifNode, call, combinedBlockCount, toJavaScript } from './codequest/ast.js';
 import { parseJavaScript, CODE_API } from './codequest/parser.js';
-import { runAlchemyCode, recipeToAlchemyCode, recipeById } from './codequest/alchemy-code.js';
-import { normalizeProfile, recordLevelComplete, recordEndlessClear, modeFor, equipmentDescriptor, equipmentFor, weaponFor, combatStatsFor, brewLab, equip, claimLoot, consumePotion, scoreForProfile, setActiveDungeonRun, finishDungeonRun, abandonDungeonRun, saveRuneLibrary, loadRuneLibrary, saveBehaviorSource, setBehaviorEnabled, behaviorFor, CODEQUEST_EQUIPMENT, RECIPES, ALCHEMY_STEPS } from './codequest/progression.js';
+import { normalizeProfile, recordLevelComplete, recordEndlessClear, modeFor, equipmentDescriptor, equipmentFor, weaponFor, combatStatsFor, equip, claimLoot, consumePotion, scoreForProfile, setActiveDungeonRun, finishDungeonRun, abandonDungeonRun, saveRuneLibrary, loadRuneLibrary, saveBehaviorSource, setBehaviorEnabled, behaviorFor, CODEQUEST_EQUIPMENT } from './codequest/progression.js';
 import { createDungeonRun, normalizeDungeonRun, roomMeta, roomGraph, nextRooms, enterDungeonRoom, resolveRunChoice, completeCombatRoom, failDungeonRun, expeditionLevel, dungeonRunSummary, hazardInfo, sigilsRequired, saveRunLoadout, activateRunLoadout } from './codequest/run.js';
 import { spriteURL } from './codequest/pixel-art.js';
 import { previewPath } from './codequest/preview.js';
 import { drawRoom, MAX_ZOOM, ROOM_VIEW } from './codequest/room-view.js';
 import { placeBubbleRect } from './codequest/bubble.js';
 import { IF_TESTS, repeatCounts, ifTests, insertAfter, canUnwrap, unwrap, setRepeatCount, nextRepeatCount, setCondition, extendSelection } from './codequest/strip-edit.js';
-import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, ALCHEMY_LABELS, MESSAGES, SHORT, pairHTML, setLanguage, language, t } from './codequest/strings.js';
+import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, pairHTML, setLanguage, language, t } from './codequest/strings.js';
+import { mountLab } from './codequest/lab/lab-screen.js';
 
 let S = null;
 // Host settings bar (game-fs top row, beside Back). Kept across stop(): the host renders the bar before init().
@@ -489,12 +489,14 @@ function hashText(text) { let h = 0; for (let i = 0; i < text.length; i++) h = (
 function setbarHTML() {
   const codeHint = !!(S && S.level && (S.level.codingView === 'hybrid' || S.level.codingView === 'code'));
   const zh = language() === 'zh';
+  // The switch is written in the language it switches to, so a child who reads only that one can find it.
+  const lang = button('lang', zh ? '<span lang="en">English</span>' : '<span lang="zh-Hant">中文</span>', 'class="cq-lang" aria-label="' + (zh ? 'Switch to English' : '切換成中文') + '"');
+  // In the Lab the bar is just the way back and the language switch (lab design D1).
+  if (S && S.lab) return '<div class="cq-setbar" role="group" aria-label="' + esc(t(LAB.title)) + '">' + button('lab:exit', label(LAB.back), 'class="cq-lab-exit"') + lang + '</div>';
   return '<div class="cq-setbar" role="group" aria-label="' + esc(t(['Code Quest controls', '程式冒險控制'])) + '">' +
-    button('map', glyph('flag') + label(UI.questMap)) + button('camp', label(UI.inventory)) +
+    button('map', glyph('flag') + label(UI.questMap)) + button('lab', label(LAB.open), 'class="cq-lab-open"') + button('camp', label(UI.inventory)) +
     button('code', glyph('data') + label(['Code', '程式碼']), codeHint ? 'class="cq-attn"' : '') +
-    // The switch is written in the language it switches to, so a child who reads only that one can find it.
-    button('lang', zh ? '<span lang="en">English</span>' : '<span lang="zh-Hant">中文</span>', 'class="cq-lang" aria-label="' + (zh ? 'Switch to English' : '切換成中文') + '"') +
-    button('pause', label(UI.pause)) + '</div>';
+    lang + button('pause', label(UI.pause)) + '</div>';
 }
 function renderBar() {
   if (barReady()) BAR.innerHTML = setbarHTML();
@@ -512,6 +514,7 @@ function setLang(next) {
   cq.lang[S.ctx.kid] = language(); S.ctx.saveSettings();
   renderBar(); notify(S.notice || MESSAGES.intro);
   render();
+  if (S.lab) S.lab.render();
 }
 
 function render() {
@@ -556,7 +559,7 @@ function previewFor() {
 }
 
 function draw(time = performance.now()) {
-  if (!S) return;
+  if (!S || S.lab) return;
   if (S.heroStateUntil && time > S.heroStateUntil) S.heroState = 'idle';
   const box = S.canvas.getBoundingClientRect();
   if (!box.width || !box.height) return;
@@ -1139,15 +1142,15 @@ function mapHTML() {
   return '<div class="cq-dialog-head"><h2>' + label(UI.questMap) + '</h2>' + button('dialog:close', label(UI.close)) + '</div><div class="cq-map-scroll">' + sections + '<section class="cq-map-region cq-expedition"><h3>' + pair('Compiler Catacombs','編譯者地下城') + '</h3><p>' + pair('A procedural connected expedition: search branches, stabilize a run hazard, collect compiler sigils, and carry three Rune loadouts between rooms.', '程序化相連遠征：搜尋分支、穩定遠征危害、收集編譯符印，並在房間間攜帶三組符文配置。') + runButton + '<small>' + pair('Cleared expeditions: ' + S.profile.expeditionsCleared + ' · best rooms ' + S.profile.bestExpeditionRooms + '/13', '完成遠征：' + S.profile.expeditionsCleared + '・最佳房間 ' + S.profile.bestExpeditionRooms + '/13') + '</small></section><section class="cq-map-region cq-tower"><h3>' + label(UI.tower) + '</h3><p>' + pair('Endless deterministic rooms combine everything you have learned.', '無限的確定性房間，會混合你已學會的程式概念。') + '</p>' + button('endless:' + Math.max(1, S.profile.endlessBest + 1), pair((towerUnlocked ? 'Enter floor ' : 'Locked · floor ') + Math.max(1, S.profile.endlessBest + 1), (towerUnlocked ? '進入第 ' : '尚未解鎖・第 ') + Math.max(1, S.profile.endlessBest + 1) + ' 層'), 'class="cq-primary" ' + (!towerUnlocked ? 'disabled' : '')) + '</section></div>';
 }
 
-function ingredientButton(id) {
+function ingredientChip(id) {
   const count = S.profile.ingredients[id] || 0;
-  return '<button type="button" class="cq-ingredient ' + (!count ? 'empty' : '') + '" data-drag-ingredient="' + id + '" ' + (!count ? 'disabled' : '') + '><img src="' + spriteURL(id, kidColor()) + '" alt=""><b>' + label(ITEM_LABELS[id]) + '</b><span>×' + count + '</span></button>';
+  return '<span class="cq-ingredient ' + (!count ? 'empty' : '') + '"><img src="' + spriteURL(id, kidColor()) + '" alt=""><b>' + label(ITEM_LABELS[id]) + '</b><span>×' + count + '</span></span>';
 }
 
 function potionSprite(id) { return id === 'healing' ? 'potion' : id === 'focus' ? 'moonBerry' : id; }
 
 function campHTML() {
-  const tray = S.bench, process = S.benchProcess || [], build = combatStatsFor(S.profile);
+  const build = combatStatsFor(S.profile);
   const setNames = { ember:['Ember Circuit','餘燼迴路'], frost:['Frost Circuit','冰霜迴路'], aegis:['Aegis Circuit','守護迴路'] };
   const setSummary = build.activeSets && build.activeSets.length ? '<div class="cq-set-bonuses"><b>' + pair('Active set effects','已啟用套裝效果') + '</b>' + build.activeSets.map(set => '<span>' + label(setNames[set.id] || [set.id,set.id]) + ' ×' + set.pieces + '</span>').join('') + '</div>' : '';
   const equipmentIds = [...S.profile.equipment, ...S.profile.lootGear.map(item => item.id)];
@@ -1159,16 +1162,11 @@ function campHTML() {
     return '<article class="cq-equip-card ' + (active ? 'active' : '') + ' ' + (item.rarity ? 'rarity-' + item.rarity : '') + '"><img src="' + spriteURL(item.spriteId || item.id, kidColor()) + '" alt=""><div><b>' + label(item.label) + '</b><span>' + pair(item.slot.toUpperCase(), item.slot === 'weapon' ? '武器' : item.slot === 'armor' ? '防具' : '護符') + (stats ? ' · ' + esc(stats) : '') + '</span></div>' + button('equip:' + id, active ? label(UI.equipped) : label(UI.equip), active ? 'disabled' : '') + '</article>';
   }).join('');
   const relicChoices = S.profile.pendingLoot.length ? '<section class="cq-relic-choice"><h3>' + pair('Relic Chest · choose one', '遺物寶箱・選一件') + '</h3><p>' + pair('The other two dissolve when you claim a relic. Compare its slot, rarity and affixes first.', '領取一件後另外兩件會消失，先比較欄位、稀有度與詞綴。') + '</p><div class="cq-equipment">' + S.profile.pendingLoot.map(item => { const stats=[item.rarity.toUpperCase(), item.damage?item.damage+' '+UI.damage[0]:'', item.spellDamage?item.spellDamage+' SPELL':'', item.defense?'+'+item.defense+' DEF':'', item.maxHp?'+'+item.maxHp+' HP':'', item.element!=='neutral'?item.element.toUpperCase():'', item.setId?'SET '+item.setId.toUpperCase():'', item.affixLabels.map(entry=>entry[0]).join(' + ')].filter(Boolean).join(' · '); return '<article class="cq-equip-card rarity-' + item.rarity + '"><img src="' + spriteURL(item.spriteId, kidColor()) + '" alt=""><div><b>' + label(item.label) + '</b><span>' + esc(stats) + '</span></div>' + button('loot:claim:' + item.id, pair('Claim', '領取'), 'class="cq-primary"') + '</article>'; }).join('') + '</div></section>' : '';
-  const knownRecipes = RECIPES.filter(recipe => S.profile.discoveredRecipes.includes(recipe.id)).map(recipe => '<li><img src="' + spriteURL(potionSprite(recipe.id), kidColor()) + '" alt=""><b>' + label(recipe.label) + '</b><span>' + recipe.ingredients.map(id => label(ITEM_LABELS[id])).join('<b class="cq-recipe-plus"> + </b>') + '</span><em>' + recipe.process.map(step => label(ALCHEMY_LABELS[step])).join(' → ') + '</em>' + (S.profile.completed.includes('q26') ? button('labcode:template:' + recipe.id, label(UI.loadRecipeCode), 'class="cq-code-chip"') : '') + '</li>').join('') || '<li>' + pair('Keep questing to discover recipes.', '繼續闖關就能發現配方。') + '</li>';
-  const potionCode = S.profile.completed.includes('q26') ? '<section class="cq-potion-code"><h3>' + label(UI.potionCode) + '</h3><p>' + pair('The same physical recipe can now be expressed as safe bench methods.', '同一個實體配方現在也可以用安全的 bench 方法表示。') + '</p><textarea class="cq-lab-code-input" spellcheck="false" autocomplete="off">' + esc(S.labCode || '') + '</textarea>' + (S.labCodeError ? '<div class="cq-code-error"><b>' + label(MESSAGES.potionCodeError) + '</b><span>' + esc(S.labCodeError.message) + '</span><small>Ln ' + S.labCodeError.line + '</small></div>' : '') + '<div class="cq-dialog-actions">' + button('labcode:brew', label(UI.runPotionCode), 'class="cq-primary"') + '</div></section>' : '';
-  const processButtons = ALCHEMY_STEPS.map(step => button('lab:' + step, label(ALCHEMY_LABELS[step]), 'class="cq-lab-step"')).join('');
-  const processTrail = process.length ? process.map((step, i) => '<span><b>' + (i + 1) + '</b>' + label(ALCHEMY_LABELS[step]) + '</span>').join('') : '<i>' + pair('No process steps yet', '尚未加入製程步驟') + '</i>';
   const stock = ['healing','focus','antidote','ward'].map(id => '<span><img src="' + spriteURL(potionSprite(id), kidColor()) + '" alt="">' + label(ITEM_LABELS[id]) + ' ×' + S.profile.potions[id] + '</span>').join('');
-  return '<div class="cq-dialog-head"><h2>' + label(UI.campTitle) + '</h2>' + button('dialog:close', label(UI.close)) + '</div>' + (S.campNotice ? '<p class="cq-camp-notice">' + label(S.campNotice) + '</p>' : '') + '<div class="cq-camp-scroll">' + relicChoices + '<section><h3>' + label(UI.bag) + '</h3><p>' + label(UI.dragHint) + '</p><div class="cq-ingredients">' + ['sunHerb','moonBerry','waterCrystal','emberRoot'].map(ingredientButton).join('') + '</div></section>' +
-    '<section class="cq-bench"><h3>' + label(UI.potionBench) + '</h3><div class="cq-cauldron" data-cauldron="true"><b>' + label(UI.cauldron) + '</b><div>' + (tray.length ? tray.map((id, index) => button('bench:remove:' + index, '<img src="' + spriteURL(id, kidColor()) + '" alt=""><span>' + label(ITEM_LABELS[id]) + '</span>', 'class="cq-bench-slot"')).join('') : '<span class="cq-bench-empty">' + pair('Drop ingredients here', '把材料放到這裡') + '</span>') + '</div></div>' +
-    '<div class="cq-lab-process"><b>' + label(UI.process) + '</b><div class="cq-process-trail">' + processTrail + '</div><div class="cq-lab-controls">' + processButtons + button('lab:undo', pair('↶ Undo step', '撤銷步驟'), process.length ? '' : 'disabled') + '</div></div>' +
-    '<div class="cq-dialog-actions">' + button('bench:clear', label(UI.clearBench)) + button('bench:brew', label(UI.brew), 'class="cq-primary"') + '</div><div class="cq-potion-stock"><b>' + label(UI.potions) + '</b>' + stock + '</div></section>' +
-    '<section><h3>' + label(UI.equipment) + '</h3>' + setSummary + '<div class="cq-equipment">' + equipment + '</div></section><section><h3>' + label(UI.recipes) + '</h3><ul class="cq-recipes">' + knownRecipes + '</ul></section>' + potionCode + '</div>';
+  return '<div class="cq-dialog-head"><h2>' + label(UI.campTitle) + '</h2>' + button('dialog:close', label(UI.close)) + '</div>' + (S.campNotice ? '<p class="cq-camp-notice">' + label(S.campNotice) + '</p>' : '') + '<div class="cq-camp-scroll">' + relicChoices + '<section><h3>' + label(UI.bag) + '</h3><div class="cq-ingredients">' + ['sunHerb','moonBerry','waterCrystal','emberRoot'].map(ingredientChip).join('') + '</div></section>' +
+    // The potion bench, process, recipes and potion script moved into the Lab (lab design D2).
+    '<section class="cq-camp-potions"><h3>' + label(UI.potions) + '</h3><div class="cq-potion-stock">' + stock + '</div>' + button('lab', label(LAB.openFromCamp), 'class="cq-primary cq-camp-lab"') + '</section>' +
+    '<section><h3>' + label(UI.equipment) + '</h3>' + setSummary + '<div class="cq-equipment">' + equipment + '</div></section></div>';
 }
 function openDialog(kind, html) {
   if (!S) return;
@@ -1189,7 +1187,8 @@ function closeDialog(resume = true) {
   render();
 }
 function pause() {
-  if (!S || S.paused || S.dialog === 'win') return;
+  // The Lab has no clock to stop; the dungeon behind it is already paused.
+  if (!S || S.paused || S.dialog === 'win' || S.lab) return;
   S.paused = true; S.autoRun = false;
   openDialog('pause'); render();
 }
@@ -1198,36 +1197,33 @@ function resume() {
   S.paused = false; closeDialog(false); S.scheduler.resume(); render();
 }
 
-function addBenchIngredient(id) {
-  if (!S.profile.ingredients[id]) { S.campNotice = MESSAGES.noIngredient; notify(MESSAGES.noIngredient); openDialog('camp', campHTML()); return; }
-  const inTray = S.bench.filter(item => item === id).length;
-  if (inTray >= S.profile.ingredients[id]) { S.campNotice = MESSAGES.noIngredient; notify(MESSAGES.noIngredient); openDialog('camp', campHTML()); return; }
-  if (S.bench.length >= 3) { S.campNotice = MESSAGES.benchFull; notify(MESSAGES.benchFull); openDialog('camp', campHTML()); return; }
-  S.campNotice = null; S.bench.push(id); openDialog('camp', campHTML());
+/* Lab (lab design D1): the dungeon waits, paused, while the Lab is open. */
+function bumpConsumable(id) {
+  // A potion brewed mid-room also lands on the hero's belt, as the Camp bench always did.
+  if (S.model && S.model.hero && S.model.hero.consumables && Object.hasOwn(S.model.hero.consumables, id)) S.model.hero.consumables[id] = Math.min(9, S.model.hero.consumables[id] + 1);
 }
-function addLabStep(step) {
-  if (!ALCHEMY_STEPS.includes(step)) return;
-  if (S.benchProcess.length >= 5) S.benchProcess.shift();
-  S.benchProcess.push(step); S.campNotice = MESSAGES.processAdded; openDialog('camp', campHTML());
+function openLab() {
+  if (!S || S.lab) return;
+  if (S.dialog) closeDialog(false);
+  // The scheduler freezes a running turn mid-step; it carries on when the kid comes back.
+  closeMenu(); S.scheduler.pause();
+  S.root.querySelector('.cq-play').hidden = true;
+  S.lab = mountLab(S.root, {
+    profile: () => S.profile,
+    save: profile => { S.profile = profile; saveProfile(); },
+    onPotion: bumpConsumable,
+    sfx: S.ctx.sfx, kidColor, reduced: S.reducedMotion,
+    canScript: () => S.profile.completed.includes('q26')
+  });
+  renderBar();
 }
-function brewBench() {
-  const result = brewLab(S.profile, S.bench, S.benchProcess);
-  if (!result.ok) {
-    S.campNotice = result.reason === 'need-three' ? MESSAGES.needThree : result.reason === 'unknown-recipe' ? MESSAGES.unknownRecipe : result.reason === 'wrong-process' ? MESSAGES.wrongProcess : MESSAGES.missingIngredient;
-    notify(S.campNotice); openDialog('camp', campHTML()); return;
-  }
-  S.profile = result.profile; if (S.model && S.model.hero && S.model.hero.consumables && Object.hasOwn(S.model.hero.consumables, result.recipe.id)) S.model.hero.consumables[result.recipe.id] = Math.min(9, S.model.hero.consumables[result.recipe.id] + 1); S.bench = []; S.benchProcess = []; S.campNotice = MESSAGES.brewed; saveProfile(); S.ctx.sfx && S.ctx.sfx.good && S.ctx.sfx.good(); notify(MESSAGES.brewed); openDialog('camp', campHTML());
-}
-function brewPotionCode() {
-  const textarea = S.root.querySelector('.cq-lab-code-input'); if (textarea) S.labCode = textarea.value;
-  const result = runAlchemyCode(S.profile, S.labCode);
-  if (!result.ok) {
-    S.labCodeError = result.error || { message: result.reason === 'need-three' ? 'Add exactly three ingredients in code.' : result.reason === 'wrong-process' ? 'The bench process order does not match a recipe.' : 'The potion script did not produce a known recipe.', line: 1 };
-    S.campNotice = MESSAGES.potionCodeError; notify(S.campNotice); openDialog('camp', campHTML()); return;
-  }
-  S.profile = result.profile; S.labCodeError = null;
-  if (S.model && S.model.hero && S.model.hero.consumables && Object.hasOwn(S.model.hero.consumables, result.recipe.id)) S.model.hero.consumables[result.recipe.id] = Math.min(9, S.model.hero.consumables[result.recipe.id] + 1);
-  saveProfile(); S.ctx.sfx && S.ctx.sfx.good && S.ctx.sfx.good(); S.campNotice = MESSAGES.brewed; notify(MESSAGES.brewed); openDialog('camp', campHTML());
+function closeLab() {
+  if (!S || !S.lab) return false;
+  S.lab.destroy(); S.lab = null;
+  S.root.querySelector('.cq-play').hidden = false;
+  if (!S.paused && !S.dialog) S.scheduler.resume();
+  renderBar(); render();
+  return true;
 }
 
 function perform(actionId) {
@@ -1271,6 +1267,8 @@ function perform(actionId) {
   if (actionId === 'reset') { closeMenu(); S.camera = HOME(); S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']); render(); return; }
   if (actionId === 'map') { openDialog('map'); return; }
   if (actionId === 'camp') { openDialog('camp'); return; }
+  if (actionId === 'lab') { openLab(); return; }
+  if (actionId === 'lab:exit') { closeLab(); return; }
   if (actionId === 'pause') { if (S.paused) resume(); else pause(); return; }
   if (actionId === 'dialog:close') { closeDialog(); return; }
   if (actionId.startsWith('run:loadout:save:')) { const index = Number(actionId.slice(17)); const result = saveRunLoadout(S.run,index,sourceFromAst()); if (result.ok) { S.run=result.run; saveRun(S.run,false); notify(['Rune loadout saved.','符文配置已儲存。']); } openDialog('expedition', expeditionHTML()); return; }
@@ -1283,13 +1281,6 @@ function perform(actionId) {
   if (actionId === 'run:abandon') { S.profile = abandonDungeonRun(S.profile); S.run=null; saveProfile(); if (S.level && S.level.expedition) { const next = LEVELS.findIndex(level => !S.profile.completed.includes(level.id)); startLevel(LEVELS[next < 0 ? LEVELS.length - 1 : next]); } openDialog('map', mapHTML()); return; }
   if (actionId.startsWith('level:')) { startAuthored(Number(actionId.slice(6))); return; }
   if (actionId.startsWith('endless:')) { startEndless(Number(actionId.slice(8))); return; }
-  if (actionId.startsWith('bench:remove:')) { const i = Number(actionId.slice(13)); if (i >= 0 && i < S.bench.length) S.bench.splice(i, 1); openDialog('camp', campHTML()); return; }
-  if (actionId === 'bench:clear') { S.bench = []; S.benchProcess = []; openDialog('camp', campHTML()); return; }
-  if (actionId.startsWith('lab:') && actionId !== 'lab:undo') { addLabStep(actionId.slice(4)); return; }
-  if (actionId === 'lab:undo') { if (S.benchProcess.length) S.benchProcess.pop(); openDialog('camp', campHTML()); return; }
-  if (actionId === 'bench:brew') { brewBench(); return; }
-  if (actionId.startsWith('labcode:template:')) { const recipe = recipeById(actionId.slice(17)); if (recipe && S.profile.discoveredRecipes.includes(recipe.id)) { S.labCode = recipeToAlchemyCode(recipe); S.labCodeError = null; S.campNotice = MESSAGES.potionCodeReady; openDialog('camp', campHTML()); } return; }
-  if (actionId === 'labcode:brew') { brewPotionCode(); return; }
   if (actionId.startsWith('loot:claim:')) { const result = claimLoot(S.profile, actionId.slice(11)); if (result.ok) { S.profile = result.profile; saveProfile(); syncCombatStats(); S.campNotice = ['Relic claimed.', '已領取遺物。']; notify(S.campNotice); } openDialog('camp', campHTML()); return; }
   if (actionId.startsWith('equip:')) { S.profile = equip(S.profile, actionId.slice(6)); saveProfile(); syncCombatStats(); notify(MESSAGES.equipped); openDialog('camp', campHTML()); return; }
   if (actionId === 'win:replay') { const level = S.level; closeDialog(false); startLevel(level); return; }
@@ -1304,33 +1295,13 @@ function perform(actionId) {
   }
 }
 
-function startIngredientDrag(e, target) {
-  if (!S || target.disabled || S.dialog !== 'camp') return;
-  e.preventDefault();
-  const id = target.dataset.dragIngredient;
-  const ghost = document.createElement('div'); ghost.className = 'cq-drag-ghost'; ghost.innerHTML = '<img src="' + spriteURL(id, kidColor()) + '" alt="">'; S.root.querySelector('.cq-dialog').appendChild(ghost);
-  S.drag = { id, ghost, startX: e.clientX, startY: e.clientY, moved: false, pointerId: e.pointerId };
-  ghost.style.transform = 'translate(' + (e.clientX - 24) + 'px,' + (e.clientY - 24) + 'px)';
-}
-function dragMove(e) {
-  if (!S || !S.drag || e.pointerId !== S.drag.pointerId) return;
-  if (Math.abs(e.clientX - S.drag.startX) + Math.abs(e.clientY - S.drag.startY) > 8) S.drag.moved = true;
-  S.drag.ghost.style.transform = 'translate(' + (e.clientX - 24) + 'px,' + (e.clientY - 24) + 'px)';
-}
-function dragEnd(e) {
-  if (!S || !S.drag || e.pointerId !== S.drag.pointerId) return;
-  const drag = S.drag; S.drag = null;
-  const hit = document.elementFromPoint(e.clientX, e.clientY), over = hit && hit.closest && hit.closest('[data-cauldron]');
-  drag.ghost.remove();
-  if (!drag.moved || over) addBenchIngredient(drag.id);
-}
-
 function keydown(e) {
   if (!S) return;
   if (e.key === 'Escape') {
     e.preventDefault();
     if (S.dialog === 'win') return;
     if (S.dialog) { if (S.paused) resume(); else closeDialog(); }
+    else if (S.lab) { if (!S.lab.closeSheet()) closeLab(); }
     else pause();
   }
 }
@@ -1380,7 +1351,7 @@ function init(ctx) {
     codeDraft: '', codeDirty: false, codeError: null,
     undo: [], serial: 0, scheduler: createScheduler(), paused: false, dialog: null, autoRun: false,
     canvas: root.querySelector('canvas'), bubble: root.querySelector('.cq-bubble'), best: Number(ctx.best) || 0, notice: MESSAGES.intro, heroState: 'idle', heroStateUntil: 0, heroMotion: null, enemyMotions: {}, fx: null, activeUid: null,
-    bench: [], benchProcess: [], labCode: '', labCodeError: null, campNotice: null, drag: null, completing: false, lastDraw: 0, run: normalizeDungeonRun(profile.activeRun)
+    lab: null, campNotice: null, completing: false, lastDraw: 0, run: normalizeDungeonRun(profile.activeRun)
   };
   S.model = createModel(initial); syncCodeFromAst();
   settingsRoot(ctx)[ctx.kid] = profile; ctx.saveSettings();
@@ -1388,7 +1359,6 @@ function init(ctx) {
 
   root.addEventListener('input', e => {
     if (!S || !e.target.classList) return;
-    if (e.target.classList.contains('cq-lab-code-input')) { S.labCode = e.target.value; S.labCodeError = null; return; }
     if (!e.target.classList.contains('cq-code-input')) return;
     S.codeDraft = e.target.value; S.codeDirty = true; S.codeError = null;
     const status = root.querySelector('.cq-code-status'); if (status) status.innerHTML = label(MESSAGES.codeChanged);
@@ -1397,8 +1367,6 @@ function init(ctx) {
 
   root.addEventListener('pointerdown', e => {
     if (S && S.menuOpen && !e.target.closest('.cq-card-menu, .cq-strip')) closeMenu();
-    const ingredient = e.target.closest('[data-drag-ingredient]');
-    if (ingredient) { startIngredientDrag(e, ingredient); return; }
     const target = e.target.closest('button[data-action]');
     if (!target || target.disabled || e.button !== 0) return;
     if (target.closest('.cq-scroll')) return;
@@ -1412,7 +1380,6 @@ function init(ctx) {
   root.querySelector('.cq-zoom').setAttribute('aria-label', 'Zoom 縮放');
   root.querySelector('.cq-strip').addEventListener('scroll', () => { if (S) placeMenu(); }, { passive: true });
   root.querySelector('.cq-dialog').addEventListener('cancel', e => { e.preventDefault(); if (S.dialog === 'win') return; if (S.paused) resume(); else closeDialog(); });
-  window.addEventListener('pointermove', dragMove, true); window.addEventListener('pointerup', dragEnd, true); window.addEventListener('pointercancel', dragEnd, true);
   document.addEventListener('keydown', keydown, true); document.addEventListener('visibilitychange', visibility);
   window.addEventListener('blur', pause); window.addEventListener('summerquest:native-pause', pause);
   S.reducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -1427,10 +1394,9 @@ function stop() {
   if (!S) return;
   S.scheduler.cancelAll();
   if (S.resize) S.resize.disconnect();
-  window.removeEventListener('pointermove', dragMove, true); window.removeEventListener('pointerup', dragEnd, true); window.removeEventListener('pointercancel', dragEnd, true);
   document.removeEventListener('keydown', keydown, true); document.removeEventListener('visibilitychange', visibility);
   window.removeEventListener('blur', pause); window.removeEventListener('summerquest:native-pause', pause);
-  if (S.drag && S.drag.ghost) S.drag.ghost.remove();
+  if (S.lab) { S.lab.destroy(); S.lab = null; }
   const dialog = S.root.querySelector('.cq-dialog'); try { if (dialog.open) dialog.close(); } catch (e) {}
   S.root.remove(); S.ctx.mount.classList.remove('cq-stage'); S = null;
 }
@@ -1439,5 +1405,7 @@ export default {
   id: 'codequest', version: '0.14.0', keyboard: false, bestKey: 'codequest',
   meta: { icon: '🏰', title: 'Code Quest', tz: '程式冒險', blurb: 'Program the hero · 編程闖關' },
   settings, init, stop,
-  snapshot() { return S ? { level: S.level.id, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog, lang: language(), goalOpen: !!S.goalOpen, preview: S.preview, notice: S.notice, bubbleSide: S.bubbleSide, heroBox: S.view ? S.view.heroBox : null, menuOpen: menuVisible(), selection: [...currentSelection()].sort((a, b) => a - b), camera: { zoom: S.camera.zoom, cx: S.camera.cx, cy: S.camera.cy } } : null; }
+  /** Host Back: inside the Lab it closes the script sheet, then returns to the dungeon — one press never leaves Code Quest from the Lab. */
+  back() { if (!S || !S.lab) return false; if (!S.lab.closeSheet()) closeLab(); return true; },
+  snapshot() { return S ? { level: S.level.id, lab: S.lab ? S.lab.snapshot() : { open: false }, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog, lang: language(), goalOpen: !!S.goalOpen, preview: S.preview, notice: S.notice, bubbleSide: S.bubbleSide, heroBox: S.view ? S.view.heroBox : null, menuOpen: menuVisible(), selection: [...currentSelection()].sort((a, b) => a - b), camera: { zoom: S.camera.zoom, cx: S.camera.cx, cy: S.camera.cy } } : null; }
 };

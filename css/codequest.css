@@ -233,6 +233,33 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
   .cq-hud{top:8px;left:8px;right:8px}
   .cq .cq-goal{font-size:14px}
 }
+/* Laboratory of Curiosity (lab slice 04): the scene canvas over a one-row dock. */
+.cq-play[hidden]{display:none}
+.cq-lab{position:relative;flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+.cq-lab-scene{position:relative;flex:1;min-height:300px;border:3px solid var(--cq-out);border-radius:6px;background:var(--cq-deep);overflow:hidden}
+.cq-lab-scene canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;touch-action:none}
+.cq-lab-tag{position:absolute;left:0;top:0;padding:4px 10px;border:3px solid var(--cq-out);border-radius:14px;background:var(--cq-gold);color:#2a1a10;font-size:14px;box-shadow:0 3px 0 var(--cq-out);pointer-events:none;z-index:2}
+.cq-lab-counts span{position:absolute;left:0;top:0;padding:0 4px;border:2px solid var(--cq-out);border-radius:4px;background:var(--cq-panel);color:var(--cq-ink);font-size:12px;pointer-events:none}
+.cq-lab-dock{display:flex;align-items:center;gap:10px;padding:8px;border:3px solid var(--cq-out);border-radius:6px;background:linear-gradient(#2b2a45,var(--cq-panel));box-shadow:inset 0 2px 0 var(--cq-edge)}
+.cq-lab-slots{display:flex;gap:6px;padding:4px;border:2px solid var(--cq-wood);border-radius:8px;background:#1a1930}
+.cq .cq-lab-slot,.cq-lab-slot.empty{width:56px;height:56px;padding:0;border-radius:8px}
+.cq-lab-slot.empty{display:block;border:3px dashed var(--cq-edge)}
+.cq-lab-slot img{width:40px;height:40px;image-rendering:pixelated}
+.cq-lab-steps{flex:1;display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0;min-height:48px}
+.cq-lab-steps>span{display:flex;align-items:center;gap:5px;padding:4px 8px;border:2px solid #54506d;border-radius:6px;background:#232174;color:#fff}
+.cq-lab-steps>span b{display:grid;place-items:center;width:20px;height:20px;border-radius:4px;background:#0b0a1f;color:#c9ef6a}
+.cq-lab-steps>i{color:#c4d4ec;font-style:normal}
+.cq-lab-tools{display:flex;gap:6px}
+.cq .cq-lab-tool{width:52px;font-size:22px}
+.cq .cq-lab-brew{min-width:132px;min-height:64px;font-size:18px;background:#2f9a4c;box-shadow:inset 0 3px 0 #7bd34b,0 3px 0 var(--cq-out)}
+.cq-lab-sheet{position:absolute;left:8px;right:8px;bottom:0;max-height:62%;display:flex;flex-direction:column;gap:8px;padding:12px;overflow:auto;border:3px solid var(--cq-out);border-radius:8px 8px 0 0;background:#17153bf5;box-shadow:0 -4px 0 var(--cq-out);z-index:5}
+.cq-lab-sheet[hidden]{display:none}
+.cq-lab-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.cq-lab-sheet-head h3{color:#c9ef6a}
+.cq-lab-sheet-recipes{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.cq-lab-sheet-recipes>b{color:#c4d4ec;font-size:12px}
+.cq-lab-sheet-recipes img{width:24px;height:24px;image-rendering:pixelated}
+.cq-lab-sheet .cq-lab-code-input{min-height:120px;width:100%;padding:10px;border:3px solid var(--cq-out);border-radius:6px;background:#0b0a1f;color:#e9e6ff;font:700 14px/1.4 ui-monospace,monospace}
+.cq-camp-potions .cq-camp-lab{margin-top:8px;width:100%}
+.cq-ingredients .cq-ingredient{align-items:center;border:3px solid #2f9a4c;border-radius:6px}.cq-ingredients .cq-ingredient.empty{border-color:#7d8fb8}
 @media (max-width:900px){
   .cq-dock{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
   .cq-runbox{grid-column:1;grid-row:3;width:auto;flex-direction:row}
@@ -240,6 +267,7 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
   .cq-runbox>div{flex:1}
   .cq-scene{min-height:min(56vh,420px)}
   .cq-tools .cq-tool{width:44px}
+  .cq-lab-dock{flex-wrap:wrap}.cq-lab-steps{flex-basis:100%;order:3}
 }
 @media (max-width:620px){
   .cq-program{flex-wrap:wrap}.cq-tools{width:100%;justify-content:flex-end}
