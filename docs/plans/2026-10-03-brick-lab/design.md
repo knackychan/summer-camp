@@ -29,3 +29,6 @@ Assemblies / My Blocks, booklets, curved rails and trains, animals, behaviours, 
 - `06-mini-diorama.md` — D12 (added 2026-10-04 at Papa's request): 64×64 island baseplate seen from far away, so bricks read as mini bricks, not Duplo
 - `07-pan.md` — D13 (added 2026-10-04 at Papa's request): two-finger / right-button pan in Build too, held over the island
 - `08-steady-dock-lofi-light.md` — D14–D15 (added 2026-10-04 at Papa's request): constant-height dock so the view never resizes (the flash), lo-fi tilt-shift lighting
+- `09-parts-library.md` — D16–D17 (added 2026-10-04 at Papa's request): 11 new parts (26 in all), Connectors and Structure categories, rails described as data
+- `10-rail-circuits.md` — D18–D20 (added 2026-10-04 at Papa's request): curved / T / cross rails snap end to end, never overlap, closed loops glow. Supersedes "curved rails" under *Not in this plan* (trains still out)
+- `11-parts-browser.md` — D21–D22 (added 2026-10-04 at Papa's request): tray search (EN + 中文), size filter, favourites, recents, part info card
