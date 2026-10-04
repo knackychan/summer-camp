@@ -5,13 +5,14 @@
   "cases": [
     {
       "mode": "webgl2",
+      "offline": false,
       "games": [
         {
           "id": "solar",
           "kind": "webgl2",
-          "draws": 312,
-          "width": 820,
-          "cssWidth": 820.171875,
+          "draws": 234,
+          "width": 1004,
+          "cssWidth": 1004,
           "antialias": false,
           "glError": 0,
           "contextRestored": true
@@ -19,9 +20,19 @@
         {
           "id": "monster-truck",
           "kind": "webgl2",
-          "draws": 70,
-          "width": 816,
-          "cssWidth": 816.171875,
+          "draws": 93,
+          "width": 1000,
+          "cssWidth": 1000,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        },
+        {
+          "id": "bricklab",
+          "kind": "webgl2",
+          "draws": 56,
+          "width": 862,
+          "cssWidth": 862,
           "antialias": false,
           "glError": 0,
           "contextRestored": true
@@ -33,13 +44,14 @@
     },
     {
       "mode": "webgl1",
+      "offline": false,
       "games": [
         {
           "id": "solar",
           "kind": "webgl",
           "draws": 312,
-          "width": 820,
-          "cssWidth": 820.171875,
+          "width": 1004,
+          "cssWidth": 1004,
           "antialias": false,
           "glError": 0,
           "contextRestored": true
@@ -47,9 +59,19 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 87,
-          "width": 816,
-          "cssWidth": 816.171875,
+          "draws": 133,
+          "width": 1000,
+          "cssWidth": 1000,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        },
+        {
+          "id": "bricklab",
+          "kind": "webgl",
+          "draws": 39,
+          "width": 862,
+          "cssWidth": 862,
           "antialias": false,
           "glError": 0,
           "contextRestored": true
@@ -61,13 +83,14 @@
     },
     {
       "mode": "none",
+      "offline": false,
       "games": [
         {
           "id": "solar",
           "kind": "webgl",
           "draws": 312,
-          "width": 820,
-          "cssWidth": 820.171875,
+          "width": 1004,
+          "cssWidth": 1004,
           "antialias": false,
           "glError": 0,
           "retryRecovered": true
@@ -75,12 +98,61 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 183,
-          "width": 816,
-          "cssWidth": 816.171875,
+          "draws": 91,
+          "width": 1000,
+          "cssWidth": 1000,
           "antialias": false,
           "glError": 0,
           "retryRecovered": true
+        },
+        {
+          "id": "bricklab",
+          "kind": "webgl",
+          "draws": 39,
+          "width": 862,
+          "cssWidth": 862,
+          "antialias": false,
+          "glError": 0,
+          "retryRecovered": true
+        }
+      ],
+      "pageErrors": [],
+      "legacyDownloaded": true,
+      "ok": true
+    },
+    {
+      "mode": "webgl1",
+      "offline": true,
+      "games": [
+        {
+          "id": "solar",
+          "kind": "webgl",
+          "draws": 312,
+          "width": 1004,
+          "cssWidth": 1004,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        },
+        {
+          "id": "monster-truck",
+          "kind": "webgl",
+          "draws": 104,
+          "width": 1000,
+          "cssWidth": 1000,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
+        },
+        {
+          "id": "bricklab",
+          "kind": "webgl",
+          "draws": 52,
+          "width": 862,
+          "cssWidth": 862,
+          "antialias": false,
+          "glError": 0,
+          "contextRestored": true
         }
       ],
       "pageErrors": [],

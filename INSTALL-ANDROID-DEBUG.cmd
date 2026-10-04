@@ -7,8 +7,10 @@ call npm run android:install
 if errorlevel 1 goto :fail
 echo.
 echo Summer Quest debug APK installed successfully.
+pause
 exit /b 0
 :fail
 echo.
 echo Android install failed. Review the messages above.
+pause
 exit /b 1
