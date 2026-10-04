@@ -224,11 +224,46 @@ def run(args):
                 tap('book'); page.wait_for_timeout(150)
                 pages = page.locator('.cq-lab-journal .cq-lab-card:not(.unknown)').count()
                 unknown = page.locator('.cq-lab-journal .cq-lab-card.unknown').count()
-                check(f'{tag}: 6 Journal shows the found pages', lab()['journal'] == 'reactions' and pages == found and pages + unknown == 14 and not lab()['newPage'], (pages, unknown, found))
+                check(f'{tag}: 6 Journal shows the found pages', lab()['journal'] == 'reactions' and pages == found and pages + unknown == 18 and not lab()['newPage'], (pages, unknown, found))
                 page.screenshot(path=str(out / f'harness-journal-{tag}.png'))
                 dock('[data-lab="journal:close"]')
                 check(f'{tag}: 6 Journal closes', lab()['journal'] is None and page.evaluate("document.querySelector('.cq-lab-journal').hidden"))
                 check(f'{tag}: 8 bubble never covers the cauldron or the strip', not bubble_problems, bubble_problems)
+
+                # S. Ingredient states (docs/plans/2026-10-04-lab-states): lift → tool → cauldron, by taps and by drag.
+                clear()
+                tap('jar:redMushroom'); tap('prop:cool')
+                check(f'{tag}: S lift + frost plate → frozen, still in hand', lab()['held'] == 'redMushroom:frozen' and lab()['selection'] == 'jar:redMushroom' and lab()['steps'] == [], lab()['held'])
+                tap('cauldron'); tap('jar:echoCrystal'); tap('cauldron')
+                dock('.cq-lab-brew')
+                check(f'{tag}: S Frozen Mushroom + Echo Crystal → Snowflake Copies', (lab()['lastResult'] or {}).get('ruleId') == 'snowflakeCopies', lab()['lastResult'])
+                now = brew_ids(['jar:redMushroom', 'jar:echoCrystal'])
+                check(f'{tag}: S the fresh pair is still Duplication', (now['lastResult'] or {}).get('ruleId') == 'duplication', now['lastResult'])
+                clear()
+                (x0, y0), (x1, y1) = centre('jar:moonflower'), centre('prop:grind')
+                page.mouse.move(x0, y0); page.mouse.down()
+                page.mouse.move((x0 + x1) / 2, (y0 + y1) / 2, steps=6); page.mouse.move(x1, y1, steps=6); page.mouse.up()
+                page.wait_for_timeout(60)
+                check(f'{tag}: S drag onto the mortar → crushed, still in hand', lab()['held'] == 'moonflower:crushed', lab()['held'])
+                drag('jar:moonflower')
+                dock('.cq-lab-brew')
+                check(f'{tag}: S crushed Moonflower dragged in → Glitter Storm', lab()['mix'] == ['moonflower:crushed'] and (lab()['lastResult'] or {}).get('ruleId') == 'glitterStorm', lab())
+                clear()
+                tap('bag:sunHerb'); tap('prop:grind'); tap('cauldron')
+                for hit_id in ['bag:sunHerb', 'bag:waterCrystal']:
+                    tap(hit_id); tap('cauldron')
+                tap('prop:grind'); tap('prop:stir')
+                healing = state()['profile']['potions']['healing']
+                dock('.cq-lab-brew')
+                check(f'{tag}: S a crushed Sun Herb in Healing → fresh hint, no potion',
+                      (lab()['lastResult'] or {}).get('hint') == 'fresh' and state()['profile']['potions']['healing'] == healing, lab()['lastResult'])
+                tap('book'); page.wait_for_timeout(150)
+                dock('[data-lab="journal:tab:ingredients"]')
+                forms = page.locator('.cq-lab-journal .cq-lab-form').count()
+                check(f'{tag}: S Journal shows the brewed forms', forms == len(state()['profile']['lab']['states']) >= 3, (forms, state()['profile']['lab']['states']))
+                page.screenshot(path=str(out / f'harness-forms-{tag}.png'))
+                dock('[data-lab="journal:close"]')
+                check(f'{tag}: 8 bubble never covers the cauldron or the strip (states)', not bubble_problems, bubble_problems)
 
                 # 7. Back → same room, program unchanged; Camp has the Lab button and no bench.
                 assert page.evaluate('SQPlatform.triggerBack()') is True
