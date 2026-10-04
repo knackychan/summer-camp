@@ -282,7 +282,9 @@ def run(args):
 
                 # Slice 07: the view pans along the ground in Build too, and never leaves the island.
                 act('home-view')
-                page.wait_for_timeout(900)
+                # The Home camera tween can finish late on a slow GPU; a fixed wait read it mid-flight.
+                page.wait_for_function(SNAP + '.target && Math.abs(' + SNAP + '.target.y + 8) < 1e-6 && Math.abs(' + SNAP + '.target.x - 5) < 1e-6')
+                page.wait_for_timeout(300)
                 start = snap()['target']
                 page.mouse.move(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.5)
                 page.mouse.down(button='right')
