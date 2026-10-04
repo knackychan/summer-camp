@@ -23,11 +23,13 @@ const r = (id, kind, group, x, y, w, h, extra = {}) => Object.freeze({ id, kind,
 const LAYOUT = Object.freeze([
   ...SHELF_IDS.map((id, i) => r('jar:' + id, 'jar', 'right', 208 + (i % 4) * 26, i < 4 ? 24 : 62, 25, 28, { ingredient: id })),
   ...BAG_IDS.map((id, i) => r('bag:' + id, 'bag', 'left', 2 + i * 24, 152, 24, 26, { ingredient: id })),
-  r('cauldron', 'cauldron', 'centre', 128, 76, 64, 52),
-  r('prop:heat', 'prop', 'centre', 136, 129, 48, 24, { step: 'heat' }),
-  r('prop:grind', 'prop', 'centre', 100, 152, 26, 26, { step: 'grind' }),
-  r('prop:stir', 'prop', 'centre', 194, 152, 26, 26, { step: 'stir' }),
-  r('prop:cool', 'prop', 'centre', 222, 152, 26, 26, { step: 'cool' }),
+  // `plate`: where the action name sits, from the hit's top-left (lab-feel D3). The tools'
+  // hits reach down over their plates, so tapping the word works too.
+  r('cauldron', 'cauldron', 'centre', 128, 76, 64, 52, { plate: [32, 30] }),
+  r('prop:heat', 'prop', 'centre', 136, 129, 48, 37, { step: 'heat', plate: [24, 31] }),
+  r('prop:grind', 'prop', 'centre', 84, 104, 40, 48, { step: 'grind', plate: [20, 43] }),
+  r('prop:stir', 'prop', 'centre', 196, 104, 40, 48, { step: 'stir', plate: [20, 43] }),
+  r('prop:cool', 'prop', 'centre', 240, 104, 40, 48, { step: 'cool', plate: [20, 43] }),
   r('scroll', 'scroll', 'right', 252, 152, 26, 26),
   r('book', 'book', 'left', 14, 114, 62, 34),
   r('owl', 'owl', 'left', 16, 68, 32, 26)
@@ -427,10 +429,13 @@ function drawBurner(ctx, frame, still) {
       px(ctx, Q.stoneLit, x + 1, 131 + row * 6, 7, 1);
     }
   }
-  // Front dial: the tap target for Heat.
-  px(ctx, Q.outline, 152, 143, 16, 8);
-  px(ctx, Q.woodDark, 153, 144, 14, 6);
-  px(ctx, Q.red, 158, 145, 4, 4); px(ctx, Q.yellow, 159, 145, 2, 1);
+  // Front dial: the tap target for Heat (lab-feel D2: bigger).
+  px(ctx, Q.outline, 148, 141, 24, 12);
+  px(ctx, Q.woodDark, 149, 142, 22, 10);
+  px(ctx, Q.wood, 149, 142, 22, 1);
+  px(ctx, Q.outline, 155, 143, 10, 8);
+  px(ctx, Q.red, 156, 144, 8, 6); px(ctx, Q.lava, 156, 144, 8, 2); px(ctx, Q.yellow, 159, 144, 2, 3);
+  for (const x of [151, 168]) px(ctx, Q.rockLit, x, 146, 1, 2);
 }
 
 function drawCauldron(ctx, options, frame, now, still) {
@@ -482,47 +487,91 @@ function drawCauldron(ctx, options, frame, now, still) {
   }
 }
 
-/* ---------- workbench tools ---------- */
-function drawMortar(ctx) {
-  const h = AT['prop:grind'], cx = h.x + 13;
-  // Pestle leaning in the bowl.
-  for (let i = 0; i < 12; i++) px(ctx, i < 3 ? Q.stoneLit : Q.grey, h.x + 19 - Math.floor(i * 0.6), h.y + 1 + i, 3, 1);
-  ellipse(ctx, Q.outline, cx, h.y + 13, 13, 4);
-  for (let i = 0; i < 11; i++) {
-    const hw = 12 - Math.floor(i * i / 14);
-    px(ctx, Q.outline, cx - hw - 1, h.y + 14 + i, hw * 2 + 2, 1);
-    px(ctx, i > 6 ? Q.stone : Q.grey, cx - hw, h.y + 14 + i, hw * 2, 1);
-    px(ctx, Q.stoneLit, cx - hw + 2, h.y + 14 + i, 1, 1);
+/* ---------- workbench tools (lab-feel D2: drawn at ~1.5×, shaded like the room) ---------- */
+/** A thick pestle from (x0, y0) down to (x1, y1), knob at the top. */
+function drawPestle(ctx, x0, y0, x1, y1) {
+  const n = Math.max(1, Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let i = 0; i <= n; i++) {
+    const x = Math.round(x0 + (x1 - x0) * i / n), y = Math.round(y0 + (y1 - y0) * i / n);
+    px(ctx, Q.outline, x - 1, y, 6, 1);
+    px(ctx, i < 4 ? Q.stoneLit : Q.grey, x, y, 4, 1);
+    px(ctx, Q.stoneLit, x, y, 1, 1);
   }
-  ellipse(ctx, Q.stoneLit, cx, h.y + 13, 12, 3);
-  ellipse(ctx, Q.stoneDark, cx, h.y + 13, 10, 2);
-  px(ctx, Q.green, cx - 6, h.y + 12, 3, 2); px(ctx, Q.greenLit, cx + 2, h.y + 13, 3, 1); px(ctx, Q.red, cx - 1, h.y + 12, 2, 1);
+  ellipse(ctx, Q.outline, x0 + 2, y0, 4, 3);
+  ellipse(ctx, Q.stoneLit, x0 + 2, y0, 3, 2);
+}
+
+function drawMortar(ctx) {
+  const h = AT['prop:grind'], cx = h.x + 20, rim = h.y + 17, depth = 20;
+  ditherShadow(ctx, Q.outline, cx, h.y + 40, 16, 2, 0.6);
+  // The bowl: a half sphere lit from the moon and the lantern.
+  for (let i = 0; i <= depth; i++) {
+    const y = rim + i, hw = Math.round(18 * Math.sqrt(Math.max(0, 1 - (i / (depth + 3)) ** 2)));
+    px(ctx, Q.outline, cx - hw - 1, y, hw * 2 + 2, 1);
+    shadeRow(ctx, y, cx - hw, cx + hw, x => {
+      const nx = (x + 0.5 - cx) / 19, ny = i / (depth + 3) * 0.85, nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+      return ramp(sphereLight(nx, ny, nz) * 1.3 + 0.05, x, y, [Q.stoneDark, Q.stone, Q.grey, Q.stoneLit]);
+    });
+  }
+  px(ctx, Q.outline, cx - 9, rim + depth + 1, 18, 3);
+  px(ctx, Q.stone, cx - 8, rim + depth + 1, 16, 1);
+  // Rim and the herbs inside.
+  ellipse(ctx, Q.outline, cx, rim, 19, 5);
+  ellipse(ctx, Q.stoneLit, cx, rim, 18, 4);
+  ellipse(ctx, Q.stoneDark, cx, rim + 1, 15, 3);
+  px(ctx, Q.green, cx - 9, rim, 4, 2); px(ctx, Q.greenLit, cx + 3, rim + 1, 4, 1); px(ctx, Q.red, cx - 2, rim, 3, 1); px(ctx, Q.greenDark, cx + 8, rim, 2, 1);
+  drawPestle(ctx, h.x + 32, h.y + 1, cx + 4, rim + 1);
 }
 
 function drawSpoon(ctx) {
-  const h = AT['prop:stir'];
-  // A big wooden ladle lying across the bench.
-  for (let i = 0; i < 15; i++) {
-    const x = h.x + 23 - i, y = h.y + 2 + i;
-    px(ctx, Q.outline, x - 1, y - 1, 4, 3);
+  const h = AT['prop:stir'], cx = h.x + 17, top = h.y + 20, bottom = h.y + 38;
+  ditherShadow(ctx, Q.outline, cx, bottom + 2, 14, 2, 0.6);
+  // A clay crock, lit as a cylinder, with a blue band.
+  px(ctx, Q.outline, cx - 12, top, 24, bottom - top + 1);
+  for (let x = cx - 11; x < cx + 11; x++) {
+    const tone = ramp(cylinderLight((x + 0.5 - cx) / 11) * 1.35, x, 0, [Q.warmDark, Q.warm, Q.warmLit]);
+    px(ctx, tone, x, top, 1, bottom - top);
+    px(ctx, tone === Q.warmLit ? Q.oceanLit : tone === Q.warm ? Q.ocean : Q.oceanDark, x, top + 7, 1, 3);
   }
-  for (let i = 0; i < 15; i++) px(ctx, i % 5 ? Q.wood : Q.rockLit, h.x + 23 - i, h.y + 2 + i, 2, 1);
-  ellipse(ctx, Q.outline, h.x + 8, h.y + 20, 8, 5);
-  ellipse(ctx, Q.wood, h.x + 8, h.y + 20, 7, 4);
-  ellipse(ctx, Q.woodDark, h.x + 8, h.y + 21, 5, 2);
-  px(ctx, Q.rockLit, h.x + 4, h.y + 18, 4, 1);
+  ellipse(ctx, Q.outline, cx, top, 12, 3);
+  ellipse(ctx, Q.warmLit, cx, top, 11, 2);
+  ellipse(ctx, Q.warmDark, cx, top + 1, 8, 1);
+  // The big wooden spoon stands in it, handle up and to the right.
+  for (let i = 0; i <= 18; i++) {
+    const x = cx + 1 + Math.round(i * 0.6), y = top - i;
+    px(ctx, Q.outline, x - 1, y, 5, 1);
+    px(ctx, i % 6 ? Q.wood : Q.rockLit, x, y, 3, 1);
+  }
+  const bx = cx + 13, by = top - 23;
+  ellipse(ctx, Q.outline, bx, by, 6, 7);
+  ellipse(ctx, Q.wood, bx, by, 5, 6);
+  ellipse(ctx, Q.woodDark, bx, by + 1, 3, 4);
+  px(ctx, Q.rockLit, bx - 3, by - 4, 1, 4);
 }
 
 function drawFrost(ctx, frame, still) {
-  const h = AT['prop:cool'];
-  px(ctx, Q.outline, h.x + 1, h.y + 13, 24, 10);
-  px(ctx, Q.oceanLit, h.x + 2, h.y + 14, 22, 8);
-  px(ctx, Q.ice, h.x + 2, h.y + 14, 22, 3);
-  px(ctx, Q.white, h.x + 12, h.y + 15, 1, 5); px(ctx, Q.white, h.x + 10, h.y + 17, 5, 1);
-  px(ctx, Q.white, h.x + 11, h.y + 16, 1, 1); px(ctx, Q.white, h.x + 13, h.y + 18, 1, 1);
+  const h = AT['prop:cool'], x0 = h.x + 2, x1 = h.x + 38, top = h.y + 19, edge = h.y + 27, base = h.y + 38;
+  ditherShadow(ctx, Q.outline, h.x + 20, base + 2, 20, 2, 0.6);
+  // An ice slab seen from above the front: a receding top face over a front face.
+  const back = Math.round((edge - top) * 0.6);
+  px(ctx, Q.outline, x0 + back - 1, top - 1, x1 - x0 - 2 * back + 2, 1);
+  for (let y = top; y < edge; y++) {
+    const inset = Math.round((edge - y) * 0.6);
+    px(ctx, Q.outline, x0 + inset - 1, y, x1 - x0 - 2 * inset + 2, 1);
+    shadeRow(ctx, y, x0 + inset, x1 - inset, x => ramp(0.45 + (y - top) / (edge - top) * 0.5, x, y, [Q.ice, Q.white]));
+  }
+  px(ctx, Q.outline, x0 - 1, edge, x1 - x0 + 2, base - edge + 1);
+  for (let y = edge; y < base; y++) shadeRow(ctx, y, x0, x1, x => ramp(0.95 - (y - edge) / (base - edge) * 0.75, x, y, [Q.ocean, Q.oceanLit, Q.ice]));
+  px(ctx, Q.white, x0, edge, x1 - x0, 1);
+  // A snowflake etched on top, icicles under the front edge.
+  const sx = h.x + 20, sy = top + 4;
+  px(ctx, Q.oceanLit, sx - 5, sy, 11, 1); px(ctx, Q.oceanLit, sx, sy - 3, 1, 7);
+  for (const [dx, dy] of [[-3, -2], [3, 2], [3, -2], [-3, 2]]) px(ctx, Q.oceanLit, sx + dx, sy + dy, 1, 1);
+  for (const [dx, len] of [[5, 2], [12, 3], [22, 2], [30, 3]]) px(ctx, Q.ice, x0 + dx, base, 1, len);
+  // Cold mist drifts up off it.
   const lift = still ? 0 : frame % 3;
-  px(ctx, Q.snowShade, h.x + 6, h.y + 10 - lift, 1, 1); px(ctx, Q.snowShade, h.x + 18, h.y + 8 - lift, 1, 1);
-  if (!lift) px(ctx, Q.white, h.x + 12, h.y + 6, 1, 1);
+  px(ctx, Q.snowShade, h.x + 8, top - 4 - lift, 1, 1); px(ctx, Q.snowShade, h.x + 31, top - 6 - lift, 1, 1);
+  if (!lift) px(ctx, Q.white, h.x + 20, top - 9, 1, 1);
 }
 
 function drawScroll(ctx) {
@@ -552,9 +601,10 @@ function drawToolUse(ctx, tool, clock, reduced) {
   if (t > 600) return;
   const h = AT['prop:' + tool.step], k = 1 - t / 600, beat = reduced ? 0 : Math.floor(t / 100) % 2;
   if (tool.step === 'grind') {
-    // The pestle pounds twice and a puff of powder jumps out.
-    px(ctx, Q.stoneLit, h.x + 12, h.y + 2 + beat * 3, 3, 9);
-    glow(ctx, 0.7 * k, () => { for (const [dx, dy] of [[4, 8], [20, 9], [8, 5], [17, 4]]) px(ctx, Q.sandLit, h.x + dx, h.y + dy - beat); });
+    // The pestle pounds twice and a puff of powder jumps out of the bowl.
+    const cx = h.x + 20, rim = h.y + 17;
+    drawPestle(ctx, cx + 1, rim - 16 + beat * 4, cx + 1, rim - 2 + beat * 4);
+    glow(ctx, 0.7 * k, () => { for (const [dx, dy] of [[-12, -3], [12, -4], [-6, -7], [8, -8], [0, -10]]) px(ctx, Q.sandLit, cx + dx, rim + dy - beat, 2, 2); });
   } else if (tool.step === 'heat') {
     // Taller flame tongues licking up round the cauldron, the burner's own shape.
     glow(ctx, k, () => {
@@ -566,9 +616,10 @@ function drawToolUse(ctx, tool, clock, reduced) {
       }
     });
   } else if (tool.step === 'cool') {
-    glow(ctx, 0.8 * k, () => { for (const [dx, dy] of [[4, 6], [12, 2], [20, 5], [8, 0], [16, -2]]) px(ctx, Q.white, h.x + dx, h.y + dy - Math.round((1 - k) * 6), 2, 2); });
+    glow(ctx, 0.8 * k, () => { for (const [dx, dy] of [[6, 14], [14, 9], [22, 12], [30, 8], [18, 4]]) px(ctx, Q.white, h.x + dx, h.y + dy - Math.round((1 - k) * 8), 2, 2); });
   } else if (tool.step === 'stir') {
-    glow(ctx, 0.8 * k, () => px(ctx, Q.rockLit, h.x + 8 + beat * 2, h.y + 4, 2, 12));
+    // The spoon swirls in its crock: a bright arc either side of the handle.
+    glow(ctx, 0.8 * k, () => { px(ctx, Q.rockLit, h.x + 21 + beat * 3, h.y + 6, 2, 12); px(ctx, Q.white, h.x + 12 - beat * 3, h.y + 16, 2, 3); });
   }
 }
 
@@ -733,7 +784,8 @@ export function drawLab(canvas, options = {}) {
 
   const k = fit.device / fit.dpr;
   const hits = layout.hits.map(hit => ({
-    ...hit, x: (fit.ox + hit.x * fit.device) / fit.dpr, y: (fit.oy + hit.y * fit.device) / fit.dpr, w: hit.w * k, h: hit.h * k
+    ...hit, x: (fit.ox + hit.x * fit.device) / fit.dpr, y: (fit.oy + hit.y * fit.device) / fit.dpr, w: hit.w * k, h: hit.h * k,
+    ...(hit.plate ? { plate: [(fit.ox + (hit.x + hit.plate[0]) * fit.device) / fit.dpr, (fit.oy + (hit.y + hit.plate[1]) * fit.device) / fit.dpr] } : {})
   }));
   return { hits, fit };
 }

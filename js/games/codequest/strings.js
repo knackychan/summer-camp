@@ -134,6 +134,7 @@ export const LAB = Object.freeze({
   openFromCamp: ['Brew in the Lab →', '到實驗室釀造 →'],
   welcome: ['Welcome to the Lab! Put something in the cauldron and see what happens.', '歡迎來到實驗室！放點東西到鍋子裡，看看會發生什麼事。'],
   picked: ['Now tap the cauldron to drop it in.', '現在點一下鍋子，把它放進去。'],
+  dropIn: ['Drop in', '放進去'],
   full: ['The cauldron is full — try Brew!', '鍋子滿了——試試釀造！'],
   empty: ['Put something in the cauldron first!', '先放點東西到鍋子裡！'],
   orderHint: ['So close — the order matters…', '好接近了——順序很重要……'],

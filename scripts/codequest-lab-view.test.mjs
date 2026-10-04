@@ -51,16 +51,21 @@ test('fitLab: whole device pixels, the room widens to fill the box (capped), cen
   }
 });
 
-test('labLayout: the core is the old layout; groups pin left, centre and right at every room size', () => {
+test('labLayout: the core keeps the Phase 1 layout apart from the bigger tools; groups pin left, centre and right at every room size', () => {
   const core = labLayout(LAB_W, LAB_H).hits;
   const old = {
-    cauldron: [128, 76, 64, 52], 'prop:heat': [136, 129, 48, 24], 'prop:grind': [100, 152, 26, 26], 'prop:stir': [194, 152, 26, 26],
-    'prop:cool': [222, 152, 26, 26], scroll: [252, 152, 26, 26], book: [14, 114, 62, 34], owl: [16, 68, 32, 26],
+    cauldron: [128, 76, 64, 52], scroll: [252, 152, 26, 26], book: [14, 114, 62, 34], owl: [16, 68, 32, 26],
     'jar:redMushroom': [208, 24, 25, 28], 'bag:sunHerb': [2, 152, 24, 26]
   };
   for (const [id, rect] of Object.entries(old)) {
     const hit = core.find(h => h.id === id);
     assert.deepEqual([hit.x, hit.y, hit.w, hit.h], rect, id);
+  }
+  // lab-feel D2: each tool's tap target is at least 1.5× its Phase 1 area (26×26, the burner 48×24).
+  for (const [id, area] of [['prop:grind', 676], ['prop:stir', 676], ['prop:cool', 676], ['prop:heat', 1152]]) {
+    const hit = core.find(h => h.id === id);
+    assert.ok(hit.w * hit.h >= area * 1.5, `${id} ${hit.w}×${hit.h}`);
+    assert.ok(hit.plate && hit.plate[1] < hit.h && hit.plate[0] > 0 && hit.plate[0] < hit.w, `${id} plate inside its hit`);
   }
   for (const [W, H] of [[320, 180], [381, 189], [400, 200], [423, 210], [455, 186], [480, 220], [480, 240]]) {
     const { hits } = labLayout(W, H);
@@ -273,4 +278,19 @@ test('parallax leans the back layer only: hits never move, reduced motion and pa
   assert.deepEqual(leaned.bad, []);
   assert.equal(fills({ reduced: true, parallax: { x: 4, y: 2 } }).log, fills({ reduced: true }).log, 'reduced motion ignores the lean');
   assert.equal(fills({ paused: true, parallax: { x: -4, y: 0 } }).log, fills({ paused: true }).log, 'paused ignores the lean');
+});
+
+/* ---------- lab-feel slice 03: action plates ---------- */
+import { PLATES } from '../js/games/codequest/lab/lab-screen.js';
+
+test('every tool and the cauldron has a plate in EN + 中文, anchored inside its tap target at every stage', () => {
+  assert.deepEqual(PLATES.map(([id]) => id).sort(), ['cauldron', 'prop:cool', 'prop:grind', 'prop:heat', 'prop:stir']);
+  for (const [, icon, [en, zh]] of PLATES) assert.ok(icon && en.trim() && /[\u4e00-\u9fff]/.test(zh), en);
+  for (const [w, h, dpr] of STAGES) {
+    const { hits } = draw(w, h, dpr).out;
+    for (const [id] of PLATES) {
+      const hit = hits.find(x => x.id === id), [px0, py0] = hit.plate;
+      assert.ok(px0 > hit.x && px0 < hit.x + hit.w && py0 > hit.y && py0 < hit.y + hit.h, `${id} plate at ${w}x${h}@${dpr}`);
+    }
+  }
 });

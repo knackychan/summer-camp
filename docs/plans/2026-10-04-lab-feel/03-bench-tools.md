@@ -38,3 +38,12 @@
   - plates never cover a jar, the bag or the cauldron
   - tapping a plate does the tool's action
 - `node scripts/check.mjs` green (bilingual completeness).
+
+## Implementation notes (2026-10-04)
+
+- **Layout (core px, centre group):** mortar `prop:grind` 84,104 40×48; spoon crock `prop:stir` 196,104 40×48; ice slab `prop:cool` 240,104 40×48 (art in the top 39 px, plate band below); burner `prop:heat` 136,129 48×37 (flames, dial, plate). Touching but never overlapping the bag (y 152) and the scroll (y 152) at every room size (matrix test).
+- **Art:** mortar = half-sphere stone bowl lit per pixel + herbs + pestle; spoon = clay crock lit as a cylinder with a blue band and a big wooden spoon standing in it; frost = an ice slab drawn as a box (receding top face, front face, etched snowflake, icicles, mist). Each casts a dithered contact shadow. Burner dial 24×12. Tool-use animations moved to the new shapes (pestle pounds into the bowl, mist off the slab, swirl at the crock).
+- **Plates:** `PLATES` in `lab-screen.js` (exported for the test): 🔨 Grind 研磨, 🔥 Heat 加熱, 🥄 Stir 攪拌, ❄️ Cool 冷卻 from `ALCHEMY_LABELS`, and ⬇ Drop in 放進去 (`LAB.dropIn`, gold) on the cauldron's belly only while something is lifted — under the cauldron is the burner, so its plate sits on the pot itself. Each layout hit carries `plate: [dx, dy]`; `drawLab` returns it in CSS px. Plates are re-placed only when a position or the lift changes; `render()` rebuilds them on a language switch. `snapshot().lab.plates` lists the visible ones.
+- **Tests:** the core-layout test now checks the Phase 1 rects that did not move plus each tool ≥ 1.5× its Phase 1 area with its plate inside; a new test checks all 5 plates ship EN + 中文 and sit inside their hit at every stage. 18 view tests; lab harness green at 4 sizes.
+- **Screenshots:** `test-results/codequest-lab/feel-tools-{open,lifted,drag}-1280x800.png`, `feel-tools-zh-*-1024x600.png`.
+- `sw.js` cache `summer-quest-v161-lab-feel-03`.

@@ -18,6 +18,11 @@ import { drawLab, hitAt, PARALLAX_MAX } from './lab-view.js';
 import { drawLabSprite, labSpriteSize } from './lab-art.js';
 
 const RULE = Object.fromEntries(LAB_RULES.map(rule => [rule.id, rule]));
+// Action plates under the tools (lab-feel D3): the step names the dock's trail uses too.
+export const PLATES = Object.freeze([
+  ['prop:grind', '🔨', ALCHEMY_LABELS.grind], ['prop:heat', '🔥', ALCHEMY_LABELS.heat], ['prop:stir', '🥄', ALCHEMY_LABELS.stir],
+  ['prop:cool', '❄️', ALCHEMY_LABELS.cool], ['cauldron', '⬇', LAB.dropIn]
+]);
 
 /* ---------- pure experiment state ----------
    `mix` and `held` use the compact key of resolve.js: the bare id for a fresh ingredient,
@@ -162,7 +167,7 @@ export function mountLab(root, api) {
   const el = document.createElement('section');
   el.className = 'cq-lab';
   el.innerHTML = '<div class="cq-lab-scene"><canvas></canvas><div class="cq-bubble cq-lab-bubble" hidden></div>' +
-    '<span class="cq-lab-tag" hidden></span><div class="cq-lab-counts" aria-hidden="true"></div></div>' +
+    '<span class="cq-lab-tag" hidden></span><div class="cq-lab-counts" aria-hidden="true"></div><div class="cq-lab-plates" aria-hidden="true"></div></div>' +
     '<div class="cq-lab-dock"><div class="cq-lab-slots" role="group"></div><div class="cq-lab-steps" role="list"></div>' +
     '<div class="cq-lab-tools"></div><div class="cq-lab-brewbox"></div></div>' +
     '<div class="cq-lab-sheet" role="dialog" hidden></div><div class="cq-lab-sheet cq-lab-journal" role="region" hidden></div><p class="cq-sr" role="status" aria-live="polite"></p>';
@@ -227,6 +232,27 @@ export function mountLab(root, api) {
     placeBubble(time, box);
     placeTag();
     placeCounts();
+    placePlates();
+  }
+  /* ----- action plates (lab-feel D3): each tool's name under it, one language at a time ----- */
+  function renderPlates() {
+    el.querySelector('.cq-lab-plates').innerHTML = PLATES.map(([hitId, icon, label]) =>
+      '<span class="cq-lab-plate" data-plate="' + hitId + '"' + (hitId === 'cauldron' ? ' hidden' : '') + '><i>' + icon + '</i>' + pairHTML(label) + '</span>').join('');
+    platesAt = '';
+  }
+  let platesAt = '';
+  function placePlates() {
+    if (!view) return;
+    const held = !!state.held, key = held + '|' + view.hits.filter(hit => hit.plate).map(hit => hit.plate.map(Math.round).join(',')).join(';');
+    if (key === platesAt) return;
+    platesAt = key;
+    for (const plate of el.querySelectorAll('.cq-lab-plate')) {
+      const hit = view.hits.find(h => h.id === plate.dataset.plate);
+      const show = !!(hit && hit.plate && (hit.kind === 'prop' || held));
+      if (plate.hidden === show) plate.hidden = !show;
+      if (!show) continue;
+      plate.style.transform = 'translate(' + Math.round(hit.plate[0]) + 'px,' + Math.round(hit.plate[1]) + 'px) translate(-50%,-50%)';
+    }
   }
   function placeBubble(time, box) {
     const visible = !sheetOpen() && time - lineAt < LINE_MS;
@@ -492,10 +518,10 @@ export function mountLab(root, api) {
   let last = 0;
   scheduler.frame(time => { if (time - last > 48) { last = time; draw(time); } });
 
-  say(state.line); renderDock(); renderSheet(); renderJournal();
+  say(state.line); renderPlates(); renderDock(); renderSheet(); renderJournal();
 
   return {
-    render() { say(state.line); el.querySelector('.cq-lab-tag').innerHTML = pairHTML(LAB.newPage); renderDock(); renderSheet(); renderJournal(); draw(); },
+    render() { say(state.line); el.querySelector('.cq-lab-tag').innerHTML = pairHTML(LAB.newPage); renderPlates(); renderDock(); renderSheet(); renderJournal(); draw(); },
     /** Closes the Journal or the script sheet if one is open; returns true when it did (Back closes a sheet first). */
     closeSheet() {
       if (journal.open) { closeJournal(); return true; }
@@ -513,7 +539,11 @@ export function mountLab(root, api) {
       return {
         open: true, mix: [...state.mix], steps: [...state.steps], selection: state.selection, held: state.held, effect: state.effect,
         lastResult: state.lastResult, newPage: state.newPage, line: state.line, script: script.open, journal: journal.open ? journal.tab : null,
-        hits: view ? view.hits.map(hit => ({ id: hit.id, kind: hit.kind, x: hit.x, y: hit.y, w: hit.w, h: hit.h })) : []
+        hits: view ? view.hits.map(hit => ({ id: hit.id, kind: hit.kind, x: hit.x, y: hit.y, w: hit.w, h: hit.h })) : [],
+        plates: [...el.querySelectorAll('.cq-lab-plate')].filter(plate => !plate.hidden).map(plate => {
+          const r = plate.getBoundingClientRect(), s = scene.getBoundingClientRect();
+          return { id: plate.dataset.plate, text: plate.textContent, x: r.x - s.x, y: r.y - s.y, w: r.width, h: r.height };
+        })
       };
     }
   };
