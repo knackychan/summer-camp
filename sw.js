@@ -199,6 +199,8 @@ const APP_SHELL = [
   "./js/games/codequest/lab/rules.js",
   "./js/games/codequest/lab/resolve.js",
   "./js/games/codequest/lab/journal.js",
+  "./js/games/codequest/bubble.js",
+  "./js/games/codequest/strip-edit.js",
   "./js/games/codequest/preview.js",
   "./js/games/codequest/room-view.js",
   "./js/games/codequest/sprites-world.js",

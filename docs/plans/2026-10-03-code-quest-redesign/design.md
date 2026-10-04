@@ -96,3 +96,5 @@ Model rules, combat, alchemy, loot, progression, save shape, curriculum order, n
 | 06 | Code / Map / Camp sheets + UI harness | 03, 04 |
 
 05 can run in parallel with 03–04.
+
+**Approved 2026-10-04:** UX polish slices 07 bubble placement, 08 card menu, 09 zoom + pan. See `design-ux-polish.md`; 09 amends D2.

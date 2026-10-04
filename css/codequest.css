@@ -19,9 +19,12 @@
 .cq [hidden]{display:none!important}
 
 /* ---------- stage ---------- */
-.cq-play{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+.cq-play{position:relative;flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
 .cq-scene{position:relative;flex:1;min-height:300px;border:3px solid var(--cq-out);border-radius:6px;background:var(--cq-deep);overflow:hidden;box-shadow:inset 0 0 0 2px #23223b}
-.cq-scene canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;background:var(--cq-deep)}
+.cq-scene canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;background:var(--cq-deep);touch-action:none}
+.cq-scene canvas.zoomed{cursor:grab}
+.cq-zoom{position:absolute;left:10px;bottom:10px;display:flex;gap:6px;z-index:2}
+.cq .cq-zoom-btn{width:48px;height:48px;padding:0;background:var(--cq-panel);font:900 22px/1 'Nunito',system-ui,sans-serif}
 .cq-hud{position:absolute;left:10px;right:10px;top:10px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;pointer-events:none}
 .cq-hud>*{pointer-events:auto}
 .cq-hud-left{position:relative;max-width:min(520px,62%)}
@@ -48,6 +51,9 @@
 .cq-bubble{position:absolute;left:0;top:0;max-width:300px;padding:8px 12px;border:3px solid var(--cq-out);border-radius:8px;background:#fff8e0;color:#2a1a10;font:800 15px/1.3 'Nunito',system-ui,sans-serif;box-shadow:0 3px 0 var(--cq-out);pointer-events:none;z-index:3}
 .cq-bubble::after{content:"";position:absolute;left:calc(var(--tail,30px) - 8px);bottom:-11px;border:8px solid transparent;border-top:9px solid var(--cq-out);border-bottom:0}
 .cq-bubble.below::after{bottom:auto;top:-11px;border-top:0;border-bottom:9px solid var(--cq-out)}
+.cq-bubble.side-right::after{left:-11px;top:calc(var(--tail,20px) - 8px);bottom:auto;border:8px solid transparent;border-right:9px solid var(--cq-out);border-left:0}
+.cq-bubble.side-left::after{left:auto;right:-11px;top:calc(var(--tail,20px) - 8px);bottom:auto;border:8px solid transparent;border-left:9px solid var(--cq-out);border-right:0}
+.cq-bubble.caption::after{display:none}
 
 /* ---------- dock: program strip + command library + run ---------- */
 .cq-dock{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;gap:8px 10px;padding:8px;border:3px solid var(--cq-out);border-radius:6px;background:linear-gradient(#2b2a45,var(--cq-panel));box-shadow:inset 0 2px 0 var(--cq-edge)}
@@ -82,6 +88,18 @@
 .cq-mini-bracket{display:flex;align-items:center;gap:4px;padding:3px 5px;border:2px solid var(--c);border-radius:6px;background:color-mix(in srgb,var(--c) 30%,#14132a)}
 .cq-mini-bracket i{font:900 11px ui-monospace,monospace;font-style:normal;color:#fff}
 .cq-mini-bracket.executing{outline:3px solid #fff}
+/* Floating card menu (UX polish slice 08): sits above the tapped card(s), tail pointing down. */
+.cq-card-menu{position:absolute;left:0;top:0;z-index:7;display:flex;flex-direction:column;gap:6px;max-width:min(640px,calc(100% - 8px));padding:6px;border:3px solid var(--cq-out);border-radius:8px;background:linear-gradient(#34335a,var(--cq-panel));box-shadow:inset 0 2px 0 var(--cq-edge),0 4px 0 var(--cq-out),0 8px 18px #0b0a1f99}
+.cq-card-menu::after{content:"";position:absolute;left:calc(var(--tail,40px) - 9px);bottom:-12px;border:9px solid transparent;border-top:10px solid var(--cq-out);border-bottom:0}
+.cq-menu-row{display:flex;gap:6px;align-items:stretch}
+.cq-menu-choices{flex-wrap:wrap;padding-top:6px;border-top:2px solid var(--cq-out)}
+.cq .cq-menu-btn{min-width:48px;min-height:48px;padding:0 8px;gap:6px;background:var(--cq-panel2);font-size:13px}
+.cq .cq-menu-btn[class*="cat-"]{background:var(--c);box-shadow:inset 0 3px 0 var(--c-hi),0 3px 0 var(--cq-out)}
+.cq .cq-menu-btn.wide{padding:0 12px}
+.cq .cq-menu-btn.on{border-color:var(--cq-gold);box-shadow:0 0 0 3px var(--cq-gold),0 3px 0 var(--cq-out)}
+.cq .cq-menu-btn .cq-ico{width:22px;height:22px}
+.cq .cq-card.just-added,.cq-bracket.just-added>.cq-bracket-head{animation:cq-added .6s ease-out 1}
+@keyframes cq-added{0%{box-shadow:inset 0 3px 0 var(--c-hi),0 0 0 6px #fff,0 3px 0 var(--cq-out);transform:translateY(-6px)}100%{box-shadow:inset 0 3px 0 var(--c-hi),0 0 0 0 #fff0,0 3px 0 var(--cq-out);transform:none}}
 .cq-slot{display:grid;place-items:center;flex:none;width:70px;height:78px;border:2px dashed var(--cq-edge);border-radius:6px;color:var(--cq-lit);font:900 26px ui-monospace,monospace}
 .cq-slot.more{width:auto;min-width:54px;padding:0 8px;font-size:15px}
 .cq-library{grid-column:1;grid-row:2;min-height:70px;padding:2px 2px 6px}
@@ -231,4 +249,5 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
   .cq button:active{transform:none}
   .cq .cq-card.executing,.cq-bracket.executing>.cq-bracket-head{animation:none}
   .cq .cq-card.selected,.cq-bracket.selected .cq-bracket-head{transform:none}
+  .cq .cq-card.just-added,.cq-bracket.just-added>.cq-bracket-head{animation:none;outline:3px solid #fff;outline-offset:2px}
 }

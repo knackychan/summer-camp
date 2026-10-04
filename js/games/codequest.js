@@ -8,7 +8,9 @@ import { normalizeProfile, recordLevelComplete, recordEndlessClear, modeFor, equ
 import { createDungeonRun, normalizeDungeonRun, roomMeta, roomGraph, nextRooms, enterDungeonRoom, resolveRunChoice, completeCombatRoom, failDungeonRun, expeditionLevel, dungeonRunSummary, hazardInfo, sigilsRequired, saveRunLoadout, activateRunLoadout } from './codequest/run.js';
 import { spriteURL } from './codequest/pixel-art.js';
 import { previewPath } from './codequest/preview.js';
-import { drawRoom } from './codequest/room-view.js';
+import { drawRoom, MAX_ZOOM, ROOM_VIEW } from './codequest/room-view.js';
+import { placeBubbleRect } from './codequest/bubble.js';
+import { IF_TESTS, repeatCounts, ifTests, insertAfter, canUnwrap, unwrap, setRepeatCount, nextRepeatCount, setCondition, extendSelection } from './codequest/strip-edit.js';
 import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, ALCHEMY_LABELS, MESSAGES, SHORT, pairHTML, setLanguage, language, t } from './codequest/strings.js';
 
 let S = null;
@@ -247,7 +249,7 @@ function miniCards(nodes) {
   }).join('');
 }
 function stripCard(node, index, selected) {
-  const cls = 'cat-' + nodeCategory(node) + (selected ? ' selected' : '') + (running(node) ? ' executing' : '');
+  const cls = 'cat-' + nodeCategory(node) + (selected ? ' selected' : '') + (running(node) ? ' executing' : '') + (node.uid && node.uid === S.justAdded ? ' just-added' : '');
   const head = '<i class="cq-num">' + (index + 1) + '</i>' + nodeIcon(node) + '<b>' + label(nodeShort(node)) + '</b>';
   const attrs = 'aria-pressed="' + selected + '" aria-label="' + esc((index + 1) + '. ' + t(nodeTitle(node))) + '"';
   if (node.type === 'repeat' || node.type === 'forOf' || node.type === 'if') {
@@ -270,13 +272,92 @@ function stripTabsHTML() {
   return button(rune ? 'strip:main' : 'strip:rune', glyph(rune ? 'call' : 'play') + '<b>' + label(rune ? SHORT.call : ['Main', '主程式']) + '</b>',
     'class="cq-strip-toggle' + (rune ? ' rune' : '') + '" aria-pressed="' + rune + '" aria-label="' + esc(t(rune ? ['Editing Rune. Tap for Main.', '正在編輯符文，點一下回主程式。'] : ['Editing Main. Tap for Rune.', '正在編輯主程式，點一下編輯符文。'])) + '"');
 }
+/* Card tools live on the card menu (UX polish U3); the strip end keeps only program-level tools. */
 function toolsHTML() {
-  const none = !currentSelection().size, one = currentSelection().size === 1;
-  return button('nudge:-1', glyph('left'), 'class="cq-tool" aria-label="' + esc(t(['Move card left', '卡片左移'])) + '" ' + (one ? '' : 'disabled')) +
-    button('delete', glyph('remove'), 'class="cq-tool" aria-label="' + esc(t(['Remove card', '移除卡片'])) + '" ' + (none ? 'disabled' : '')) +
-    button('nudge:1', glyph('right'), 'class="cq-tool" aria-label="' + esc(t(['Move card right', '卡片右移'])) + '" ' + (one ? '' : 'disabled')) +
-    button('undo', glyph('undo'), 'class="cq-tool" aria-label="' + esc(t(UI.undo)) + '" ' + (S.undo.length ? '' : 'disabled')) +
+  return button('undo', glyph('undo'), 'class="cq-tool" aria-label="' + esc(t(UI.undo)) + '" ' + (S.undo.length ? '' : 'disabled')) +
     button('clear', glyph('trash'), 'class="cq-tool" aria-label="' + esc(t(UI.clear)) + '" ' + (currentProgram().length ? '' : 'disabled'));
+}
+/* Floating card menu (UX polish slice 08): opens over the tapped card(s). One card:
+   move, remove, and Wrap (action cards) or count / test / Unwrap (brackets). A run of
+   cards: Wrap and remove. Wrap choices are only the room's own logic cards. */
+function menuVisible() {
+  return !!(S.menuOpen && currentSelection().size && !S.dialog && !S.paused && !S.autoRun && S.model.phase === 'programming');
+}
+function menuButton(actionId, inner, aria, extra = '') {
+  return button(actionId, inner, 'class="cq-menu-btn' + (extra ? ' ' + extra : '') + '" aria-label="' + esc(t(aria)) + '"' + (/\boff\b/.test(extra) ? ' disabled' : ''));
+}
+function wrapWords(id) {
+  const n = Number(id.replace('repeat', '')) || 2;
+  return id.startsWith('repeat') ? ['×' + n, '×' + n] : IF_TESTS[id] && CONDITIONS[IF_TESTS[id]] ? CONDITIONS[IF_TESTS[id]] : LOGIC[id];
+}
+function cardMenuHTML() {
+  const list = currentProgram(), picked = [...currentSelection()].sort((a, b) => a - b);
+  const one = picked.length === 1 ? picked[0] : -1, node = one >= 0 ? list[one] : null;
+  const logicIds = S.level.available.logic, counts = repeatCounts(logicIds), tests = ifTests(logicIds);
+  const wrapIds = logicIds.filter(id => id !== 'callRune');
+  const bracket = node && (node.type === 'repeat' || node.type === 'if' || node.type === 'forOf');
+  const row = [];
+  if (node) row.push(menuButton('nudge:-1', glyph('left'), UI.moveLeft, one === 0 ? 'off' : ''));
+  if (node && node.type === 'repeat' && typeof node.times === 'number' && counts.length > 1) row.push(menuButton('menu:count', glyph('repeat') + '<b>×' + node.times + '</b>', UI.repeatCount, 'wide'));
+  if (node && canUnwrap(node)) row.push(menuButton('menu:unwrap', glyph('data') + '<b>' + label(UI.unwrap) + '</b>', UI.unwrap, 'wide'));
+  if (!bracket && wrapIds.length) row.push(menuButton('menu:wrap', glyph('repeat') + '<b>' + label(UI.wrap) + '</b>', UI.wrap, 'wide' + (S.menuWrap ? ' on' : '')));
+  row.push(menuButton('delete', glyph('remove'), UI.removeCard));
+  if (node) row.push(menuButton('nudge:1', glyph('right'), UI.moveRight, one === list.length - 1 ? 'off' : ''));
+  let second = '';
+  if (node && node.type === 'if' && tests.length > 1) {
+    second = tests.map(([id, test]) => button('menu:test:' + id, glyph('if') + '<b>' + label(CONDITIONS[test] || LOGIC[id]) + '</b>',
+      'class="cq-menu-btn wide cat-logic' + (node.test === test ? ' on' : '') + '" aria-pressed="' + (node.test === test) + '" aria-label="' + esc(t(LOGIC[id] || CONDITIONS[test])) + '"')).join('');
+  } else if (!bracket && S.menuWrap && wrapIds.length) {
+    second = wrapIds.map(id => button('logic:' + id, logicIcon(id) + '<b>' + label(wrapWords(id)) + '</b>',
+      'class="cq-menu-btn wide cat-' + logicCategory(id) + '" aria-label="' + esc(t(LOGIC[id])) + '"')).join('');
+  }
+  return '<div class="cq-menu-row">' + row.join('') + '</div>' + (second ? '<div class="cq-menu-row cq-menu-choices">' + second + '</div>' : '');
+}
+function cardElement(index) {
+  const head = S.root.querySelector('.cq-strip [data-action="select:' + index + '"]');
+  return head && head.classList.contains('cq-bracket-head') ? head.parentElement : head;
+}
+function renderMenu() {
+  const menu = S.root.querySelector('.cq-card-menu');
+  if (!menu) return;
+  const show = menuVisible();
+  menu.hidden = !show;
+  if (!show) return;
+  menu.innerHTML = cardMenuHTML();
+  placeMenu();
+}
+/** Sit the menu above the selected cards, clamped to the play area; it follows the strip's scroll. */
+function placeMenu() {
+  const menu = S.root.querySelector('.cq-card-menu'), play = S.root.querySelector('.cq-play');
+  if (!menu || menu.hidden || !play) return;
+  const rects = [...currentSelection()].map(cardElement).filter(Boolean).map(el => el.getBoundingClientRect());
+  if (!rects.length) { menu.hidden = true; return; }
+  const box = play.getBoundingClientRect();
+  const left = Math.min(...rects.map(r => r.left)), right = Math.max(...rects.map(r => r.right)), top = Math.min(...rects.map(r => r.top));
+  const w = menu.offsetWidth, h = menu.offsetHeight, cx = (left + right) / 2 - box.left;
+  const x = Math.max(4, Math.min(box.width - w - 4, cx - w / 2)), y = Math.max(4, top - box.top - h - 12);
+  menu.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+  menu.style.setProperty('--tail', Math.round(Math.max(18, Math.min(w - 18, cx - x))) + 'px');
+}
+function closeMenu() {
+  if (!S || !S.menuOpen) return;
+  S.menuOpen = false; S.menuWrap = false;
+  const menu = S.root.querySelector('.cq-card-menu'); if (menu) menu.hidden = true;
+}
+function menuAction(actionId) {
+  const list = currentProgram(), picked = [...currentSelection()], index = picked.length === 1 ? picked[0] : -1;
+  const logicIds = S.level.available.logic, counts = repeatCounts(logicIds);
+  if (actionId === 'menu:wrap') { S.menuWrap = !S.menuWrap; renderMenu(); return; }
+  let next = null;
+  if (actionId === 'menu:unwrap') next = unwrap(list, index);
+  else if (actionId === 'menu:count' && list[index]) next = setRepeatCount(list, index, nextRepeatCount(list[index].times, counts), counts);
+  else if (actionId.startsWith('menu:test:')) next = setCondition(list, index, IF_TESTS[actionId.slice(10)], ifTests(logicIds).map(pair => pair[1]));
+  if (!next) return;
+  pushUndo(); setCurrentProgram(next);
+  // Count / test edits keep the bracket selected so the kid can keep tapping; Unwrap closes the menu.
+  if (actionId === 'menu:unwrap') { closeMenu(); announce(['Cards unwrapped.', '卡片已拆開。']); }
+  else { currentSelection().add(index); announce(['Card changed.', '卡片已更改。']); }
+  render();
 }
 function libraryHTML() {
   const level = S.level;
@@ -447,6 +528,8 @@ function render() {
   html('.cq-strip-tabs-slot', stripTabsHTML());
   html('.cq-strip', stripHTML());
   html('.cq-tools', toolsHTML());
+  renderMenu();
+  renderZoom();
   html('.cq-library', libraryHTML());
   root.querySelector('.cq-strip').setAttribute('aria-label', t(S.editor === 'rune' ? UI.rune : UI.program));
   html('.cq-runbox', button('run', glyph('play') + '<b>' + label(['Run', '執行']) + '</b>', 'class="cq-run"') +
@@ -477,35 +560,117 @@ function draw(time = performance.now()) {
   if (S.heroStateUntil && time > S.heroStateUntil) S.heroState = 'idle';
   const box = S.canvas.getBoundingClientRect();
   if (!box.width || !box.height) return;
-  const view = drawRoom(S.canvas, S.model.snapshot(), { time: time / 1000, now: time, cssWidth: box.width, cssHeight: box.height, dpr: window.devicePixelRatio || 1, reducedMotion: S.reducedMotion, kidColor: kidColor(), heroState: S.heroState, heroMotion: S.heroMotion, enemyMotions: S.enemyMotions, fx: S.fx, paused: S.paused, dim: !!S.dialog && !S.paused, preview: S.preview });
-  if (view) S.anchors = view.anchors;
+  const snapshot = S.model.snapshot();
+  followHero(snapshot);
+  const view = drawRoom(S.canvas, snapshot, { time: time / 1000, now: time, cssWidth: box.width, cssHeight: box.height, dpr: window.devicePixelRatio || 1, reducedMotion: S.reducedMotion, kidColor: kidColor(), heroState: S.heroState, heroMotion: S.heroMotion, enemyMotions: S.enemyMotions, fx: S.fx, paused: S.paused, dim: !!S.dialog && !S.paused, preview: S.preview, camera: S.camera });
+  if (view) {
+    S.view = view;
+    // Keep the clamped centre, so a pan past the edge doesn't build up off-screen.
+    if (S.camera.zoom) { S.camera.cx = view.camera.cx; S.camera.cy = view.camera.cy; }
+  }
   placeBubble(time, box);
 }
+/* Zoom + pan (UX polish slice 09, U6): the whole-room fit is Home; ＋ adds whole device
+   pixels (up to +2), a one-finger drag pans while zoomed, and a run follows the hero.
+   The camera never rotates. */
+const HOME = () => ({ zoom: 0, cx: NaN, cy: NaN });
+function setZoom(zoom) {
+  const next = Math.max(0, Math.min(MAX_ZOOM, zoom));
+  if (next === S.camera.zoom) return;
+  S.camera = next ? { ...S.camera, zoom: next } : HOME();
+  renderZoom(); draw();
+}
+function followHero(snapshot) {
+  if (!S.camera.zoom || S.model.phase !== 'executing' || !snapshot.hero) return;
+  const { TILE, MARGIN, TOP } = ROOM_VIEW;
+  const tx = MARGIN + snapshot.hero.x * TILE + TILE / 2, ty = MARGIN + TOP + snapshot.hero.y * TILE + TILE / 2;
+  const k = S.reducedMotion || !Number.isFinite(S.camera.cx) ? 1 : .25;
+  S.camera.cx = Number.isFinite(S.camera.cx) ? S.camera.cx + (tx - S.camera.cx) * k : tx;
+  S.camera.cy = Number.isFinite(S.camera.cy) ? S.camera.cy + (ty - S.camera.cy) * k : ty;
+}
+/* ＋ stays first so it never moves; − and ⌂ appear to its right only while zoomed, so the
+   button under a finger never changes into a different one. */
+function zoomHTML() {
+  const z = S.camera.zoom;
+  return button('zoom:in', '<b>＋</b>', 'class="cq-zoom-btn" aria-label="' + esc(t(UI.zoomIn)) + '" ' + (z >= MAX_ZOOM ? 'disabled' : '')) +
+    (z ? button('zoom:out', '<b>−</b>', 'class="cq-zoom-btn" aria-label="' + esc(t(UI.zoomOut)) + '"') + button('zoom:home', '<b>⌂</b>', 'class="cq-zoom-btn" aria-label="' + esc(t(UI.zoomHome)) + '"') : '');
+}
+function renderZoom() {
+  const node = S.root.querySelector('.cq-zoom');
+  if (node) node.innerHTML = zoomHTML();
+  S.canvas.classList.toggle('zoomed', !!S.camera.zoom);
+}
+/* Scene gestures: pinch steps the zoom, the wheel steps it, a one-finger drag pans while zoomed. */
+function sceneGestures(canvas) {
+  const points = new Map();
+  let pinch = null, lastWheel = 0;
+  const spread = () => { const [a, b] = [...points.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  canvas.addEventListener('wheel', e => {
+    if (!S) return;
+    e.preventDefault();
+    if (e.timeStamp - lastWheel < 220 || !e.deltaY) return;
+    lastWheel = e.timeStamp; setZoom(S.camera.zoom + (e.deltaY < 0 ? 1 : -1));
+  }, { passive: false });
+  canvas.addEventListener('pointerdown', e => {
+    if (!S) return;
+    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    pinch = points.size === 2 ? { d: spread() } : null;
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!S || !points.has(e.pointerId)) return;
+    const prev = points.get(e.pointerId);
+    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && points.size === 2) {
+      const r = spread() / pinch.d;
+      if (r > 1.4 || r < 1 / 1.4) { setZoom(S.camera.zoom + (r > 1 ? 1 : -1)); pinch.d = spread(); }
+    } else if (points.size === 1 && S.camera.zoom && S.view) {
+      const k = (window.devicePixelRatio || 1) / S.view.device;
+      S.camera.cx -= (e.clientX - prev.x) * k; S.camera.cy -= (e.clientY - prev.y) * k;
+      draw();
+    }
+  });
+  const end = e => { points.delete(e.pointerId); if (points.size < 2) pinch = null; };
+  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+}
+
 /* The speech bubble replaces the old notice bar: it pops over the hero for a few
-   seconds when something happens, then steps aside (coach, not cop). */
+   seconds when something happens, then steps aside (coach, not cop). bubble.js picks
+   the side that keeps clear of the HUD and the hero and covers the least of the puzzle. */
 const BUBBLE_MS = 3200;
+const BUBBLE_SIDE_CLASSES = ['below', 'side-left', 'side-right', 'caption'];
+function sceneRect(el, box) {
+  if (!el || el.hidden) return null;
+  const r = el.getBoundingClientRect();
+  return r.width && r.height ? { x: r.left - box.left, y: r.top - box.top, w: r.width, h: r.height } : null;
+}
 function placeBubble(time, box) {
   const bubble = S.bubble;
   if (!bubble) return;
   const visible = !!S.noticeAt && time - S.noticeAt < BUBBLE_MS && !S.dialog && !S.paused;
   if (bubble.hidden === visible) bubble.hidden = !visible;
-  if (!visible || !S.anchors) return;
-  const head = S.anchors.get('hero-head') || S.anchors.get('hero');
-  if (!head) return;
-  const w = bubble.offsetWidth, h = bubble.offsetHeight;
-  const x = Math.max(8, Math.min(box.width - w - 8, head.x - w / 2));
-  // Stay clear of the goal pill / hearts row along the top of the scene.
-  const hud = S.root.querySelector('.cq-hud'), top = hud ? hud.offsetTop + hud.offsetHeight + 6 : 8;
-  const above = head.y - h - 12, y = above >= top ? above : Math.min(box.height - h - 8, head.y + 56);
-  bubble.classList.toggle('below', above < top);
-  bubble.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
-  bubble.style.setProperty('--tail', Math.round(Math.max(14, Math.min(w - 14, head.x - x))) + 'px');
+  if (!visible || !S.view) return;
+  const root = S.root;
+  const hard = ['.cq-goal', '.cq-vitals', '.cq-goal-pop', '.cq-debug-toggle', '.cq-debug', '.cq-zoom'].map(sel => sceneRect(root.querySelector(sel), box)).filter(Boolean);
+  const spot = placeBubbleRect({
+    box: { w: box.width, h: box.height }, size: { w: bubble.offsetWidth, h: bubble.offsetHeight },
+    hero: S.view.heroBox ? { box: S.view.heroBox } : null, hard, soft: S.view.focus || [], previous: S.bubbleSide
+  });
+  S.bubbleSide = spot.side;
+  for (const cls of BUBBLE_SIDE_CLASSES) bubble.classList.toggle(cls, spot.side === cls.replace('side-', ''));
+  bubble.dataset.side = spot.side;
+  bubble.style.transform = 'translate(' + spot.x + 'px,' + spot.y + 'px)';
+  bubble.style.setProperty('--tail', spot.tail + 'px');
 }
 
 function addAction(op) {
   if (!S.level.available.actions.includes(op)) return;
-  pushUndo(); setCurrentProgram(currentProgram().concat(action(op, uid('a'))));
-  currentSelection().clear(); announce(['Card added.', '已加入卡片。']); render();
+  const picked = [...currentSelection()], node = action(op, uid('a'));
+  pushUndo(); setCurrentProgram(insertAfter(currentProgram(), picked.length === 1 ? picked[0] : -1, node));
+  // The pulse plays once: the next render no longer marks the card.
+  closeMenu(); S.justAdded = node.uid; announce(['Card added.', '已加入卡片。']); render(); S.justAdded = null;
+  const added = S.root.querySelector('.cq-strip .just-added');
+  if (added && added.scrollIntoView) added.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
 function selectedRange() {
@@ -536,44 +701,16 @@ function logic(id) {
     pushUndo(); setCurrentProgram(currentProgram().concat(call('rune', uid('c')))); notify(['Rune call added.', '已加入符文呼叫。']); render(); return;
   }
   if (id.startsWith('repeat')) wrap('repeat', Number(id.replace('repeat', '')) || 2);
-  else if (id === 'ifEnemy') wrap('if', 'enemyAhead');
-  else if (id === 'ifArmored') wrap('if', 'enemyArmoredAhead');
-  else if (id === 'ifWeak') wrap('if', 'enemyWeakAhead');
-  else if (id === 'ifDanger') wrap('if', 'dangerIncoming');
-  else if (id === 'ifPoisoned') wrap('if', 'heroPoisoned');
-  else if (id === 'ifChest') wrap('if', 'chestAhead');
-  else if (id === 'ifDoor') wrap('if', 'doorAhead');
-  else if (id === 'ifTrap') wrap('if', 'trapAhead');
-  else if (id === 'ifKey') wrap('if', 'hasKey');
-  else if (id === 'ifHpLow') wrap('if', 'hpLow');
-  else if (id === 'ifMultiple') wrap('if', 'multipleEnemies');
-  else if (id === 'ifTargetRange') wrap('if', 'targetInRange');
-  else if (id === 'ifTargetWeak') wrap('if', 'targetWeak');
-  else if (id === 'ifElementWeak') wrap('if', 'targetElementWeak');
-  else if (id === 'ifLever') wrap('if', 'leverAhead');
-  else if (id === 'ifBreakable') wrap('if', 'breakableAhead');
-  else if (id === 'ifNpc') wrap('if', 'npcAhead');
-  else if (id === 'ifRuneGate') wrap('if', 'runeGateAhead');
-  else if (id === 'ifPushable') wrap('if', 'pushableAhead');
-  else if (id === 'ifCycleTrap') wrap('if', 'cycleTrapAhead');
-  else if (id === 'ifCycleTrapActive') wrap('if', 'cycleTrapActiveAhead');
-  else if (id === 'ifPlatform') wrap('if', 'platformAhead');
-  else if (id === 'ifOnPlatform') wrap('if', 'onPlatform');
-  else if (id === 'ifQuestToken') wrap('if', 'questTokenAhead');
-  else if (id === 'ifCompanionNear') wrap('if', 'companionNear');
-  else if (id === 'ifCarryable') wrap('if', 'carryableAhead');
-  else if (id === 'ifHeroCarrying') wrap('if', 'heroCarrying');
-  else if (id === 'ifHeroOnPlate') wrap('if', 'heroOnPlate');
-  else if (id === 'ifCompanionCarryable') wrap('if', 'companionCarryableAhead');
-  else if (id === 'ifCompanionCarrying') wrap('if', 'companionCarrying');
-  else if (id === 'ifCompanionOnPlate') wrap('if', 'companionOnPlate');
+  else if (IF_TESTS[id]) wrap('if', IF_TESTS[id]);
 }
 
 function selectIndex(index) {
   const list = currentProgram(), selection = currentSelection();
   if (index < 0 || index >= list.length) return;
-  if (selection.has(index)) selection.delete(index); else selection.add(index);
-  notify(MESSAGES.selected); render();
+  const next = extendSelection(selection, index);
+  selection.clear(); for (const i of next) selection.add(i);
+  S.menuOpen = selection.size > 0; S.menuWrap = false;
+  announce(MESSAGES.selected); render();
 }
 function removeIndex(index) {
   const list = currentProgram(); if (index < 0 || index >= list.length) return;
@@ -866,13 +1003,15 @@ function startLevel(level, options = {}) {
   S.level = level; S.model = createModel(level);
   if (!preserveProgram) { S.program = []; S.runeProgram = []; S.extraFunctions = {}; S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
   else { S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
-  S.editor = 'main'; S.goalOpen = false; S.debugOpen = false;
+  S.editor = 'main'; S.goalOpen = false; S.debugOpen = false; S.menuOpen = false; S.menuWrap = false; S.camera = HOME();
   S.representation = level.codingView === 'hybrid' && allowedRepresentations().includes('hybrid') ? 'hybrid' : defaultRepresentation();
   S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false;
   const activeBehaviors=behaviorAllowedForLevel(level)&&['hero','companion'].some(owner=>{const saved=behaviorFor(S.profile,owner);return saved.enabled&&saved.source.trim();});
   S.notice = activeBehaviors ? ['Hero/Companion persistent behaviors are armed for this advanced room.', '此進階房間已載入英雄／夥伴持續行為。'] : level.expedition ? ['Your Rune library travels with this expedition.', '你的符文函式會跟著這趟遠征。'] : MESSAGES.intro;
   syncCodeFromAst();
   if (S.dialog) closeDialog(false);
+  // The Map / win dialog paused the scheduler; a fresh room must run (Run's auto-steps and the draw loop live there).
+  if (!S.paused) S.scheduler.resume();
   if (level.codingView === 'code' && codeUnlocked() && !level.expedition) S.notice = CODE_ROOM;
   renderBar(); render(); notify(S.notice);
 }
@@ -1117,15 +1256,19 @@ function perform(actionId) {
   }
   if (actionId.startsWith('add:')) { addAction(actionId.slice(4)); return; }
   if (actionId.startsWith('logic:')) { logic(actionId.slice(6)); return; }
+  if (actionId.startsWith('menu:')) { menuAction(actionId); return; }
+  if (actionId === 'zoom:in') { setZoom(S.camera.zoom + 1); return; }
+  if (actionId === 'zoom:out') { setZoom(S.camera.zoom - 1); return; }
+  if (actionId === 'zoom:home') { setZoom(0); return; }
   if (actionId.startsWith('select:')) { selectIndex(Number(actionId.slice(7))); return; }
   if (actionId.startsWith('remove:')) { removeIndex(Number(actionId.slice(7))); return; }
   if (actionId.startsWith('up:')) { moveIndex(Number(actionId.slice(3)), -1); return; }
   if (actionId.startsWith('down:')) { moveIndex(Number(actionId.slice(5)), 1); return; }
   if (actionId === 'undo') { if (restoreUndo()) render(); return; }
   if (actionId === 'clear') { if (currentProgram().length) { pushUndo(); setCurrentProgram([]); currentSelection().clear(); render(); } return; }
-  if (actionId === 'run') { executeOne(true); return; }
-  if (actionId === 'step') { executeOne(false); return; }
-  if (actionId === 'reset') { S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']); render(); return; }
+  if (actionId === 'run') { closeMenu(); executeOne(true); return; }
+  if (actionId === 'step') { closeMenu(); executeOne(false); return; }
+  if (actionId === 'reset') { closeMenu(); S.camera = HOME(); S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']); render(); return; }
   if (actionId === 'map') { openDialog('map'); return; }
   if (actionId === 'camp') { openDialog('camp'); return; }
   if (actionId === 'pause') { if (S.paused) resume(); else pause(); return; }
@@ -1219,10 +1362,10 @@ function init(ctx) {
     '<main class="cq-play"><section class="cq-scene"><canvas width="480" height="270" role="img" aria-label="Pixel dungeon room 像素地下城房間"></canvas>' +
     '<div class="cq-hud"><div class="cq-hud-left"><button type="button" class="cq-goal" data-action="goal" aria-expanded="false"></button><div class="cq-goal-pop" hidden></div></div><div class="cq-vitals"></div></div>' +
     '<button type="button" class="cq-debug-toggle" data-action="debug" aria-label="Event debugger 事件除錯器" hidden>' + glyph('bug') + '</button><aside class="cq-debug" hidden></aside>' +
-    '<div class="cq-bubble" hidden></div></section>' +
+    '<div class="cq-zoom" role="group"></div><div class="cq-bubble" hidden></div></section>' +
     '<section class="cq-dock"><div class="cq-program"><div class="cq-strip-tabs-slot"></div><div class="cq-strip cq-scroll" role="group"></div><div class="cq-tools"></div></div>' +
     '<div class="cq-library cq-scroll" role="group" aria-label="Command cards 指令卡"></div>' +
-    '<div class="cq-runbox"></div></section></main>' +
+    '<div class="cq-runbox"></div></section><div class="cq-card-menu" role="toolbar" hidden></div></main>' +
     '<p class="cq-notice cq-sr" role="status" aria-live="polite"></p><dialog class="cq-dialog"></dialog>';
 
   const saved = ctx.settings.codequest && ctx.settings.codequest.profiles && ctx.settings.codequest.profiles[ctx.kid];
@@ -1233,7 +1376,7 @@ function init(ctx) {
   const initialRepresentation = initial.codingView === 'hybrid' && (initialMode === 'coder' || initialMode === 'architect') ? 'hybrid' : initialMode === 'explorer' ? 'picture' : initialMode === 'builder' ? 'blocks' : 'hybrid';
   S = {
     root, ctx, profile, level: initial, model: null, program: [], runeProgram: [], extraFunctions: {}, selectedMain: new Set(), selectedRune: new Set(),
-    editor: 'main', representation: initialRepresentation, goalOpen: false, debugOpen: false, noticeAt: 0, preview: null, anchors: null,
+    editor: 'main', representation: initialRepresentation, goalOpen: false, debugOpen: false, noticeAt: 0, preview: null, view: null, bubbleSide: null, menuOpen: false, menuWrap: false, justAdded: null, camera: HOME(),
     codeDraft: '', codeDirty: false, codeError: null,
     undo: [], serial: 0, scheduler: createScheduler(), paused: false, dialog: null, autoRun: false,
     canvas: root.querySelector('canvas'), bubble: root.querySelector('.cq-bubble'), best: Number(ctx.best) || 0, notice: MESSAGES.intro, heroState: 'idle', heroStateUntil: 0, heroMotion: null, enemyMotions: {}, fx: null, activeUid: null,
@@ -1253,6 +1396,7 @@ function init(ctx) {
   });
 
   root.addEventListener('pointerdown', e => {
+    if (S && S.menuOpen && !e.target.closest('.cq-card-menu, .cq-strip')) closeMenu();
     const ingredient = e.target.closest('[data-drag-ingredient]');
     if (ingredient) { startIngredientDrag(e, ingredient); return; }
     const target = e.target.closest('button[data-action]');
@@ -1264,6 +1408,9 @@ function init(ctx) {
     const target = e.target.closest('button[data-action]');
     if (target && !target.disabled && (e.detail === 0 || target.closest('.cq-scroll'))) perform(target.dataset.action);
   });
+  sceneGestures(S.canvas);
+  root.querySelector('.cq-zoom').setAttribute('aria-label', 'Zoom 縮放');
+  root.querySelector('.cq-strip').addEventListener('scroll', () => { if (S) placeMenu(); }, { passive: true });
   root.querySelector('.cq-dialog').addEventListener('cancel', e => { e.preventDefault(); if (S.dialog === 'win') return; if (S.paused) resume(); else closeDialog(); });
   window.addEventListener('pointermove', dragMove, true); window.addEventListener('pointerup', dragEnd, true); window.addEventListener('pointercancel', dragEnd, true);
   document.addEventListener('keydown', keydown, true); document.addEventListener('visibilitychange', visibility);
@@ -1292,5 +1439,5 @@ export default {
   id: 'codequest', version: '0.14.0', keyboard: false, bestKey: 'codequest',
   meta: { icon: '🏰', title: 'Code Quest', tz: '程式冒險', blurb: 'Program the hero · 編程闖關' },
   settings, init, stop,
-  snapshot() { return S ? { level: S.level.id, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog, lang: language(), goalOpen: !!S.goalOpen, preview: S.preview, notice: S.notice } : null; }
+  snapshot() { return S ? { level: S.level.id, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog, lang: language(), goalOpen: !!S.goalOpen, preview: S.preview, notice: S.notice, bubbleSide: S.bubbleSide, heroBox: S.view ? S.view.heroBox : null, menuOpen: menuVisible(), selection: [...currentSelection()].sort((a, b) => a - b), camera: { zoom: S.camera.zoom, cx: S.camera.cx, cy: S.camera.cy } } : null; }
 };

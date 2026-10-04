@@ -982,3 +982,43 @@ for (const level of LEVELS) {
   assert.ok(walkableRows >= 3, level.id + ' room needs depth: ≥ 3 walkable rows');
 }
 console.log('Code Quest redesign: 72 authored rooms fit 9×7 with depth.');
+
+// ---- UX polish slice 08: card-menu strip edits ----
+import { IF_TESTS, repeatCounts, ifTests, insertAfter, canUnwrap, unwrap, setRepeatCount, nextRepeatCount, setCondition, extendSelection } from '../js/games/codequest/strip-edit.js';
+{
+  const a = A('move', 'a-1'), b = A('turnLeft', 'a-2'), c = A('attack', 'a-3');
+  const loop = R(3, [a, b], 'r-1'), test = IF('enemyAhead', [c], [], 'i-1'), both = IF('enemyAhead', [a], [b], 'i-2');
+  const list = Object.freeze([loop, test, A('move', 'a-4')]);
+  // Insert after the selected card, else append.
+  assert.deepEqual(insertAfter(list, 0, c).map(n => n.uid), ['r-1', 'a-3', 'i-1', 'a-4']);
+  assert.deepEqual(insertAfter(list, -1, c).map(n => n.uid), ['r-1', 'i-1', 'a-4', 'a-3']);
+  // Unwrap keeps the body cards and their UIDs; an IF with an else branch refuses.
+  assert.deepEqual(unwrap(list, 0).map(n => n.uid), ['a-1', 'a-2', 'i-1', 'a-4']);
+  assert.deepEqual(unwrap(list, 1).map(n => n.uid), ['r-1', 'a-3', 'a-4']);
+  assert.equal(canUnwrap(both), false); assert.equal(unwrap([both], 0), null);
+  assert.equal(unwrap(list, 2), null, 'an action card has nothing to unwrap');
+  // Repeat counts come from the room's cards only.
+  const counts = repeatCounts(['repeat2', 'ifEnemy', 'repeat5', 'repeat3', 'callRune']);
+  assert.deepEqual(counts, [2, 3, 5]);
+  assert.deepEqual([nextRepeatCount(3, counts), nextRepeatCount(5, counts), nextRepeatCount(4, counts)], [5, 2, 2]);
+  const five = setRepeatCount(list, 0, 5, counts);
+  assert.equal(five[0].times, 5); assert.equal(five[0].uid, 'r-1'); assert.deepEqual(five[0].body.map(n => n.uid), ['a-1', 'a-2']);
+  assert.equal(setRepeatCount(list, 0, 4, counts), null, 'a count the room does not offer is refused');
+  assert.equal(setRepeatCount(list, 1, 2, counts), null, 'only Repeat brackets have a count');
+  // IF tests swap among the room's tests, keeping both branches.
+  const tests = ifTests(['repeat2', 'ifEnemy', 'ifChest', 'ifNope']);
+  assert.deepEqual(tests, [['ifEnemy', 'enemyAhead'], ['ifChest', 'chestAhead']]);
+  const chest = setCondition(list, 1, 'chestAhead', tests.map(p => p[1]));
+  assert.equal(chest[1].test, 'chestAhead'); assert.equal(chest[1].uid, 'i-1'); assert.deepEqual(chest[1].then.map(n => n.uid), ['a-3']);
+  assert.equal(setCondition(list, 1, 'hasKey', tests.map(p => p[1])), null);
+  // Inputs are never mutated.
+  assert.deepEqual(list.map(n => n.uid), ['r-1', 'i-1', 'a-4']); assert.equal(list[0].times, 3); assert.equal(list[1].test, 'enemyAhead');
+  // Every library IF card maps to a condition the parser knows.
+  for (const [id, cond] of Object.entries(IF_TESTS)) assert.equal(IF(cond, [], []).test, cond, id);
+  // Selection: neighbours extend, ends shrink, elsewhere restarts.
+  const sel = (set, i) => [...extendSelection(new Set(set), i)].sort((x, y) => x - y);
+  assert.deepEqual(sel([], 2), [2]); assert.deepEqual(sel([2], 3), [2, 3]); assert.deepEqual(sel([2, 3], 1), [1, 2, 3]);
+  assert.deepEqual(sel([1, 2, 3], 3), [1, 2]); assert.deepEqual(sel([1, 2, 3], 2), [2]); assert.deepEqual(sel([2], 2), []);
+  assert.deepEqual(sel([2, 3], 6), [6]);
+}
+console.log('Code Quest UX polish: card-menu strip edits verified.');

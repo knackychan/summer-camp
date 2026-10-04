@@ -201,3 +201,91 @@ for (const m of roomCases) {
 }
 drawRoom(new RoomCanvas(), signal.snapshot(), { time: 2, now: 2000, cssWidth: 640, cssHeight: 360, dpr: 1, reducedMotion: true, paused: true });
 console.log('Code Quest redesign room view: fit + projection verified.');
+
+// ---- UX polish slice 07: speech bubble placement ----
+import { placeBubbleRect } from '../js/games/codequest/bubble.js';
+{
+  const box = { w: 1000, h: 400 }, size = { w: 220, h: 60 };
+  const hud = [{ x: 10, y: 10, w: 400, h: 44 }, { x: 860, y: 10, w: 130, h: 40 }];
+  const inside = r => r.x >= 8 && r.y >= 8 && r.x + size.w <= box.w - 8 && r.y + size.h <= box.h - 8;
+  const hits = (r, o) => Math.min(r.x + size.w, o.x + o.w) > Math.max(r.x, o.x) && Math.min(r.y + size.h, o.y + o.h) > Math.max(r.y, o.y);
+  // Room for it above: above wins.
+  const mid = { box: { x: 480, y: 200, w: 40, h: 60 } };
+  assert.equal(placeBubbleRect({ box, size, hero: mid, hard: hud }).side, 'above');
+  // Hero on the top row, under the goal pill: never above into the HUD.
+  const top = { box: { x: 100, y: 60, w: 40, h: 60 } };
+  const t = placeBubbleRect({ box, size, hero: top, hard: hud });
+  assert.notEqual(t.side, 'above');
+  assert.ok(inside(t) && !hud.concat([top.box]).some(o => hits(t, o)), 'top-row bubble clear of HUD and hero');
+  // The tile ahead is soft: above is covered by it, so another clear side wins.
+  const ahead = { x: 380, y: 120, w: 240, h: 80 };
+  assert.notEqual(placeBubbleRect({ box, size, hero: mid, hard: hud, soft: [ahead] }).side, 'above');
+  // Corner with the debug panel open: every pick stays clear of every hard rect.
+  const debug = [{ x: 540, y: 60, w: 450, h: 280 }, { x: 930, y: 340, w: 56, h: 52 }];
+  const corner = { box: { x: 900, y: 300, w: 40, h: 60 } };
+  const c = placeBubbleRect({ box, size, hero: corner, hard: hud.concat(debug) });
+  assert.ok(inside(c) && !hud.concat(debug, [corner.box]).some(o => hits(c, o)), 'corner bubble clear: ' + c.side);
+  // Nothing fits: caption on the bottom edge, inside the scene.
+  const tiny = { w: 260, h: 120 };
+  const cap = placeBubbleRect({ box: tiny, size, hero: { box: { x: 110, y: 30, w: 40, h: 60 } } });
+  assert.equal(cap.side, 'caption');
+  assert.ok(cap.x >= 8 && cap.y >= 8 && cap.y + size.h <= tiny.h - 8 + 1);
+  // Sticky: a still-valid previous side survives a one-tile move.
+  const moved = { box: { x: 528, y: 200, w: 40, h: 60 } };
+  assert.equal(placeBubbleRect({ box, size, hero: moved, hard: hud, previous: 'right' }).side, 'right');
+  // Missing hero: caption, never a throw.
+  assert.equal(placeBubbleRect({ box, size, hero: null }).side, 'caption');
+  // The renderer hands over the hero box and the focus tiles in CSS px.
+  const q = new CodeQuestModel(LEVELS.find(l => l.id === 'q01'));
+  const out = drawRoom(new RoomCanvas(), q.snapshot(), { time: 1, now: 1000, cssWidth: 900, cssHeight: 420, dpr: 2, preview: [{ x: 1, y: 1, dir: 'E' }] });
+  assert.ok(out.heroBox && out.heroBox.w > 0 && out.heroBox.h > out.heroBox.w, 'hero box is an upright sprite box');
+  const head = out.anchors.get('hero-head');
+  assert.ok(Math.abs(out.heroBox.y - head.y) < 1e-6, 'hero box starts at the head anchor');
+  assert.ok(out.focus.length >= 2, 'tile ahead + exit (+ preview) are focus rects');
+  assert.ok(out.focus.every(r => r.w > 0 && r.h > 0));
+}
+console.log('Code Quest UX polish: bubble placement verified.');
+
+// ---- UX polish slice 09: zoom in, pan, x-ray silhouettes ----
+{
+  const sizes = [[1240, 330], [1240, 520], [900, 420]];
+  for (const level of LEVELS) for (const [w, h] of sizes) for (const dpr of [1, 2]) {
+    const plain = fitRoom(new CodeQuestModel(level).snapshot(), w, h, dpr);
+    const home = fitRoom(new CodeQuestModel(level).snapshot(), w, h, dpr, { zoom: 0, cx: 3, cy: 900 });
+    for (const k of ['device', 'ox', 'oy', 'canvasW', 'canvasH']) assert.equal(home[k], plain[k], level.id + ' zoom 0 must equal the whole-room fit (' + k + ')');
+  }
+  const room = new CodeQuestModel(LEVELS.find(l => l.id === 'q01')).snapshot();
+  const base = fitRoom(room, 1240, 330, 1);
+  for (const zoom of [1, 2]) {
+    const z = fitRoom(room, 1240, 330, 1, { zoom, cx: base.bufW / 2, cy: base.bufH / 2 });
+    assert.equal(z.device, base.device + zoom, 'zoom ' + zoom + ' adds whole device pixels');
+    // Pan far past every edge: the buffer still covers the canvas on any axis where it is bigger.
+    for (const [cx, cy] of [[-999, -999], [999, 999], [-999, 999]]) {
+      const p = fitRoom(room, 1240, 330, 1, { zoom, cx, cy });
+      const left = p.ox - 4 * p.device, top = p.oy - (4 + 16) * p.device;
+      if (p.bufH * p.device > p.canvasH) assert.ok(top <= 0 && top + p.bufH * p.device >= p.canvasH, 'vertical pan clamps (zoom ' + zoom + ')');
+      if (p.bufW * p.device > p.canvasW) assert.ok(left <= 0 && left + p.bufW * p.device >= p.canvasW, 'horizontal pan clamps (zoom ' + zoom + ')');
+    }
+  }
+  assert.equal(fitRoom(room, 1240, 330, 1, { zoom: 9 }).zoom, 2, 'zoom is capped at +2');
+  assert.equal(fitRoom(room, 1240, 330, 1, { zoom: -3 }).zoom, 0, 'no zooming out past the whole room');
+  // X-ray: a key directly north of an interior wall gets its covered outline redrawn.
+  let spot = null, xroom = null;
+  for (const level of LEVELS) {
+    const snap = new CodeQuestModel(level).snapshot(), walls = new Set(snap.walls);
+    for (let y = 1; y < snap.height - 2 && !spot; y++) for (let x = 1; x < snap.width - 1 && !spot; x++) {
+      if (!walls.has(x + ',' + y) && walls.has(x + ',' + (y + 1)) && !walls.has(x + ',' + (y + 2)) && !(snap.hero.x === x && snap.hero.y === y)) { spot = { x, y }; xroom = snap; }
+    }
+    if (spot) break;
+  }
+  assert.ok(spot, 'some authored room has a floor tile north of an interior wall');
+  class XrayContext extends RoomContext { constructor(){ super(); this.xray = 0; } fillRect(){ super.fillRect(); if (this.globalAlpha === .6 && this.fillStyle === CQ_HEX[Q.sandLit]) this.xray++; } }
+  const xc = new RoomCanvas(); xc.ctx = new XrayContext();
+  drawRoom(xc, { ...xroom, keys: [{ id: 'k-x', x: spot.x, y: spot.y, collected: false }] }, { time: 0, now: 0, cssWidth: 900, cssHeight: 420, dpr: 1, reducedMotion: true });
+  const without = new RoomCanvas(); without.ctx = new XrayContext();
+  drawRoom(without, xroom, { time: 0, now: 0, cssWidth: 900, cssHeight: 420, dpr: 1, reducedMotion: true });
+  assert.ok(xc.ctx.xray - without.ctx.xray > 4, 'covered key outline drawn over the wall (' + (xc.ctx.xray - without.ctx.xray) + ' px)');
+  const zoomed = drawRoom(new RoomCanvas(), room, { time: 0, now: 0, cssWidth: 900, cssHeight: 420, dpr: 1, camera: { zoom: 1, cx: 0, cy: 0 } });
+  assert.equal(zoomed.camera.zoom, 1); assert.ok(zoomed.anchors.has('hero'));
+}
+console.log('Code Quest UX polish: zoom, pan clamp and x-ray verified.');

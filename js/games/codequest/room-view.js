@@ -4,7 +4,7 @@
    room is always on screen at a whole-number device-pixel scale. Game rules never
    depend on anything here. */
 import { CQ_HEX, Q } from './palette.js';
-import { drawSprite, spriteSize } from './pixel-art.js';
+import { drawSprite, spriteSize, spriteBitmap } from './pixel-art.js';
 import { nearestIndex } from '../../world/planet-palette.js';
 
 export const TILE = 16;        // logical px per tile
@@ -19,16 +19,31 @@ const clamp01 = v => Math.max(0, Math.min(1, v));
 const ease = t => 1 - Math.pow(1 - clamp01(t), 3);
 function hash(x, y) { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return (h ^ (h >>> 16)) >>> 0; }
 
-/** Whole-number device-pixel fit of a room into a CSS box. */
-export function fitRoom(room, cssWidth, cssHeight, dpr = 1) {
+export const MAX_ZOOM = 2;
+
+/* One axis of the camera: centred when the buffer fits, otherwise the view centre `c`
+   (logical buffer px) is clamped so the room buffer always covers that side of the canvas. */
+function axis(canvasPx, bufPx, device, c) {
+  const size = bufPx * device;
+  if (size <= canvasPx || !Number.isFinite(c)) return { start: Math.floor((canvasPx - size) / 2), c: bufPx / 2 };
+  const start = Math.max(canvasPx - size, Math.min(0, Math.round(canvasPx / 2 - c * device)));
+  return { start, c: (canvasPx / 2 - start) / device };
+}
+
+/** Whole-number device-pixel fit of a room into a CSS box. `camera.zoom` (0–2) adds whole
+    device pixels on top of the whole-room fit (UX polish U6); `camera.cx/cy` pan the view. */
+export function fitRoom(room, cssWidth, cssHeight, dpr = 1, camera = null) {
   const ratio = Number(dpr) > 0 ? Number(dpr) : 1;
   const bufW = room.width * TILE + MARGIN * 2;
   const bufH = TOP + room.height * TILE + MARGIN * 2;
   const canvasW = Math.max(1, Math.round(cssWidth * ratio)), canvasH = Math.max(1, Math.round(cssHeight * ratio));
-  const device = Math.max(1, Math.floor(Math.min(canvasW / bufW, canvasH / bufH)));
-  const ox = Math.floor((canvasW - bufW * device) / 2) + MARGIN * device;
-  const oy = Math.floor((canvasH - bufH * device) / 2) + (MARGIN + TOP) * device;
-  return { device, scale: device / ratio, dpr: ratio, canvasW, canvasH, bufW, bufH, ox, oy };
+  const base = Math.max(1, Math.floor(Math.min(canvasW / bufW, canvasH / bufH)));
+  const zoom = camera ? Math.max(0, Math.min(MAX_ZOOM, Math.round(Number(camera.zoom) || 0))) : 0;
+  const device = base + zoom;
+  const ax = axis(canvasW, bufW, device, zoom ? Number(camera.cx) : NaN), ay = axis(canvasH, bufH, device, zoom ? Number(camera.cy) : NaN);
+  const ox = ax.start + MARGIN * device;
+  const oy = ay.start + (MARGIN + TOP) * device;
+  return { device, base, zoom, cx: ax.c, cy: ay.c, scale: device / ratio, dpr: ratio, canvasW, canvasH, bufW, bufH, ox, oy };
 }
 
 /* ---------- small drawing helpers (logical coordinates) ---------- */
@@ -159,14 +174,36 @@ function anchorOf(x, y) { return { x: x * TILE + TILE / 2, y: y * TILE + TILE - 
 
 function shadow(ctx, a, w) { alpha(ctx, .45, () => { px(ctx, Q.outline, a.x - w / 2 + 1, a.y, w - 2, 1); px(ctx, Q.outline, a.x - w / 2 + 2, a.y + 1, w - 4, 1); }); }
 
+/* Sprites drawn this frame, so the x-ray pass can outline the ones a wall cap covers. */
+let drawn = null;
 function standing(ctx, id, a, options = {}) {
-  const sz = spriteSize(id);
-  drawSprite(ctx, id, Math.round(a.x - sz.width / 2), Math.round(a.y - sz.height + 1 - (options.lift || 0)), 1, options);
+  const sz = spriteSize(id), x = Math.round(a.x - sz.width / 2), y = Math.round(a.y - sz.height + 1 - (options.lift || 0));
+  drawSprite(ctx, id, x, y, 1, options);
+  if (drawn) drawn.push({ id, x, y, flip: !!options.flip, tx: Math.round((a.x - TILE / 2) / TILE), ty: Math.round((a.y - TILE + 2) / TILE) });
   return sz;
 }
 function flat(ctx, id, x, y, lift = 0) {
-  const sz = spriteSize(id);
-  drawSprite(ctx, id, x * TILE + Math.round((TILE - sz.width) / 2), y * TILE + TILE - sz.height - lift, 1);
+  const sz = spriteSize(id), sx = x * TILE + Math.round((TILE - sz.width) / 2), sy = y * TILE + TILE - sz.height - lift;
+  drawSprite(ctx, id, sx, sy, 1);
+  if (drawn) drawn.push({ id, x: sx, y: sy, flip: false, tx: x, ty: y });
+}
+
+/* X-ray (UX polish U7): a wall block's cap rises into the row north of it. Anything standing
+   there gets the covered part of its outline redrawn faintly over the wall. */
+function drawXray(ctx, snapshot, walls) {
+  for (const item of drawn || []) {
+    if (walls.has(key(item.tx, item.ty)) || !walls.has(key(item.tx, item.ty + 1))) continue;
+    const below = item.ty + 1, fh = faceHeight(item.tx, below, snapshot, walls);
+    const capH = below >= snapshot.height - 1 ? TILE - RIM_FACE : TILE;
+    const coverTop = below * TILE + TILE - fh - capH;
+    const bitmap = spriteBitmap(item.id), h = bitmap.length, w = (bitmap[0] || '').length;
+    const solid = (i, j) => j >= 0 && j < h && i >= 0 && i < w && bitmap[j][item.flip ? w - 1 - i : i] !== '.';
+    alpha(ctx, .6, () => {
+      for (let j = Math.max(0, coverTop - item.y); j < h; j++) for (let i = 0; i < w; i++) {
+        if (solid(i, j) && (!solid(i - 1, j) || !solid(i + 1, j) || !solid(i, j - 1) || !solid(i, j + 1))) px(ctx, Q.sandLit, item.x + i, item.y + j);
+      }
+    });
+  }
 }
 
 function motionPosition(entity, motion, now) {
@@ -235,6 +272,24 @@ function drawHero(ctx, hero, state, anchors) {
   if (warded) alpha(ctx, .5, () => { px(ctx, Q.purple, a.x - 9, top + 4, 1, sz.height - 6); px(ctx, Q.purple, a.x + 8, top + 4, 1, sz.height - 6); });
   anchors.set('hero', { x: a.x, y: a.y - sz.height / 2 });
   anchors.set('hero-head', { x: a.x, y: top });
+  state.heroBox = { x: a.x - sz.width / 2, y: top, w: sz.width, h: sz.height + 2 };
+}
+
+/* Tiles the puzzle depends on, so overlays (the speech bubble) can avoid them. Logical px. */
+const DIR_STEP = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] };
+function focusRects(snapshot, preview) {
+  const rects = [], tile = (x, y, lift = 0) => rects.push({ x: x * TILE, y: y * TILE - lift, w: TILE, h: TILE + lift });
+  const hero = snapshot.hero, step = hero && DIR_STEP[hero.dir];
+  if (step) {
+    const ax = hero.x + step[0], ay = hero.y + step[1];
+    if (ax >= 0 && ay >= 0 && ax < snapshot.width && ay < snapshot.height) tile(ax, ay, 8);
+  }
+  if (snapshot.exit) tile(snapshot.exit.x, snapshot.exit.y);
+  for (const v of snapshot.enemies || []) if (v.hp > 0) tile(v.x, v.y, 8);
+  for (const v of snapshot.chests || []) if (!v.open) tile(v.x, v.y);
+  for (const v of snapshot.keys || []) if (!v.collected) tile(v.x, v.y);
+  if (Array.isArray(preview)) for (const p of preview) tile(p.x, p.y);
+  return rects;
 }
 
 function drawCompanion(ctx, item, anchors) {
@@ -349,7 +404,7 @@ export function drawRoom(canvas, snapshot, options = {}) {
   const dpr = Number(options.dpr) > 0 ? Number(options.dpr) : 1;
   const cssW = Number(options.cssWidth) > 0 ? Number(options.cssWidth) : (canvas.width || 480) / dpr;
   const cssH = Number(options.cssHeight) > 0 ? Number(options.cssHeight) : (canvas.height || 270) / dpr;
-  const fit = fitRoom(snapshot, cssW, cssH, dpr);
+  const fit = fitRoom(snapshot, cssW, cssH, dpr, options.camera);
   if (canvas.width !== fit.canvasW) canvas.width = fit.canvasW;
   if (canvas.height !== fit.canvasH) canvas.height = fit.canvasH;
   const ctx = canvas.getContext('2d');
@@ -380,6 +435,7 @@ export function drawRoom(canvas, snapshot, options = {}) {
     time, now, reducedMotion, kidColor: options.kidColor, heroState: options.heroState,
     heroMotion: options.heroMotion, enemyMotions: options.enemyMotions, selectedId: snapshot.hero && snapshot.hero.targetId
   };
+  drawn = [];
   drawMarkings(ctx, snapshot, state);
   if (options.preview) drawPreview(ctx, options.preview);
 
@@ -421,6 +477,8 @@ export function drawRoom(canvas, snapshot, options = {}) {
     else if (item.kind === 'hero') drawHero(ctx, v, state, anchors);
   }
   if (!torchesDrawn) drawTorches(ctx, torches, state);
+  drawXray(ctx, snapshot, walls);
+  drawn = null;
 
   for (const list of ['doors', 'traps', 'cycleTraps', 'keys', 'levers', 'plates', 'runeGates', 'crates', 'pushBlocks', 'questTokens', 'orbs', 'movingPlatforms', 'npcs']) {
     for (const v of snapshot[list] || []) if (v && v.id && !anchors.has(v.id)) anchors.set(v.id, anchorOf(v.x, v.y));
@@ -438,10 +496,15 @@ export function drawRoom(canvas, snapshot, options = {}) {
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-  // Anchors in CSS px relative to the canvas box.
+  // Anchors and boxes in CSS px relative to the canvas box.
   const css = new Map();
   for (const [id, p] of anchors) css.set(id, { x: (ox + p.x * fit.device) / dpr, y: (oy + p.y * fit.device) / dpr });
-  return { anchors: css, scale: fit.scale, device: fit.device, origin: { x: ox / dpr, y: oy / dpr } };
+  const cssRect = r => ({ x: (ox + r.x * fit.device) / dpr, y: (oy + r.y * fit.device) / dpr, w: r.w * fit.device / dpr, h: r.h * fit.device / dpr });
+  return {
+    anchors: css, scale: fit.scale, device: fit.device, origin: { x: ox / dpr, y: oy / dpr },
+    camera: { zoom: fit.zoom, cx: fit.cx, cy: fit.cy, base: fit.base },
+    heroBox: state.heroBox ? cssRect(state.heroBox) : null, focus: focusRects(snapshot, options.preview).map(cssRect)
+  };
 }
 
-export const ROOM_VIEW = Object.freeze({ TILE, FACE, BACK_FACE, MARGIN, fitRoom });
+export const ROOM_VIEW = Object.freeze({ TILE, FACE, BACK_FACE, MARGIN, TOP, fitRoom });
