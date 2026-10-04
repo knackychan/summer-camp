@@ -1,23 +1,26 @@
 /* Brick Lab parts, categories and colours (docs/plans/2026-10-03-brick-lab/).
    Every kid-facing label is an [en, zh] pair. */
+/* Real proportions on a 1-unit stud pitch: a brick is 9.6 mm tall on an 8 mm
+   pitch (1.2), a plate a third of that (0.4) — slice 05, D10. */
 export const BRICK_UNIT = 1;
-export const BRICK_HEIGHT = 0.96;
-export const PLATE_HEIGHT = 0.32;
+export const BRICK_HEIGHT = 1.2;
+export const PLATE_HEIGHT = 0.4;
 
+/* Lego-like plastic colours; ids are stable (saved builds use them). */
 export const COLORS = Object.freeze({
-  red: 0xd9342b,
-  orange: 0xf47b20,
-  yellow: 0xf4c542,
-  green: 0x2f9d50,
-  blue: 0x2e6edb,
-  purple: 0x7c4fc9,
-  pink: 0xe86fa7,
-  white: 0xf6f4ef,
-  lightGray: 0xb9bec6,
-  darkGray: 0x555d68,
-  black: 0x25282d,
-  tan: 0xd6b681,
-  brown: 0x8a5537,
+  red: 0xc91a09,
+  orange: 0xfe8a18,
+  yellow: 0xf2cd37,
+  green: 0x237841,
+  blue: 0x0055bf,
+  purple: 0x6846a5,
+  pink: 0xc870a0,
+  white: 0xf4f4f4,
+  lightGray: 0xa0a5a9,
+  darkGray: 0x6c6e68,
+  black: 0x1b2a34,
+  tan: 0xe4cd9e,
+  brown: 0x582a12,
 });
 
 export const COLOR_NAMES = Object.freeze({

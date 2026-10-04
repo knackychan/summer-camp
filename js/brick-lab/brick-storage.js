@@ -27,6 +27,7 @@ export class BrickLabStorage {
       savedAt: new Date().toISOString(),
       name: state.name || "My Brick World",
       mode: state.mode || "build",
+      grid: state.grid || 1,
       pieces: Array.isArray(state.pieces) ? state.pieces : [],
       assemblies: Array.isArray(state.assemblies) ? state.assemblies : [],
     };

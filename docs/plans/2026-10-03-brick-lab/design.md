@@ -25,3 +25,7 @@ Assemblies / My Blocks, booklets, curved rails and trains, animals, behaviours, 
 - `02-bilingual.md` — D5
 - `03-creative-door.md` — D4
 - `04-device-check.md` — Android 8 / WebGL1 validation
+- `05-ux-polish.md` — D8–D11 (added 2026-10-04 at Papa's request): tools on the piece, no flash on select, Lego proportions and studs, stud-grid snap
+- `06-mini-diorama.md` — D12 (added 2026-10-04 at Papa's request): 64×64 island baseplate seen from far away, so bricks read as mini bricks, not Duplo
+- `07-pan.md` — D13 (added 2026-10-04 at Papa's request): two-finger / right-button pan in Build too, held over the island
+- `08-steady-dock-lofi-light.md` — D14–D15 (added 2026-10-04 at Papa's request): constant-height dock so the view never resizes (the flash), lo-fi tilt-shift lighting
