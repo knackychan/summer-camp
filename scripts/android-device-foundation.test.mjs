@@ -91,7 +91,7 @@ test("classic platform seam registers the bounded Capacitor plugin before app se
     Event: class Event { constructor(type) { this.type = type; } },
     Capacitor: {
       isNativePlatform() { return true; },
-      registerPlugin(name) { calls.push(["register", name]); return plugin; },
+      Plugins: { SummerQuestNative: plugin },
     },
     addEventListener(name, handler) { windowListeners.set(name, handler); },
     dispatchEvent(event) { const handler = windowListeners.get(event.type); if (handler) handler(event); },
@@ -108,8 +108,7 @@ test("classic platform seam registers the bounded Capacitor plugin before app se
   assert.equal(context.SummerQuestNative.triggerBack(), true);
   assert.equal(backed, 1);
   await context.SQPlatform.releaseAudioFocus();
-  assert.deepEqual(calls.map((entry) => entry[0]), ["register", "haptic", "focus", "release"]);
-  assert.equal(calls[0][1], "SummerQuestNative");
+  assert.deepEqual(calls.map((entry) => entry[0]), ["haptic", "focus", "release"]);
   assert.equal(listeners.has("audioFocusChanged"), true);
   assert.equal(listeners.has("lifecycleChanged"), true);
 });
@@ -120,6 +119,7 @@ test("native overlay registers a bounded Capacitor plugin before BridgeActivity 
   const overlay = read("apps/android/scripts/apply-native-overlay.mjs");
   const manifest = read("apps/android/native-overlay/app/src/main/AndroidManifest.xml");
   assert.match(activity, /registerPlugin\(SummerQuestNativePlugin\.class\);\s*super\.onCreate\(savedInstanceState\);/s);
+  assert.match(activity, /getOnBackPressedDispatcher\(\)\.addCallback\(this, backCallback\)/);
   assert.doesNotMatch(activity, /addJavascriptInterface|JavascriptInterface/);
   assert.match(activity, /window\.SummerQuestNative&&window\.SummerQuestNative\.triggerBack/);
   assert.match(plugin, /@CapacitorPlugin\(name = "SummerQuestNative"\)/);

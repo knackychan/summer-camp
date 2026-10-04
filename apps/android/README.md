@@ -46,10 +46,10 @@ Every native sync runs the same verification on actual `assets/public`; Capacito
 generated Cordova bridge files are the only native-only exceptions. Config is the
 local ignored `js/config.js` when present, otherwise a deterministic offline stub.
 The two builds match when their source and browser-config inputs match.
-Web build metadata identifies `v0.6.2-recovery`. Fresh Capacitor templates still
-use native `versionName "1.0"` / `versionCode 1`; these debug builds validate
-packaging. Set a compatible native upgrade version after inspecting the installed
-tablet package. Recovery does not install, uninstall, or clear that app.
+Web build metadata identifies `v0.6.3-desktop`. The checked-in native overlay
+sets `versionName "1.1"` / `versionCode 2` after the installed tablet package was
+verified as the same app/signing key at version `1.0` / code `1`. Verify the
+installed version and signer again before future in-place updates.
 
 ## Routine build flow
 

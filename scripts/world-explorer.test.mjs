@@ -51,13 +51,14 @@ test("content opened from the world can return to that same surface", () => {
   assert.match(html, /returnAfterContent\(String\(actIdx\).*"learn":"acts"/);
 });
 
-test("world-first navigation: Base Camp always backs out to the planet, the planet is the root", () => {
+test("world-first navigation: Adventure shelves back to Adventure, then Base Camp backs to the planet", () => {
   const html = read("index.html");
-  // Base Camp's Back reopens the planet however Base Camp was reached (boot restore included).
-  assert.match(html, /if\(hub&&!hub\.classList\.contains\("hidden"\)\)\{stopActTimer\(\);if\(hubKid\)\{const id=hubKid;hubReturnSurface=null;openWorld\(id\);return true;\}/);
+  assert.match(html, /if\(BACK_SHELF\[hubTab\]\)\{hubTab="adventure";saveAppPlace\("hub"\);renderHub\(\);return true;\}/);
+  assert.match(html, /if\(hubKid\)\{const id=hubKid;hubReturnSurface=null;openWorld\(id\);return true;\}/);
   // Back on the planet never logs the kid out: it closes focus/mini-game or lets Android leave.
   assert.match(html, /if\(world&&!world\.classList\.contains\("hidden"\)\)return !!\(worldExplorerModule/);
   assert.match(html, /id="hubBack">← 🌍 Planet 星球</);
+  assert.match(html, /getElementById\("hubBack"\)\.textContent=BACK_SHELF\[hubTab\]\?"← 🎮 Adventure 冒險":"← 🌍 Planet 星球"/);
   assert.match(html, /id="worldClassic">⛺ Base Camp<span class="zh"> 營地<\/span>/);
   assert.match(html, /class="world-switch" id="worldHeroes"/);
   // Every content Back names where it lands.

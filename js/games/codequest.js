@@ -265,8 +265,10 @@ function stripHTML() {
 }
 function stripTabsHTML() {
   if (!S.level.available.logic.includes('callRune')) return '';
-  return '<div class="cq-strip-tabs" role="group">' + button('strip:main', glyph('play') + '<b>' + label(['Main', '主程式']) + '</b>', 'aria-pressed="' + (S.editor !== 'rune') + '"') +
-    button('strip:rune', glyph('call') + '<b>' + label(SHORT.call) + '</b>', 'aria-pressed="' + (S.editor === 'rune') + '"') + '</div>';
+  // One 48 px toggle: it names the strip being edited; tapping it switches Main ⇄ Rune.
+  const rune = S.editor === 'rune';
+  return button(rune ? 'strip:main' : 'strip:rune', glyph(rune ? 'call' : 'play') + '<b>' + label(rune ? SHORT.call : ['Main', '主程式']) + '</b>',
+    'class="cq-strip-toggle' + (rune ? ' rune' : '') + '" aria-pressed="' + rune + '" aria-label="' + esc(t(rune ? ['Editing Rune. Tap for Main.', '正在編輯符文，點一下回主程式。'] : ['Editing Main. Tap for Rune.', '正在編輯主程式，點一下編輯符文。'])) + '"');
 }
 function toolsHTML() {
   const none = !currentSelection().size, one = currentSelection().size === 1;
@@ -492,8 +494,10 @@ function placeBubble(time, box) {
   if (!head) return;
   const w = bubble.offsetWidth, h = bubble.offsetHeight;
   const x = Math.max(8, Math.min(box.width - w - 8, head.x - w / 2));
-  const above = head.y - h - 12, y = above >= 8 ? above : Math.min(box.height - h - 8, head.y + 56);
-  bubble.classList.toggle('below', above < 8);
+  // Stay clear of the goal pill / hearts row along the top of the scene.
+  const hud = S.root.querySelector('.cq-hud'), top = hud ? hud.offsetTop + hud.offsetHeight + 6 : 8;
+  const above = head.y - h - 12, y = above >= top ? above : Math.min(box.height - h - 8, head.y + 56);
+  bubble.classList.toggle('below', above < top);
   bubble.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
   bubble.style.setProperty('--tail', Math.round(Math.max(14, Math.min(w - 14, head.x - x))) + 'px');
 }

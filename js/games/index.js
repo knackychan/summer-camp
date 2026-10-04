@@ -32,6 +32,11 @@ export var MANIFEST = [
   { id: "solar",    brain: false, keyboard: false, bestKey: null,      legacy: false,
     meta: { icon: "\ud83e\ude90", title: "Solar System", tz: "\u592a\u967d\u7cfb", blurb: "Explore the planets" } },
 
+  /* Real-paper craft guide, vendored in js/vendor/origami-atelier/. Creative tool like
+     Paint: isCreativeTool() in index.html lets it through the games locks. */
+  { id: "origami",  brain: false, keyboard: false, bestKey: null,      legacy: false,
+    meta: { icon: "🦢", title: "Origami Atelier", tz: "摺紙工房", blurb: "Fold real paper · 一步一步摺紙" } },
+
   /* Creative tool, not screen-time reward \u2014 startGame() lets it through the block
      lock the same way Brain Gym goes through. */
   { id: "paint",    brain: false, keyboard: false, bestKey: null,      legacy: false,

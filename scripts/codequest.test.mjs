@@ -7,6 +7,7 @@ import { normalizeProfile, recordLevelComplete, recordEndlessClear, brew, brewLa
 import { createDungeonRun, normalizeDungeonRun, roomMeta, roomGraph, nextRooms, enterDungeonRoom, resolveRunChoice, completeCombatRoom, failDungeonRun, expeditionLevel, dungeonRunSummary, hazardInfo, sigilsRequired, saveRunLoadout, activateRunLoadout } from '../js/games/codequest/run.js';
 import { parseJavaScript } from '../js/games/codequest/parser.js';
 import { previewPath } from '../js/games/codequest/preview.js';
+import { legacyLevel } from './fixtures/codequest-legacy-rooms.mjs';
 import { parseAlchemyCode, runAlchemyCode, recipeToAlchemyCode, recipeById } from '../js/games/codequest/alchemy-code.js';
 
 // AST sanitation is bounded, immutable and preserves real structure.
@@ -31,7 +32,7 @@ assert.deepEqual(runToActions([CALL('rune'), CALL('rune')], { rune: [A('move'), 
 assert.equal(runToActions([CALL('rune')], { rune: [CALL('rune')] }, { test: () => false }).error, 'recursive-call');
 
 // Basic room semantics: movement, turning, blocking, combat and chest opening.
-const q03 = LEVELS.find(level => level.id === 'q03');
+const q03 = legacyLevel('q03');
 const room = new CodeQuestModel(q03, { weaponDamage: 1 });
 assert.equal(room.begin([A('move'), A('move'), A('open')]).ok, true);
 assert.equal(room.step().result, 'ok');
@@ -40,14 +41,14 @@ assert.equal(room.step().result, 'opened');
 assert.equal(room.phase, 'won');
 assert.equal(room.snapshot().chests[0].open, true);
 
-const wallRoom = new CodeQuestModel(LEVELS.find(level => level.id === 'q02'));
+const wallRoom = new CodeQuestModel(legacyLevel('q02'));
 assert.equal(wallRoom.begin([A('move'), A('move'), A('move')]).ok, true);
 assert.equal(wallRoom.step().result, 'ok');
 assert.equal(wallRoom.step().result, 'ok');
 assert.equal(wallRoom.step().result, 'blocked');
 assert.equal(wallRoom.snapshot().stats.blocked, 1);
 
-const combat = new CodeQuestModel(LEVELS.find(level => level.id === 'q08'), { weaponDamage: 1 });
+const combat = new CodeQuestModel(legacyLevel('q08'), { weaponDamage: 1 });
 assert.equal(combat.begin([R(2, [A('attack')]), A('move'), A('open')]).ok, true);
 while (combat.phase === 'executing') combat.step();
 assert.equal(combat.phase, 'won');
@@ -56,7 +57,7 @@ assert.equal(combat.snapshot().chests[0].open, true);
 
 
 // Dungeon-crawler semantics: keys, locked doors and traps are deterministic model state.
-const keyCrypt = new CodeQuestModel(LEVELS.find(level => level.id === 'q13'));
+const keyCrypt = new CodeQuestModel(legacyLevel('q13'));
 assert.equal(keyCrypt.snapshot().hero.keys, 0);
 assert.equal(keyCrypt.begin([A('move'), A('open'), A('move'), R(4, [A('move')])]).ok, true);
 let keyEvent = keyCrypt.step();
@@ -69,7 +70,7 @@ while (keyCrypt.phase === 'executing') keyCrypt.step();
 assert.equal(keyCrypt.phase, 'won');
 assert.equal(keyCrypt.snapshot().doors[0].open, true);
 
-const trapRoom = new CodeQuestModel(LEVELS.find(level => level.id === 'q14'));
+const trapRoom = new CodeQuestModel(legacyLevel('q14'));
 assert.equal(trapRoom.test('trapAhead'), false);
 assert.equal(trapRoom.begin([A('move'), IF('trapAhead', [A('disarm')]), R(5, [A('move')])]).ok, true);
 assert.equal(trapRoom.step().result, 'ok');
@@ -80,12 +81,12 @@ assert.equal(trapRoom.phase, 'won');
 assert.equal(trapRoom.snapshot().traps[0].disarmed, true);
 assert.equal(trapRoom.snapshot().hero.hp, 5);
 
-const trapHit = new CodeQuestModel(LEVELS.find(level => level.id === 'q14'));
+const trapHit = new CodeQuestModel(legacyLevel('q14'));
 assert.equal(trapHit.begin([A('move'), A('move')]).reason, 'missing-concept');
 
 
 // v0.10 physical dungeon systems are model state, not renderer decoration.
-const leverLevel = LEVELS.find(level => level.id === 'q43');
+const leverLevel = legacyLevel('q43');
 const leverRoom = new CodeQuestModel(leverLevel);
 assert.equal(leverRoom.snapshot().runeGates[0].open, false);
 assert.equal(leverRoom.begin(leverLevel.reference.main, leverLevel.reference.functions).ok, true);
@@ -99,7 +100,7 @@ while (leverRoom.phase === 'executing') leverRoom.step();
 assert.equal(leverRoom.phase, 'won');
 assert.equal(leverRoom.snapshot().exit.kind, 'stairs');
 
-const plateLevel = LEVELS.find(level => level.id === 'q44');
+const plateLevel = legacyLevel('q44');
 const plateRoom = new CodeQuestModel(plateLevel);
 assert.equal(plateRoom.begin(plateLevel.reference.main, plateLevel.reference.functions).ok, true);
 assert.equal(plateRoom.step().result, 'ok');
@@ -107,7 +108,7 @@ assert.equal(plateRoom.step().result, 'plate-activated');
 assert.equal(plateRoom.read('hero.world.switchesActive'), 1);
 assert.equal(plateRoom.read('hero.world.gatesOpen'), 1);
 
-const crateLevel = LEVELS.find(level => level.id === 'q45');
+const crateLevel = legacyLevel('q45');
 const crateRoom = new CodeQuestModel(crateLevel);
 assert.equal(crateRoom.begin(crateLevel.reference.main, crateLevel.reference.functions).ok, true);
 assert.equal(crateRoom.step().result, 'ok');
@@ -115,7 +116,7 @@ assert.equal(crateRoom.test('breakableAhead'), true);
 assert.equal(crateRoom.step().result, 'crate-broken');
 assert.equal(crateRoom.read('hero.world.cratesRemaining'), 0);
 
-const npcLevel = LEVELS.find(level => level.id === 'q46');
+const npcLevel = legacyLevel('q46');
 const npcRoom = new CodeQuestModel(npcLevel);
 assert.equal(npcRoom.begin(npcLevel.reference.main, npcLevel.reference.functions).ok, true);
 assert.equal(npcRoom.step().result, 'ok');
@@ -123,7 +124,7 @@ assert.equal(npcRoom.step().result, 'npc-helped');
 assert.equal(npcRoom.snapshot().hero.keys, 1);
 assert.equal(npcRoom.read('hero.world.npcsHelped'), 1);
 
-const guardianLevel = LEVELS.find(level => level.id === 'q48');
+const guardianLevel = legacyLevel('q48');
 const guardianRoom = new CodeQuestModel(guardianLevel);
 assert.equal(guardianRoom.snapshot().enemies.find(e => e.type === 'circuitGuardian').armor, 2);
 assert.equal(guardianRoom.begin(guardianLevel.reference.main, guardianLevel.reference.functions).ok, true);
@@ -133,7 +134,7 @@ assert.equal(guardianRoom.snapshot().runeGates[0].open, true);
 assert.equal(guardianRoom.snapshot().enemies.find(e => e.type === 'circuitGuardian').armor, 0);
 
 // v0.11 environmental logic: circuits can close again, mechanisms advance with turns, and companion state is programmable.
-const booleanLevel = LEVELS.find(level => level.id === 'q49');
+const booleanLevel = legacyLevel('q49');
 const booleanRoom = new CodeQuestModel({ ...booleanLevel, requires:[], maxBlocks:96 });
 assert.equal(booleanRoom.begin([A('move'),A('interact'),A('move'),A('interact')]).ok, true);
 while (booleanRoom.phase === 'executing') booleanRoom.step();
@@ -148,34 +149,34 @@ while (booleanRoom.phase === 'executing') booleanRoom.step();
 assert.equal(booleanRoom.read('hero.world.switchesActive'), 2);
 assert.equal(booleanRoom.snapshot().runeGates[0].open, true);
 
-const clockSolved = solveLevel(LEVELS.find(level => level.id === 'q50'));
+const clockSolved = solveLevel(legacyLevel('q50'));
 assert.equal(clockSolved.solved, true);
 assert.equal(clockSolved.model.snapshot().hero.hp, 5);
 assert.equal(clockSolved.model.snapshot().stats.cycleTrapHits, 0);
 
-const pushSolved = solveLevel(LEVELS.find(level => level.id === 'q51'));
+const pushSolved = solveLevel(legacyLevel('q51'));
 assert.equal(pushSolved.solved, true);
 assert.equal(pushSolved.model.snapshot().stats.pushes, 1);
 assert.equal(pushSolved.model.snapshot().pushBlocks.every(block => pushSolved.model.snapshot().plates.some(plate => plate.x === block.x && plate.y === block.y)), true);
 
-const platformSolved = solveLevel(LEVELS.find(level => level.id === 'q52'));
+const platformSolved = solveLevel(legacyLevel('q52'));
 assert.equal(platformSolved.solved, true);
 assert.ok(platformSolved.model.snapshot().stats.platformMoves > 0);
 
-const questSolved = solveLevel(LEVELS.find(level => level.id === 'q53'));
+const questSolved = solveLevel(legacyLevel('q53'));
 assert.equal(questSolved.solved, true);
 assert.equal(questSolved.model.snapshot().stats.questsStarted, 1);
 assert.equal(questSolved.model.snapshot().stats.questsCompleted, 1);
 assert.equal(questSolved.model.snapshot().questTokens.every(token => token.collected), true);
 
-const companionSolved = solveLevel(LEVELS.find(level => level.id === 'q54'));
+const companionSolved = solveLevel(legacyLevel('q54'));
 assert.equal(companionSolved.solved, true);
 assert.equal(companionSolved.model.snapshot().stats.companionAssists, 1);
 assert.ok(companionSolved.model.snapshot().companion);
 
 // World turn is deterministic and only occurs after the child's whole program.
 // (The pure model accepts any known AST action; the level UI decides which cards are offered.)
-const world = new CodeQuestModel(LEVELS.find(level => level.id === 'q04'));
+const world = new CodeQuestModel(legacyLevel('q04'));
 const hp = world.snapshot().hero.hp;
 assert.equal(world.begin([A('wait')]).ok, true);
 assert.equal(world.step().type, 'action');
@@ -185,13 +186,13 @@ assert.equal(world.snapshot().hero.hp, hp);
 assert.equal(world.snapshot().enemies[0].x, 2); // slime moved one tile toward the hero.
 
 // Pedagogical requirements reject bypass programs but accept the intended concept.
-const loopLevel = LEVELS.find(level => level.id === 'q05');
+const loopLevel = legacyLevel('q05');
 assert.equal(new CodeQuestModel(loopLevel).begin([A('move')]).reason, 'missing-concept');
 assert.equal(new CodeQuestModel(loopLevel).begin([R(5, [A('move')])]).ok, true);
-const ifLevel = LEVELS.find(level => level.id === 'q07');
+const ifLevel = legacyLevel('q07');
 assert.equal(new CodeQuestModel(ifLevel).begin([A('attack'), R(3, [A('move')])]).reason, 'missing-concept');
 assert.equal(new CodeQuestModel(ifLevel).begin(ifLevel.reference.main).ok, true);
-const fnLevel = LEVELS.find(level => level.id === 'q10');
+const fnLevel = legacyLevel('q10');
 assert.equal(new CodeQuestModel(fnLevel).begin([R(2, [A('move')]), A('turnRight'), R(2, [A('move')])]).reason, 'missing-concept');
 assert.equal(new CodeQuestModel(fnLevel).begin([A('move'), A('move'), A('move'), A('move'), A('move'), A('move'), A('move')]).reason, 'too-many-blocks');
 assert.equal(new CodeQuestModel(fnLevel).begin(fnLevel.reference.main, fnLevel.reference.functions).ok, true);
@@ -267,7 +268,7 @@ assert.equal(parseJavaScript('function walk(steps) { repeat(steps, () => { hero.
 assert.equal(parseJavaScript('missing();').ok, false);
 assert.equal(parseJavaScript('repeat(13, () => { hero.move(); });').ok, false);
 
-const elseLevel = LEVELS.find(level => level.id === 'q22');
+const elseLevel = legacyLevel('q22');
 assert.equal(new CodeQuestModel(elseLevel).begin([IF('enemyAhead', [A('attack')])]).reason, 'missing-concept');
 assert.equal(new CodeQuestModel(elseLevel).begin(elseLevel.reference.main).ok, true);
 
@@ -322,7 +323,7 @@ assert.ok(scoreForProfile(endless.profile) > scoreForProfile(normalizeProfile())
 
 
 // v0.3 combat state: armor requires the right action rather than more HP.
-const armorLevel = { ...LEVELS.find(level => level.id === 'q16'), requires: [], maxBlocks: 96 };
+const armorLevel = { ...legacyLevel('q16'), requires: [], maxBlocks: 96 };
 const armorNormal = new CodeQuestModel(armorLevel, { weaponDamage: 1 });
 assert.equal(armorNormal.begin([A('attack')]).ok, true);
 assert.equal(armorNormal.step().result, 'armored');
@@ -338,7 +339,7 @@ assert.equal(armorHeavy.test('enemyWeakAhead'), true);
 assert.match(toJavaScript([IF('enemyArmoredAhead', [A('heavyAttack')])]), /seesArmoredEnemyAhead/);
 
 // Archer intent is telegraphed on one dungeon turn and reactable on the next.
-const signal = new CodeQuestModel(LEVELS.find(level => level.id === 'q18'), { weaponDamage: 1 });
+const signal = new CodeQuestModel(legacyLevel('q18'), { weaponDamage: 1 });
 assert.equal(signal.begin(signal.level.reference.main).ok, true);
 assert.equal(signal.step().op, 'move');
 let signalWorld = signal.step();
@@ -355,7 +356,7 @@ assert.equal(signal.snapshot().hero.hp, 5);
 assert.equal(signal.snapshot().stats.damageBlocked > 0, true);
 
 // Venom creates status state after the dungeon turn; antidote clears it deterministically.
-const patrolLevel = { ...LEVELS.find(level => level.id === 'q19'), requires: [], maxBlocks: 96 };
+const patrolLevel = { ...legacyLevel('q19'), requires: [], maxBlocks: 96 };
 const venom = new CodeQuestModel(patrolLevel, { weaponDamage: 1, consumables: { antidote: 1 } });
 assert.equal(venom.begin([A('move')]).ok, true);
 venom.step(); venom.step(); // viper moves adjacent.
@@ -398,7 +399,7 @@ const spentAntidote = consumePotion(labAntidote.profile, 'antidote');
 assert.equal(spentAntidote.potions.antidote, 0);
 
 // Practice consumables are consumed before persistent inventory consumables.
-const practiceCure = new CodeQuestModel(LEVELS.find(level => level.id === 'q17'), { weaponDamage: 1, consumables: { antidote: 1 } });
+const practiceCure = new CodeQuestModel(legacyLevel('q17'), { weaponDamage: 1, consumables: { antidote: 1 } });
 assert.equal(practiceCure.begin([IF('heroPoisoned', [A('useAntidote')]), R(2, [A('attack')])]).ok, true);
 const cureEvent = practiceCure.step();
 assert.equal(cureEvent.result, 'cured');
@@ -498,7 +499,7 @@ const migratedV2 = normalizeProfile({ version: 2, completed: ['q01'], equipment:
 assert.equal(migratedV2.version, 12);
 assert.equal(migratedV2.loadout.charm, 'signalCharm');
 let bossProfile = normalizeProfile({ version: 3, completed: LEVELS.slice(0,29).map(level => level.id), equipment: ['trainingBlade'] });
-bossProfile = recordLevelComplete(bossProfile, LEVELS.find(level => level.id === 'q30'), 12).profile;
+bossProfile = recordLevelComplete(bossProfile, legacyLevel('q30'), 12).profile;
 assert.equal(bossProfile.equipment.includes('wardenCrest'), true);
 assert.equal(equip(bossProfile, 'wardenCrest').loadout.charm, 'wardenCrest');
 
@@ -521,7 +522,7 @@ const invalidTargetRunner = new ProgramRunner([T(L(9))]);
 assert.equal(invalidTargetRunner.step({ test:()=>false, read:()=>0 }).reason, 'target-index');
 assert.equal(runToActions([T(L(2)), A('cast')], {}, { test:()=>false, read:()=>0 }).actions[0], 'target:2');
 
-const partyLevel = { ...LEVELS.find(level => level.id === 'q33'), requires: [], maxBlocks: 96 };
+const partyLevel = { ...legacyLevel('q33'), requires: [], maxBlocks: 96 };
 const partyModel = new CodeQuestModel(partyLevel);
 assert.equal(partyModel.read('enemies.length'), 2);
 assert.equal(partyModel.begin([A('targetElementWeak'), A('cast')]).ok, true);
@@ -533,7 +534,7 @@ assert.equal(elemental.result, 'defeated');
 assert.equal(elemental.detail.elemental, 'weak');
 assert.equal(partyModel.read('enemies.length'), 1);
 
-const freezeLevel = LEVELS.find(level => level.id === 'q34');
+const freezeLevel = legacyLevel('q34');
 const frost = new CodeQuestModel(freezeLevel);
 assert.equal(frost.begin(freezeLevel.reference.main, freezeLevel.reference.functions).ok, true);
 while (frost.phase === 'executing') frost.step();
@@ -972,3 +973,12 @@ console.log('Code Quest v0.14: 72 authored quests, bounded actor state/FIFO prot
   assert.deepEqual(previewPath(new CodeQuestModel(level), []), [{ x: live.hero.x, y: live.hero.y, dir: live.hero.dir }]);
   console.log('Code Quest redesign: Explorer path preview verified.');
 }
+
+// ---- Redesign slice 05: every authored quest is a real room ----
+for (const level of LEVELS) {
+  const w = level.map[0].length, h = level.map.length;
+  assert.ok(w <= 9 && h <= 7, level.id + ' room must fit 9×7 (is ' + w + '×' + h + ')');
+  const walkableRows = level.map.slice(1, -1).filter(row => /[^#]/.test(row.slice(1, -1))).length;
+  assert.ok(walkableRows >= 3, level.id + ' room needs depth: ≥ 3 walkable rows');
+}
+console.log('Code Quest redesign: 72 authored rooms fit 9×7 with depth.');

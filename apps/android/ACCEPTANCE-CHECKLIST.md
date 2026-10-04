@@ -1,32 +1,42 @@
-# Summer Quest Android physical-device acceptance — v0.6.2-recovery
+# Summer Quest Android physical-device acceptance — v0.6.3-desktop
 
 This checklist is the release gate for a real Android tablet. Automated repository tests and ADB smoke checks do **not** replace it.
 
-Target web baseline: `v0.6.2-recovery`. Native upgrade version remains pending installed-package inspection; generated `versionName 1.0` / `versionCode 1` is not assumed compatible.
+Target web baseline: `v0.6.3-desktop`. Installed native upgrade: `versionName 1.1` / `versionCode 2`.
 Package: `com.summerquest.app`
 
-## Current attempt — deferred, 2026-10-02
+## Current attempt — 2026-10-03
+
+One authorized Samsung SM-X210 (Android 16/API 36, WebView 154.0.8037.57) was connected. The pre-update APK was saved privately in `.reports/installed-original.apk` (SHA-256 `388ba16b449dee66eebecf8e86f5a4c3c04acb38e092028aa2df6c25108501c0`). Its package was `com.summerquest.app`, native version `1.0`/code `1`, debug signer SHA-256 `6005bd04bfdc18516b032586c97db57fdd82011fafe65dcd49d056ec4ccb72a0`, and launch activity `.MainActivity`. Its bundled entry was root `index.html`, with no `legacy.html`; DevTools showed `https://localhost/`, the root scripts, a service worker controlling the page with cache `summer-quest-v137-codequest-v14`, and the root Adventure screen. No `LEGACY` badge appeared. The earlier reported selector/LEGACY installation is no longer present, so its original cause remains unverified.
+
+The old app exposed `Capacitor.Plugins.SummerQuestNative`, but `SQPlatform.capabilities().native` was false because `js/platform.js` required the unavailable `Capacitor.registerPlugin` method. The shared adapter now accepts the injected plugin. The final APK (SHA-256 `232fb2fd439e9c02514e73061e5777409ecf1609b28c4b480e23e43287648c62`) retained package, signer, launch activity and `https://localhost` origin, and raised native version to `1.1`/code `2`. `adb install -r -t` succeeded without uninstall or data clear. DevTools then showed the root world, 511 bundled files, native bridge/audio-focus flags true, and cache `summer-quest-v142-brick-lab-01`. The existing service worker was left in place; no cache was deleted. A first ADB Back from Space exited the app despite the web handler returning true; AndroidX's Back dispatcher now routes the key to that handler. After rebuilding and reinstalling, ADB Back from Space returned to Pixel Planet, with the app still foregrounded.
+
+Twenty-three `sq:` storage keys existed before and after the update. Hashes for child selection, PINs, saved world view and the 1,545-byte points queue were unchanged. `sq:hubTab` changed with navigation. The separate `sq:queue` changed from 105 bytes to `[]` after launch with configured sync; the pre-update contents were not captured, so server receipt of that operation is not independently established. Only key hashes and sizes are stored in ignored `.reports/`, not family values. The build used the current working tree and local `js/config.js`; there were unrelated uncommitted Origami/Code Quest changes, so the pushed source commit alone cannot reproduce the exact installed APK.
+
+`npm run android:smoke` passed cold process start and background/resume, with no AndroidRuntime crash in its saved excerpt. Human touch, sound, TTS, offline airplane-mode, rotation, and full content checks still need owner observation; this is not a physical acceptance sign-off.
+
+## Previous attempt — deferred, 2026-10-02
 
 Branch: `fix/android-device-acceptance`, based on `eb2065b`. `adb devices -l` returned no devices. The user confirmed the tablet was removed and requested the physical pass later. Nothing was installed or launched, no settings/data/caches were changed, and no physical checks passed or failed. All hardware gates remain open. Earlier software validation is recorded in the [recovery results](../../docs/audits/SUMMER-QUEST-ARCHITECTURE-RECOVERY-RESULTS.md).
 
 ## 0. Preserve the existing installation before updating
 
-- [ ] Reconnect/unlock the tablet, enable USB debugging and accept this computer's trust prompt if required.
-- [ ] Identify the actual installed package, versionName/versionCode, signing certificate and launch activity; determine WebView debugging availability.
-- [ ] Capture the current entry URL/origin, loaded scripts/modules, bridge flag, service-worker/controller/cache identity and visible surface where accessible. Explicitly record inaccessible evidence.
-- [ ] Preserve the original APK and useful diagnostics in ignored `apps/android/.reports/`; compare its assets with the root build. Keep identifiers, credentials and family data out of commits.
+- [x] Reconnect/unlock the tablet, enable USB debugging and accept this computer's trust prompt if required.
+- [x] Identify the actual installed package, versionName/versionCode, signing certificate and launch activity; determine WebView debugging availability.
+- [x] Capture the current entry URL/origin, loaded scripts/modules, bridge flag, service-worker/controller/cache identity and visible surface where accessible. Explicitly record inaccessible evidence.
+- [x] Preserve the original APK and useful diagnostics in ignored `apps/android/.reports/`; compare its assets with the root build. Keep identifiers, credentials and family data out of commits.
 - [ ] Establish the tablet's selector/LEGACY cause from device evidence, or record the remaining uncertainty.
-- [ ] Verify the candidate APK's package ID, compatible signing, versionCode and unchanged storage origin before installation. Stop if replacement requires data loss or incompatible signing.
+- [x] Verify the candidate APK's package ID, compatible signing, versionCode and unchanged storage origin before installation. Stop if replacement requires data loss or incompatible signing.
 - [ ] Record existing profiles, PIN behavior, progress, saved views and queued star operations privately for comparison. Never uninstall, clear app/browser data, reset profiles or delete caches to make acceptance pass.
 
 ## 1. Build provenance
 
-- [ ] `npm run android:doctor:strict` passes on the development machine.
-- [ ] `npm run android:build:debug` completes.
-- [ ] Record the APK SHA-256 printed by the build command.
-- [ ] `npm run android:install` installs the exact APK on the target tablet.
-- [ ] `npm run android:device` reports the expected manufacturer/model, Android version/API level, display size and density.
-- [ ] Save `apps/android/.reports/build-debug.json` with the test notes.
+- [x] Strict doctor passed as part of `android:build:debug` on the development machine.
+- [x] `npm run android:build:debug` completes.
+- [x] Record the APK SHA-256 printed by the build command.
+- [x] `npm run android:install` installs the exact APK on the target tablet.
+- [x] Device tooling reports the expected manufacturer/model, Android version/API level, display size and density.
+- [x] Save `apps/android/.reports/build-debug.json` with the test notes.
 
 ## 2. Fully local / offline cold start
 
@@ -60,10 +70,10 @@ Turn Airplane mode back off after the test.
 
 ## 3. Android Back behavior
 
-- [ ] From content launched from the planet, Android Back returns to the planet rather than immediately closing the app.
+- [x] From Space launched from the planet, ADB system Back returned to the planet rather than closing the app.
 - [ ] During a planet mini-game, Android Back ends the game and stays on the planet.
 - [ ] From Classic menu opened from the world, Android Back returns to the world.
-- [ ] From the world, Android Back returns to hero selection; at hero selection system Back may leave the app.
+- [ ] From the world, Android Back may leave the app; hero switching uses the explicit Switch control (current world-first navigation design).
 - [ ] Repeated content launches do not create nested shells, duplicate headers/back controls, blank frames or iframes.
 - [ ] At the true root, system Back may leave/close the app normally.
 
@@ -113,17 +123,17 @@ Run:
 npm run android:smoke
 ```
 
-- [ ] Cold process start reports OK.
-- [ ] Background/resume process reports OK.
-- [ ] Review the saved `.reports/device-smoke-*.json` log excerpt for `AndroidRuntime` crashes.
+- [x] Cold process start reports OK.
+- [x] Background/resume process reports OK.
+- [x] Review the saved `.reports/device-smoke-*.json` log excerpt for `AndroidRuntime` crashes.
 
 ## Sign-off
 
-Device model: __________________________
-Android version / API: __________________
-APK SHA-256: ___________________________
+Device model: Samsung SM-X210
+Android version / API: Android 16 / API 36
+APK SHA-256: 232fb2fd439e9c02514e73061e5777409ecf1609b28c4b480e23e43287648c62
 Tester: _________________________________
-Date: __________________________________
+Date: 2026-10-03
 
 - [ ] **Physical-device acceptance PASS**
 

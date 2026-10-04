@@ -36,7 +36,7 @@ def run(browser_path: str, port: int, out: Path, file_mode: bool=False):
             "--no-sandbox", "--enable-webgl", "--ignore-gpu-blocklist",
             "--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader", "--allow-file-access-from-files",
         ])
-        page=browser.new_page(viewport={"width":768,"height":1024})
+        page=browser.new_page(viewport={"width":1280,"height":800})
         page.on("pageerror", lambda exc: errors.append(f"pageerror: {exc}"))
         page.on("console", lambda msg: errors.append(f"console:{msg.type}: {msg.text}") if msg.type=="error" else None)
         try:
@@ -48,6 +48,8 @@ def run(browser_path: str, port: int, out: Path, file_mode: bool=False):
             (out/"report.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
             browser.close(); return report
 
+        page.wait_for_function("window.SummerQuest")
+        page.evaluate("SummerQuest.navigate('home')")
         page.wait_for_selector(".hero")
         results.append(("heroes", page.locator(".hero").count()==3))
         results.append(("single_runtime", page.locator("iframe").count()==0 and page.locator(".mobile-app-shell").count()==0))
@@ -60,7 +62,7 @@ def run(browser_path: str, port: int, out: Path, file_mode: bool=False):
         results.append(("registry", page.evaluate("window.SQContentRegistry && ['section:games','section:books','section:music','game:solar','game:monster-truck','book:space'].every(id => !!SQContentRegistry.get(id))")))
         world_ctx=page.evaluate("window.SQAppNavigation.getSurface()")
         results.append(("router_reports_world", world_ctx.get("surface")=="world"))
-        page.screenshot(path=str(out/"world-portrait-768x1024.png"), full_page=True)
+        page.screenshot(path=str(out/"world-landscape-1280x800.png"), full_page=True)
 
         # Camera interaction: a drag should keep a healthy planet surface.
         box=page.locator("#worldMount canvas").bounding_box(); x=box["x"]+box["width"]*.58; y=box["y"]+box["height"]*.58
@@ -93,10 +95,19 @@ def run(browser_path: str, port: int, out: Path, file_mode: bool=False):
         page.wait_for_function("!document.getElementById('world').classList.contains('hidden')")
         results.append(("book_returns_world", handled is True and visible(page,"#world")))
 
-        # Section landmark opens the real hub, whose Back returns to the world.
+        # Section landmark opens a shelf; Back visits Adventure before the world.
         page.evaluate("SQContentRegistry.open('section:games',{origin:'world'})")
         page.wait_for_function("!document.getElementById('hub').classList.contains('hidden')")
         results.append(("section_launch", visible(page,"#hub")))
+        handled=page.evaluate("window.SQPlatform.triggerBack()")
+        page.wait_for_function("!document.getElementById('tab-adventure').classList.contains('hidden')")
+        shelves_ok=handled is True and visible(page,"#hub") and page.locator("#hubBack").inner_text().find("Planet")>=0
+        for shelf in ("games","practice","acts"):
+            page.evaluate("tab => SummerQuest.navigate(tab)",shelf)
+            shelves_ok &= visible(page,"#hub") and page.locator("#hubBack").inner_text().find("Adventure")>=0
+            page.evaluate("window.SQPlatform.triggerBack()")
+            shelves_ok &= visible(page,"#tab-adventure")
+        results.append(("shelves_return_adventure", shelves_ok))
         handled=page.evaluate("window.SQPlatform.triggerBack()")
         page.wait_for_function("!document.getElementById('world').classList.contains('hidden')")
         results.append(("section_returns_world", handled is True and visible(page,"#world")))

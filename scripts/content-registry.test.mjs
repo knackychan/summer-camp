@@ -121,7 +121,7 @@ test("root projection covers real catalogs, stable aliases and shared lock excep
   assert.ok(olderLesson);
   assert.equal(olderLesson.reason, "age_restricted");
   gamesLocked = true;
-  for (const id of ["calc", "paint"]) assert.equal(registry.get("game:" + id).available, true, id);
+  for (const id of ["calc", "paint", "origami", "bricklab"]) assert.equal(registry.get("game:" + id).available, true, id);
   assert.equal(registry.get("game:solar").available, false);
   assert.equal(registry.get("game:kitchen").available, false);
   assert.equal(registry.get("section:practice").available, true, "Practice holds Brain Gym, the door out of the games lock");

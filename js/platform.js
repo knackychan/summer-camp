@@ -60,11 +60,12 @@
   function capacitorAndroidAdapter(){
     if(typeof window==="undefined")return null;
     const capacitor=window.Capacitor;
-    if(!capacitor||typeof capacitor.registerPlugin!=="function")return null;
+    if(!capacitor)return null;
     try{
       if(typeof capacitor.isNativePlatform==="function"&&!capacitor.isNativePlatform())return null;
     }catch(e){return null;}
-    const plugin=capacitor.registerPlugin("SummerQuestNative");
+    const plugin=capacitor.Plugins&&capacitor.Plugins.SummerQuestNative||
+      (typeof capacitor.registerPlugin==="function"&&capacitor.registerPlugin("SummerQuestNative"));
     if(!plugin)return null;
     let nativeBack=null;
     listenPlugin(plugin,"audioFocusChanged",function(event){

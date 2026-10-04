@@ -1217,15 +1217,19 @@ function gameLaunchAccess(id,lvl,options){
      Only a full Papa app-pause stops it. */
   const isBrain=!!meta.brain;
   const isDirectedLearning=!!(options&&options.learningDirector);
-  /* Paint is a creative tool, not screen time — same open door as Brain Gym, so
-     it is usable during Project time before the block is ticked. */
-  if(!isBrain&&!isDirectedLearning&&lvl!=="paint"){
+  /* Creative tools are not screen time — same open door as Brain Gym, so
+     they are usable during Project time before the block is ticked. */
+  if(!isBrain&&!isDirectedLearning&&!isCreativeTool(lvl)){
     if(catLockReason(id,"games"))return {ok:false,reason:"category_locked"};
     const ls=gameLockState(id);
     if(ls.locked)return {ok:false,reason:ls.reason||"games_locked",lock:ls};
   }
   return {ok:true};
 }
+/* Creative tools (Paint, Origami, Brick Lab) are not screen time: they pass the games
+   category lock and the games lock the same way Brain Gym does. */
+var CREATIVE_TOOLS=["paint","origami","bricklab"];
+function isCreativeTool(lvl){return CREATIVE_TOOLS.indexOf(lvl)>=0;}
 let gameLaunchToken=0;
 async function startGame(id,lvl,options){
   const access=gameLaunchAccess(id,lvl,options);
@@ -1302,6 +1306,7 @@ function gameCtx(mountEl,game,kidId){
     director:learningDirectorLaunch?Object.assign({},learningDirectorLaunch):null,
     bopomofo:window.SQBopomofo||null,
     finish:function(res){ finishRegistered(game,res,kidId); },
+    back:function(){ return summerQuestBack(); },
     sayZh:function(txt){say(txt,"zh-TW");},
     saveSettings:saveProgress,
     saveProgress:saveProgress,
@@ -1711,7 +1716,7 @@ function leaveLockedCategory(){
   if(!hubKid)return;
   /* Brain Gym passes the games category lock (see startGame), so it must not be
      evicted by it either */
-  const inBrain=level==="paint"||!!(level&&LEVELS[level]&&LEVELS[level].brain);
+  const inBrain=isCreativeTool(level)||!!(level&&LEVELS[level]&&LEVELS[level].brain);
   const inDirectedLearning=!!learningDirectorLaunch;
   if(!inBrain&&!inDirectedLearning&&!document.getElementById("game").classList.contains("hidden")&&catLockReason(hubKid,"games")){
     stopArena(); showOnly("hub"); hubTab="quests"; saveAppPlace("hub"); renderHub(); return;
@@ -2245,7 +2250,7 @@ function startTimelineWatcher(){
     }
     const ls=gameLockState();
     /* never evict a kid from a Brain Gym round — it is what opens the lock */
-    const inBrain=level==="paint"||!!(level&&LEVELS[level]&&LEVELS[level].brain);
+    const inBrain=isCreativeTool(level)||!!(level&&LEVELS[level]&&LEVELS[level].brain);
     if(ls.locked&&!inBrain&&!document.getElementById("game").classList.contains("hidden")){
       goHome(); showLockOverlay(ls);
     }
@@ -2704,6 +2709,7 @@ function renderHub(){
   if(hubKid!=="luis"&&hubTab==="captain") hubTab="quests";
   if(hubTab!=="games"&&hubTab!=="practice"&&tabLocked(hubTab)) hubTab="quests";
   if(hubTab!=="music")cancelCalibration();
+  document.getElementById("hubBack").textContent=BACK_SHELF[hubTab]?"← 🎮 Adventure 冒險":"← 🌍 Planet 星球";
   document.getElementById("captainTab").classList.toggle("hidden",hubKid!=="luis");
   renderHubHead();
   /* tabs */
@@ -4643,8 +4649,12 @@ function summerQuestBack(){
   const game=document.getElementById("game");
   if(game&&!game.classList.contains("hidden")){goHome();return true;}
   const hub=document.getElementById("hub");
-  /* Base Camp always goes back to the planet, however it was reached (D2). */
-  if(hub&&!hub.classList.contains("hidden")){stopActTimer();if(hubKid){const id=hubKid;hubReturnSurface=null;openWorld(id);return true;}hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;}
+  if(hub&&!hub.classList.contains("hidden")){
+    stopActTimer();
+    if(BACK_SHELF[hubTab]){hubTab="adventure";saveAppPlace("hub");renderHub();return true;}
+    if(hubKid){const id=hubKid;hubReturnSurface=null;openWorld(id);return true;}
+    hubKid=null;saveAppPlace("home");showOnly("home");renderHome();return true;
+  }
   /* The planet is the root: Back closes focus or a mini-game, then lets Android leave.
      Switching hero is the explicit ⇄ button, never a Back press (D4). */
   const world=document.getElementById("world");

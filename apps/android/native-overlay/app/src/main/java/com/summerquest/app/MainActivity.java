@@ -2,6 +2,7 @@ package com.summerquest.app;
 
 import android.os.Bundle;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -10,11 +11,20 @@ import com.getcapacitor.BridgeActivity;
 
 /** Thin activity host. All app/learning state remains in the bundled web runtime. */
 public class MainActivity extends BridgeActivity {
+    private OnBackPressedCallback backCallback;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Register before BridgeActivity.onCreate() creates the Bridge and loads the page.
         registerPlugin(SummerQuestNativePlugin.class);
         super.onCreate(savedInstanceState);
+        backCallback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                dispatchBack();
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, backCallback);
         hideSystemBars();
     }
 
@@ -31,11 +41,9 @@ public class MainActivity extends BridgeActivity {
         controller.hide(WindowInsetsCompat.Type.systemBars());
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public void onBackPressed() {
+    private void dispatchBack() {
         if (getBridge() == null || getBridge().getWebView() == null) {
-            super.onBackPressed();
+            performSystemBack();
             return;
         }
         getBridge().getWebView().evaluateJavascript(
@@ -46,8 +54,11 @@ public class MainActivity extends BridgeActivity {
         );
     }
 
-    @SuppressWarnings("deprecation")
     private void performSystemBack() {
-        runOnUiThread(() -> MainActivity.super.onBackPressed());
+        runOnUiThread(() -> {
+            backCallback.setEnabled(false);
+            getOnBackPressedDispatcher().onBackPressed();
+            backCallback.setEnabled(true);
+        });
     }
 }
