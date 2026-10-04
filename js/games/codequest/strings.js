@@ -46,7 +46,7 @@ export const LOGIC = Object.freeze({
 
 export const UI = Object.freeze({
   title: ['CODE QUEST', '程式冒險'], subtitle: ['Program the dungeon hero', '編程控制地下城英雄'],
-  questMap: ['Quest map', '冒險地圖'], inventory: ['Camp & lab', '營地與實驗室'], pause: ['Pause', '暫停'],
+  questMap: ['Quest map', '冒險地圖'], inventory: ['Camp', '營地'], pause: ['Pause', '暫停'],
   program: ['Turn program', '回合程式'], rune: ['Rune function', '符文函式'], code: ['Write code', '編寫程式'],
   picture: ['Picture cards', '圖像卡'], blocksView: ['Blocks', '積木'], hybrid: ['Hybrid', '混合模式'],
   recommended: ['Recommended', '建議模式'], applyCode: ['Apply code', '套用程式碼'], resetCode: ['Reset from blocks', '從積木重設'],
@@ -61,7 +61,7 @@ export const UI = Object.freeze({
   defense: ['DEF', '防禦'], status: ['Status', '狀態'], best: ['Best', '最佳'], completed: ['cleared', '已完成'], locked: ['Locked', '尚未解鎖'],
   continue: ['Continue', '繼續'], replay: ['Replay', '再玩一次'], close: ['Back', '返回'],
   pausedTitle: ['Adventure paused', '冒險暫停中'], pausedBody: ['Your program and dungeon room can wait.', '你的程式和地下城房間都會等你。'], resume: ['Keep adventuring', '繼續冒險'],
-  campTitle: ['Dungeon Camp & Alchemy Lab', '地下城營地與鍊金實驗室'], bag: ['Ingredient bag', '材料背包'], equipment: ['Loadout', '裝備配置'], potionBench: ['Potion laboratory', '藥水實驗室'],
+  campTitle: ['Dungeon Camp', '地下城營地'], bag: ['Ingredient bag', '材料背包'], equipment: ['Loadout', '裝備配置'], potionBench: ['Potion laboratory', '藥水實驗室'],
   cauldron: ['Cauldron', '煉金鍋'], brew: ['Brew', '調製'], clearBench: ['Clear lab', '清空實驗室'], potions: ['Potions', '藥水'], recipes: ['Recipes', '配方'],
   process: ['Process', '製程'], grind: ['Grind', '研磨'], heat: ['Heat', '加熱'], stir: ['Stir', '攪拌'], cool: ['Cool', '冷卻'],
   equip: ['Equip', '裝備'], equipped: ['Equipped', '已裝備'], damage: ['damage', '傷害'], armor: ['armor', '護甲'], slot: ['slot', '欄位'],
@@ -126,6 +126,46 @@ export const MESSAGES = Object.freeze({
   codeReset: ['Code reset from your blocks.', '已從積木重設程式碼。'],
   equipped: ['Loadout changed.', '裝備配置已更換。'], lockedLevel: ['Clear the previous quest to unlock this one.', '先完成上一關，就能解鎖這一關。'], towerLocked: ['Clear eight quests to unlock the Infinite Tower.', '完成八個關卡，就能解鎖無限高塔。'], paused: ['Paused.', '已暫停。']
 });
+
+/* Laboratory of Curiosity screen (lab design D1, D8, D12; slice 04). The owl's lines are
+   one short sentence each and never call a mix wrong. */
+export const LAB = Object.freeze({
+  open: ['Lab', '實驗室'], back: ['‹ Dungeon', '‹ 地下城'], title: ['Laboratory of Curiosity', '好奇實驗室'],
+  openFromCamp: ['Brew in the Lab →', '到實驗室釀造 →'],
+  welcome: ['Welcome to the Lab! Put something in the cauldron and see what happens.', '歡迎來到實驗室！放點東西到鍋子裡，看看會發生什麼事。'],
+  picked: ['Now tap the cauldron to drop it in.', '現在點一下鍋子，把它放進去。'],
+  full: ['The cauldron is full — try Brew!', '鍋子滿了——試試釀造！'],
+  empty: ['Put something in the cauldron first!', '先放點東西到鍋子裡！'],
+  orderHint: ['So close — the order matters…', '好接近了——順序很重要……'],
+  practice: ['Not enough in your bag, so this was a practice brew.', '背包裡的材料不夠，這次是練習釀造。'],
+  newPage: ['New page!', '新的一頁！'],
+  scriptLocked: ['Clear more quests to unlock the potion scroll.', '再多完成幾關，就能打開藥水卷軸。'],
+  cauldron: ['Cauldron', '鍋子'], steps: ['Steps', '步驟'], noSteps: ['Tap a tool to add a step', '點工具就能加入步驟'],
+  takeOut: ['Take out', '拿出來'], undoStep: ['Undo step', '撤銷步驟'], clear: ['Clear', '清空'], brew: ['Brew', '釀造'],
+  scriptRecipes: ['Load a recipe you know', '載入你知道的配方'],
+  // Curiosity Journal sheet (slice 06).
+  journal: ['Curiosity Journal', '好奇日誌'], tabReactions: ['Reactions', '反應'], tabPotions: ['Potions', '藥水'], tabIngredients: ['Ingredients', '材料'],
+  notFound: ['Not found yet', '還沒發現'], putIn: ['Put in cauldron', '放進鍋子'], ready: ['Ready — tap Brew!', '準備好了——按釀造！'],
+  unseen: ['Use it in a reaction to learn its powers.', '用它做一次反應，就能知道它的力量。'], shelf: ['Shelf', '架子'], bag: ['Bag', '背包']
+});
+/* Property and reaction-family names for the Journal's icon formulas. */
+export const LAB_PROPS = Object.freeze({
+  life: ['Life', '生命'], growth: ['Growth', '生長'], fire: ['Fire', '火'], cold: ['Cold', '寒冷'], water: ['Water', '水'],
+  echo: ['Echo', '回音'], space: ['Space', '空間'], time: ['Time', '時間'], light: ['Light', '光'], chaos: ['Chaos', '混亂'], calm: ['Calm', '平靜']
+});
+export const LAB_FAMILIES = Object.freeze({
+  reality: ['Reality', '現實'], instability: ['Instability', '不穩定'], time: ['Time', '時間'], space: ['Space', '空間'],
+  creature: ['Creature', '生物'], replication: ['Copying', '複製'], biological: ['Plants', '植物'], elemental: ['Elements', '元素'],
+  light: ['Light', '光'], fallback: ['Everyday', '日常']
+});
+/** Owl line after a potion is bottled. */
+export function labMadeLine(potionLabel) {
+  return [`You made a ${potionLabel[0]}!`, `你做出了${potionLabel[1]}！`];
+}
+/** Owl line when the Journal book is tapped (the page sheet itself is slice 06). */
+export function labPagesLine(found, total) {
+  return [`Your Journal has ${found} of ${total} reactions.`, `你的日誌已經有 ${found}／${total} 種反應。`];
+}
 
 /* Short one-word card labels for the program strip and command library (redesign D4). */
 export const SHORT = Object.freeze({

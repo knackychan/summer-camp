@@ -53,6 +53,32 @@ def rendered(page, mode):
     return result
 
 
+def open_codequest_lab(page, out, prefix):
+    """Code Quest's Lab is 2D canvas only (lab slice 07): it must open and paint in every graphics mode."""
+    snap = "SQGames.get('codequest').snapshot()"
+    opened = page.evaluate('SummerQuest.open("game:codequest")')
+    assert opened['ok'], opened
+    page.wait_for_selector('.cq .cq-scene canvas')
+    if page.evaluate(snap + '.dialog'):
+        page.keyboard.press('Escape')
+    page.evaluate("document.querySelector('[data-action=\"lab\"]').dispatchEvent(new MouseEvent('click',{bubbles:true,detail:0}))")
+    page.wait_for_function(snap + '.lab.open && ' + snap + '.lab.hits.length > 0')
+    page.wait_for_timeout(200)
+    painted = page.evaluate("""() => {
+      const c = document.querySelector('.cq-lab canvas'), d = c.getContext('2d').getImageData(c.width >> 1, c.height >> 1, 1, 1).data;
+      return {width: c.width, height: c.height, alpha: d[3], hits: SQGames.get('codequest').snapshot().lab.hits.length};
+    }""")
+    assert painted['width'] > 0 and painted['alpha'] == 255 and painted['hits'] == 20, painted
+    page.screenshot(path=str(out / (prefix + '-codequest-lab.png')))
+    # Back leaves the Lab first, then Code Quest.
+    assert page.evaluate('SQPlatform.triggerBack()') is True
+    assert not page.evaluate(snap + '.lab.open')
+    recovery.wait_screen(page, 'game')
+    recovery.back(page, 'world')
+    recovery.wait_world(page)
+    return painted
+
+
 def run_case(browser, base, mode, out, offline=False):
     context = recovery.context_for(browser, offline=offline)
     context.add_init_script("(" + PROBE + ")(" + json.dumps(mode) + ");")
@@ -108,6 +134,7 @@ def run_case(browser, base, mode, out, offline=False):
             recovery.back(page,'world')
             recovery.wait_world(page)
             assert not page.locator('#stage canvas').count()
+        result['codequestLab'] = open_codequest_lab(page, out, ('offline-' if offline else '') + mode)
         # Other activities remain playable even without 3D support.
         assert page.evaluate('SummerQuest.open("game:calc")')['ok']
         recovery.wait_screen(page, 'game')

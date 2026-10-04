@@ -1,0 +1,169 @@
+{
+  "target": "source",
+  "checks": [
+    {
+      "name": "1280x800: registry opens Code Quest",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 1 Lab opens over a hidden dungeon",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 8 every hit rect and button >= 48 CSS px",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 8 no page scroll",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 2 drag puts two jars in the cauldron",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 2 Echo + Mushroom → duplication",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 2 \"New page!\" on the Journal",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 3 Healing recipe in order → Healing +1",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 3 bag counts unchanged (D5)",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 4 reversed steps → reaction + order hint, no potion",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 5 fifth ingredient → owl says full, mix stays 4",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 6 Journal shows the found pages",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 6 Journal closes",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 8 bubble never covers the cauldron or the strip",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 7 host Back returns to the dungeon, not out of Code Quest",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 7 same room, program unchanged",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 7 Camp has the Lab button and no bench",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 7 Camp opens the Lab",
+      "ok": true
+    },
+    {
+      "name": "1280x800: 7 ‹ Dungeon closes the Lab",
+      "ok": true
+    },
+    {
+      "name": "1280x600: registry opens Code Quest",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 1 Lab opens over a hidden dungeon",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 8 every hit rect and button >= 48 CSS px",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 8 no page scroll",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 2 drag puts two jars in the cauldron",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 2 Echo + Mushroom → duplication",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 2 \"New page!\" on the Journal",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 3 Healing recipe in order → Healing +1",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 3 bag counts unchanged (D5)",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 4 reversed steps → reaction + order hint, no potion",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 5 fifth ingredient → owl says full, mix stays 4",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 6 Journal shows the found pages",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 6 Journal closes",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 8 bubble never covers the cauldron or the strip",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 7 host Back returns to the dungeon, not out of Code Quest",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 7 same room, program unchanged",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 7 Camp has the Lab button and no bench",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 7 Camp opens the Lab",
+      "ok": true
+    },
+    {
+      "name": "1280x600: 7 ‹ Dungeon closes the Lab",
+      "ok": true
+    },
+    {
+      "name": "No page errors",
+      "ok": true
+    },
+    {
+      "name": "No console errors",
+      "ok": true
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "browser": "138.0.7204.183",
+  "ok": true
+}

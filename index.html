@@ -4652,7 +4652,11 @@ function summerQuestBack(){
   const act=document.getElementById("act");
   if(act&&!act.classList.contains("hidden")){stopActTimer();returnAfterContent(String(actIdx).charAt(0)==="L"?"learn":"acts");return true;}
   const game=document.getElementById("game");
-  if(game&&!game.classList.contains("hidden")){goHome();return true;}
+  if(game&&!game.classList.contains("hidden")){
+    /* A registry game with an inner screen (Code Quest's Lab) may take Back first; true = handled. */
+    if(currentGame&&typeof currentGame.back==="function"){try{if(currentGame.back()===true)return true;}catch(e){console.error(e);}}
+    goHome();return true;
+  }
   const hub=document.getElementById("hub");
   if(hub&&!hub.classList.contains("hidden")){
     stopActTimer();
