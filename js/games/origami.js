@@ -1,6 +1,7 @@
 /* Origami Atelier 🦢 摺紙工房 — real-paper folding guide (28 models, EN + 繁中).
    The feature itself is the vendored quickstart package in ../vendor/origami-atelier/
-   (v0.2.0, kept unchanged). This file only maps it onto the game ctx contract:
+   (v0.2.0; its screens reworked in place, no home screen — docs/plans/2026-10-04-origami-lesson/).
+   This file only maps it onto the game ctx contract:
    progress lives in ctx.settings, leaving the Atelier goes through the host's Back. */
 import { mountOrigamiAtelier } from "../vendor/origami-atelier/origami-atelier.js";
 

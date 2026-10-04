@@ -194,13 +194,24 @@ export function supportsOrigamiDiagram(name) {
   return Boolean(diagramFor(name));
 }
 
+/* One loop cycle: the unfolded start (arrow lights up), the fold, a hold on the folded
+   shape so kids can catch up, then a short fade back to the start. Pure WAAPI, so pause
+   and resume keep the exact frame (docs/plans/2026-10-04-origami-lesson/). */
+const LEAD_MS = 400;
+const HOLD_MS = 500;
+const RESET_MS = 250;
+
 export class OrigamiFoldEngine {
   constructor(host, options = {}) {
     this.host = host;
     this.front = options.front || "#ef8f9f";
     this.back = options.back || "#ffe6e9";
     this.reducedMotion = options.reducedMotion ?? window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-    this.timeout = null;
+    this.anims = [];
+    this.cycleMs = 0;
+    this.paused = true;
+    this.played = false;
+    this.parts = { crease:false, arrow:false };
     this.renderShell();
   }
 
@@ -211,12 +222,14 @@ export class OrigamiFoldEngine {
     const shadow = svgEl("ellipse", {cx:150,cy:193,rx:88,ry:8,class:"oa-paper-shadow"});
     this.base = svgEl("polygon", {class:"oa-paper-base"});
     this.ghost = svgEl("polygon", {class:"oa-paper-ghost"});
+    this.after = svgEl("polygon", {class:"oa-paper-after"});
     this.flap = svgEl("polygon", {class:"oa-paper-flap"});
     this.crease = svgEl("line", {class:"oa-crease"});
     this.extraCrease = svgEl("line", {class:"oa-crease oa-crease-secondary"});
+    this.arrowGlow = svgEl("path", {class:"oa-arrow-glow", fill:"none"});
     this.arrow = svgEl("path", {class:"oa-arrow", fill:"none"});
     this.arrowHead = svgEl("path", {class:"oa-arrow-head", fill:"none"});
-    this.svg.append(shadow,this.ghost,this.base,this.flap,this.crease,this.extraCrease,this.arrow,this.arrowHead);
+    this.svg.append(shadow,this.ghost,this.after,this.base,this.flap,this.crease,this.extraCrease,this.arrowGlow,this.arrow,this.arrowHead);
     this.host.append(this.svg);
     this.setColors(this.front,this.back);
   }
@@ -224,14 +237,19 @@ export class OrigamiFoldEngine {
   setColors(front, back) {
     this.front = front; this.back = back;
     this.base.style.fill = front;
+    this.after.style.fill = front;
     this.flap.style.fill = back;
     this.ghost.style.fill = front;
   }
 
-  show(step, { animate = true } = {}) {
-    if (this.timeout) clearTimeout(this.timeout);
+  /* autoplay: start looping now. time: pick the cycle up at this point (language re-render).
+     Reduced motion never autoplays; it rests on the start frame until Play is tapped. */
+  show(step, { autoplay = true, time = null } = {}) {
+    this.stop();
     const d = diagramFor(step.diagram) || baseDiagram();
-    this.base.setAttribute("points", points(d.base));
+    this.parts = { crease:Boolean(d.crease), arrow:Boolean(d.arrow) };
+    this.base.setAttribute("points", points(d.flap ? d.base : (d.after || d.base)));
+    this.after.setAttribute("points", points(d.after || d.base));
     this.ghost.setAttribute("points", points(d.after || d.base));
     this.ghost.style.opacity = d.flap ? "0.18" : "0";
     this.flap.style.display = d.flap ? "" : "none";
@@ -246,42 +264,101 @@ export class OrigamiFoldEngine {
       this.extraCrease.setAttribute("x1",d.extraCrease[0][0]); this.extraCrease.setAttribute("y1",d.extraCrease[0][1]);
       this.extraCrease.setAttribute("x2",d.extraCrease[1][0]); this.extraCrease.setAttribute("y2",d.extraCrease[1][1]);
     } else this.extraCrease.style.display = "none";
+    const arrowParts = [this.arrowGlow, this.arrow, this.arrowHead];
     if (d.arrow) {
       const [s,c,e]=d.arrow;
-      this.arrow.style.display=""; this.arrowHead.style.display="";
-      this.arrow.setAttribute("d",`M ${s[0]} ${s[1]} Q ${c[0]} ${c[1]} ${e[0]} ${e[1]}`);
+      arrowParts.forEach(el => { el.style.display = ""; });
+      const curve = `M ${s[0]} ${s[1]} Q ${c[0]} ${c[1]} ${e[0]} ${e[1]}`;
+      this.arrow.setAttribute("d",curve);
+      this.arrowGlow.setAttribute("d",curve);
       const vx=e[0]-c[0], vy=e[1]-c[1], len=Math.hypot(vx,vy)||1, ux=vx/len, uy=vy/len;
       const px=-uy, py=ux, ax=e[0]-ux*12, ay=e[1]-uy*12;
       this.arrowHead.setAttribute("d",`M ${ax+px*7} ${ay+py*7} L ${e[0]} ${e[1]} L ${ax-px*7} ${ay-py*7}`);
-    } else { this.arrow.style.display="none"; this.arrowHead.style.display="none"; }
+    } else arrowParts.forEach(el => { el.style.display = "none"; });
 
-    this.flap.getAnimations?.().forEach(a=>a.cancel());
-    this.arrow.getAnimations?.().forEach(a=>a.cancel());
-    this.arrowHead.getAnimations?.().forEach(a=>a.cancel());
     this.flap.style.transform = "none";
+    this.flap.style.opacity = d.flap ? "0.82" : "0";
     this.base.style.opacity = "1";
+    this.after.style.opacity = "0";
+    this.arrowGlow.style.opacity = "0";
 
-    if (!animate || this.reducedMotion || !d.flap) {
-      if (d.after) this.base.setAttribute("points", points(d.after));
-      this.flap.style.opacity = d.flap ? "0.28" : "0";
+    const fold = Number(step.durationMs) || 1850;
+    const total = LEAD_MS + fold + HOLD_MS + RESET_MS;
+    const a = LEAD_MS / total, b = (LEAD_MS + fold) / total, c = (LEAD_MS + fold + HOLD_MS) / total;
+    const m = a + (b - a) * .58, settle = Math.min(c, b + .05);
+    const timing = { duration:total, iterations:Infinity };
+    const t0 = "translate(0px,0px) rotate(0deg)";
+    const tMid = `translate(${(d.dx||0)*.55}px,${(d.dy||0)*.55}px) rotate(${(d.rotate||0)*.55}deg)`;
+    const t1 = `translate(${d.dx||0}px,${d.dy||0}px) rotate(${d.rotate||0}deg)`;
+    const canAnimate = typeof this.flap.animate === "function";
+    const anims = [];
+    if (canAnimate && d.flap) {
+      anims.push(this.flap.animate([
+        { offset:0, transform:t0, opacity:0 },
+        { offset:a*.4, transform:t0, opacity:.82 },
+        { offset:a, transform:t0, opacity:.82, easing:"cubic-bezier(.3,.55,.45,1)" },
+        { offset:m, transform:tMid, opacity:.96, easing:"cubic-bezier(.2,.6,.3,1)" },
+        { offset:b, transform:t1, opacity:.18 },
+        { offset:settle, transform:t1, opacity:0 },
+        { offset:1, transform:t1, opacity:0 }
+      ], timing));
+      anims.push(this.base.animate([{offset:0,opacity:1},{offset:b,opacity:1},{offset:settle,opacity:0},{offset:c,opacity:0},{offset:1,opacity:1}], timing));
+      anims.push(this.after.animate([{offset:0,opacity:0},{offset:b,opacity:0},{offset:settle,opacity:1},{offset:c,opacity:1},{offset:1,opacity:0}], timing));
+    }
+    if (canAnimate && d.arrow) {
+      const beam = [{offset:0,opacity:.35},{offset:a,opacity:1},{offset:m,opacity:1},{offset:b,opacity:.3},{offset:1,opacity:.3}];
+      anims.push(this.arrow.animate(beam, timing), this.arrowHead.animate(beam, timing));
+      anims.push(this.arrowGlow.animate([{offset:0,opacity:0},{offset:a,opacity:.85},{offset:(a+m)/2,opacity:.35},{offset:m,opacity:.85},{offset:b,opacity:0},{offset:1,opacity:0}], timing));
+    }
+    if (canAnimate && d.crease && anims.length) {
+      anims.push(this.crease.animate([{offset:0,opacity:.55},{offset:a,opacity:1},{offset:b,opacity:1},{offset:1,opacity:.55}], timing));
+    }
+    this.anims = anims;
+    this.cycleMs = anims.length ? total : 0;
+    if (!anims.length) {
+      this.paused = true;
       return;
     }
-    const duration = Number(step.durationMs) || 1850;
-    this.arrow.animate([{opacity:.15,transform:"translate(0,0)"},{opacity:1,transform:"translate(0,-2px)"},{opacity:.15}],{duration,iterations:1,easing:"ease-in-out"});
-    this.arrowHead.animate([{opacity:.15},{opacity:1},{opacity:.15}],{duration,iterations:1,easing:"ease-in-out"});
-    this.flap.animate([
-      { transform:"translate(0px,0px) rotate(0deg)", opacity:.82 },
-      { transform:`translate(${(d.dx||0)*.55}px,${(d.dy||0)*.55}px) rotate(${(d.rotate||0)*.55}deg)`, opacity:.96, offset:.58 },
-      { transform:`translate(${d.dx||0}px,${d.dy||0}px) rotate(${d.rotate||0}deg)`, opacity:.18 }
-    ],{duration,fill:"forwards",easing:"cubic-bezier(.2,.72,.22,1)"});
-    this.timeout=setTimeout(()=>{
-      if (d.after) this.base.setAttribute("points", points(d.after));
-      this.flap.style.opacity="0";
-    },Math.max(0,duration-40));
+    const start = time == null ? (this.reducedMotion ? LEAD_MS : 0) : time % total;
+    anims.forEach(x => { x.currentTime = start; });
+    if (autoplay && !this.reducedMotion) this.resume();
+    else this.pause();
+  }
+
+  get hasMotion() { return this.anims.length > 0; }
+
+  pause() {
+    this.anims.forEach(x => x.pause());
+    this.paused = true;
+  }
+
+  resume() {
+    if (!this.anims.length) return;
+    this.anims.forEach(x => x.play());
+    this.paused = false;
+    this.played = true;
+  }
+
+  replay() {
+    if (!this.anims.length) return;
+    this.anims.forEach(x => { x.currentTime = 0; });
+    this.resume();
+  }
+
+  /* Where the loop is, so a re-render (language switch) can pick it up again. */
+  snapshot() {
+    const now = this.anims[0]?.currentTime;
+    return { paused:this.paused, played:this.played, time:now == null ? null : now % (this.cycleMs || 1) };
+  }
+
+  stop() {
+    this.anims.forEach(x => x.cancel());
+    this.anims = [];
+    this.cycleMs = 0;
   }
 
   destroy() {
-    if (this.timeout) clearTimeout(this.timeout);
+    this.stop();
     this.host.innerHTML="";
   }
 }
