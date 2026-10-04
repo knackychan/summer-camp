@@ -16,6 +16,8 @@ places pieces. Slice 14: a standard tablet that can't keep up steps down (painte
 without resizing the view. Slice 15: a part slid sideways out of the rail places where it is let go.
 Multiplayer plan slice 08: part icons are the real part, in the picked colour, drawn on the lab's own canvas.
 Multiplayer plan slice 02: every change goes through the op sequencer (placed pieces carry `by`).
+Multiplayer plan slice 05: on a pretend home wifi (in-page loopback), a sibling joins the open world, builds,
+undoes and leaves; then this tablet joins a sibling's world, builds in it and is sent home when it closes.
 Multiplayer plan slice 01: the lab opens on the kid's worlds (the old single build becomes world 1); a new
 world starts empty; rename and delete from a card; Back leaves a world for the menu with its picture saved.
 A pre-reader profile shows the icon-first UI.
@@ -64,6 +66,29 @@ def world_build(page, kid, field):
       const list = JSON.parse(localStorage.getItem('sq:brick-lab:worlds:v1:' + kid));
       const top = list.slice().sort((a, b) => b.played - a.played)[0];
       return JSON.parse(localStorage.getItem('sq:brick-lab:world:v1:' + kid + ':' + top.id))[field]; }""", [kid, field])
+
+
+# A pretend home wifi in the page (lan-session loopback) and a scripted sibling tablet.
+WIFI = """async () => {
+  const lan = await import('/js/game-services/lan-session.js');
+  const share = await import('/js/brick-lab/brick-share.js');
+  const { BrickTogether } = await import('/js/brick-lab/brick-together.js');
+  const cat = await import('/js/brick-lab/brick-catalog.js');
+  const wifi = lan.createLoopback();
+  window.__sqLanTransport = wifi.device();
+  const rules = { part: (id) => cat.PARTS.find((p) => p.id === id) || null, color: (id) => id in cat.COLORS, half: 32 };
+  /* A sibling tablet: what BrickTogether needs from a lab, nothing drawn. */
+  const fake = (kid) => {
+    const lab = { kidId: kid, pieces: new Map(), sequencer: null, events: [], kidName: (k) => k, currentWorldName: () => 'Treehouse',
+      renderJoin() {}, renderCrew() {}, sharedChanged() {}, showOp() {}, afterRemoteOp() {}, updateUndoUI() {},
+      crewToast: (k, j) => lab.events.push(['crew', k, j]), loadShared(w) { lab.pieces.clear(); w.forEach((p) => lab.pieces.set(p.id, { ...p })); },
+      ownChangeApplied: (op) => lab.events.push(['mine', op.type]), ownChangeRefused: (op, why) => lab.events.push(['refused', why]),
+      sessionEnded: (r) => lab.events.push(['ended', r]) };
+    lab.together = new BrickTogether(lab, lan.createLanSession(wifi.device()), kid);
+    return lab;
+  };
+  window.__sqSib = { wifi, share, rules, fake, lili: fake('lili') };
+  return true; }"""
 
 
 def pick(page, category):
@@ -206,6 +231,118 @@ def lab_slices_09_11(page, snap, check, out):
     page.locator('.sqbl-fav[data-fav="brick_1x3"]').first.click()
     check('Star again removes it', snap()['tray']['favorites'] == [])
     page.screenshot(path=str(out / 'library.png'))
+
+
+def lab_together(browser, base, report, console, check, out):
+    ctx = RECOVERY['context_for'](browser, seed=RECOVERY['saved_fixture']('hub'))
+    pg = ctx.new_page()
+    pg.set_viewport_size({'width': 1280, 'height': 800})
+    pg.on('pageerror', lambda error: report['pageErrors'].append(str(error)))
+    pg.on('console', console)
+    pg.goto(base + '/index.html', wait_until='domcontentloaded')
+    RECOVERY['ready'](pg)
+    RECOVERY['wait_screen'](pg, 'hub')
+    pg.evaluate(WIFI)
+    snap = lambda: pg.evaluate(SNAP)
+    sib = lambda js: pg.evaluate(f"(async () => {{ const S = window.__sqSib; {js} }})()")
+    pg.evaluate("SummerQuest.openGame('bricklab')")
+    pg.wait_for_function(f"window.SQGames && SQGames.get('bricklab') && {SNAP} && {SNAP}.menu")
+    check('With the home wifi, Join looks for worlds nearby', snap()['lan'] is True
+          and '附近沒有' in pg.locator('[data-join]').inner_text())
+
+    # Host: opening a world puts it on the wifi; Lili's tablet finds it and joins.
+    enter_world(pg)
+    n0 = len(snap()['pieces'])
+    box0 = pg.locator('.sqbl-stage canvas').bounding_box()
+    found = sib("""const t = S.lili.together; t.startLooking(); await new Promise((r) => setTimeout(r, 50));
+        return t.joinable().map((w) => ({ kid: w.kid, world: w.world }));""")
+    check('Opening a world puts it on the home wifi, named for the kid and the world',
+          found == [{'kid': 'luis', 'world': 'My Brick World · 我的積木世界'}])
+    sib("""const t = S.lili.together; await t.join(t.joinable()[0]); await new Promise((r) => setTimeout(r, 80)); return true;""")
+    pg.wait_for_timeout(200)
+    s = snap()
+    check('Lili joins at any time: she gets the whole world, no one confirms anything',
+          sib("return S.lili.pieces.size") == n0 and s['together']['peers'] == 1 and s['together']['shared'])
+    check('Crew chips show who is building, each in their colour', pg.locator('.sqbl-crew-chip').count() == 2
+          and pg.locator('.sqbl-crew').is_visible())
+    check('A toast says Lili joined, in both languages', 'Lili' in pg.locator('.sqbl-toast').inner_text()
+          and '加入了' in pg.locator('.sqbl-toast').inner_text())
+    pg.wait_for_timeout(300)
+    pg.screenshot(path=str(out / 'together-host.png'))
+
+    # Lili builds: the brick lands in this world, as hers.
+    sib("""S.lili.together.request({ type: 'add', piece: { id: 'lili-1', partId: 'brick_2x2', colorId: 'pink', x: 10, y: 0.6, z: 10, rotation: 0 } });
+        await new Promise((r) => setTimeout(r, 80)); return true;""")
+    pg.wait_for_timeout(150)
+    lili_brick = next((p for p in snap()['pieces'] if p['id'] == 'lili-1'), None)
+    check("Lili's brick lands here, marked as hers", lili_brick is not None and lili_brick.get('by') == 'lili')
+    pg.mouse.click(lili_brick['screen']['x'], lili_brick['screen']['y'])
+    pg.wait_for_timeout(150)
+    check("Tapping Lili's brick says she put it there; its outline is her colour, the brick keeps its own",
+          snap()['selectedId'] == 'lili-1' and 'Lili' in pg.locator('.sqbl-stage-hint').inner_text()
+          and snap()['selectionColor'] == '#ff6fb5' and lili_brick['colorId'] == 'pink')
+    pg.screenshot(path=str(out / 'together-placer.png'))
+    pg.mouse.click(box0['x'] + 30, box0['y'] + box0['height'] - 30)
+
+    # This tablet builds: Lili's tablet gets it; undo only takes back our own brick.
+    pick(pg, 'bricks')
+    pg.locator('.sqbl-part[data-part="brick_1x1"]').click()
+    box = pg.locator('.sqbl-stage canvas').bounding_box()
+    pg.mouse.click(box['x'] + box['width'] * 0.42, box['y'] + box['height'] * 0.7)
+    pg.wait_for_timeout(200)
+    mine = snap()['selectedId']
+    check("Our brick reaches Lili's tablet", mine and sib(f"return S.lili.pieces.has('{mine}')"))
+    check('Undo is on for our own change', not pg.locator('.sqbl-app [data-action="undo"]').is_disabled())
+    pg.locator('.sqbl-app [data-action="undo"]').dispatch_event('pointerdown')
+    pg.wait_for_timeout(200)
+    check("Undo takes back our brick only, everywhere; Lili's stays", not any(p['id'] == mine for p in snap()['pieces'])
+          and sib(f"return !S.lili.pieces.has('{mine}') && S.lili.pieces.has('lili-1')")
+          and any(p['id'] == 'lili-1' for p in snap()['pieces']))
+
+    # Lili leaves: chips go, the world (with her brick) is saved here.
+    sib("S.lili.together.leave(); await new Promise((r) => setTimeout(r, 80)); return true;")
+    pg.wait_for_timeout(150)
+    check('Lili leaves: a toast, the chips go', '離開了' in pg.locator('.sqbl-toast').inner_text()
+          and not pg.locator('.sqbl-crew').is_visible())
+    pg.evaluate('SQPlatform.triggerBack()')
+    check("Lili's brick is saved in this tablet's world", any(p['id'] == 'lili-1' for p in world_build(pg, 'luis', 'pieces')))
+    check('Leaving the world takes it off the wifi', sib("""const t = S.lili.together; t.startLooking();
+        await new Promise((r) => setTimeout(r, 50)); return t.joinable().length;""") == 0)
+
+    # Guest: Lili opens her Treehouse; it shows in our Join list; we join and build in it.
+    sib("""const lab = S.lili; lab.together.stopLooking();
+        lab.pieces.clear(); lab.pieces.set('t1', { id: 't1', partId: 'plate_2x2', colorId: 'green', x: 1, y: 0.2, z: 1, rotation: 0, by: 'lili' });
+        lab.sequencer = S.share.createSequencer({ world: lab.pieces, rules: S.rules });
+        await lab.together.host('Treehouse'); return true;""")
+    pg.wait_for_selector('.sqbl-join-card')
+    check("Lili's open world shows in Join with her name and colour", 'Lili' in pg.locator('.sqbl-join-card').inner_text()
+          and 'Treehouse' in pg.locator('.sqbl-join-card').inner_text())
+    pg.screenshot(path=str(out / 'together-join.png'))
+    worlds_before = len(snap()['worlds'])
+    pg.locator('.sqbl-join-card').click()
+    pg.wait_for_function(f"{SNAP}.together.role === 'guest' && !{SNAP}.menu")
+    s = snap()
+    check("Joining shows Lili's world, not ours", [p['id'] for p in s['pieces']] == ['t1'] and s['world'] is None)
+    check('A guest has no Save button (nothing is kept here)', not pg.locator('.sqbl-save-btn').is_visible())
+    pick(pg, 'bricks')
+    pg.locator('.sqbl-part[data-part="brick_2x2"]').click()
+    pg.mouse.click(box['x'] + box['width'] * 0.58, box['y'] + box['height'] * 0.66)
+    pg.wait_for_timeout(250)
+    s = snap()
+    added = [p for p in s['pieces'] if p['id'] != 't1']
+    check("Our brick goes to Lili's tablet, comes back numbered, and is selected", len(added) == 1 and added[0].get('by') == 'luis'
+          and s['selectedId'] == added[0]['id'] and sib(f"return S.lili.pieces.get('{added[0]['id']}').by") == 'luis')
+    pg.screenshot(path=str(out / 'together-guest.png'))
+
+    # Lili closes her world: we land on our own menu, our worlds untouched.
+    sib("S.lili.together.stopHosting(); await new Promise((r) => setTimeout(r, 80)); return true;")
+    pg.wait_for_function(f"{SNAP}.menu")
+    s = snap()
+    check("Lili closes her world: a gentle toast, back to our own menu", s['together']['role'] is None
+          and '關閉了' in pg.locator('.sqbl-toast').inner_text() and len(s['worlds']) == worlds_before)
+    check("Nothing of Lili's world was saved here", not any(p['id'] == 't1' for p in world_build(pg, 'luis', 'pieces')))
+    leave_lab(pg)
+    ctx.close()
 
 
 def run(args):
@@ -622,6 +759,9 @@ def run(args):
                 sp.screenshot(path=str(out / 'stepped-down.png'))
                 sp.evaluate('SQPlatform.triggerBack()')
                 slow.close()
+
+                # Multiplayer plan slice 05: building together on a pretend home wifi.
+                lab_together(browser, base, report, console, check, out)
 
                 # Slice 12 fix: on a short touch tablet a finger scrolls the category list (it must not pick
                 # the category it started on), and every category, Rails included, can be reached.

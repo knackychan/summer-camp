@@ -16,6 +16,7 @@ async function init(ctx) {
   var mine = lab = createBrickLab(mount, {
     kidId: ctx.kid,
     preReader: !!(kid && kid.age <= 5),
+    kids: ctx.kids || {},
     onTap: function () { if (ctx.sfx && ctx.sfx.pop) ctx.sfx.pop(); }
   });
   try {

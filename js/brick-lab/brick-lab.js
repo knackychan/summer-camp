@@ -13,6 +13,7 @@ import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
 import { createSequencer } from "./brick-share.js";
 import { createLanSession } from "../game-services/lan-session.js";
+import { BrickTogether } from "./brick-together.js";
 
 let THREE = null;
 let OrbitControls = null;
@@ -38,6 +39,8 @@ const HINTS = {
   railBusy: ["Rails can't overlap — try a free spot.", "軌道不能疊在一起，換個空位試試。"],
   railJoined: ["Rails connected!", "軌道接上了！"],
   circuit: ["Circuit complete!", "軌道接成一圈了！"],
+  changed: ["Someone changed that", "有人改過了"],
+  placedBy: (name) => [`${name} put this one here.`, `這塊是 ${name} 放的。`],
 };
 
 /* Parts tray and info card (slice 11). */
@@ -67,6 +70,13 @@ const MENU = {
   join: ["Join a world", "加入世界"],
   joinSoon: ["Coming soon: build together on the home wifi", "即將推出：在家裡的 Wi-Fi 一起蓋"],
   needsApp: ["Building together needs the Summer Quest app", "一起蓋需要 Summer Quest 應用程式"],
+  noneNearby: ["No worlds open nearby", "附近沒有開著的世界"],
+  joining: ["Joining…", "加入中…"],
+  cantJoin: ["Couldn't reach that world. Try again.", "連不上那個世界，再試一次。"],
+  joined: (name) => [`${name} joined!`, `${name} 加入了！`],
+  left: (name) => [`${name} left`, `${name} 離開了`],
+  closed: (name) => [`${name}'s world closed`, `${name} 的世界關閉了`],
+  update: ["Update the app on both tablets", "兩台平板都要更新"],
   newWorld: ["New world", "新世界"],
   open: ["Open", "打開"],
   more: ["More", "更多"],
@@ -96,6 +106,7 @@ const TAU = Math.PI * 2;
 const MARKER_Y = 0.62;
 const MARKER_MAX = 240;
 const DEFAULT_COLOR = "red";
+const SELECTION_BLUE = 0x3c8df6;
 const BASEPLATE_GREEN = 0x4b9f4a;
 
 /* Real brick proportions on a 1-unit pitch (D10): stud Ø0.6 × 0.2, a small
@@ -636,6 +647,8 @@ export class BrickLabRuntime {
     this.worlds = new BrickWorlds(this.kidId);
     /* Home-wifi session (multiplayer plan D2): unavailable outside the app. */
     this.lan = createLanSession(options.lanTransport);
+    this.kids = options.kids || {};
+    this.together = new BrickTogether(this, this.lan, this.kidId);
     this.worldId = null; /* the world being built; null while the menu shows */
     this.menuEdit = null; /* { id, step: "actions" | "rename" | "delete" } */
     this.mode = "build";
@@ -760,6 +773,7 @@ export class BrickLabRuntime {
             <div class="sqbl-stage-hint" data-stage-hint aria-live="polite"></div>
             <div class="sqbl-info" data-info role="dialog" aria-modal="false" hidden></div>
             <div class="sqbl-explore-badge">🌍 ${pre ? "" : "Explore 探索"}</div>
+            <div class="sqbl-crew" data-crew aria-live="polite" hidden></div>
           </div>
 
           <div class="sqbl-menu" data-menu hidden>
@@ -767,7 +781,7 @@ export class BrickLabRuntime {
               <h2 class="sqbl-menu-title"><span aria-hidden="true">🗺️</span> ${escapeHtml(MENU.worlds[0])} <span lang="zh-TW">${escapeHtml(MENU.worlds[1])}</span></h2>
               <div class="sqbl-worlds" data-worlds></div>
               <h2 class="sqbl-menu-title"><span aria-hidden="true">👋</span> ${escapeHtml(MENU.join[0])} <span lang="zh-TW">${escapeHtml(MENU.join[1])}</span></h2>
-              <p class="sqbl-join-note" data-join>${this.lan.available ? (pre ? "🛜 ⏳" : escapeHtml(say(MENU.joinSoon))) : (pre ? "📱" : escapeHtml(say(MENU.needsApp)))}</p>
+              <div class="sqbl-join" data-join></div>
             </div>
           </div>
         </div>
@@ -788,6 +802,8 @@ export class BrickLabRuntime {
     this.sizeEl = this.root.querySelector("[data-size]");
     this.menuEl = this.root.querySelector("[data-menu]");
     this.worldsEl = this.root.querySelector("[data-worlds]");
+    this.joinEl = this.root.querySelector("[data-join]");
+    this.crewEl = this.root.querySelector("[data-crew]");
   }
 
   setupScene() {
@@ -869,7 +885,7 @@ export class BrickLabRuntime {
     } else this.addBaseplateStuds(plastic);
 
     this.selectionBox = new THREE.Box3();
-    this.selectionHelper = new THREE.Box3Helper(this.selectionBox, 0x3c8df6);
+    this.selectionHelper = new THREE.Box3Helper(this.selectionBox, SELECTION_BLUE);
     this.selectionHelper.visible = false;
     this.selectionHelper.raycast = () => {};
     this.scene.add(this.selectionHelper);
@@ -1532,6 +1548,9 @@ export class BrickLabRuntime {
   showMenu() {
     this.menuEdit = null;
     this.renderMenu();
+    this.together.startLooking();
+    this.renderJoin();
+    this.renderCrew();
     this.menuEl.hidden = false;
     this.app.classList.add("is-menu");
     this.hideInfo();
@@ -1539,6 +1558,7 @@ export class BrickLabRuntime {
   }
 
   hideMenu() {
+    this.together.stopLooking();
     this.menuEl.hidden = true;
     this.app.classList.remove("is-menu");
     this.menuEdit = null;
@@ -1594,6 +1614,10 @@ export class BrickLabRuntime {
     }
     if (target.dataset.worldOpen) {
       this.openWorld(target.dataset.worldOpen);
+      return;
+    }
+    if (target.dataset.joinWorld) {
+      this.joinWorld(target.dataset.joinWorld);
       return;
     }
     const act = target.dataset.worldAct;
@@ -1656,18 +1680,174 @@ export class BrickLabRuntime {
     this.setHint("🧱", HINTS.choose);
     this.hideMenu();
     this.invalidate(1000);
+    /* Opening a world puts it on the home wifi (D4). */
+    this.together.host(this.currentWorldName());
+    this.updateUndoUI();
     return true;
   }
 
   leaveWorld() {
+    if (this.together.role === "guest") {
+      this.together.leave();
+      this.endShared();
+      return true;
+    }
     if (!this.worldId) return false;
     clearTimeout(this.saveTimer);
+    this.together.stopHosting();
+    this.sharedChanged();
     this.saveNow(false, this.captureThumb());
     this.worldId = null;
     this.sequencer = null;
     this.clearPlate();
     this.showMenu();
     return true;
+  }
+
+  /* ---------- building together (multiplayer plan slices 05-06) ---------- */
+
+  kidName(kid) {
+    return (this.kids[kid] && this.kids[kid].name) || kid;
+  }
+
+  kidLook(kid) {
+    const info = this.kids[kid] || {};
+    return { name: info.name || kid, av: info.av || "🧱", color: /^#[0-9a-f]{6}$/i.test(info.raw || "") ? info.raw : "#7a8ca0" };
+  }
+
+  currentWorldName() {
+    const meta = this.worldId && this.worlds.meta(this.worldId);
+    return meta ? meta.name : "";
+  }
+
+  /* The Join area of the menu: worlds open on the home wifi. */
+  renderJoin() {
+    if (!this.joinEl) return;
+    const pre = this.preReader;
+    if (!this.lan.available) {
+      this.joinEl.innerHTML = `<p class="sqbl-join-note">${pre ? "📱" : escapeHtml(say(MENU.needsApp))}</p>`;
+      return;
+    }
+    const worlds = this.together.joinable();
+    if (!worlds.length) {
+      this.joinEl.innerHTML = `<p class="sqbl-join-note">${pre ? "🛜 …" : escapeHtml(say(MENU.noneNearby))}</p>`;
+      return;
+    }
+    this.joinEl.innerHTML = `<div class="sqbl-join-list">${worlds.map((world) => {
+      const look = this.kidLook(world.kid);
+      return `<button type="button" class="sqbl-join-card" data-join-world="${escapeHtml(world.id)}" style="--sqbl-kid:${look.color}" aria-label="${escapeHtml(label(MENU.join))} · ${escapeHtml(look.name)} · ${escapeHtml(world.world)}">
+        <span class="sqbl-join-av" aria-hidden="true">${look.av}</span>
+        ${pre ? "" : `<b>${escapeHtml(look.name)}</b><small>🧱 ${escapeHtml(world.world)}</small>`}
+      </button>`;
+    }).join("")}</div>`;
+  }
+
+  async joinWorld(serviceId) {
+    const service = this.together.found.get(serviceId);
+    if (!service || this.together.role) return;
+    this.toast(this.preReader ? "🛜 …" : say(MENU.joining));
+    const ok = await this.together.join(service);
+    if (!ok) {
+      this.toast(this.preReader ? "🛜 ✕" : say(MENU.cantJoin));
+      this.together.startLooking();
+    }
+  }
+
+  /* Guest: the host's world arrives (welcome); nothing of it is saved here (D7). */
+  loadShared(world) {
+    this.clearPlate();
+    world.forEach((piece) => { if (piece && typeof piece.id === "string") this.addPiece(piece, false); });
+    this.syncRails();
+    this.setMode("build", { quiet: true });
+    if (!this.menuEl.hidden) {
+      this.homeView(false);
+      this.hideMenu();
+    }
+    this.setHint("🧱", HINTS.choose);
+    this.invalidate(1000);
+  }
+
+  /* Guest back on its own menu: the host left, the link dropped, or Back. */
+  endShared() {
+    this.clearPlate();
+    this.sharedChanged();
+    this.showMenu();
+  }
+
+  sessionEnded(reason, hostKid) {
+    this.endShared();
+    if (reason === "proto") this.toast(this.preReader ? "📱 ⟳" : say(MENU.update));
+    else this.toast(this.preReader ? "👋" : say(MENU.closed(this.kidName(hostKid || ""))));
+  }
+
+  crewToast(kid, joined) {
+    if (kid === this.kidId) return;
+    const look = this.kidLook(kid);
+    this.toast(this.preReader ? `${look.av} ${joined ? "👋" : "🚪"}` : say(joined ? MENU.joined(look.name) : MENU.left(look.name)));
+  }
+
+  /* Who is building in this world, each in their own colour. */
+  renderCrew() {
+    if (!this.crewEl) return;
+    const kids = this.together.shared ? this.together.roster : [];
+    this.crewEl.hidden = kids.length < 2;
+    this.crewEl.innerHTML = kids.map((kid) => {
+      const look = this.kidLook(kid);
+      return `<span class="sqbl-crew-chip${kid === this.kidId ? " is-me" : ""}" style="--sqbl-kid:${look.color}" title="${escapeHtml(look.name)}"><span aria-hidden="true">${look.av}</span>${this.preReader ? "" : `<b>${escapeHtml(look.name)}</b>`}</span>`;
+    }).join("");
+  }
+
+  /* A guest arrived or left, or a session began or ended: the crew chips,
+     the selection colour and the undo button follow. */
+  sharedChanged() {
+    this.app.classList.toggle("is-guest", this.together.role === "guest");
+    this.renderCrew();
+    if (this.selectedId) this.selectPiece(this.selectedId);
+    this.updateUndoUI();
+  }
+
+  /* Recolour the colour parts of a piece only. */
+  paintObject(object, piece) {
+    if (!object) return;
+    const material = this.kit.mat(getColorHex(piece.colorId));
+    object.traverse((node) => { if (node.userData.sqblPaint) node.material = material; });
+  }
+
+  /* Who placed a piece, while building together (D6): the selection outline
+     takes their colour and the hint names them. Bricks keep their own colour. */
+  placer(id) {
+    const piece = this.together.shared && this.pieces.get(id);
+    return piece && piece.by && this.kids[piece.by] ? this.kidLook(piece.by) : null;
+  }
+
+  /* After a change that came from (or went through) the host. */
+  afterRemoteOp() {
+    this.syncRails();
+    if (this.selectedId && !this.pieces.has(this.selectedId)) this.selectPiece(null);
+    else if (this.selectedId) {
+      this.selectionBox.setFromObject(this.sceneObjects.get(this.selectedId));
+      this.updateSelectionUI();
+    }
+    this.invalidate();
+  }
+
+  /* Guest: the host applied this tablet's own change. */
+  ownChangeApplied(op, sent) {
+    if (op.type === "add" && !(sent.meta && sent.meta.undo)) this.selectPiece(op.piece.id);
+    if (sent.meta && sent.meta.undo) this.setHint("↶", HINTS.undone);
+  }
+
+  ownChangeRefused(op, why) {
+    if (op.type === "move" && this.pieces.has(op.id)) {
+      const piece = this.pieces.get(op.id);
+      const object = this.sceneObjects.get(op.id);
+      object.position.set(piece.x, piece.y, piece.z);
+      object.rotation.y = piece.rotation * Math.PI / 180;
+    }
+    if (why === "changed") this.setHint("🤝", HINTS.changed);
+    else this.setHint("🛤️", HINTS.railBusy);
+    this.updateUndoUI();
+    this.invalidate();
   }
 
   /* The world's card picture: one fresh frame of the current view, scaled down. */
@@ -1723,6 +1903,8 @@ export class BrickLabRuntime {
   /* The 3D object for a piece already in `pieces`. */
   addObject(piece) {
     const object = makePieceMesh(getPart(piece.partId), getColorHex(piece.colorId), this.kit);
+    const paint = this.kit.mat(getColorHex(piece.colorId));
+    object.traverse((node) => { if (node.material === paint) node.userData.sqblPaint = true; });
     object.position.set(piece.x, piece.y, piece.z);
     object.rotation.y = piece.rotation * Math.PI / 180;
     object.userData.sqblPieceId = piece.id;
@@ -1753,15 +1935,23 @@ export class BrickLabRuntime {
 
   /* Submit an op; on success the scene follows. Returns the applied change or null. */
   commit(op) {
+    if (this.together.role === "guest") return this.together.request(op);
     if (!this.sequencer) return null;
     const result = this.sequencer.submit(this.kidId, { id: uid("req"), op });
     if (result.t !== "apply") return null;
-    this.showOp(result.op, result.inverse);
+    this.showOp(result.op);
+    this.together.applied(result);
     return result;
   }
 
   /* commit() with a solo undo snapshot, dropped again when the op is refused. */
   change(op) {
+    /* Building in a hosted or joined world: undo is per kid, by inverse ops (D6). */
+    if (this.together.role) {
+      const done = this.commit(op);
+      this.updateUndoUI();
+      return done;
+    }
     this.recordHistory();
     const done = this.commit(op);
     if (!done) {
@@ -1772,7 +1962,7 @@ export class BrickLabRuntime {
   }
 
   /* Bring the 3D scene in line with an op already applied to `pieces`. */
-  showOp(op, inverse) {
+  showOp(op) {
     this.freeEndsCache = null;
     if (op.type === "add") this.addObject(this.pieces.get(op.piece.id));
     else if (op.type === "remove") {
@@ -1790,13 +1980,9 @@ export class BrickLabRuntime {
       object.position.set(piece.x, piece.y, piece.z);
       object.rotation.y = piece.rotation * Math.PI / 180;
     } else if (op.type === "recolor") {
-      /* Swap the cached material in place: no rebuild, no DOM. The wheel's
-         tyre and the flower's centre keep their own colours. */
-      const from = this.kit.mat(getColorHex(inverse.colorId));
-      const to = this.kit.mat(getColorHex(op.colorId));
-      this.sceneObjects.get(op.id).traverse((node) => {
-        if (node.material === from) node.material = to;
-      });
+      /* Swap the cached material on the colour parts only: no rebuild, no
+         DOM. The wheel's tyre and the flower's centre keep their own colours. */
+      this.paintObject(this.sceneObjects.get(op.id), this.pieces.get(op.id));
     }
     this.scheduleSave();
   }
@@ -2101,6 +2287,7 @@ export class BrickLabRuntime {
     const point = this.raycaster.ray.intersectPlane(this.dragPlane, this.dragPoint);
     if (!point) return;
     const instance = this.pieces.get(drag.id);
+    if (!instance) { this.drag = null; this.controls.enabled = true; return; }
     const land = this.landing({ x: point.x - drag.offsetX, z: point.z - drag.offsetZ },
       getPart(instance.partId), instance.rotation, drag.id);
     const pos = land.pos;
@@ -2213,7 +2400,10 @@ export class BrickLabRuntime {
     if (id) {
       this.selectionBox.setFromObject(this.sceneObjects.get(id));
       this.setActiveColor(this.pieces.get(id).colorId);
-      if (changed) this.setHint("✨", isRail(getPart(this.pieces.get(id).partId)) ? HINTS.railSelected : HINTS.selected);
+      const by = this.placer(id);
+      this.selectionHelper.material.color.set(by ? by.color : SELECTION_BLUE);
+      if (changed && by && this.pieces.get(id).by !== this.kidId) this.setHint(by.av, HINTS.placedBy(by.name));
+      else if (changed) this.setHint("✨", isRail(getPart(this.pieces.get(id).partId)) ? HINTS.railSelected : HINTS.selected);
     }
     this.updateSelectionUI();
   }
@@ -2295,10 +2485,12 @@ export class BrickLabRuntime {
     }
     const pos = this.placementFor(spot, part, spot.rotation);
     const id = uid();
-    if (!this.change({ type: "add", piece: { id, partId: original.partId, colorId: original.colorId, ...pos, rotation: spot.rotation } })) {
+    const done = this.change({ type: "add", piece: { id, partId: original.partId, colorId: original.colorId, ...pos, rotation: spot.rotation } });
+    if (!done) {
       this.setHint("🛤️", HINTS.railBusy);
       return;
     }
+    if (done.pending) return;
     this.selectPiece(id);
     this.focusPiece(id, 5.5);
     this.syncRails(id, true);
@@ -2405,10 +2597,15 @@ export class BrickLabRuntime {
 
   updateUndoUI() {
     const button = this.root.querySelector("[data-action=undo]");
-    if (button) button.disabled = this.history.length === 0;
+    if (button) button.disabled = this.together.role ? this.together.undo.size === 0 : this.history.length === 0;
   }
 
   undo() {
+    if (this.together.role) {
+      if (this.together.undoLast()) this.haptic("tap");
+      this.updateUndoUI();
+      return;
+    }
     const snapshot = this.history.pop();
     if (!snapshot) return;
     this.selectPiece(null);
@@ -2535,6 +2732,8 @@ export class BrickLabRuntime {
     return {
       menu: !!(this.menuEl && !this.menuEl.hidden),
       lan: this.lan.available,
+      together: this.together.snapshot(),
+      selectionColor: this.selectionHelper ? `#${this.selectionHelper.material.color.getHexString()}` : null,
       world: this.worldId,
       worlds: this.worlds.list().map((w) => ({ id: w.id, name: w.name, count: w.count, thumb: !!w.thumb })),
       mode: this.mode,
@@ -2583,6 +2782,7 @@ export class BrickLabRuntime {
     if (this.resizeObserver) this.resizeObserver.disconnect();
     if (this.previewWatch) this.previewWatch.disconnect();
     if (this.thumbs) this.thumbs.dispose();
+    if (this.together) this.together.dispose();
     if (this.lan) this.lan.dispose();
     if (this.onOutsidePress) this.root.removeEventListener("pointerdown", this.onOutsidePress, true);
     if (this.onInput) INPUT_EVENTS.forEach((type) => this.root.removeEventListener(type, this.onInput, { capture: true }));
