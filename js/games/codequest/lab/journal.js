@@ -64,8 +64,8 @@ const FORMULA = Object.freeze({
   monstrosity: ['echo', 'life', 'growth'], duplication: ['echo', 'life'], overgrowth: ['growth', 'life', 'water'],
   fireball: ['fire', 'fire'], iceBurst: ['cold', 'cold'], glow: ['light', 'light'], steam: ['fire', 'water'],
   bubbles: ['water'], smoke: ['fire'], fizzle: [],
-  // Phase 2 state rules (lab-states D4); slice 05 shows the state icons themselves.
-  thermalShock: ['cold', 'fire'], snowflakeCopies: ['echo', 'cold'], flamingVines: ['fire', 'growth'], glitterStorm: ['light', 'chaos']
+  // Phase 2 state rules (lab-states D4): a "state:" token is a changed ingredient of that kind.
+  thermalShock: ['state:frozen', 'state:heated'], snowflakeCopies: ['state:frozen', 'echo'], flamingVines: ['state:heated', 'growth'], glitterStorm: ['state:crushed', 'light']
 });
 
 /** Reaction pages: found rules in rule order with label, line and formula; unfound ones carry only their family. */

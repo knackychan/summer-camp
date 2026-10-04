@@ -7,7 +7,7 @@
 import { createScheduler } from '../../../game-services/scheduler.js';
 import { RECIPES, ALCHEMY_STEPS, brewLab } from '../progression.js';
 import { runAlchemyCode, recipeToAlchemyCode, recipeById } from '../alchemy-code.js';
-import { ALCHEMY_LABELS, LAB, LAB_PROPS, LAB_FAMILIES, UI, MESSAGES, labMadeLine, labPagesLine, labFormName, pairHTML, t } from '../strings.js';
+import { ALCHEMY_LABELS, LAB, LAB_PROPS, LAB_FAMILIES, LAB_STATE_NAMES, UI, MESSAGES, labMadeLine, labPagesLine, labFormName, pairHTML, t } from '../strings.js';
 import { spriteURL } from '../pixel-art.js';
 import { placeBubbleRect } from '../bubble.js';
 import { LAB_INGREDIENTS, LAB_FREE_INGREDIENTS, STATE_TOOL } from './ingredients.js';
@@ -291,7 +291,9 @@ export function mountLab(root, api) {
     if (!tokens.length) return '<span class="cq-lab-formula"><i aria-hidden="true">❔</i></span>';
     return '<span class="cq-lab-formula">' + tokens.map(token => token.startsWith('ing:')
       ? '<img src="' + iconURL(token.slice(4), accent()) + '" alt="' + esc(t(LAB_INGREDIENTS[token.slice(4)].label)) + '">'
-      : '<i title="' + esc(t(LAB_PROPS[token])) + '">' + PROP_ICON[token] + '</i>').join('<b>+</b>') + '</span>';
+      : token.startsWith('state:')
+        ? '<i class="cq-lab-state" title="' + esc(t(LAB_STATE_NAMES[token.slice(6)])) + '">' + STATE_BADGE[token.slice(6)] + '</i>'
+        : '<i title="' + esc(t(LAB_PROPS[token])) + '">' + PROP_ICON[token] + '</i>').join('<b>+</b>') + '</span>';
   }
   function journalPage() {
     const profile = api.profile();
@@ -306,7 +308,10 @@ export function mountLab(root, api) {
     if (journal.tab === 'ingredients') {
       return '<div class="cq-lab-cards">' + journalIngredients(profile.lab).map(page =>
         '<article class="cq-lab-card' + (page.seen ? '' : ' unseen') + '"><header><img src="' + iconURL(page.id, accent()) + '" alt=""><b>' + pairHTML(page.label) + '</b><small>' + pairHTML(page.where === 'bag' ? LAB.bag : LAB.shelf) + '</small></header>' +
-        (page.seen ? '<span class="cq-lab-props">' + page.props.map(([prop, n]) => chip(prop, n)).join('') + '</span>' : '<p>' + pairHTML(LAB.unseen) + '</p>') + '</article>').join('') + '</div>';
+        (page.seen ? '<span class="cq-lab-props">' + page.props.map(([prop, n]) => chip(prop, n)).join('') + '</span>' : '<p>' + pairHTML(LAB.unseen) + '</p>') +
+        // Forms the kid has brewed with (lab-states D7): one row each, never a hint of the others.
+        page.forms.map(form => '<div class="cq-lab-form"><b><i aria-hidden="true">' + STATE_BADGE[form.state] + '</i>' + pairHTML(LAB_STATE_NAMES[form.state]) + '</b><span class="cq-lab-props">' + form.props.map(([prop, n]) => chip(prop, n)).join('') + '</span></div>').join('') +
+        '</article>').join('') + '</div>';
     }
     const book = journalReactions(profile.lab);
     return '<p class="cq-lab-count">' + pairHTML(labPagesLine(book.found, book.total)) + '</p><div class="cq-lab-cards">' + book.pages.map(page => page.found

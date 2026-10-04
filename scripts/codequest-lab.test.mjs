@@ -339,7 +339,10 @@ test('Journal reactions: counts match lab.found, unfound pages never leak label 
   assert.deepEqual([...glow.formula], ['light', 'light']);
   for (const rule of LAB_RULES) {
     const page = journalReactions({ found: [rule.id] }).pages.find(p => p.found);
-    for (const token of page.formula) assert.ok(token.startsWith('ing:') ? LAB_INGREDIENTS[token.slice(4)] : LAB_PROPS[token], rule.id + ' formula token ' + token);
+    for (const token of page.formula) {
+      const ok = token.startsWith('ing:') ? LAB_INGREDIENTS[token.slice(4)] : token.startsWith('state:') ? ['crushed', 'heated', 'frozen'].includes(token.slice(6)) : LAB_PROPS[token];
+      assert.ok(ok, rule.id + ' formula token ' + token);
+    }
   }
   assert.equal(journalReactions(undefined).found, 0);
 });
@@ -556,4 +559,15 @@ test('state names ship EN + 中文', () => {
   for (const key of ['freshHint', 'pickToChange']) assert.ok(LAB[key][0] && /[一-鿿]/.test(LAB[key][1]), key);
   assert.deepEqual(labFormName(['Moon Berry', '月光莓'], 'heated'), ['Heated Moon Berry', '加熱過的月光莓']);
   assert.deepEqual(labFormName(['Moon Berry', '月光莓'], 'raw'), ['Moon Berry', '月光莓']);
+});
+
+/* ---------- Phase 2 slice 05: Journal forms ---------- */
+test('the four state rules show their changed ingredient in the formula', () => {
+  const book = journalReactions({ found: ['thermalShock', 'snowflakeCopies', 'flamingVines', 'glitterStorm'] });
+  const formula = id => [...book.pages.find(page => page.id === id).formula];
+  assert.deepEqual(formula('thermalShock'), ['state:frozen', 'state:heated']);
+  assert.deepEqual(formula('snowflakeCopies'), ['state:frozen', 'echo']);
+  assert.ok(formula('flamingVines').includes('state:heated') && formula('glitterStorm').includes('state:crushed'));
+  assert.equal(book.found, 4);
+  assert.equal(book.total, 18);
 });
