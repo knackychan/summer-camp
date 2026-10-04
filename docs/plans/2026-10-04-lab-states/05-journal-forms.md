@@ -1,6 +1,6 @@
 # Slice 05 — Journal shows forms
 
-**Status:** Pending Papa's OK of `design.md`.
+**Status:** Approved by Papa 2026-10-04 (`design.md`).
 **Goal:** The Journal's Ingredients page shows the forms a kid has found; Reactions counts 18.
 **Depends on:** 02, 03.
 **Files:** `js/games/codequest/lab/lab-screen.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `sw.js` cache bump.

@@ -1,6 +1,6 @@
 # Slice 03 — Pick it up, tap a tool
 
-**Status:** Pending Papa's OK of `design.md`.
+**Status:** Approved by Papa 2026-10-04 (`design.md`).
 **Goal:** A kid lifts an ingredient, taps the mortar, burner or frost plate, sees it change, and drops it in.
 **Depends on:** 01, 02.
 **Files:** `js/games/codequest/lab/lab-screen.js`, `js/games/codequest/lab/lab-view.js`, `js/games/codequest/lab/lab-art.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `scripts/codequest-lab.test.mjs`, `scripts/codequest-lab-view.test.mjs`, `sw.js` cache bump.

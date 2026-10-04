@@ -1,6 +1,6 @@
 # Slice 01 — State data + resolver
 
-**Status:** Pending Papa's OK of `design.md`.
+**Status:** Approved by Papa 2026-10-04 (`design.md`).
 **Goal:** The pure resolver understands crushed, heated and frozen ingredients, and every new rule can be reached.
 **Depends on:** Phase 1 (shipped).
 **Files:** `js/games/codequest/lab/ingredients.js`, `js/games/codequest/lab/rules.js`, `js/games/codequest/lab/resolve.js`, `scripts/codequest-lab.test.mjs`.

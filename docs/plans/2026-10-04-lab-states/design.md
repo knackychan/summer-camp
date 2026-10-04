@@ -1,6 +1,6 @@
 # Code Quest Lab — Phase 2: ingredient states
 
-**Status:** Direction chosen by Papa, 2026-10-04 (chat, after Phase 1 merged as knackychan/summer-camp#2): **D1** "Pick it up, tap a tool" and **D4** "New powers + new reactions", both the recommended options. The remaining decisions are Claude's recommendations, written here for Papa's OK before slice 01 starts.
+**Status:** Approved by Papa, 2026-10-04. In chat, after Phase 1 merged as knackychan/summer-camp#2, he chose **D1** "Pick it up, tap a tool" and **D4** "New powers + new reactions" (both the recommended options), then answered "ok" to the full summary of D1–D10.
 **Game id:** `codequest` (inside the Lab view of `docs/plans/2026-10-04-lab-of-curiosity/`).
 **Source:** `docs/plans/2026-10-04-lab-of-curiosity/vision.md` §8 (Stateful Ingredients), §30 (Second Prototype Step: crushed, heated, frozen; "Raw Mushroom + Crystal and Frozen Mushroom + Crystal produce meaningfully different outcomes"), roadmap Phase 2 in that folder's `design.md`.
 **Builds on:** every Phase 1 decision stays in force (D3 code-drawn art, D5 free ingredients, D6 no stars, D8 coach not cop, D9 engine untouched, D12 one language at a time, D13 offline and calm).

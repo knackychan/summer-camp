@@ -1,6 +1,6 @@
 # Slice 04 — Effects for the four new reactions
 
-**Status:** Pending Papa's OK of `design.md`.
+**Status:** Approved by Papa 2026-10-04 (`design.md`).
 **Goal:** Thermal Shock, Snowflake Copies, Flaming Vines and Glitter Storm each get their own small scene.
 **Depends on:** 01, 03.
 **Files:** `js/games/codequest/lab/lab-fx.js`, `scripts/codequest-lab-view.test.mjs`, `sw.js` cache bump.

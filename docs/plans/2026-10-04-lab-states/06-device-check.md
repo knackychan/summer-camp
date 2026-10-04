@@ -1,6 +1,6 @@
 # Slice 06 — Harness + Android 8 check
 
-**Status:** Pending Papa's OK of `design.md`.
+**Status:** Approved by Papa 2026-10-04 (`design.md`).
 **Goal:** The state flow works by touch on the target tablets, offline.
 **Depends on:** 03, 04, 05.
 **Files:** `scripts/check-codequest-lab-ui.py`, `test-results/codequest-lab/`, fixes wherever the harness finds them.

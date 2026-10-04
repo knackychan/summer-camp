@@ -1,6 +1,6 @@
 # Slice 02 — Journal remembers forms
 
-**Status:** Pending Papa's OK of `design.md`.
+**Status:** Approved by Papa 2026-10-04 (`design.md`).
 **Goal:** Each kid's Journal remembers which forms of which ingredients they have brewed with.
 **Depends on:** 01.
 **Files:** `js/games/codequest/lab/journal.js`, `scripts/codequest-lab.test.mjs`.
