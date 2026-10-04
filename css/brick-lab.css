@@ -28,13 +28,17 @@
 .sqbl-left-rail{--sqbl-rail:184px;position:relative;width:var(--sqbl-rail);min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px 8px max(10px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));background:rgba(255,255,255,.9);backdrop-filter:blur(12px);border-right:1px solid var(--sqbl-line);z-index:4;transition:width .22s ease,opacity .2s ease;overflow:hidden}
 .sqbl-left-rail.is-collapsed{--sqbl-rail:66px}
 .sqbl-rail-head{flex:0 0 44px;display:flex;align-items:center;gap:6px;min-width:0}
-.sqbl-rail-collapse,.sqbl-rail-back{flex:0 0 44px;width:44px;height:44px;padding:0;border:1px solid var(--sqbl-line);border-radius:14px;background:#fff;font-size:22px;font-weight:800;line-height:1;display:grid;place-items:center;touch-action:manipulation}
-.sqbl-rail-back:active,.sqbl-rail-collapse:active{transform:scale(.94);background:#eef6ff}
+.sqbl-rail-collapse,.sqbl-rail-back,.sqbl-rail-find{flex:0 0 44px;width:44px;height:44px;padding:0;border:1px solid var(--sqbl-line);border-radius:14px;background:#fff;font-size:22px;font-weight:800;line-height:1;display:grid;place-items:center;touch-action:manipulation}
+.sqbl-rail-back:active,.sqbl-rail-collapse:active,.sqbl-rail-find:active{transform:scale(.94);background:#eef6ff}
 .sqbl-left-rail.is-collapsed .sqbl-rail-collapse{transform:rotate(180deg)}
-.sqbl-tray-title{flex:1 1 auto;min-width:0;font-size:12px;font-weight:900;line-height:1.2;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.sqbl-rail-find{font-size:19px}.sqbl-rail-find.is-on{background:#e9f2ff;border-color:var(--sqbl-blue)}
+.sqbl-tray-title{flex:1 1 auto;min-width:0;font-size:12px;font-weight:900;line-height:1.25}
+.sqbl-tray-title span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sqbl-tray-title span[lang]{font-weight:800;color:var(--sqbl-muted)}
+/* Search and size stay folded under 🔍 until asked for (short tablets show more parts). */
+.sqbl-left-rail:not(.is-finding) .sqbl-search,.sqbl-left-rail:not(.is-finding) .sqbl-size{display:none}
 .sqbl-left-rail[data-view=categories] .sqbl-rail-back,.sqbl-left-rail[data-view=categories] .sqbl-size,.sqbl-left-rail[data-view=categories] .sqbl-parts{display:none}
 .sqbl-left-rail[data-view=parts] .sqbl-rail-collapse,.sqbl-left-rail[data-view=parts] .sqbl-category-list{display:none}
-.sqbl-left-rail.is-collapsed .sqbl-tray-title,.sqbl-left-rail.is-collapsed .sqbl-search,.sqbl-left-rail.is-collapsed .sqbl-size,.sqbl-left-rail.is-collapsed .sqbl-colors{display:none}
+.sqbl-left-rail.is-collapsed .sqbl-tray-title,.sqbl-left-rail.is-collapsed .sqbl-rail-find,.sqbl-left-rail.is-collapsed .sqbl-search,.sqbl-left-rail.is-collapsed .sqbl-size,.sqbl-left-rail.is-collapsed .sqbl-colors{display:none}
 /* Eight categories: the list scrolls inside the rail when the view is short. */
 .sqbl-category-list{flex:1 1 auto;min-height:0;display:grid;gap:4px;align-content:start;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
 .sqbl-category-list::-webkit-scrollbar{display:none}

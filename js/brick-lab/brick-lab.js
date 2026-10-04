@@ -616,6 +616,7 @@ export class BrickLabRuntime {
     this.prefs = this.cleanPrefs(this.storage.loadPrefs());
     this.infoPartId = null;
     this.railView = "categories"; /* slice 12: "categories" | "parts" */
+    this.finding = false; /* slice 12: search + size shown under the rail head */
     /* Slice 10: rail joins. `rails` is the last trace; `snap` the join the
        ghost or a dragged rail would make right now. */
     this.rails = { edges: [], linked: new Map(), free: [], circuit: new Set() };
@@ -683,6 +684,7 @@ export class BrickLabRuntime {
               <button type="button" class="sqbl-rail-collapse" data-action="toggle-left" aria-label="Fold 收起">‹</button>
               <button type="button" class="sqbl-rail-back" data-action="parts-back" aria-label="${escapeHtml(label(TRAY.back))}">←</button>
               <div class="sqbl-tray-title" data-tray-title aria-live="polite"></div>
+              ${pre ? "" : `<button type="button" class="sqbl-rail-find" data-action="toggle-find" aria-expanded="false" aria-label="${escapeHtml(label(TRAY.search))}">🔍</button>`}
             </div>
             ${pre ? "" : `<label class="sqbl-search"><span aria-hidden="true">🔍</span><input type="search" data-search enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(label(TRAY.search))}" aria-label="${escapeHtml(label(TRAY.search))}"></label>
             <select class="sqbl-size" data-size aria-label="${escapeHtml(label(TRAY.size))}">
@@ -948,6 +950,7 @@ export class BrickLabRuntime {
         this.activePartId = (PARTS.find((part) => part.category === this.activeCategory) || PARTS[0]).id;
         /* Picking a category leaves a search: the tray shows that category again. */
         this.setFilters("", "", false);
+        this.setFinding(false);
         this.hideInfo();
         this.renderPartTray();
         this.partsEl.scrollTop = 0;
@@ -970,7 +973,21 @@ export class BrickLabRuntime {
     this.root.querySelector("[data-action=toggle-left]").addEventListener("pointerdown", () => this.leftRail.classList.toggle("is-collapsed"));
     this.root.querySelector("[data-action=parts-back]").addEventListener("pointerdown", () => {
       this.setFilters("", "");
+      this.setFinding(false);
       this.setRailView("categories");
+    });
+    /* 🔍 opens search + size and focuses the box; tapping it again clears
+       any filter and closes them. preventDefault keeps the focus in the box. */
+    const find = this.root.querySelector("[data-action=toggle-find]");
+    if (find) find.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      if (this.finding) {
+        if (this.query || this.sizeFilter) this.setFilters("", "");
+        this.setFinding(false);
+      } else {
+        this.setFinding(true);
+        this.searchEl.focus();
+      }
     });
 
     /* Tray (slice 11): one delegated listener survives every re-render. The
@@ -1040,6 +1057,19 @@ export class BrickLabRuntime {
     this.updateCategoryUI();
   }
 
+  /* Search and size stay folded under 🔍 so a short tablet shows more parts
+     (slice 12). Height inside the rail only: the canvas never resizes. */
+  setFinding(on) {
+    this.finding = !!on;
+    this.leftRail.classList.toggle("is-finding", this.finding);
+    const find = this.root.querySelector("[data-action=toggle-find]");
+    if (find) {
+      find.classList.toggle("is-on", this.finding);
+      find.setAttribute("aria-expanded", String(this.finding));
+    }
+    if (!this.finding && this.searchEl) this.searchEl.blur();
+  }
+
   updateCategoryUI() {
     this.root.querySelectorAll("[data-category]").forEach((button) => {
       button.classList.toggle("is-active", button.dataset.category === this.activeCategory);
@@ -1049,13 +1079,16 @@ export class BrickLabRuntime {
     if (!title) return;
     const searching = !!(this.query || this.sizeFilter);
     const count = this.trayCount || 0;
-    if (this.railView !== "parts") {
-      title.textContent = this.preReader ? "🧱" : label(TRAY.pieces);
+    const name = this.railView !== "parts" ? TRAY.pieces : searching ? TRAY.results : (category && category.label) || TRAY.pieces;
+    if (this.preReader) {
+      title.textContent = this.railView !== "parts" ? "🧱" : `${searching ? "🔍" : (category && category.icon) || "🧱"} ${count}`;
       return;
     }
-    /* "<category>: <count> parts" (slice 11); a search names itself instead. */
-    if (this.preReader) title.textContent = `${searching ? "🔍" : (category && category.icon) || "🧱"} ${count}`;
-    else title.textContent = `${label(searching ? TRAY.results : (category && category.label) || ["Pieces", "積木"])}: ${label(TRAY.parts(count))}`;
+    /* Two lines, "Bricks" / "積木 · 9", so the title fits between the head
+       buttons (slice 12); the full sentence is the accessible name. */
+    const tail = this.railView === "parts" ? ` · ${count}` : "";
+    title.innerHTML = `<span>${escapeHtml(name[0])}</span><span lang="zh-TW">${escapeHtml(name[1] + tail)}</span>`;
+    title.setAttribute("aria-label", this.railView === "parts" ? `${label(name)}: ${label(TRAY.parts(count))}` : label(name));
   }
 
   /* Slice 11: favourites and recents pinned at the front of the tray, then
@@ -1981,7 +2014,7 @@ export class BrickLabRuntime {
         free: this.rails.free.map((end) => ({ id: end.id, x: end.x, z: end.z, dir: end.dir, screen: toScreen(end.x, STUD_H, end.z) })),
       },
       tray: {
-        view: this.railView, category: this.activeCategory, query: this.query, size: this.sizeFilter, count: this.trayCount || 0,
+        view: this.railView, finding: this.finding, category: this.activeCategory, query: this.query, size: this.sizeFilter, count: this.trayCount || 0,
         parts: this.partsEl ? Array.from(this.partsEl.querySelectorAll("[data-part]"), (el) => el.dataset.part) : [],
         favorites: this.prefs.favorites.slice(), recents: this.prefs.recents.slice(), info: this.infoPartId,
       },

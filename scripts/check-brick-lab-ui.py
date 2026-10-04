@@ -131,7 +131,14 @@ def lab_slices_09_11(page, snap, check, out):
     page.screenshot(path=str(out / 'circuit.png'))
 
     # Slice 11: search (EN + 中文, "2x4" finds 2×4), size filter, favourites.
+    canvas0 = page.locator('.sqbl-stage canvas').bounding_box()
+    check('Search is folded under 🔍 until asked for', not page.locator('.sqbl-search').is_visible() and not snap()['tray']['finding'])
+    page.locator('.sqbl-rail-find').click()
     search = page.locator('.sqbl-search input')
+    check('🔍 opens search + size and focuses the box, without resizing the view', snap()['tray']['finding']
+          and search.is_visible() and page.locator('.sqbl-size').is_visible()
+          and page.evaluate("document.activeElement === document.querySelector('.sqbl-search input')")
+          and page.locator('.sqbl-stage canvas').bounding_box() == canvas0)
     search.fill('軌道')
     check('Search finds parts by their 中文 name', sorted(snap()['tray']['parts']) == sorted(
           ['rail_straight', 'rail_curve_90', 'rail_junction_t', 'rail_cross']))
@@ -144,7 +151,13 @@ def lab_slices_09_11(page, snap, check, out):
           and 'brick_2x4' not in parts)
     check('A search shows its results in the parts view', snap()['tray']['view'] == 'parts')
     page.locator('.sqbl-rail-back').click()
-    check('Back clears the filters and shows the categories', snap()['tray']['size'] == '' and snap()['tray']['view'] == 'categories')
+    check('Back clears the filters, folds search and shows the categories', snap()['tray']['size'] == ''
+          and snap()['tray']['view'] == 'categories' and not snap()['tray']['finding'] and not page.locator('.sqbl-search').is_visible())
+    page.locator('.sqbl-rail-find').click()
+    search.fill('wheel')
+    check('A search from the categories opens its results', snap()['tray']['view'] == 'parts' and snap()['tray']['query'] == 'wheel')
+    page.locator('.sqbl-rail-find').click()
+    check('🔍 again clears the search and folds it', snap()['tray']['query'] == '' and not snap()['tray']['finding'])
     pick(page, 'bricks')
     check('Picking a category opens its parts', snap()['tray']['category'] == 'bricks' and snap()['tray']['view'] == 'parts')
     page.locator('.sqbl-fav[data-fav="brick_1x3"]').first.click()
@@ -254,7 +267,7 @@ def run(args):
                       and len(xs) == 2 and page.locator('.sqbl-rail-back').is_visible()
                       and not page.locator('.sqbl-category-list').is_visible() and page.locator('.sqbl-colors').is_visible())
                 check('Rail targets are tablet-sized', all(min(page.locator(sel).bounding_box()['width'], page.locator(sel).bounding_box()['height']) >= 44
-                      for sel in ('.sqbl-rail-back', '.sqbl-part-slot >> nth=0')))
+                      for sel in ('.sqbl-rail-back', '.sqbl-rail-find', '.sqbl-part-slot >> nth=0')))
                 box = page.locator('.sqbl-stage canvas').bounding_box()
                 cx, cy = box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.62
                 page.locator('.sqbl-part[data-part="brick_2x2"]').click()
