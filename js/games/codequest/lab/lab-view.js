@@ -10,6 +10,7 @@ import { drawSprite, spriteSize } from '../pixel-art.js';
 import { px, drawLabSprite, labSpriteSize, bayer, ramp, shadeRow, sphereLight, cylinderLight, ditherShadow, LAB_LIGHTS } from './lab-art.js';
 import { LAB_INGREDIENTS, SHELF_IDS, BAG_IDS } from './ingredients.js';
 import { fxTime, fxPose, drawEffect } from './lab-fx.js';
+import { PHYS, bodyLook } from './lab-physics.js';
 
 export const LAB_W = 320;
 export const LAB_H = 180;
@@ -700,6 +701,41 @@ function drawLight(ctx, groups, paint, frame, still) {
   });
 }
 
+/* ---------- gravity (lab-feel D5): the room's physics frame and the falling bodies ---------- */
+/** A CSS point in the canvas → logical room px. */
+export function roomPoint(fit, x, y) {
+  return { x: (x * fit.dpr - fit.ox) / fit.device, y: (y * fit.dpr - fit.oy) / fit.device };
+}
+/** The room's walls and bench for lab-physics.js. */
+export function labWorld(W = LAB_W, H = LAB_H) {
+  return Object.freeze({ x0: 0, x1: W, top: 0, benchTop: 112 + H - LAB_H, floor: H - 4 });
+}
+/** Where a falling ingredient goes home to: the bottom-centre of its jar or bag item, in room px. */
+export function labHome(W, H, id) {
+  const at = homeIn(labLayout(W, H), id);
+  return at && { x: at.x, y: at.y + 5 };
+}
+/** Bodies (bottom-centre x, y) in their form, each with a shadow on the bench; a faint one under a held drag. */
+function drawBodies(ctx, bodies, drag, world) {
+  if (drag) {
+    const ground = Math.min(world.floor, Math.max(drag.y + PHYS.held, world.benchTop + 4));
+    ditherShadow(ctx, Q.outline, Math.round(drag.x), Math.round(ground), 4, 1, 0.3);
+  }
+  for (const body of bodies || []) {
+    const look = bodyLook(body), { id, state } = formOf(body.key);
+    if (!LAB_INGREDIENTS[id]) continue;
+    if (look.shadow > 0) ditherShadow(ctx, Q.outline, Math.round(body.x), Math.round(body.ground), Math.round(7 * look.shadow), Math.max(1, Math.round(2 * look.shadow)), 0.6 * look.shadow);
+    if (body.phase === 'spark') {
+      const r = 3 + body.t / 80;
+      glow(ctx, Math.max(0, 1 - body.t / PHYS.sparkMs), () => { for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; px(ctx, Q.white, body.x + Math.round(Math.cos(a) * r), body.y - 5 + Math.round(Math.sin(a) * r)); } });
+      continue;
+    }
+    const { width: w, height: h } = sizeOf(id), x = Math.round(body.x - w / 2), y = Math.round(body.y - h);
+    if (look.alpha >= 1) drawForm(ctx, id, state, x, y);
+    else glow(ctx, look.alpha, () => drawForm(ctx, id, state, x, y));
+  }
+}
+
 /** Where an ingredient lives — the centre of its jar or bag slot, in room px — for effects that send it home. */
 function homeIn(layout, id) {
   const jar = layout.at['jar:' + id];
@@ -757,8 +793,9 @@ function staticLayer(canvas, ctx, fit, paint, name, offset, draw) {
  * Options: cssWidth, cssHeight, dpr, time (s), now (ms), mix, steps, tint, shaky, selection,
  * effect ({ ruleId | 'potion', intensity, start (ms, same clock as now), potionId?, lastIngredient? },
  * drawn by lab-fx.js), paused, reduced, parallax ({ x, y } logical px the screen leans the
- * back layer by; clamped to ±4, ignored when paused or reduced). Effects and parallax never
- * change the hits.
+ * back layer by; clamped to ±4, ignored when paused or reduced), hint ({ lifted, over }),
+ * bodies (lab-physics.js, room px) and drag ({ x, y } room px of a held drag, for its
+ * shadow). None of them change the hits.
  */
 export function drawLab(canvas, options = {}) {
   if (!canvas) return null;
@@ -834,6 +871,8 @@ export function drawLab(canvas, options = {}) {
   drawToolUse(ctx, options.tool, clock, !!options.reduced);
   place(groups.left);
   drawBag(ctx, selection, options.held);
+  place(room);
+  drawBodies(ctx, options.bodies, options.drag, labWorld(W, H));
   place(groups.centre);
   drawHintMarks(ctx, options.hint, clock, still);
   place(room);

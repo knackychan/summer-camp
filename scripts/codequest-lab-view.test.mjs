@@ -328,3 +328,34 @@ test('hints: idle glow always, arrows only while lifted, a ring on the target un
   assert.equal(fills({ now: 1000, hint: { lifted: false } }).ops, idle.ops, 'not lifted = no arrows');
   assert.equal(fills({ reduced: true, now: 1000, hint: { lifted: true } }).log, fills({ reduced: true, now: 1300, hint: { lifted: true } }).log, 'arrows hold still');
 });
+
+/* ---------- lab-feel slice 05: gravity in the view ---------- */
+import { createBody, stepBodies } from '../js/games/codequest/lab/lab-physics.js';
+import { labWorld, labHome, roomPoint } from '../js/games/codequest/lab/lab-view.js';
+import { fallsOnRelease } from '../js/games/codequest/lab/lab-screen.js';
+
+test('falling bodies and the drag shadow draw palette-only in every phase, hits unchanged', () => {
+  const { fit, hits } = draw(1270, 630, 1).out, world = labWorld(fit.W, fit.H);
+  assert.deepEqual(world, { x0: 0, x1: fit.W, top: 0, benchTop: 112 + fit.H - 180, floor: fit.H - 4 });
+  const home = labHome(fit.W, fit.H, 'redMushroom'), jar = hits.find(h => h.id === 'jar:redMushroom');
+  const jarRoom = roomPoint(fit, jar.x + jar.w / 2, jar.y + jar.h / 2);
+  assert.ok(Math.abs(home.x - jarRoom.x) < 2 && Math.abs(home.y - jarRoom.y) < 8, 'home is the jar');
+  for (const reduced of [false, true]) {
+    let bodies = [createBody({ key: 'redMushroom:frozen', x: 120, y: 40, vx: 120, vy: -80, home, reduced }, world), createBody({ key: 'sunHerb', x: 300, y: 170, home: labHome(fit.W, fit.H, 'sunHerb'), reduced }, world)];
+    for (let i = 0; i < 160 && bodies.length; i++) {
+      bodies = stepBodies(bodies, 1 / 30, world);
+      const { canvas, out } = draw(1270, 630, 1, { now: 1000 + i * 33, bodies, drag: { x: 200, y: 60 }, reduced });
+      assert.deepEqual(canvas.ctx.bad, [], `step ${i}`);
+      assert.deepEqual(out.hits, hits);
+    }
+    assert.equal(bodies.length, 0, 'everything got home');
+  }
+});
+
+test('a drag let go on nothing (or a jar, the spoon) falls; on the cauldron or a state tool it does not', () => {
+  assert.equal(fallsOnRelease(null), true);
+  assert.equal(fallsOnRelease({ kind: 'jar' }), true);
+  assert.equal(fallsOnRelease({ kind: 'prop', step: 'stir' }), true);
+  assert.equal(fallsOnRelease({ kind: 'cauldron' }), false);
+  for (const step of ['grind', 'heat', 'cool']) assert.equal(fallsOnRelease({ kind: 'prop', step }), false);
+});

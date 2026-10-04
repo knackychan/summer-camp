@@ -14,10 +14,15 @@ import { LAB_INGREDIENTS, LAB_FREE_INGREDIENTS, STATE_TOOL } from './ingredients
 import { LAB_RULES } from './rules.js';
 import { resolveExperiment, mixHint, labEntries, labKey, LAB_MAX_INGREDIENTS, LAB_MAX_STEPS } from './resolve.js';
 import { normalizeLab, recordFound, recordSeen, recordStates, journalReactions, journalPotions, journalIngredients } from './journal.js';
-import { drawLab, hitAt, hitNear, DROP_TARGETS, PARALLAX_MAX } from './lab-view.js';
+import { drawLab, hitAt, hitNear, DROP_TARGETS, PARALLAX_MAX, roomPoint, labWorld, labHome } from './lab-view.js';
+import { createBody, addBody, stepBodies } from './lab-physics.js';
 import { drawLabSprite, labSpriteSize } from './lab-art.js';
 
 const RULE = Object.fromEntries(LAB_RULES.map(rule => [rule.id, rule]));
+/** A drag let go here falls to the bench (lab-feel D5) unless it landed on the cauldron or a state tool. */
+export function fallsOnRelease(over) {
+  return !(over && (over.kind === 'cauldron' || (over.kind === 'prop' && STATE_TOOL[over.step])));
+}
 // Action plates under the tools (lab-feel D3): the step names the dock's trail uses too.
 export const PLATES = Object.freeze([
   ['prop:grind', '🔨', ALCHEMY_LABELS.grind], ['prop:heat', '🔥', ALCHEMY_LABELS.heat], ['prop:stir', '🥄', ALCHEMY_LABELS.stir],
@@ -207,6 +212,19 @@ export function mountLab(root, api) {
   const lean = { x: 0, y: 0 };
   let dragAt = null;   // { x, y } CSS px in the canvas while dragging
   let dragOver = null; // the drop target under a dragged ingredient (lab-feel D4)
+  // Gravity (lab-feel D5): bodies falling or going home, and the pointer's last moves for the throw.
+  let bodies = Object.freeze([]), samples = [], lastStep = 0;
+  function fling(p, key) {
+    if (!view || !key) return;
+    const fit = view.fit, k = fit.device / fit.dpr, now = performance.now();
+    const recent = samples.filter(s => now - s.t <= 80), first = recent[0], last = recent[recent.length - 1];
+    const dt = first && last && last.t > first.t ? (last.t - first.t) / 1000 : 0;
+    const at = roomPoint(fit, p.x, p.y), id = String(key).split(':')[0];
+    bodies = addBody(bodies, createBody({
+      key, x: at.x, y: at.y, vx: dt ? (last.x - first.x) / dt / k : 0, vy: dt ? (last.y - first.y) / dt / k : 0,
+      home: labHome(fit.W, fit.H, id), reduced: !!api.reduced
+    }, labWorld(fit.W, fit.H)));
+  }
   // A near miss within 12 logical px still lands (lab-feel D4).
   const dropAt = p => {
     const slack = view && view.fit ? 12 * view.fit.device / view.fit.dpr : 24;
@@ -234,7 +252,8 @@ export function mountLab(root, api) {
       mix: state.mix, steps: state.steps, tint: hint.tint, shaky: hint.shaky, selection: state.selection, held: state.held,
       tool: tool && time - tool.start < TOOL_MS ? tool : null, effect: state.effect, reduced: !!api.reduced,
       parallax: leanToward(box),
-      hint: { lifted: !!state.held, over: dragOver }
+      hint: { lifted: !!state.held, over: dragOver },
+      bodies, drag: dragAt && view ? roomPoint(view.fit, dragAt.x, dragAt.y) : null
     });
     placeBubble(time, box);
     placeTag();
@@ -485,6 +504,9 @@ export function mountLab(root, api) {
     // A mouse shows the hand over anything tappable; nothing depends on hover.
     if (!press && e.pointerType === 'mouse' && view) { const r = canvas.getBoundingClientRect(); canvas.style.cursor = hitAt(view.hits, e.clientX - r.left, e.clientY - r.top) ? 'pointer' : ''; }
     if (!press || e.pointerId !== press.pointerId) return;
+    const now = performance.now();
+    samples.push({ x: e.clientX, y: e.clientY, t: now });
+    while (samples.length > 2 && now - samples[0].t > 100) samples.shift();
     if (!press.moved && Math.abs(e.clientX - press.x0) + Math.abs(e.clientY - press.y0) > DRAG_PX) {
       press.moved = true;
       ghost = document.createElement('div'); ghost.className = 'cq-drag-ghost';
@@ -507,7 +529,12 @@ export function mountLab(root, api) {
     if (over && over.kind === 'cauldron') dropHeld();
     // Dropped on the mortar, burner or frost plate: changed, and still in hand over the tool.
     else if (over && over.kind === 'prop' && STATE_TOOL[over.step]) processWith(over.step);
-    else apply(labSelect(state, null));
+    else {
+      // Let go on nothing: it falls to the bench, then floats home (lab-feel D5).
+      if (e.type === 'pointerup' && fallsOnRelease(over)) fling(p, state.held || done.hit.ingredient);
+      apply(labSelect(state, null));
+    }
+    samples = [];
   }
   function onDockDown(e) {
     const target = e.target.closest('button[data-lab]');
@@ -533,7 +560,12 @@ export function mountLab(root, api) {
   const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(() => draw()) : null;
   if (resize) resize.observe(scene);
   let last = 0;
-  scheduler.frame(time => { if (time - last > 48) { last = time; draw(time); } });
+  // ~20 fps when calm; every frame while something falls, a drag is held or the back wall eases.
+  scheduler.frame(time => {
+    if (bodies.length && view) bodies = stepBodies(bodies, lastStep ? (time - lastStep) / 1000 : 0, labWorld(view.fit.W, view.fit.H));
+    lastStep = time;
+    if (bodies.length || dragAt || lean.x || lean.y || time - last > 48) { last = time; draw(time); }
+  });
 
   say(state.line); renderPlates(); renderDock(); renderSheet(); renderJournal();
 
@@ -556,6 +588,7 @@ export function mountLab(root, api) {
       return {
         open: true, mix: [...state.mix], steps: [...state.steps], selection: state.selection, held: state.held, effect: state.effect,
         lastResult: state.lastResult, newPage: state.newPage, line: state.line, script: script.open, journal: journal.open ? journal.tab : null,
+        bodies: bodies.map(b => ({ key: b.key, phase: b.phase, x: b.x, y: b.y })),
         hits: view ? view.hits.map(hit => ({ id: hit.id, kind: hit.kind, x: hit.x, y: hit.y, w: hit.w, h: hit.h })) : [],
         plates: [...el.querySelectorAll('.cq-lab-plate')].filter(plate => !plate.hidden).map(plate => {
           const r = plate.getBoundingClientRect(), s = scene.getBoundingClientRect();

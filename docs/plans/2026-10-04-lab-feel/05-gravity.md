@@ -50,3 +50,12 @@
   - fling a mushroom up and to the right → it arcs, lands, slides and returns to its jar
   - 15 quick flings stay smooth (no frame > 33 ms in the harness trace)
 - `node scripts/check.mjs` green.
+
+## Implementation notes (2026-10-04)
+
+- **`lab-physics.js`:** `PHYS` as specified plus `sparkMs` 400, `fadeMs` 200, `held` 12 (a held ingredient floats 12 px above where it lands, so even a release over the bench visibly drops), `radius` 6. A body's (x, y) is its bottom-centre. Phases: `fall` → `slide` → `home` (eased arc, 34 px lift) → `spark` (at home) → removed; reduced motion: `fadeOut` (where it was let go) → `fadeIn` (at home) → removed. Ground = the release height when that is on the bench, else 4 px into the bench's back edge, never below the floor. The slide uses the exact exponential of the 0.92/frame friction, so it is identical at any frame rate. `addBody` keeps 15 in play; past that the oldest jumps home (spark). `bodyLook(b)` gives alpha and shadow size.
+- **View:** `roomPoint`, `labWorld`, `labHome` exported; `drawBodies` (room frame, after the bag, under the arrows and effects) draws each body in its form with a dithered shadow on its ground (40 % → 100 % as it lands, none on the way home), the sparkle ring at home, and a faint shadow on the bench under a held drag.
+- **Screen:** `fallsOnRelease(over)` (exported for the test): anything but the cauldron or a state tool. Pointer samples of the last ~100 ms give the throw (CSS px/s → logical px/s). The frame loop steps the bodies every frame and draws every frame while a body, a drag or the parallax ease is live; otherwise the ~20 fps throttle. `snapshot().lab.bodies` lists `{ key, phase, x, y }`.
+- **`sw.js`:** `lab-physics.js` added to the precache list (offline-first) and cache `summer-quest-v163-lab-feel-05`.
+- **Tests:** `codequest-lab-physics.test.mjs` (5: falls/accelerates/capped/lands, throw cap + sides + frame-rate-independent friction, arc home + spark + removal, reduced fade, cap of 15 + purity) and 2 view tests (every phase draws palette-only with hits unchanged, normal and reduced; `fallsOnRelease`).
+- **Browser (Chromium, 1280×800):** a fling went fall → slide → home → spark and was gone; 15 quick flings: 15 bodies, frame gaps p50 16.7 ms, max 16.8 ms. Lab harness green at 4 sizes. Screenshots `test-results/codequest-lab/feel-gravity-{fling,flings}-1280x800.png`.
