@@ -294,3 +294,37 @@ test('every tool and the cauldron has a plate in EN + 中文, anchored inside it
     }
   }
 });
+
+/* ---------- lab-feel slice 04: hints ---------- */
+import { hitNear, DROP_TARGETS } from '../js/games/codequest/lab/lab-view.js';
+
+test('hitNear: the hit under the point first, else the nearest drop target within the slack, else nothing', () => {
+  const { hits, fit } = draw(1270, 630, 1).out, k = fit.device / fit.dpr, slack = 12 * k;
+  const at = id => hits.find(h => h.id === id);
+  const mortar = at('prop:grind'), jar = at('jar:redMushroom');
+  assert.equal(hitNear(hits, jar.x + 2, jar.y + 2, slack).id, 'jar:redMushroom', 'exact hits win, whatever they are');
+  assert.equal(hitNear(hits, mortar.x - 5 * k, mortar.y + mortar.h / 2, slack).id, 'prop:grind', 'a near miss lands on the mortar');
+  assert.equal(hitNear(hits, mortar.x - 20 * k, mortar.y + 4, slack), null, 'too far is nothing');
+  assert.equal(hitNear(hits, mortar.x - 5 * k, mortar.y + mortar.h / 2, 0), null, 'no slack, no near miss');
+  const stir = at('prop:stir');
+  const near = hitNear(hits, stir.x + stir.w / 2, stir.y - 4 * k, slack);
+  assert.ok(!near || near.id !== 'prop:stir', 'the spoon is never a near-miss target');
+  assert.deepEqual([...DROP_TARGETS].sort(), ['cauldron', 'prop:cool', 'prop:grind', 'prop:heat']);
+});
+
+test('hints: idle glow always, arrows only while lifted, a ring on the target under the finger; still under reduced motion', () => {
+  const fills = extra => {
+    const canvas = new FakeCanvas(), log = [], fillRect = canvas.ctx.fillRect.bind(canvas.ctx);
+    canvas.ctx.fillRect = (...rect) => { log.push(canvas.ctx.fillStyle + rect.join(',')); fillRect(...rect); };
+    const out = drawLab(canvas, { cssWidth: 1270, cssHeight: 630, dpr: 1, ...extra });
+    return { log: log.join(';'), ops: canvas.ctx.ops, hits: out.hits, bad: canvas.ctx.bad };
+  };
+  const idle = fills({ now: 1000 }), lifted = fills({ now: 1000, hint: { lifted: true, over: null } });
+  const over = fills({ now: 1000, hint: { lifted: true, over: 'prop:grind' } });
+  assert.ok(lifted.ops > idle.ops, 'arrows appear when lifted');
+  assert.ok(over.ops > lifted.ops, 'the ring appears on the target under the finger');
+  assert.deepEqual(over.bad, []);
+  assert.deepEqual(over.hits, idle.hits, 'hints never move a tap target');
+  assert.equal(fills({ now: 1000, hint: { lifted: false } }).ops, idle.ops, 'not lifted = no arrows');
+  assert.equal(fills({ reduced: true, now: 1000, hint: { lifted: true } }).log, fills({ reduced: true, now: 1300, hint: { lifted: true } }).log, 'arrows hold still');
+});

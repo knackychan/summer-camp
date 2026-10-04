@@ -34,3 +34,14 @@
   - lift a jar → 4 arrows plus the Drop-in plate
   - drag a few px past the mortar and let go → crushed in hand
 - `node scripts/check.mjs` green.
+
+## Implementation notes (2026-10-04)
+
+- **Targets:** `DROP_TARGETS` in `lab-view.js` = cauldron, mortar, burner, frost plate (never the spoon). Each has a glow ellipse and an arrow spot in core px (`HINT`).
+- **Glow:** a three-ring palette pool behind each target (drawn before the burner and tools): alpha 0.1 ± 0.03 breathing over 2.4 s when idle, 0.2 while something is lifted, a white pool on the target under the finger. Pause and reduced motion hold it steady.
+- **Arrows:** an outlined 7×4 ▼ over each target while `hint.lifted`, bobbing 0–2 px on a 600 ms cycle (still under pause / reduced). Drawn after the bag, under the effects.
+- **Drag:** `onMove` resolves the target under the ghost with `hitNear` (12 logical px of slack, scaled by the fit); `dragOver` drives a two-ring pulsing ellipse on its art and `.on` on its plate. `onUp` drops with the same `hitNear`, so a near miss on the mortar, burner, frost plate or cauldron lands.
+- **Cursor:** a mouse (only) gets `cursor: pointer` over any hit.
+- **Tests:** 2 new (`hitNear` exact > near > nothing, no slack → no near miss, spoon never a target; hints add arrows only when lifted and a ring under the finger, never move hits, hold still under reduced motion). 20 view tests; lab harness green at 4 sizes.
+- **Screenshots:** `test-results/codequest-lab/feel-hints-{open,lifted,drag}-1280x800.png` (drag = an Echo Crystal held just left of the mortar: ring + lit Grind plate).
+- `sw.js` cache `summer-quest-v162-lab-feel-04`.

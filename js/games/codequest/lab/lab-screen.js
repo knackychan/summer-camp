@@ -14,7 +14,7 @@ import { LAB_INGREDIENTS, LAB_FREE_INGREDIENTS, STATE_TOOL } from './ingredients
 import { LAB_RULES } from './rules.js';
 import { resolveExperiment, mixHint, labEntries, labKey, LAB_MAX_INGREDIENTS, LAB_MAX_STEPS } from './resolve.js';
 import { normalizeLab, recordFound, recordSeen, recordStates, journalReactions, journalPotions, journalIngredients } from './journal.js';
-import { drawLab, hitAt, PARALLAX_MAX } from './lab-view.js';
+import { drawLab, hitAt, hitNear, DROP_TARGETS, PARALLAX_MAX } from './lab-view.js';
 import { drawLabSprite, labSpriteSize } from './lab-art.js';
 
 const RULE = Object.fromEntries(LAB_RULES.map(rule => [rule.id, rule]));
@@ -206,6 +206,12 @@ export function mountLab(root, api) {
   // Back-layer parallax (lab-feel D6): leans away from a dragged ingredient, eases back after.
   const lean = { x: 0, y: 0 };
   let dragAt = null;   // { x, y } CSS px in the canvas while dragging
+  let dragOver = null; // the drop target under a dragged ingredient (lab-feel D4)
+  // A near miss within 12 logical px still lands (lab-feel D4).
+  const dropAt = p => {
+    const slack = view && view.fit ? 12 * view.fit.device / view.fit.dpr : 24;
+    return hitNear(view && view.hits, p.x, p.y, slack);
+  };
   function leanToward(box) {
     const target = dragAt && !api.reduced
       ? { x: -(dragAt.x / box.width - 0.5) * 2 * PARALLAX_MAX, y: -(dragAt.y / box.height - 0.5) * 2 * (PARALLAX_MAX / 2) }
@@ -227,7 +233,8 @@ export function mountLab(root, api) {
       cssWidth: box.width, cssHeight: box.height, dpr: window.devicePixelRatio || 1, now: time,
       mix: state.mix, steps: state.steps, tint: hint.tint, shaky: hint.shaky, selection: state.selection, held: state.held,
       tool: tool && time - tool.start < TOOL_MS ? tool : null, effect: state.effect, reduced: !!api.reduced,
-      parallax: leanToward(box)
+      parallax: leanToward(box),
+      hint: { lifted: !!state.held, over: dragOver }
     });
     placeBubble(time, box);
     placeTag();
@@ -241,6 +248,9 @@ export function mountLab(root, api) {
     platesAt = '';
   }
   let platesAt = '';
+  function markPlate() {
+    for (const plate of el.querySelectorAll('.cq-lab-plate')) plate.classList.toggle('on', plate.dataset.plate === dragOver);
+  }
   function placePlates() {
     if (!view) return;
     const held = !!state.held, key = held + '|' + view.hits.filter(hit => hit.plate).map(hit => hit.plate.map(Math.round).join(',')).join(';');
@@ -472,6 +482,8 @@ export function mountLab(root, api) {
     tapHit(hit);
   }
   function onMove(e) {
+    // A mouse shows the hand over anything tappable; nothing depends on hover.
+    if (!press && e.pointerType === 'mouse' && view) { const r = canvas.getBoundingClientRect(); canvas.style.cursor = hitAt(view.hits, e.clientX - r.left, e.clientY - r.top) ? 'pointer' : ''; }
     if (!press || e.pointerId !== press.pointerId) return;
     if (!press.moved && Math.abs(e.clientX - press.x0) + Math.abs(e.clientY - press.y0) > DRAG_PX) {
       press.moved = true;
@@ -479,14 +491,19 @@ export function mountLab(root, api) {
       ghost.innerHTML = formIcon(labEntries([state.held || press.hit.ingredient])[0]);
       el.appendChild(ghost);
     }
-    if (ghost) { ghost.style.transform = 'translate(' + (e.clientX - 24) + 'px,' + (e.clientY - 24) + 'px)'; dragAt = local(e); }
+    if (ghost) {
+      ghost.style.transform = 'translate(' + (e.clientX - 24) + 'px,' + (e.clientY - 24) + 'px)';
+      dragAt = local(e);
+      const over = dropAt(dragAt), id = over && DROP_TARGETS.includes(over.id) ? over.id : null;
+      if (id !== dragOver) { dragOver = id; markPlate(); draw(); }
+    }
   }
   function onUp(e) {
     if (!press || e.pointerId !== press.pointerId) return;
-    const done = press; press = null; dragAt = null;
+    const done = press; press = null; dragAt = null; dragOver = null; markPlate();
     if (ghost) { ghost.remove(); ghost = null; }
     if (!done.moved) { if (done.wasSelected) apply(labSelect(state, null)); return; }
-    const p = local(e), over = e.type === 'pointerup' ? hitAt(view && view.hits, p.x, p.y) : null;
+    const p = local(e), over = e.type === 'pointerup' ? dropAt(p) : null;
     if (over && over.kind === 'cauldron') dropHeld();
     // Dropped on the mortar, burner or frost plate: changed, and still in hand over the tool.
     else if (over && over.kind === 'prop' && STATE_TOOL[over.step]) processWith(over.step);

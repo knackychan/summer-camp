@@ -243,6 +243,7 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
 .cq-lab-plate{position:absolute;left:0;top:0;display:flex;align-items:center;gap:5px;padding:2px 9px 2px 6px;border:2px solid var(--cq-out);border-radius:10px;background:var(--cq-paper);color:#2a1a10;font:800 14px/1.25 'Nunito',system-ui,sans-serif;white-space:nowrap;box-shadow:0 2px 0 var(--cq-out);pointer-events:none}
 .cq-lab-plate[hidden]{display:none}.cq-lab-plate i{font-style:normal;font-size:15px;line-height:1}
 .cq-lab-plate[data-plate="cauldron"]{background:var(--cq-gold)}
+.cq-lab-plate.on{background:#fff8e0;border-color:var(--cq-gold);box-shadow:0 0 0 2px var(--cq-out),0 3px 0 var(--cq-out)}
 .cq-lab-counts span{position:absolute;left:0;top:0;padding:0 4px;border:2px solid var(--cq-out);border-radius:4px;background:var(--cq-panel);color:var(--cq-ink);font-size:12px;pointer-events:none}
 .cq-lab-dock{display:flex;align-items:center;gap:10px;padding:8px;border:3px solid var(--cq-out);border-radius:6px;background:linear-gradient(#2b2a45,var(--cq-panel));box-shadow:inset 0 2px 0 var(--cq-edge)}
 .cq-lab-slots{display:flex;gap:6px;padding:4px;border:2px solid var(--cq-wood);border-radius:8px;background:#1a1930}

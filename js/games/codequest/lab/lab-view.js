@@ -141,6 +141,25 @@ export function hitAt(hits, x, y) {
   return (hits || []).find(hit => x >= hit.x && x < hit.x + hit.w && y >= hit.y && y < hit.y + hit.h) || null;
 }
 
+/* Where a lifted ingredient can go (lab-feel D4): the cauldron and the three tools that
+   change it. The spoon only stirs, so it is never a target. */
+export const DROP_TARGETS = Object.freeze(['cauldron', 'prop:grind', 'prop:heat', 'prop:cool']);
+/**
+ * The hit a drop at (x, y) lands on: the hit under the point, else the nearest drop
+ * target whose rect is within `slack` (CSS px) — a near miss still counts for small fingers.
+ */
+export function hitNear(hits, x, y, slack = 0) {
+  const exact = hitAt(hits, x, y);
+  if (exact) return exact;
+  let best = null, bestD = Infinity;
+  for (const hit of hits || []) {
+    if (!DROP_TARGETS.includes(hit.id)) continue;
+    const dx = Math.max(hit.x - x, 0, x - (hit.x + hit.w)), dy = Math.max(hit.y - y, 0, y - (hit.y + hit.h)), d = Math.hypot(dx, dy);
+    if (d <= slack && d < bestD) { best = hit; bestD = d; }
+  }
+  return best;
+}
+
 /* ---------- room (whole-room parts draw in room px: W×H, groups from labGroups) ---------- */
 // Beyond the room caps the box is painted as more wall and bench, never black.
 function drawBackdrop(ctx, fit) {
@@ -361,6 +380,52 @@ function drawShaft(ctx, now, still) {
     const y = top + ((i * 29 + t * (3 + (i % 3))) % (bottom - top)), [l, r] = at(y);
     const x = l + ((i * 37 + Math.sin(t * 0.7 + i) * 3) % (r - l) + (r - l)) % (r - l);
     glow(ctx, 0.6, () => px(ctx, i % 3 ? Q.lilac : Q.white, x, y, 1, 1));
+  }
+}
+
+/* ---------- hints (lab-feel D4): soft glow, bobbing ▼, drag ring ---------- */
+// Glow ellipses round each drop target's art and where its arrow floats (centre group, core px).
+const HINT = Object.freeze({
+  cauldron: Object.freeze({ glow: [160, 100, 38, 30], arrow: [160, 68] }),
+  'prop:grind': Object.freeze({ glow: [104, 127, 25, 17], arrow: [108, 96] }),
+  'prop:heat': Object.freeze({ glow: [160, 141, 30, 11], arrow: [160, 133] }),
+  'prop:cool': Object.freeze({ glow: [260, 130, 25, 15], arrow: [260, 112] })
+});
+/** Glows behind the targets: a slow breath when idle, brighter while something is lifted. */
+function drawHintGlow(ctx, hint, now, still) {
+  const breath = still ? 0 : Math.sin((now / 2400) * Math.PI * 2);
+  const a = hint && hint.lifted ? 0.2 : 0.1 + breath * 0.03;
+  for (const id of DROP_TARGETS) {
+    const [cx, cy, rx, ry] = HINT[id].glow;
+    pool(ctx, id === (hint && hint.over) ? Q.white : Q.yellow, cx, cy, rx, ry, id === (hint && hint.over) ? 0.24 : a);
+  }
+}
+function ringEllipse(ctx, color, cx, cy, rx, ry) {
+  const steps = Math.max(12, Math.round((rx + ry) * 3));
+  for (let i = 0; i < steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    px(ctx, color, cx + Math.round(Math.cos(t) * rx), cy + Math.round(Math.sin(t) * ry));
+  }
+}
+/** A 7×4 ▼ (outlined) at (x, y) = its tip. */
+function drawArrow(ctx, x, y) {
+  for (let row = 0; row < 4; row++) {
+    const half = 3 - row;
+    px(ctx, Q.outline, x - half - 1, y - 4 + row, half * 2 + 3, 1);
+    px(ctx, row === 0 ? Q.sandLit : Q.yellow, x - half, y - 4 + row, half * 2 + 1, 1);
+  }
+  px(ctx, Q.outline, x - 4, y - 5, 9, 1);
+  px(ctx, Q.outline, x, y, 1, 1);
+}
+/** Over the targets: ▼ above each while something is lifted, a pulsing ring on the one under the finger. */
+function drawHintMarks(ctx, hint, now, still) {
+  if (!hint || !hint.lifted) return;
+  const bob = still ? 0 : Math.round((Math.sin((now / 600) * Math.PI * 2) + 1));
+  for (const id of DROP_TARGETS) { const [x, y] = HINT[id].arrow; drawArrow(ctx, x, y + bob); }
+  if (HINT[hint.over]) {
+    const [cx, cy, rx, ry] = HINT[hint.over].glow, pulse = still ? 0 : Math.floor(now / 200) % 2;
+    ringEllipse(ctx, Q.yellow, cx, cy, rx - 4 + pulse, ry - 3 + pulse);
+    ringEllipse(ctx, Q.white, cx, cy, rx - 5 + pulse, ry - 4 + pulse);
   }
 }
 
@@ -748,6 +813,7 @@ export function drawLab(canvas, options = {}) {
   drawCloth(ctx);
   drawBurnerShadow(ctx);
   drawShaft(ctx, now, still);
+  drawHintGlow(ctx, options.hint, clock, still);
   place(groups.left);
   drawBookShadow(ctx);
   drawBookStack(ctx);
@@ -768,6 +834,8 @@ export function drawLab(canvas, options = {}) {
   drawToolUse(ctx, options.tool, clock, !!options.reduced);
   place(groups.left);
   drawBag(ctx, selection, options.held);
+  place(groups.centre);
+  drawHintMarks(ctx, options.hint, clock, still);
   place(room);
   drawLight(ctx, groups, paint, frame, still);
   // Effects are cauldron-centred: they draw in the centre group's core coordinates;
