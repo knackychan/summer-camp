@@ -21,6 +21,7 @@
     "build:debug": "node scripts/build.mjs debug",
     "build:release-apk": "node scripts/build.mjs release-apk",
     "build:release-bundle": "node scripts/build.mjs release-bundle",
-    "device": "node scripts/device.mjs"
+    "device": "node scripts/device.mjs",
+    "probe-3d": "node scripts/probe-3d.mjs"
   }
 }
