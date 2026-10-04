@@ -190,7 +190,8 @@ function monstrosity(ctx, e, t, o) {
 
 const COPY_SPOTS = [[86, 104], [214, 104], [100, 104], [240, 104], [72, 104], [254, 104], [112, 104], [266, 104]];
 function duplication(ctx, e, t, o) {
-  const organic = (o.mix || []).find(id => LAB_INGREDIENTS[id] && (LAB_INGREDIENTS[id].props.life || 0) + (LAB_INGREDIENTS[id].props.growth || 0) > 0) || e.lastIngredient;
+  // Mix items may be "id:state" keys (lab-states); the copies are of the plain ingredient.
+  const organic = (o.mix || []).map(key => String(key).split(':')[0]).find(id => LAB_INGREDIENTS[id] && (LAB_INGREDIENTS[id].props.life || 0) + (LAB_INGREDIENTS[id].props.growth || 0) > 0) || e.lastIngredient;
   if (!LAB_INGREDIENTS[organic]) return;
   const copies = Math.min(8, 2 ** Math.max(1, e.intensity));
   for (let i = 0; i < copies; i++) {

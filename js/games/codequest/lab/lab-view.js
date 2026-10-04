@@ -5,7 +5,7 @@
    screen controller never has to know the layout. */
 import { Q } from '../palette.js';
 import { drawSprite, spriteSize } from '../pixel-art.js';
-import { px, drawLabSprite } from './lab-art.js';
+import { px, drawLabSprite, labSpriteSize } from './lab-art.js';
 import { LAB_INGREDIENTS, SHELF_IDS, BAG_IDS } from './ingredients.js';
 import { fxTime, fxPose, drawEffect } from './lab-fx.js';
 
@@ -42,6 +42,43 @@ const BIT = Object.freeze({
   lifeSap: Q.green, frostDew: Q.ice, starDust: Q.yellow, sunHerb: Q.greenLit, moonBerry: Q.lilac,
   waterCrystal: Q.oceanLit, emberRoot: Q.rockLit
 });
+
+/* ---------- ingredient forms (lab-states D8): crushed heap, heated glow, frozen ice cube ---------- */
+const formOf = key => { const [id, state] = String(key || '').split(':'); return { id, state: state || 'raw' }; };
+function sizeOf(id) {
+  return LAB_INGREDIENTS[id] && LAB_INGREDIENTS[id].where === 'bag' ? spriteSize(id, 1) : labSpriteSize(id);
+}
+function plainSprite(ctx, id, x, y) {
+  if (LAB_INGREDIENTS[id] && LAB_INGREDIENTS[id].where === 'bag') drawSprite(ctx, id, x, y, 1); else drawLabSprite(ctx, id, x, y);
+}
+/** Draws an ingredient at (x, y) (top-left, its natural size) in a state. */
+function drawForm(ctx, id, state, x, y) {
+  const { width: w, height: h } = sizeOf(id);
+  if (state === 'crushed') {
+    // A little powder heap in the ingredient's colour, with a few bright grains.
+    const colour = BIT[id] == null ? Q.grey : BIT[id], cx = x + Math.floor(w / 2), base = y + h - 1;
+    for (let row = 0; row < 5; row++) {
+      const half = Math.max(1, Math.round(w / 2) - row * 1.4 - (row > 2 ? 1 : 0));
+      px(ctx, row === 0 ? Q.outline : colour, cx - half, base - row, half * 2, 1);
+    }
+    px(ctx, Q.outline, cx - Math.round(w / 2), base - 5, 1, 5);
+    for (const [dx, dy] of [[-3, -2], [1, -3], [3, -1], [-1, -4]]) px(ctx, Q.white, cx + dx, base + dy);
+    return;
+  }
+  if (state === 'heated') {
+    glow(ctx, 0.5, () => ellipse(ctx, Q.lava, x + w / 2, y + h / 2, Math.ceil(w / 2) + 2, Math.ceil(h / 2) + 1));
+    plainSprite(ctx, id, x, y);
+    px(ctx, Q.lava, x + Math.floor(w / 2) - 2, y - 3, 1, 2); px(ctx, Q.yellow, x + Math.floor(w / 2) + 1, y - 4, 1, 2);
+    return;
+  }
+  plainSprite(ctx, id, x, y);
+  if (state === 'frozen') {
+    glow(ctx, 0.45, () => px(ctx, Q.ice, x - 1, y - 1, w + 2, h + 2));
+    px(ctx, Q.white, x - 1, y - 1, w + 2, 1); px(ctx, Q.white, x - 1, y, 1, h + 1);
+    px(ctx, Q.oceanLit, x + w, y, 1, h + 1); px(ctx, Q.oceanLit, x, y + h, w + 1, 1);
+    px(ctx, Q.white, x + 1, y + 1, 2, 1);
+  }
+}
 
 function hash(x, y) { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return (h ^ (h >>> 16)) >>> 0; }
 function glow(ctx, a, fn) { ctx.save(); ctx.globalAlpha = a; fn(); ctx.restore(); }
@@ -173,13 +210,13 @@ function drawShelf(ctx) {
   px(ctx, Q.sandLit, 300, 96, 14, 10); px(ctx, Q.sand, 302, 99, 10, 1); px(ctx, Q.sand, 302, 102, 8, 1);
 }
 
-function drawJar(ctx, hit, selected, lean = 0) {
+function drawJar(ctx, hit, selected, lean = 0, state = 'raw') {
   const x = hit.x + lean, y = hit.y - (selected ? 3 : 0);
   const edge = selected ? Q.yellow : Q.outline;
   px(ctx, edge, x + 2, y + 3, 21, 21);
   px(ctx, Q.space2, x + 3, y + 4, 19, 19);
   glow(ctx, 0.35, () => px(ctx, Q.snowShade, x + 3, y + 4, 19, 19));
-  drawLabSprite(ctx, hit.ingredient, x + 6, y + 8);
+  drawForm(ctx, hit.ingredient, state, x + 6, y + 8);
   px(ctx, Q.white, x + 4, y + 6, 1, 8);
   px(ctx, Q.snowShade, x + 4, y + 15, 1, 3);
   px(ctx, edge, x + 6, y, 13, 4);
@@ -291,10 +328,12 @@ function drawCauldron(ctx, options, frame, now, still) {
   // Rune on the belly glows in the liquid's colour.
   px(ctx, liquid, cx - 1, 102, 2, 10); px(ctx, liquid, cx - 5, 105, 10, 2); px(ctx, liquidLit, cx - 3, 109, 6, 1);
   // Bits of the mix bob on the surface.
-  (options.mix || []).forEach((id, i) => {
-    const bob = still ? 0 : ((frame + i) % 2);
-    px(ctx, Q.outline, cx - 16 + i * 9, 85 + bob, 5, 4);
+  (options.mix || []).forEach((key, i) => {
+    const { id, state } = formOf(key), bob = still ? 0 : ((frame + i) % 2);
+    // A changed bit wears its state on the rim: ice white when frozen, orange when heated, speckled when crushed.
+    px(ctx, state === 'frozen' ? Q.white : state === 'heated' ? Q.lava : Q.outline, cx - 16 + i * 9, 85 + bob, 5, 4);
     px(ctx, BIT[id] == null ? Q.grey : BIT[id], cx - 15 + i * 9, 85 + bob, 3, 3);
+    if (state === 'crushed') { px(ctx, Q.white, cx - 15 + i * 9, 85 + bob); px(ctx, Q.white, cx - 13 + i * 9, 87 + bob); }
   });
   // Bubbles rise and pop.
   const t = still ? 0 : now / 1000;
@@ -358,14 +397,41 @@ function drawScroll(ctx) {
   px(ctx, Q.red, h.x + 16, h.y + 18, 4, 3);
 }
 
-function drawBag(ctx, selection) {
+function drawBag(ctx, selection, held) {
   px(ctx, Q.outline, 0, 154, 100, 26);
   px(ctx, Q.woodDark, 1, 155, 98, 25);
   px(ctx, Q.wood, 1, 155, 98, 2);
   for (const id of BAG_IDS) {
     const hit = AT['bag:' + id], lifted = selection === hit.id;
     if (lifted) { px(ctx, Q.yellow, hit.x + 5, hit.y + 2, 14, 14); px(ctx, Q.woodDark, hit.x + 6, hit.y + 3, 12, 12); }
-    drawSprite(ctx, id, hit.x + 7, hit.y + (lifted ? 4 : 7), 1);
+    drawForm(ctx, id, lifted ? formOf(held).state : 'raw', hit.x + 7, hit.y + (lifted ? 4 : 7));
+  }
+}
+
+/** A tool just used on the lifted ingredient (or as a cauldron step): pestle bobs, burner flares, frost puffs. */
+function drawToolUse(ctx, tool, clock, reduced) {
+  if (!tool || !AT['prop:' + tool.step]) return;
+  const t = Math.max(0, clock - (Number(tool.start) || 0));
+  if (t > 600) return;
+  const h = AT['prop:' + tool.step], k = 1 - t / 600, beat = reduced ? 0 : Math.floor(t / 100) % 2;
+  if (tool.step === 'grind') {
+    // The pestle pounds twice and a puff of powder jumps out.
+    px(ctx, Q.stoneLit, h.x + 12, h.y + 2 + beat * 3, 3, 9);
+    glow(ctx, 0.7 * k, () => { for (const [dx, dy] of [[4, 8], [20, 9], [8, 5], [17, 4]]) px(ctx, Q.sandLit, h.x + dx, h.y + dy - beat); });
+  } else if (tool.step === 'heat') {
+    // Taller flame tongues licking up round the cauldron, the burner's own shape.
+    glow(ctx, k, () => {
+      for (const [x, h0] of [[142, 9], [150, 13], [158, 11], [166, 14], [174, 10]]) {
+        const h = h0 + beat * 2;
+        px(ctx, Q.red, x - 2, 131 - h, 5, h);
+        px(ctx, Q.lava, x - 1, 132 - h, 3, h - 1);
+        px(ctx, Q.yellow, x, 133 - Math.ceil(h / 2), 1, Math.ceil(h / 2) - 2);
+      }
+    });
+  } else if (tool.step === 'cool') {
+    glow(ctx, 0.8 * k, () => { for (const [dx, dy] of [[4, 6], [12, 2], [20, 5], [8, 0], [16, -2]]) px(ctx, Q.white, h.x + dx, h.y + dy - Math.round((1 - k) * 6), 2, 2); });
+  } else if (tool.step === 'stir') {
+    glow(ctx, 0.8 * k, () => px(ctx, Q.rockLit, h.x + 8 + beat * 2, h.y + 4, 2, 12));
   }
 }
 
@@ -419,7 +485,7 @@ export function drawLab(canvas, options = {}) {
   drawPlants(ctx, frame, still);
   drawShelf(ctx);
   // Jars lean toward a singularity (every jar sits right of it).
-  for (const id of SHELF_IDS) drawJar(ctx, AT['jar:' + id], selection === 'jar:' + id, -pose.lean);
+  for (const id of SHELF_IDS) drawJar(ctx, AT['jar:' + id], selection === 'jar:' + id, -pose.lean, selection === 'jar:' + id ? formOf(options.held).state : 'raw');
   drawBench(ctx);
   drawBookStack(ctx);
   drawOwl(ctx, now, still, pose);
@@ -431,7 +497,8 @@ export function drawLab(canvas, options = {}) {
   drawSpoon(ctx);
   drawFrost(ctx, frame, still);
   drawScroll(ctx);
-  drawBag(ctx, selection);
+  drawToolUse(ctx, options.tool, clock, !!options.reduced);
+  drawBag(ctx, selection, options.held);
   drawLight(ctx);
   drawEffect(ctx, effect, { t, now: clock, reduced: !!options.reduced, still, mix: options.mix || [], home: homeOf });
   ctx.setTransform(1, 0, 0, 1, 0, 0);

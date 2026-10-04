@@ -14,14 +14,17 @@ export const LAB_MAX_STEPS = 5;
 // The live tint shows what the mix is made of; chaos and calm show as shaking instead.
 const TINTS = LAB_PROPERTIES.filter(prop => prop !== 'chaos' && prop !== 'calm');
 
-/** Experiment entries as `{ id, state }`; a bare id is fresh, an unknown state is fresh. */
+/** Experiment entries as `{ id, state }`. An item is `{ id, state }`, a bare id (fresh) or the
+    screen's key `"id:state"`; an unknown state is fresh. */
 export function labEntries(list) {
   if (!Array.isArray(list)) return [];
   const out = [];
   for (const item of list) {
-    const id = typeof item === 'string' ? item : item && typeof item === 'object' ? item.id : null;
+    const [keyId, keyState] = typeof item === 'string' ? item.split(':') : [];
+    const id = typeof item === 'string' ? keyId : item && typeof item === 'object' ? item.id : null;
     if (typeof id !== 'string' || !Object.hasOwn(LAB_INGREDIENTS, id)) continue;
-    const state = item && typeof item === 'object' && LAB_STATES.includes(item.state) ? item.state : 'raw';
+    const raw = typeof item === 'string' ? keyState : item.state;
+    const state = LAB_STATES.includes(raw) ? raw : 'raw';
     out.push(Object.freeze({ id, state }));
     if (out.length >= LAB_MAX_INGREDIENTS) break;
   }
@@ -83,4 +86,9 @@ export function mixHint(ingredients, steps) {
   let tint = null;
   for (const prop of TINTS) if (sums[prop] > 0 && (tint === null || sums[prop] > sums[tint])) tint = prop;
   return Object.freeze({ tint, shaky: sums.instability >= 3 });
+}
+
+/** The screen's compact key for an entry: the bare id when fresh, else "id:state". */
+export function labKey(id, state = 'raw') {
+  return state && state !== 'raw' ? id + ':' + state : id;
 }

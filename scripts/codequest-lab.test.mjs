@@ -201,7 +201,7 @@ test('recordFound / recordSeen add once and return the same profile when nothing
 
 /* ---------- slice 04: lab-screen state helpers (no DOM) ---------- */
 import { createLabState, labAdd, labRemove, labStep, labUndo, labClear, labSelect, labBrew } from '../js/games/codequest/lab/lab-screen.js';
-import { LAB, labMadeLine, labPagesLine } from '../js/games/codequest/strings.js';
+import { LAB, LAB_STATE_NAMES, labFormName, labMadeLine, labPagesLine } from '../js/games/codequest/strings.js';
 
 const fill = (ids, steps = []) => steps.reduce(labStep, ids.reduce(labAdd, createLabState()));
 const emptyProfile = () => normalizeProfile({ version: 12 });
@@ -230,7 +230,7 @@ test('lab screen: add / remove / caps, and the owl says the cauldron is full', (
 test('lab screen: selecting lifts an item and adding puts it down', () => {
   let s = labSelect(createLabState(), 'jar:echoCrystal');
   assert.equal(s.selection, 'jar:echoCrystal');
-  assert.equal(s.line, LAB.picked);
+  assert.equal(s.line, LAB.pickToChange, 'the first lift says what the hand can do now');
   s = labAdd(s, 'echoCrystal');
   assert.equal(s.selection, null);
   const withOne = labAdd(createLabState(), 'echoCrystal');
@@ -491,4 +491,69 @@ test('Journal ingredient pages list discovered forms with their points', () => {
   assert.deepEqual(Object.fromEntries(mushroom.forms[1].props), { cold: 2, calm: 1, chaos: 1 });
   for (const page of pages.filter(p => p.id !== 'redMushroom')) assert.deepEqual([...page.forms], []);
   assert.equal(journalReactions({}).total, 18);
+});
+
+/* ---------- Phase 2 slice 03: pick it up, tap a tool ---------- */
+import { labProcess } from '../js/games/codequest/lab/lab-screen.js';
+
+const lift = (hitId, s = createLabState()) => labSelect(s, hitId);
+
+test('lift + tool changes the lifted ingredient, which stays in hand; a new tool replaces the state', () => {
+  let s = lift('jar:redMushroom');
+  assert.equal(s.held, 'redMushroom');
+  s = labProcess(s, 'cool');
+  assert.equal(s.held, 'redMushroom:frozen');
+  assert.equal(s.selection, 'jar:redMushroom', 'still lifted');
+  assert.deepEqual(s.line, ['Frozen Red Mushroom!', '冰凍的紅蘑菇！']);
+  assert.equal(s.steps.length, 0, 'not a cauldron step');
+  s = labProcess(s, 'heat');
+  assert.equal(s.held, 'redMushroom:heated');
+  assert.equal(labProcess(lift('bag:sunHerb'), 'grind').held, 'sunHerb:crushed');
+  // Pressing the lifted item again keeps its form in hand.
+  assert.equal(labSelect(s, 'jar:redMushroom'), s);
+  assert.equal(labSelect(s, 'jar:echoCrystal').held, 'echoCrystal', 'a different jar is fresh');
+  assert.equal(labSelect(s, null).held, null);
+});
+
+test('the spoon with something lifted stirs the cauldron and keeps the lift; empty hands are Phase 1 steps', () => {
+  const lifted = labProcess(lift('jar:moonflower'), 'grind');
+  const stirred = labProcess(lifted, 'stir');
+  assert.deepEqual([...stirred.steps], ['stir']);
+  assert.equal(stirred.held, 'moonflower:crushed');
+  const empty = labProcess(createLabState(), 'cool');
+  assert.deepEqual([...empty.steps], ['cool']);
+  assert.equal(empty.held, null);
+});
+
+test('dropping the held form into the cauldron keeps its state; brewing records it', () => {
+  let s = labAdd(labProcess(lift('jar:redMushroom'), 'cool'), 'redMushroom:frozen');
+  assert.deepEqual([...s.mix], ['redMushroom:frozen']);
+  assert.equal(s.held, null);
+  assert.equal(s.selection, null);
+  s = labAdd(s, 'echoCrystal');
+  const out = labBrew(s, emptyProfile());
+  assert.equal(out.state.lastResult.ruleId, 'snowflakeCopies', 'the vision test, through the screen');
+  assert.deepEqual([...out.profile.lab.states], ['redMushroom:frozen']);
+  assert.deepEqual([...out.profile.lab.seen], ['redMushroom', 'echoCrystal']);
+  assert.equal(out.state.effect.lastIngredient, 'echoCrystal');
+  assert.equal(labBrew(labAdd(createLabState(), 'redMushroom:melted'), emptyProfile()).state.lastResult.ruleId,
+    labBrew(labAdd(createLabState(), 'redMushroom'), emptyProfile()).state.lastResult.ruleId, 'unknown state = fresh');
+});
+
+test('a recipe with a changed ingredient: reaction, the fresh hint, and no potion', () => {
+  const healing = RECIPES.find(recipe => recipe.id === 'healing');
+  const s = ['grind', 'stir'].reduce(labStep, ['sunHerb:crushed', 'sunHerb', 'waterCrystal'].reduce(labAdd, createLabState()));
+  const out = labBrew(s, emptyProfile(), { free: true });
+  assert.equal(out.potionId, null);
+  assert.equal(out.state.lastResult.hint, 'fresh');
+  assert.equal(out.state.line, LAB.freshHint);
+  assert.equal(out.profile.potions.healing, 0);
+  assert.equal(labBrew(['grind', 'stir'].reduce(labStep, healing.ingredients.reduce(labAdd, createLabState())), emptyProfile(), { free: true }).potionId, 'healing');
+});
+
+test('state names ship EN + 中文', () => {
+  for (const [state, pair] of Object.entries(LAB_STATE_NAMES)) assert.ok(pair[0] && /[一-鿿]/.test(pair[1]), state);
+  for (const key of ['freshHint', 'pickToChange']) assert.ok(LAB[key][0] && /[一-鿿]/.test(LAB[key][1]), key);
+  assert.deepEqual(labFormName(['Moon Berry', '月光莓'], 'heated'), ['Heated Moon Berry', '加熱過的月光莓']);
+  assert.deepEqual(labFormName(['Moon Berry', '月光莓'], 'raw'), ['Moon Berry', '月光莓']);
 });
