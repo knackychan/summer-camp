@@ -265,6 +265,55 @@ def run(args):
                 dock('[data-lab="journal:close"]')
                 check(f'{tag}: 8 bubble never covers the cauldron or the strip (states)', not bubble_problems, bubble_problems)
 
+                # F. Lab feel (docs/plans/2026-10-04-lab-feel): full screen, plates, hints, near miss, gravity.
+                clear()
+                edges = page.evaluate("""() => {
+                  const c = document.querySelector('.cq-lab canvas'), g = c.getContext('2d'), w = c.width, h = c.height, out = [];
+                  // 24 samples along each canvas edge, 3 device px in: a black bar would make an edge all one dark colour.
+                  const dark = (x, y) => { const d = g.getImageData(x, y, 1, 1).data; return d[0] + d[1] + d[2] < 3 * 0x1c; };
+                  for (const edge of [i => [3, i * h / 24], i => [w - 4, i * h / 24], i => [i * w / 24, 3], i => [i * w / 24, h - 4]]) {
+                    let n = 0;
+                    for (let i = 0; i < 24; i++) { const [x, y] = edge(i); if (dark(Math.floor(x), Math.floor(y))) n++; }
+                    out.push(n / 24);
+                  }
+                  const s = document.querySelector('.cq-lab-scene').getBoundingClientRect(), r = c.getBoundingClientRect();
+                  return { edges: out, fills: Math.abs(s.width - r.width) < 1 && Math.abs(s.height - r.height) < 1 };
+                }""")
+                check(f'{tag}: F the room reaches every canvas edge (no black bars)', edges['fills'] and max(edges['edges']) < 0.5, edges)
+                scene = page.evaluate("(() => { const r = document.querySelector('.cq-lab-scene').getBoundingClientRect(); return {w: r.width, h: r.height}; })()")
+                plates = lab()['plates']
+                check(f'{tag}: F a plate under each tool, inside the scene',
+                      sorted(p['id'] for p in plates) == ['prop:cool', 'prop:grind', 'prop:heat', 'prop:stir'] and all(p['x'] >= 0 and p['y'] >= 0 and p['x'] + p['w'] <= scene['w'] and p['y'] + p['h'] <= scene['h'] for p in plates), plates)
+                tap('jar:redMushroom')
+                check(f'{tag}: F lifted → "Drop in" on the cauldron', any(p['id'] == 'cauldron' for p in lab()['plates']), lab()['plates'])
+                tap('jar:redMushroom')
+                check(f'{tag}: F put down → the cauldron plate hides', not any(p['id'] == 'cauldron' for p in lab()['plates']) and not lab()['held'], lab()['plates'])
+                origin = page.evaluate("(() => { const r = document.querySelector('.cq-lab canvas').getBoundingClientRect(); return {x:r.x,y:r.y}; })()")
+                mortar = next(h for h in lab()['hits'] if h['id'] == 'prop:grind')
+                (x0, y0), (x1, y1) = centre('jar:voidDust'), (origin['x'] + mortar['x'] - 6, origin['y'] + mortar['y'] + mortar['h'] / 2)
+                page.mouse.move(x0, y0); page.mouse.down()
+                page.mouse.move((x0 + x1) / 2, (y0 + y1) / 2, steps=6); page.mouse.move(x1, y1, steps=6); page.mouse.up()
+                page.wait_for_timeout(60)
+                check(f'{tag}: F let go just beside the mortar → crushed anyway (near miss)', lab()['held'] == 'voidDust:crushed', lab()['held'])
+                tap('jar:voidDust')
+                cauldron = next(h for h in lab()['hits'] if h['id'] == 'cauldron')
+                (x0, y0), (x1, y1) = centre('jar:emberSeed'), (origin['x'] + cauldron['x'] + cauldron['w'] / 2, origin['y'] + cauldron['y'] - cauldron['h'] * 0.8)
+                page.evaluate("window.__labFrames = []; (function tick(t) { window.__labFrames.push(t); if (window.__labFrames.length < 400) requestAnimationFrame(tick); })(performance.now())")
+                page.mouse.move(x0, y0); page.mouse.down()
+                page.mouse.move((x0 + x1) / 2, y1 - 20, steps=3); page.mouse.move(x1, y1, steps=3); page.mouse.up()
+                page.wait_for_timeout(80)
+                bodies = lab()['bodies']
+                check(f'{tag}: F a fling on nothing falls (one body, nothing in the cauldron)', len(bodies) == 1 and bodies[0]['key'] == 'emberSeed' and not lab()['mix'], (bodies, lab()['mix']))
+                page.wait_for_function(SNAPSHOT + '.lab.bodies.length === 0', timeout=5000)
+                gaps = page.evaluate("(() => { const f = window.__labFrames; let m = 0; for (let i = 1; i < f.length; i++) m = Math.max(m, f[i] - f[i - 1]); return m; })()")
+                check(f'{tag}: F it lands, slides and goes home; no frame over 33 ms', gaps <= 33.5, gaps)
+                # Once more for the picture, caught mid-fall.
+                page.mouse.move(x0, y0); page.mouse.down()
+                page.mouse.move((x0 + x1) / 2, y1 - 20, steps=3); page.mouse.move(x1, y1, steps=3); page.mouse.up()
+                page.wait_for_timeout(120)
+                page.screenshot(path=str(out / f'harness-fling-{tag}.png'))
+                page.wait_for_function(SNAPSHOT + '.lab.bodies.length === 0', timeout=5000)
+
                 # 7. Back → same room, program unchanged; Camp has the Lab button and no bench.
                 assert page.evaluate('SQPlatform.triggerBack()') is True
                 page.wait_for_timeout(150)
