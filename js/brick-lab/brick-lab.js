@@ -1051,6 +1051,7 @@ export class BrickLabRuntime {
        paints, so a resize never shows a blank frame. */
     if (this.scene) this.renderer.render(this.scene, this.camera);
     this.invalidate();
+    if (this.categoryListEl) [this.categoryListEl, this.partsEl].forEach((list) => this.markScrollable(list));
   }
 
   bindUI() {
@@ -1058,8 +1059,10 @@ export class BrickLabRuntime {
       button.addEventListener("pointerdown", () => this.setMode(button.dataset.modeButton));
     });
 
+    /* click, not pointerdown: the list scrolls on a short tablet, and a
+       finger that scrolls it must not pick the category it started on. */
     this.root.querySelectorAll("[data-category]").forEach((button) => {
-      button.addEventListener("pointerdown", () => {
+      button.addEventListener("click", () => {
         this.activeCategory = button.dataset.category;
         this.activePartId = (PARTS.find((part) => part.category === this.activeCategory) || PARTS[0]).id;
         /* Picking a category leaves a search: the tray shows that category again. */
@@ -1121,6 +1124,9 @@ export class BrickLabRuntime {
       this.showInfo(this.activePartId);
     });
     this.bindTrayDrag();
+    /* A list with more below fades out at its foot, so a kid knows to scroll. */
+    this.categoryListEl = this.root.querySelector(".sqbl-category-list");
+    [this.categoryListEl, this.partsEl].forEach((list) => list.addEventListener("scroll", () => this.markScrollable(list), { passive: true }));
     if (this.searchEl) {
       this.searchEl.addEventListener("input", () => this.setFilters(this.searchEl.value, this.sizeFilter));
       this.searchEl.addEventListener("keydown", (event) => { if (event.key === "Enter") this.searchEl.blur(); });
@@ -1177,6 +1183,7 @@ export class BrickLabRuntime {
     this.leftRail.dataset.view = view;
     if (view === "parts") this.leftRail.classList.remove("is-collapsed");
     this.updateCategoryUI();
+    this.markScrollable(view === "parts" ? this.partsEl : this.categoryListEl);
   }
 
   /* Search and size stay folded under 🔍 so a short tablet shows more parts
@@ -1243,6 +1250,10 @@ export class BrickLabRuntime {
     this.partsEl.addEventListener("pointercancel", (event) => end(event, true));
   }
 
+  markScrollable(list) {
+    list.classList.toggle("has-more", list.scrollTop + list.clientHeight < list.scrollHeight - 2);
+  }
+
   updateCategoryUI() {
     this.root.querySelectorAll("[data-category]").forEach((button) => {
       button.classList.toggle("is-active", button.dataset.category === this.activeCategory);
@@ -1303,6 +1314,7 @@ export class BrickLabRuntime {
       return head + body;
     }).join("");
     this.trayCount = count;
+    this.markScrollable(this.partsEl);
     this.updateCategoryUI();
   }
 

@@ -518,6 +518,47 @@ def run(args):
                 sp.screenshot(path=str(out / 'stepped-down.png'))
                 sp.evaluate('SQPlatform.triggerBack()')
                 slow.close()
+
+                # Slice 12 fix: on a short touch tablet a finger scrolls the category list (it must not pick
+                # the category it started on), and every category, Rails included, can be reached.
+                touch = browser.new_context(viewport={'width': 800, 'height': 480}, has_touch=True, service_workers='block')
+                touch.add_init_script("(() => { if (localStorage.getItem('sq:recoveryFixture')) return; for (const [k, v] of Object.entries(%s)) localStorage.setItem(k, v); localStorage.setItem('sq:recoveryFixture', '1'); })();"
+                                      % json.dumps(RECOVERY['saved_fixture']('hub')))
+                tp = touch.new_page()
+                tp.on('pageerror', lambda error: report['pageErrors'].append(str(error)))
+                tp.on('console', console)
+                tp.goto(base + '/index.html', wait_until='domcontentloaded')
+                RECOVERY['ready'](tp)
+                RECOVERY['wait_screen'](tp, 'hub')
+                tp.evaluate("SummerQuest.openGame('bricklab')")
+                tp.wait_for_function(SNAP + ' && ' + SNAP + '.pieces.length > 0')
+                lst = tp.locator('.sqbl-category-list')
+                lb = lst.bounding_box()
+                check('A short rail shows there is more to scroll', 'has-more' in lst.get_attribute('class')
+                      and lb['y'] + lb['height'] <= tp.locator('.sqbl-colors').bounding_box()['y'])
+                cdp = touch.new_cdp_session(tp)
+                fx, fy = lb['x'] + lb['width'] / 2, lb['y'] + lb['height'] * 0.8
+                cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': fx, 'y': fy}]})
+                for i in range(1, 16):
+                    cdp.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [{'x': fx, 'y': fy - i * 8}]})
+                    tp.wait_for_timeout(16)
+                cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+                tp.wait_for_timeout(200)
+                check('A finger scrolls the category list without picking a category',
+                      tp.evaluate(SNAP)['tray']['view'] == 'categories' and lst.evaluate('e => e.scrollTop') > 0)
+                for cat in ('rails', 'structure', 'nature', 'bricks'):
+                    pick(tp, cat)
+                    if tp.evaluate(SNAP)['tray']['category'] != cat:
+                        break
+                check('Every category is reachable on a short tablet', tp.evaluate(SNAP)['tray']['category'] == 'bricks')
+                tp.screenshot(path=str(out / 'short-touch.png'))
+                tp.set_viewport_size({'width': 1024, 'height': 600})
+                tp.locator('.sqbl-rail-back').click()
+                tp.wait_for_timeout(200)
+                check('At 1024×600 all eight categories fit above the colours',
+                      lst.evaluate('e => e.scrollHeight <= e.clientHeight') and 'has-more' not in lst.get_attribute('class'))
+                tp.evaluate('SQPlatform.triggerBack()')
+                touch.close()
             except Exception as error:
                 report['failure'] = str(error)
                 report['traceback'] = traceback.format_exc()

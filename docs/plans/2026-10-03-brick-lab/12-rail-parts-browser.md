@@ -12,6 +12,8 @@
 
 **Follow-up, same day (Papa: "yes" to the suggestion):** search and the size filter fold under a 🔍 button in the rail head, so a 600 px-tall tablet shows 3 rows of parts and 5 categories instead of 2 and 4. 🔍 opens both and focuses the box; while a filter is on they stay open; 🔍 again clears the filter and folds them; Back and picking a category fold them too. Pre-readers have no text box, so no 🔍. The head title is two short lines, "Bricks" / "積木 · 9", so it fits between the head buttons.
 
+**Fix, same day (Papa: "on a small tablet I can't select Rails"):** the category list was cut off above the colours, and a finger trying to scroll it picked the category it started on (categories fired on `pointerdown`), so Rails, Structure and Nature could not be reached. Categories now select on `click`, which the browser skips when the gesture becomes a scroll — the same rule the parts grid already used (an exception to D7, for buttons inside a scrolling list). On screens 760 px tall or less, categories sit two to a row, icon over label, so all eight fit at 1024×600. A category list or parts grid with more below fades out at its foot (`has-more`).
+
 The pasted brief also described a right rail of tools; that rail no longer exists — tools are the bubble on the selected piece (slice 05, D8), and they are unchanged.
 
 ## Changes
