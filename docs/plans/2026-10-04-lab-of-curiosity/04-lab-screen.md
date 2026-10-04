@@ -38,3 +38,16 @@
   - same mix with spoon, mortar → reaction + order hint, no potion;
   - ‹ Dungeon → same room, program intact; Camp shows the Lab button and no bench.
 - `node scripts/check.mjs` green (bilingual gate sees every new kid-facing string).
+
+## Implementation notes (2026-10-04)
+
+- **Pure helpers + thin controller.** `lab-screen.js` exports `createLabState`, `labSelect`, `labAdd`, `labRemove`, `labStep`, `labUndo`, `labClear` and `labBrew(state, profile, { free, now })` → `{ state, profile, changed, potionId }`; `mountLab(root, api)` is the DOM/pointer layer around them. 8 new tests in `scripts/codequest-lab.test.mjs` (25 total) cover add / remove / caps, select, brew dispatch (empty, duplication + Journal save once, Healing free with the bag untouched, wrong order → reaction + `order` hint, D5 off → practice brew and the paid path) and the `LAB` strings.
+- **`api`** gained `onPotion(id)`: Code Quest's `bumpConsumable` — the Camp bench's "potion also lands on the hero's belt" line, moved (not copied) and shared by the Lab Brew and the potion script. `reduced` carries `prefers-reduced-motion`.
+- **Host Back.** Nothing let a registry game take Back before, so `summerQuestBack` (index.html) now asks the running game's optional `back()` first; `true` means handled. Code Quest's `back()` closes the script sheet, then the Lab, and returns `false` otherwise — the dungeon still leaves on Back as before. Documented in `js/games/CLAUDE.md`. Escape does the same.
+- **Host bar in the Lab** is `‹ Dungeon` + the language switch only. Pause is a no-op while the Lab is open (blur / hidden tab included): the Lab has no clock and the dungeon behind it is already paused.
+- **Camp trim.** Kept: relic choice, bag counts (now display chips, no longer draggable), potion stock, loadout. Moved to the Lab: bench, process, recipe list (the script sheet's "Load a recipe you know" chips; the Journal page list is slice 06), potion script. `UI.inventory` / `UI.campTitle` now read "Camp 營地" / "Dungeon Camp 地下城營地". `UI.dragHint`, `potionBench`, `clearBench`, `process`, `recipes` and the bench `MESSAGES` stay in `strings.js`, unused.
+- **Book tap** (until slice 06's sheet): the owl says how many reactions the Journal holds and the "New page!" tag clears. **Owl tap** repeats the last line. **Scroll tap** before q26: the owl says the scroll unlocks with more quests.
+- **Lab state is per visit**: ‹ Dungeon and reopening starts an empty experiment (profile and Journal persist).
+- **Keyboard path.** Dock buttons act on `pointerdown`; a `click` acts only when it carries no `pointerType` (keyboard / assistive tech). Playwright's touch tap emits `click` with `detail` 0, which double-fired Brew under the existing `detail === 0` rule.
+- **Manual run** (scratch Playwright script, 1280×800 and 1280×600, coarse pointer, offline): all four DONE WHEN steps, 4-ingredient cap, locked scroll, host Back → dungeon (same room, program intact), Camp → Lab, 中文, script sheet after q26 (free Healing, recipe chip, Back closes sheet first), no page errors. Screenshots: `test-results/codequest-lab/lab-*.png`, `camp-*.png`. The permanent harness is slice 07.
+- `sw.js`: `lab-art.js`, `lab-view.js`, `lab-screen.js` added; cache `summer-quest-v149-lab-04`.

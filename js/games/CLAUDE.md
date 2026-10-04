@@ -26,6 +26,7 @@ export default {
   keyboard: false,
   bestKey: "dig",         // null when the game has no high score; must be unique
   settings(bar, ctx) {},  // omit when the game has none
+  back() {},              // optional: return true when an inner screen took the host Back press (Code Quest's Lab)
   init(ctx) {},
   stop() {}
 };

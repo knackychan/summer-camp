@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v150-kitchen-sandwich";
+const CACHE_NAME = "summer-quest-v152-kitchen-sandwich";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -199,6 +199,10 @@ const APP_SHELL = [
   "./js/games/codequest/lab/rules.js",
   "./js/games/codequest/lab/resolve.js",
   "./js/games/codequest/lab/journal.js",
+  "./js/games/codequest/lab/lab-art.js",
+  "./js/games/codequest/lab/lab-view.js",
+  "./js/games/codequest/lab/lab-fx.js",
+  "./js/games/codequest/lab/lab-screen.js",
   "./js/games/codequest/bubble.js",
   "./js/games/codequest/strip-edit.js",
   "./js/games/codequest/preview.js",
