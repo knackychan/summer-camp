@@ -218,6 +218,222 @@
       "ok": true
     },
     {
+      "name": "1024x600: registry opens Code Quest",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 1 Lab opens over a hidden dungeon",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 8 every hit rect and button >= 48 CSS px",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 8 no page scroll",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 2 drag puts two jars in the cauldron",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 2 Echo + Mushroom → duplication",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 2 \"New page!\" on the Journal",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 3 Healing recipe in order → Healing +1",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 3 bag counts unchanged (D5)",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 4 reversed steps → reaction + order hint, no potion",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 5 fifth ingredient → owl says full, mix stays 4",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 6 Journal shows the found pages",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 6 Journal closes",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 8 bubble never covers the cauldron or the strip",
+      "ok": true
+    },
+    {
+      "name": "1024x600: S lift + frost plate → frozen, still in hand",
+      "ok": true
+    },
+    {
+      "name": "1024x600: S Frozen Mushroom + Echo Crystal → Snowflake Copies",
+      "ok": true
+    },
+    {
+      "name": "1024x600: S the fresh pair is still Duplication",
+      "ok": true
+    },
+    {
+      "name": "1024x600: S drag onto the mortar → crushed, still in hand",
+      "ok": true
+    },
+    {
+      "name": "1024x600: S crushed Moonflower dragged in → Glitter Storm",
+      "ok": true
+    },
+    {
+      "name": "1024x600: S a crushed Sun Herb in Healing → fresh hint, no potion",
+      "ok": true
+    },
+    {
+      "name": "1024x600: S Journal shows the brewed forms",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 8 bubble never covers the cauldron or the strip (states)",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 7 host Back returns to the dungeon, not out of Code Quest",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 7 same room, program unchanged",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 7 Camp has the Lab button and no bench",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 7 Camp opens the Lab",
+      "ok": true
+    },
+    {
+      "name": "1024x600: 7 ‹ Dungeon closes the Lab",
+      "ok": true
+    },
+    {
+      "name": "1366x768: registry opens Code Quest",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 1 Lab opens over a hidden dungeon",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 8 every hit rect and button >= 48 CSS px",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 8 no page scroll",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 2 drag puts two jars in the cauldron",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 2 Echo + Mushroom → duplication",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 2 \"New page!\" on the Journal",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 3 Healing recipe in order → Healing +1",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 3 bag counts unchanged (D5)",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 4 reversed steps → reaction + order hint, no potion",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 5 fifth ingredient → owl says full, mix stays 4",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 6 Journal shows the found pages",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 6 Journal closes",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 8 bubble never covers the cauldron or the strip",
+      "ok": true
+    },
+    {
+      "name": "1366x768: S lift + frost plate → frozen, still in hand",
+      "ok": true
+    },
+    {
+      "name": "1366x768: S Frozen Mushroom + Echo Crystal → Snowflake Copies",
+      "ok": true
+    },
+    {
+      "name": "1366x768: S the fresh pair is still Duplication",
+      "ok": true
+    },
+    {
+      "name": "1366x768: S drag onto the mortar → crushed, still in hand",
+      "ok": true
+    },
+    {
+      "name": "1366x768: S crushed Moonflower dragged in → Glitter Storm",
+      "ok": true
+    },
+    {
+      "name": "1366x768: S a crushed Sun Herb in Healing → fresh hint, no potion",
+      "ok": true
+    },
+    {
+      "name": "1366x768: S Journal shows the brewed forms",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 8 bubble never covers the cauldron or the strip (states)",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 7 host Back returns to the dungeon, not out of Code Quest",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 7 same room, program unchanged",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 7 Camp has the Lab button and no bench",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 7 Camp opens the Lab",
+      "ok": true
+    },
+    {
+      "name": "1366x768: 7 ‹ Dungeon closes the Lab",
+      "ok": true
+    },
+    {
       "name": "No page errors",
       "ok": true
     },
@@ -228,6 +444,6 @@
   ],
   "pageErrors": [],
   "consoleErrors": [],
-  "browser": "138.0.7204.183",
+  "browser": "149.0.7827.55",
   "ok": true
 }
