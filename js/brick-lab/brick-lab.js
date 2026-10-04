@@ -80,6 +80,9 @@ const SEAM = 0.02;
 /* Diorama scale (slice 06): a 32×32 baseplate seen from further away, so
    bricks read as minifig-scale bricks, not chunky blocks. */
 const BASE_HALF = 32;
+/* Render on demand (slice 13): keep drawing this long after the last input. */
+const RENDER_HOLD = 500;
+const INPUT_EVENTS = ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "keydown", "input", "change", "click"];
 const SEA_BLUE = 0x2b5d93;
 const HOME_TARGET = [5, -8, 7];
 const HOME_CAMERA = [54, 62, 70];
@@ -158,7 +161,15 @@ function disposeTree(root, all = false) {
   });
 }
 
-function makeKit() {
+/* Reduced-quality devices (slice 13) light everything with Lambert: same
+   diffuse, no roughness or metalness, far cheaper per pixel than PBR. */
+function litMaterial(cheap, params) {
+  if (!cheap) return new THREE.MeshStandardMaterial(params);
+  const { roughness, metalness, ...lambert } = params;
+  return new THREE.MeshLambertMaterial(lambert);
+}
+
+function makeKit(cheap) {
   const geos = new Map();
   const mats = new Map();
   const keep = (map, key, make) => {
@@ -172,8 +183,9 @@ function makeKit() {
   return {
     geo: (key, make) => keep(geos, key, make),
     /* Satin plastic by default: soft lo-fi highlights, not mirror gloss (slice 08). */
+    cheap,
     mat: (hex, roughness = 0.45, metalness = 0) => keep(mats, `${hex}:${roughness}:${metalness}`,
-      () => new THREE.MeshStandardMaterial({ color: hex, roughness, metalness })),
+      () => litMaterial(cheap, { color: hex, roughness, metalness })),
     /* Any other shared material (rail glow, connector dots), freed with the lab. */
     custom: (key, make) => keep(mats, key, make),
     dispose() {
@@ -635,7 +647,7 @@ export class BrickLabRuntime {
     this.runtime = runtime;
     THREE = runtime.THREE;
     OrbitControls = runtime.OrbitControls;
-    this.kit = makeKit();
+    this.kit = makeKit(this.runtime.reduced);
     this.reducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     this.renderShell();
     this.setupScene();
@@ -769,7 +781,10 @@ export class BrickLabRuntime {
 
     /* Lo-fi lighting (slice 08): cool sky, warm bounce from the ground, a low
        warm late-afternoon sun with long soft shadows, a faint cool rim. */
-    const ambient = new THREE.HemisphereLight(0xc6d8ff, 0xa88a6a, 1.2);
+    const cheap = this.kit.cheap;
+    /* Reduced quality (slice 13): no fill light; the sky light lifts a
+       little to make up for it. */
+    const ambient = new THREE.HemisphereLight(0xc6d8ff, 0xa88a6a, cheap ? 1.4 : 1.2);
     this.scene.add(ambient);
     const sun = new THREE.DirectionalLight(0xffcf94, 3.3);
     sun.position.set(40, 34, 18);
@@ -783,20 +798,25 @@ export class BrickLabRuntime {
     sun.shadow.bias = -0.0005;
     sun.shadow.normalBias = 0.02;
     this.scene.add(sun);
-    const fill = new THREE.DirectionalLight(0x9fb6ff, 0.65);
-    fill.position.set(-10, 7, -8);
-    this.scene.add(fill);
+    if (!cheap) {
+      const fill = new THREE.DirectionalLight(0x9fb6ff, 0.65);
+      fill.position.set(-10, 7, -8);
+      this.scene.add(fill);
+    }
 
     this.addIsland();
 
     /* Matter than the bricks: a big glossy plate turns into one white glare. */
     const plastic = this.kit.mat(BASEPLATE_GREEN, 0.55);
-    const base = mesh(bevelBox(BASE_HALF * 2, 0.42, BASE_HALF * 2, 0.06), plastic, false);
+    /* Reduced quality paints the studs on the plate's top face (group 0 of
+       the extrusion); the sides stay plain plastic. */
+    const base = mesh(bevelBox(BASE_HALF * 2, 0.42, BASE_HALF * 2, 0.06), cheap ? [this.paintedStuds(), plastic] : plastic, false);
     base.position.y = -0.21;
     base.userData.sqblGround = true;
     this.scene.add(base);
     this.ground = base;
-    this.addBaseplateStuds(plastic);
+    if (cheap) this.baseplateStuds = BASE_HALF * 2 * BASE_HALF * 2;
+    else this.addBaseplateStuds(plastic);
 
     this.selectionBox = new THREE.Box3();
     this.selectionHelper = new THREE.Box3Helper(this.selectionBox, 0x3c8df6);
@@ -851,7 +871,7 @@ export class BrickLabRuntime {
     }
     const instanced = this.renderer.extensions.has("ANGLE_instanced_arrays") || !this.runtime.legacy;
     if (instanced) {
-      const rocks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.92 }), cells.length * 2);
+      const rocks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), litMaterial(this.kit.cheap, { roughness: 0.92 }), cells.length * 2);
       const matrix = new THREE.Matrix4();
       const color = new THREE.Color();
       let n = 0;
@@ -892,7 +912,7 @@ export class BrickLabRuntime {
 
     const shallowShape = roundedRectShape(BASE_HALF + 9, BASE_HALF + 9, 13);
     const water = (geometry, color, y) => {
-      const plane = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color, roughness: 0.85 }));
+      const plane = new THREE.Mesh(geometry, litMaterial(this.kit.cheap, { color, roughness: 0.85 }));
       plane.rotation.x = -Math.PI / 2;
       plane.position.y = y;
       plane.receiveShadow = true;
@@ -900,6 +920,39 @@ export class BrickLabRuntime {
     };
     water(new THREE.ShapeGeometry(shallowShape, 8), 0x62a6d6, sea + 0.05);
     water(new THREE.CircleGeometry(520, 48), SEA_BLUE, sea);
+  }
+
+  /* Reduced quality (slice 13): the 64×64 studs as a repeating texture, not
+     ~147k triangles of geometry. The extrusion's lid UVs are world units, so
+     one tile is one stud, centred on the half-units like the real ones. Seen
+     from the home view (+x/+z, also where the sun is) a stud shows its sunlit
+     wall below and right of its top: canvas bottom-right once it is flipped
+     onto the plate. Values sit under white so the wall can rise above the
+     plate; the colour is lifted to match. */
+  paintedStuds() {
+    return this.kit.custom("plate:painted", () => {
+      const size = 64;
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = size;
+      const g = canvas.getContext("2d");
+      const c = size / 2;
+      const r = STUD_R * size;
+      const disc = (x, y, radius, fill) => { g.fillStyle = fill; g.beginPath(); g.arc(x, y, radius, 0, TAU); g.fill(); };
+      g.fillStyle = "#e2e2e2";
+      g.fillRect(0, 0, size, size);
+      disc(c + 2, c + 3, r + 1.6, "rgba(0,0,0,.38)");
+      disc(c + 2, c + 3, r, "#ffffff");
+      const top = g.createLinearGradient(c - r, c - r, c + r, c + r);
+      top.addColorStop(0, "#d2d2d2");
+      top.addColorStop(1, "#ebebeb");
+      disc(c, c, r, top);
+      const map = this.kit.custom("plate:studs", () => new THREE.CanvasTexture(canvas));
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.colorSpace = THREE.SRGBColorSpace;
+      const material = new THREE.MeshLambertMaterial({ color: BASEPLATE_GREEN, map });
+      material.color.multiplyScalar(1.31); /* #e2 in sRGB is 0.76 linear */
+      return material;
+    });
   }
 
   /* One instanced mesh for the 32×32 studs: a single draw call. WebGL1 needs
@@ -937,6 +990,7 @@ export class BrickLabRuntime {
     /* Resizing clears the drawing buffer; draw now, before the browser
        paints, so a resize never shows a blank frame. */
     if (this.scene) this.renderer.render(this.scene, this.camera);
+    this.invalidate();
   }
 
   bindUI() {
@@ -1020,6 +1074,11 @@ export class BrickLabRuntime {
       if (this.infoPartId && !this.infoEl.contains(event.target)) this.hideInfo();
     };
     this.root.addEventListener("pointerdown", this.onOutsidePress, true);
+    /* Every scene change starts from input; any input keeps frames coming
+       for a moment (slice 13). A restored GL context needs a fresh frame. */
+    this.onInput = () => this.invalidate();
+    INPUT_EVENTS.forEach((type) => this.root.addEventListener(type, this.onInput, { capture: true, passive: true }));
+    this.renderer.domElement.addEventListener("webglcontextrestored", this.onInput);
 
     /* Capture phase on the stage runs before OrbitControls' own listener on
        the canvas, so a press on the selected piece can suspend orbiting. */
@@ -1441,7 +1500,7 @@ export class BrickLabRuntime {
   }
 
   glowMaterial() {
-    return this.kit.custom("rail:glow", () => new THREE.MeshStandardMaterial({
+    return this.kit.custom("rail:glow", () => litMaterial(this.kit.cheap, {
       color: 0xf6c945, roughness: 0.3, metalness: 0.45, emissive: 0xffa000, emissiveIntensity: 0.45,
     }));
   }
@@ -1953,7 +2012,27 @@ export class BrickLabRuntime {
     this.camera.position.x += dx; this.camera.position.z += dz;
   }
 
+  invalidate(ms = RENDER_HOLD) {
+    this.renderUntil = Math.max(this.renderUntil || 0, performance.now() + ms);
+  }
+
+  /* Position and orientation since the last drawn frame (damping and
+     tweens move the camera with no input). */
+  cameraMoved() {
+    const p = this.camera.position;
+    const q = this.camera.quaternion;
+    const now = [p.x, p.y, p.z, q.x, q.y, q.z, q.w];
+    const last = this.lastCamera;
+    this.lastCamera = now;
+    return !last || now.some((value, i) => Math.abs(value - last[i]) > 1e-6);
+  }
+
+  /* Render on demand (slice 13): a frame is drawn only while something can
+     change — the camera moves, the circuit glow breathes, or there was input
+     in the last half second. An idle lab draws nothing, so a weak tablet stays
+     cool and has its whole budget when the kid touches it. */
   startLoop() {
+    this.invalidate(1000);
     const loop = (time) => {
       if (this.destroyed) return;
       this.raf = requestAnimationFrame(loop);
@@ -1967,15 +2046,19 @@ export class BrickLabRuntime {
       this.controls.update();
       this.keepViewOnIsland();
       /* Circuit rails breathe softly (still with reduced motion). */
-      if (this.rails.circuit.size && !this.reducedMotion) {
+      const glowing = this.rails.circuit.size && !this.reducedMotion;
+      if (glowing) {
         this.glowMaterial().emissiveIntensity = 0.35 + 0.2 * (1 + Math.sin(time / 420));
       }
+      const moved = this.cameraMoved();
+      if (!moved && !glowing && !this.cameraTween && performance.now() > this.renderUntil) return;
       if (this.selectedId && this.selectionHelper.visible) {
         const object = this.sceneObjects.get(this.selectedId);
         if (object) this.selectionBox.setFromObject(object);
         this.placeBubble();
       }
       this.renderer.render(this.scene, this.camera);
+      this.frames = (this.frames || 0) + 1;
     };
     this.raf = requestAnimationFrame(loop);
   }
@@ -2005,6 +2088,9 @@ export class BrickLabRuntime {
       baseplateStuds: this.baseplateStuds,
       undo: this.history.length,
       graphics: this.renderer ? this.renderer.domElement.dataset.sqGraphics : null,
+      /* Last frame's cost, for the low-end check (slice 13). */
+      render: this.renderer ? { quality: this.renderer.domElement.dataset.sqGraphicsQuality, calls: this.renderer.info.render.calls,
+        triangles: this.renderer.info.render.triangles, studs: this.kit.cheap ? "painted" : "mesh", frames: this.frames || 0 } : null,
       canvas: rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
       camera: this.camera ? { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, aspect: this.camera.aspect } : null,
       target: this.controls ? { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z } : null,
@@ -2034,6 +2120,7 @@ export class BrickLabRuntime {
     cancelAnimationFrame(this.raf);
     if (this.resizeObserver) this.resizeObserver.disconnect();
     if (this.onOutsidePress) this.root.removeEventListener("pointerdown", this.onOutsidePress, true);
+    if (this.onInput) INPUT_EVENTS.forEach((type) => this.root.removeEventListener(type, this.onInput, { capture: true }));
     if (this.controls) this.controls.dispose();
     if (this.scene) disposeTree(this.scene, true);
     if (this.kit) this.kit.dispose();

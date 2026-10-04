@@ -10,7 +10,9 @@ reopening restores the build. Slices 09-11: every new part builds fast, a rail s
 curves close a glowing circuit, rails never overlap, and the tray searches (EN + 中文), filters by size, pins
 favourites and recents and opens an info card. Slice 12: the parts browser lives in the left rail
 (categories, then a category's parts with a Back arrow), the rail keeps one width so the view never
-resizes, and there is no bottom tray. A pre-reader profile shows the icon-first UI.
+resizes, and there is no bottom tray. Slice 13: an idle lab draws no frames, and a low-memory tablet
+gets the reduced tier (studs painted on the plate, Lambert light, a fraction of the triangles) and still
+places pieces. A pre-reader profile shows the icon-first UI.
 Requires Python Playwright. --target web checks dist/android-web after a build.
 """
 import argparse
@@ -240,6 +242,16 @@ def run(args):
                 check('Graphics through three-runtime', s['graphics'] in ('webgl2', 'webgl1'))
                 check('Studded 64×64 baseplate, no side tool rail (slices 05–06)', s['baseplateStuds'] == 4096
                       and page.locator('.sqbl-right-rail').count() == 0)
+                # Slice 13: render on demand. Idle, no frames are drawn; input brings them back.
+                page.wait_for_timeout(1600)
+                f0 = snap()['render']['frames']
+                page.wait_for_timeout(800)
+                check('An idle lab draws no frames', snap()['render']['frames'] == f0 and snap()['render']['studs'] == 'mesh')
+                cb = page.locator('.sqbl-stage canvas').bounding_box()
+                page.mouse.move(cb['x'] + cb['width'] * 0.5, cb['y'] + cb['height'] * 0.5)
+                page.mouse.move(cb['x'] + cb['width'] * 0.52, cb['y'] + cb['height'] * 0.5)
+                page.wait_for_timeout(150)
+                check('Input brings frames back', snap()['render']['frames'] > f0)
                 check('Kid-facing chrome is bilingual', '建造' in page.locator('.sqbl-mode-toggle').inner_text()
                       and '積木' in page.locator('.sqbl-tray-title').inner_text())
                 page.screenshot(path=str(out / 'open.png'))
@@ -400,6 +412,33 @@ def run(args):
                       "JSON.parse(localStorage.getItem('sq:brick-lab:v1:lucien')).grid") == 2)
                 page.screenshot(path=str(out / 'pre-reader.png'))
                 page.evaluate('SQPlatform.triggerBack()')
+
+                # Slice 13: a 4 GB tablet gets the reduced tier and still builds.
+                weak = RECOVERY['context_for'](browser, seed=RECOVERY['saved_fixture']('hub'))
+                weak.add_init_script("Object.defineProperty(Navigator.prototype, 'deviceMemory', {get: () => 4})")
+                wp = weak.new_page()
+                wp.set_viewport_size({'width': 1280, 'height': 800})
+                wp.on('pageerror', lambda error: report['pageErrors'].append(str(error)))
+                wp.on('console', console)
+                wp.goto(base + '/index.html', wait_until='domcontentloaded')
+                RECOVERY['ready'](wp)
+                RECOVERY['wait_screen'](wp, 'hub')
+                check('Low-memory tablet opens Brick Lab', wp.evaluate("SummerQuest.openGame('bricklab')")['ok'])
+                wp.wait_for_function(SNAP + ' && ' + SNAP + '.pieces.length > 0')
+                wp.wait_for_timeout(400)
+                r = wp.evaluate(SNAP)['render']
+                check(f'Reduced tier: studs painted, under 60k triangles {r}', r['quality'] == 'reduced'
+                      and r['studs'] == 'painted' and r['triangles'] < 60000)
+                n0 = len(wp.evaluate(SNAP)['pieces'])
+                pick(wp, 'bricks')
+                wp.locator('.sqbl-part[data-part="brick_2x2"]').click()
+                wb = wp.locator('.sqbl-stage canvas').bounding_box()
+                wp.mouse.click(wb['x'] + wb['width'] * 0.5, wb['y'] + wb['height'] * 0.62)
+                wp.wait_for_timeout(150)
+                check('Reduced tier still places a piece', len(wp.evaluate(SNAP)['pieces']) == n0 + 1)
+                wp.screenshot(path=str(out / 'reduced.png'))
+                wp.evaluate('SQPlatform.triggerBack()')
+                weak.close()
             except Exception as error:
                 report['failure'] = str(error)
                 report['traceback'] = traceback.format_exc()
