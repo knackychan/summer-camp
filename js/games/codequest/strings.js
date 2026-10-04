@@ -142,7 +142,21 @@ export const LAB = Object.freeze({
   scriptLocked: ['Clear more quests to unlock the potion scroll.', '再多完成幾關，就能打開藥水卷軸。'],
   cauldron: ['Cauldron', '鍋子'], steps: ['Steps', '步驟'], noSteps: ['Tap a tool to add a step', '點工具就能加入步驟'],
   takeOut: ['Take out', '拿出來'], undoStep: ['Undo step', '撤銷步驟'], clear: ['Clear', '清空'], brew: ['Brew', '釀造'],
-  scriptRecipes: ['Load a recipe you know', '載入你知道的配方']
+  scriptRecipes: ['Load a recipe you know', '載入你知道的配方'],
+  // Curiosity Journal sheet (slice 06).
+  journal: ['Curiosity Journal', '好奇日誌'], tabReactions: ['Reactions', '反應'], tabPotions: ['Potions', '藥水'], tabIngredients: ['Ingredients', '材料'],
+  notFound: ['Not found yet', '還沒發現'], putIn: ['Put in cauldron', '放進鍋子'], ready: ['Ready — tap Brew!', '準備好了——按釀造！'],
+  unseen: ['Use it in a reaction to learn its powers.', '用它做一次反應，就能知道它的力量。'], shelf: ['Shelf', '架子'], bag: ['Bag', '背包']
+});
+/* Property and reaction-family names for the Journal's icon formulas. */
+export const LAB_PROPS = Object.freeze({
+  life: ['Life', '生命'], growth: ['Growth', '生長'], fire: ['Fire', '火'], cold: ['Cold', '寒冷'], water: ['Water', '水'],
+  echo: ['Echo', '回音'], space: ['Space', '空間'], time: ['Time', '時間'], light: ['Light', '光'], chaos: ['Chaos', '混亂'], calm: ['Calm', '平靜']
+});
+export const LAB_FAMILIES = Object.freeze({
+  reality: ['Reality', '現實'], instability: ['Instability', '不穩定'], time: ['Time', '時間'], space: ['Space', '空間'],
+  creature: ['Creature', '生物'], replication: ['Copying', '複製'], biological: ['Plants', '植物'], elemental: ['Elements', '元素'],
+  light: ['Light', '光'], fallback: ['Everyday', '日常']
 });
 /** Owl line after a potion is bottled. */
 export function labMadeLine(potionLabel) {

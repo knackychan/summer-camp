@@ -258,6 +258,21 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
 .cq-lab-sheet-recipes{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.cq-lab-sheet-recipes>b{color:#c4d4ec;font-size:12px}
 .cq-lab-sheet-recipes img{width:24px;height:24px;image-rendering:pixelated}
 .cq-lab-sheet .cq-lab-code-input{min-height:120px;width:100%;padding:10px;border:3px solid var(--cq-out);border-radius:6px;background:#0b0a1f;color:#e9e6ff;font:700 14px/1.4 ui-monospace,monospace}
+.cq-lab-journal{height:54%;max-height:none;overflow:hidden;padding:10px 12px}
+.cq-lab-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.cq .cq-lab-tab{gap:6px;padding:6px 12px;background:#232174;border-radius:8px 8px 0 0}.cq .cq-lab-tab.on{background:var(--cq-paper);color:#2a1a10;box-shadow:inset 0 2px 0 #fff6d6,0 3px 0 var(--cq-out)}
+.cq-lab-tab i,.cq-lab-card header i{font-style:normal;font-size:20px;line-height:1}
+.cq-lab-journal-page{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:2px 2px 6px}
+.cq-lab-count{margin:0 0 8px;color:var(--cq-gold)}
+.cq-lab-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.cq-lab-card{display:flex;flex-direction:column;gap:6px;padding:8px 10px;border:3px solid var(--cq-wood);border-radius:8px;background:var(--cq-paper);color:#2a1a10;box-shadow:0 3px 0 var(--cq-out)}
+.cq-lab-card header{display:flex;align-items:center;gap:8px}.cq-lab-card header img{width:32px;height:32px;image-rendering:pixelated}.cq-lab-card header small{margin-left:auto;color:#6b4528}
+.cq-lab-card p{margin:0;font-size:13px;line-height:1.3}
+.cq-lab-card.unknown,.cq-lab-card.unseen{background:#3b3a58;border-color:var(--cq-edge);color:#c4d4ec}.cq-lab-card.unknown header i{filter:grayscale(1);opacity:.7}
+.cq-lab-formula{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:22px}.cq-lab-formula i{font-style:normal}.cq-lab-formula b{font-size:16px;color:#6b4528}.cq-lab-formula img{width:28px;height:28px;image-rendering:pixelated}
+.cq-lab-trail{display:flex;gap:4px;flex-wrap:wrap}.cq-lab-trail>span{display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:5px;background:#232174;color:#fff;font-size:12px}.cq-lab-trail b{color:#c9ef6a}
+.cq .cq-lab-card .cq-primary{background:#2f9a4c;box-shadow:inset 0 3px 0 #7bd34b,0 3px 0 var(--cq-out)}
+.cq-lab-props{display:flex;gap:4px;flex-wrap:wrap}.cq-lab-prop{display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:12px;background:#fff6d6;border:2px solid #e3b770;font-size:12px}.cq-lab-prop i{font-style:normal}
 .cq-camp-potions .cq-camp-lab{margin-top:8px;width:100%}
 .cq-ingredients .cq-ingredient{align-items:center;border:3px solid #2f9a4c;border-radius:6px}.cq-ingredients .cq-ingredient.empty{border-color:#7d8fb8}
 @media (max-width:900px){

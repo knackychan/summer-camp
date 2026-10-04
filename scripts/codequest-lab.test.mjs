@@ -311,3 +311,65 @@ test('lab screen strings ship EN + 中文', () => {
     assert.match(pair[1], /[一-鿿]/, where + ' has no 中文');
   }
 });
+
+/* ---------- slice 06: Journal page builders ---------- */
+import { journalReactions, journalPotions, journalIngredients } from '../js/games/codequest/lab/journal.js';
+import { labLoad } from '../js/games/codequest/lab/lab-screen.js';
+import { LAB_PROPS, LAB_FAMILIES } from '../js/games/codequest/strings.js';
+
+test('Journal reactions: counts match lab.found, unfound pages never leak label or line', () => {
+  const book = journalReactions({ found: ['glow', 'duplication', 'fizzle'], seen: [] });
+  assert.equal(book.found, 3);
+  assert.equal(book.total, LAB_RULES.length);
+  assert.equal(book.pages.length, LAB_RULES.length);
+  assert.deepEqual(book.pages.filter(page => page.found).map(page => page.id), ['duplication', 'glow', 'fizzle']);
+  const secrets = LAB_RULES.flatMap(rule => [rule.id, ...rule.label, ...rule.line]);
+  for (const page of book.pages.filter(p => !p.found)) {
+    assert.deepEqual(Object.keys(page).sort(), ['family', 'found', 'index']);
+    const text = JSON.stringify(page);
+    for (const secret of secrets) assert.ok(!text.includes(secret) || secret === page.family, 'unfound page leaks ' + secret);
+    assert.ok(LAB_FAMILIES[page.family], page.family + ' has a family name');
+  }
+  const glow = book.pages.find(page => page.id === 'glow');
+  assert.deepEqual(glow.label, LAB_RULES.find(rule => rule.id === 'glow').label);
+  assert.deepEqual([...glow.formula], ['light', 'light']);
+  for (const rule of LAB_RULES) {
+    const page = journalReactions({ found: [rule.id] }).pages.find(p => p.found);
+    for (const token of page.formula) assert.ok(token.startsWith('ing:') ? LAB_INGREDIENTS[token.slice(4)] : LAB_PROPS[token], rule.id + ' formula token ' + token);
+  }
+  assert.equal(journalReactions(undefined).found, 0);
+});
+
+test('Journal potions: discovered recipes show ingredients and steps, the rest show nothing', () => {
+  const pages = journalPotions({ discoveredRecipes: ['ward'] }, RECIPES);
+  assert.equal(pages.length, 4);
+  const ward = pages.find(page => page.found);
+  assert.equal(ward.id, 'ward');
+  assert.deepEqual([...ward.process], ['heat', 'stir', 'cool']);
+  for (const page of pages.filter(p => !p.found)) assert.deepEqual(Object.keys(page).sort(), ['found', 'index']);
+});
+
+test('Journal ingredients: all twelve, property points hidden until seen', () => {
+  const pages = journalIngredients({ seen: ['frostDew'] });
+  assert.equal(pages.length, 12);
+  for (const page of pages) {
+    if (page.id === 'frostDew') assert.deepEqual(Object.fromEntries(page.props), { cold: 2, water: 2, calm: 1 });
+    else { assert.equal(page.seen, false); assert.equal(page.props, null); }
+  }
+});
+
+test('Journal "Put in cauldron" loads a recipe; Brew then makes that potion', () => {
+  const ward = RECIPES.find(recipe => recipe.id === 'ward');
+  const loaded = labLoad(fill(['voidDust'], ['grind']), ward.ingredients, ward.process);
+  assert.deepEqual([...loaded.mix], [...ward.ingredients]);
+  assert.deepEqual([...loaded.steps], [...ward.process]);
+  assert.equal(loaded.line, LAB.ready);
+  const out = labBrew(loaded, emptyProfile(), { free: true });
+  assert.equal(out.potionId, 'ward');
+});
+
+test('Journal strings ship EN + 中文', () => {
+  for (const [where, pair] of [...Object.entries(LAB_PROPS), ...Object.entries(LAB_FAMILIES)]) {
+    assert.ok(pair[0].trim() && /[一-鿿]/.test(pair[1]), where);
+  }
+});

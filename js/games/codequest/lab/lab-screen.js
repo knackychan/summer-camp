@@ -7,13 +7,13 @@
 import { createScheduler } from '../../../game-services/scheduler.js';
 import { RECIPES, ALCHEMY_STEPS, brewLab } from '../progression.js';
 import { runAlchemyCode, recipeToAlchemyCode, recipeById } from '../alchemy-code.js';
-import { ALCHEMY_LABELS, ITEM_LABELS, LAB, UI, MESSAGES, labMadeLine, labPagesLine, pairHTML, t } from '../strings.js';
+import { ALCHEMY_LABELS, LAB, LAB_PROPS, LAB_FAMILIES, UI, MESSAGES, labMadeLine, labPagesLine, pairHTML, t } from '../strings.js';
 import { spriteURL } from '../pixel-art.js';
 import { placeBubbleRect } from '../bubble.js';
 import { LAB_INGREDIENTS, LAB_FREE_INGREDIENTS } from './ingredients.js';
 import { LAB_RULES } from './rules.js';
 import { resolveExperiment, mixHint, LAB_MAX_INGREDIENTS, LAB_MAX_STEPS } from './resolve.js';
-import { normalizeLab, recordFound, recordSeen } from './journal.js';
+import { normalizeLab, recordFound, recordSeen, journalReactions, journalPotions, journalIngredients } from './journal.js';
 import { drawLab, hitAt } from './lab-view.js';
 import { drawLabSprite, labSpriteSize } from './lab-art.js';
 
@@ -51,6 +51,13 @@ export function labStep(state, step) {
 
 export function labUndo(state) {
   return state.steps.length ? next(state, { steps: Object.freeze(state.steps.slice(0, -1)) }) : state;
+}
+
+/** Journal "Put in cauldron": a known recipe's ingredients and steps, ready for the kid to tap Brew. */
+export function labLoad(state, ingredients, steps) {
+  const mix = ingredients.filter(id => Object.hasOwn(LAB_INGREDIENTS, id)).slice(0, LAB_MAX_INGREDIENTS);
+  const process = steps.filter(step => ALCHEMY_STEPS.includes(step)).slice(0, LAB_MAX_STEPS);
+  return next(state, { mix: Object.freeze(mix), steps: Object.freeze(process), selection: null, effect: null, line: LAB.ready });
 }
 
 /** ✕ clears the experiment and whatever the last Brew left in the room. */
@@ -97,6 +104,10 @@ export function labBrew(state, profile, { free = LAB_FREE_INGREDIENTS, now = 0 }
 /* ---------- DOM controller ---------- */
 
 const LINE_MS = 6000;
+// Journal icons: one emoji per property and per reaction family (the words sit beside them).
+const PROP_ICON = Object.freeze({ life: '💚', growth: '🌱', fire: '🔥', cold: '❄️', water: '💧', echo: '🔔', space: '🌌', time: '⏳', light: '✨', chaos: '🌀', calm: '🍃' });
+const FAMILY_ICON = Object.freeze({ reality: '🌌', instability: '💥', time: '⏳', space: '🕳️', creature: '👾', replication: '🔁', biological: '🌿', elemental: '🔥', light: '💡', fallback: '💨' });
+const JOURNAL_TABS = Object.freeze(['reactions', 'potions', 'ingredients']);
 // Existing host sounds only (lab design D13); per-family audio is a later phase.
 const REACTION_SOUND = Object.freeze({ explosion: 'hit', fireball: 'zap', singularity: 'zap' });
 const DRAG_PX = 8;
@@ -131,12 +142,14 @@ export function mountLab(root, api) {
     '<span class="cq-lab-tag" hidden></span><div class="cq-lab-counts" aria-hidden="true"></div></div>' +
     '<div class="cq-lab-dock"><div class="cq-lab-slots" role="group"></div><div class="cq-lab-steps" role="list"></div>' +
     '<div class="cq-lab-tools"></div><div class="cq-lab-brewbox"></div></div>' +
-    '<div class="cq-lab-sheet" role="dialog" hidden></div><p class="cq-sr" role="status" aria-live="polite"></p>';
+    '<div class="cq-lab-sheet" role="dialog" hidden></div><div class="cq-lab-sheet cq-lab-journal" role="region" hidden></div><p class="cq-sr" role="status" aria-live="polite"></p>';
   root.appendChild(el);
   const scene = el.querySelector('.cq-lab-scene'), canvas = el.querySelector('canvas'), bubble = el.querySelector('.cq-lab-bubble');
   const scheduler = createScheduler();
   let state = createLabState(), view = null, lineAt = performance.now(), bubbleSide = null, press = null, ghost = null;
   let script = { open: false, code: '', error: null };
+  const journal = { open: false, tab: 'reactions' };
+  const sheetOpen = () => script.open || journal.open;
   let destroyed = false;
 
   const accent = () => (api.kidColor ? api.kidColor() : '#39d0c8');
@@ -172,7 +185,7 @@ export function mountLab(root, api) {
     placeCounts();
   }
   function placeBubble(time, box) {
-    const visible = !script.open && time - lineAt < LINE_MS;
+    const visible = !sheetOpen() && time - lineAt < LINE_MS;
     if (bubble.hidden === visible) bubble.hidden = !visible;
     if (!visible || !view) return;
     const owl = view.hits.find(hit => hit.id === 'owl'), cauldron = view.hits.find(hit => hit.id === 'cauldron');
@@ -240,6 +253,54 @@ export function mountLab(root, api) {
       (script.error ? '<div class="cq-code-error"><b>' + pairHTML(MESSAGES.potionCodeError) + '</b><span>' + esc(script.error.message) + '</span><small>Ln ' + script.error.line + '</small></div>' : '') +
       '<div class="cq-dialog-actions">' + button('script:run', pairHTML(UI.runPotionCode), 'class="cq-primary"') + '</div>';
   }
+  /* ----- Curiosity Journal (slice 06): a half-height sheet; the lab keeps playing above ----- */
+  function chip(prop, n) {
+    return '<span class="cq-lab-prop" title="' + esc(t(LAB_PROPS[prop])) + '"><i aria-hidden="true">' + PROP_ICON[prop] + '</i>' + pairHTML(LAB_PROPS[prop]) + (n > 1 ? '<b>×' + n + '</b>' : '') + '</span>';
+  }
+  function formulaHTML(tokens) {
+    if (!tokens.length) return '<span class="cq-lab-formula"><i aria-hidden="true">❔</i></span>';
+    return '<span class="cq-lab-formula">' + tokens.map(token => token.startsWith('ing:')
+      ? '<img src="' + iconURL(token.slice(4), accent()) + '" alt="' + esc(t(LAB_INGREDIENTS[token.slice(4)].label)) + '">'
+      : '<i title="' + esc(t(LAB_PROPS[token])) + '">' + PROP_ICON[token] + '</i>').join('<b>+</b>') + '</span>';
+  }
+  function journalPage() {
+    const profile = api.profile();
+    if (journal.tab === 'potions') {
+      return '<div class="cq-lab-cards">' + journalPotions(profile, RECIPES).map(page => page.found
+        ? '<article class="cq-lab-card"><header><img src="' + spriteURL(page.id === 'healing' ? 'potion' : page.id === 'focus' ? 'moonBerry' : page.id, accent()) + '" alt=""><b>' + pairHTML(page.label) + '</b></header>' +
+          '<span class="cq-lab-formula">' + page.ingredients.map(id => '<img src="' + iconURL(id, accent()) + '" alt="' + esc(t(LAB_INGREDIENTS[id].label)) + '">').join('<b>+</b>') + '</span>' +
+          '<span class="cq-lab-trail">' + page.process.map((step, i) => '<span><b>' + (i + 1) + '</b>' + pairHTML(ALCHEMY_LABELS[step]) + '</span>').join('') + '</span>' +
+          button('journal:use:' + page.id, pairHTML(LAB.putIn), 'class="cq-primary"') + '</article>'
+        : '<article class="cq-lab-card unknown"><header><i aria-hidden="true">❔</i><b>' + pairHTML(LAB.notFound) + '</b></header></article>').join('') + '</div>';
+    }
+    if (journal.tab === 'ingredients') {
+      return '<div class="cq-lab-cards">' + journalIngredients(profile.lab).map(page =>
+        '<article class="cq-lab-card' + (page.seen ? '' : ' unseen') + '"><header><img src="' + iconURL(page.id, accent()) + '" alt=""><b>' + pairHTML(page.label) + '</b><small>' + pairHTML(page.where === 'bag' ? LAB.bag : LAB.shelf) + '</small></header>' +
+        (page.seen ? '<span class="cq-lab-props">' + page.props.map(([prop, n]) => chip(prop, n)).join('') + '</span>' : '<p>' + pairHTML(LAB.unseen) + '</p>') + '</article>').join('') + '</div>';
+    }
+    const book = journalReactions(profile.lab);
+    return '<p class="cq-lab-count">' + pairHTML(labPagesLine(book.found, book.total)) + '</p><div class="cq-lab-cards">' + book.pages.map(page => page.found
+      ? '<article class="cq-lab-card"><header><i aria-hidden="true">' + FAMILY_ICON[page.family] + '</i><b>' + pairHTML(page.label) + '</b></header>' + formulaHTML(page.formula) + '<p>' + pairHTML(page.line) + '</p></article>'
+      : '<article class="cq-lab-card unknown"><header><i aria-hidden="true">' + FAMILY_ICON[page.family] + '</i><b>' + pairHTML(LAB.notFound) + '</b></header><small>' + pairHTML(LAB_FAMILIES[page.family]) + '</small></article>').join('') + '</div>';
+  }
+  function renderJournal() {
+    const sheet = el.querySelector('.cq-lab-journal');
+    sheet.hidden = !journal.open;
+    if (!journal.open) { sheet.innerHTML = ''; return; }
+    sheet.setAttribute('aria-label', t(LAB.journal));
+    const tabs = { reactions: LAB.tabReactions, potions: LAB.tabPotions, ingredients: LAB.tabIngredients };
+    const icon = { reactions: '🧪', potions: '⚗️', ingredients: '🍄' };
+    sheet.innerHTML = '<div class="cq-lab-sheet-head"><div class="cq-lab-tabs" role="tablist">' + JOURNAL_TABS.map(tab =>
+      button('journal:tab:' + tab, '<i aria-hidden="true">' + icon[tab] + '</i>' + pairHTML(tabs[tab]), 'role="tab" aria-selected="' + (journal.tab === tab) + '" class="cq-lab-tab' + (journal.tab === tab ? ' on' : '') + '"')).join('') +
+      '</div>' + button('journal:close', '✕', 'class="cq-lab-tool" aria-label="' + esc(t(UI.close)) + '"') + '</div><div class="cq-lab-journal-page">' + journalPage() + '</div>';
+  }
+  function openJournal() {
+    script.open = false; renderSheet();
+    journal.open = true; state = next(state, { newPage: false });
+    renderJournal(); draw();
+  }
+  function closeJournal() { journal.open = false; renderJournal(); draw(); }
+
   function runScript() {
     const input = el.querySelector('.cq-lab-code-input');
     if (input) script.code = input.value;
@@ -275,12 +336,10 @@ export function mountLab(root, api) {
     }
     if (hit.kind === 'prop') { const before = state.steps.length; apply(labStep(state, hit.step)); if (state.steps.length > before) sfx('pop'); return; }
     if (hit.kind === 'owl') { say(state.line); return; }
-    if (hit.kind === 'book') {
-      state = next(state, { newPage: false });
-      say(labPagesLine(normalizeLab(api.profile().lab).found.length, LAB_RULES.length)); draw(); return;
-    }
+    if (hit.kind === 'book') { openJournal(); return; }
     if (hit.kind === 'scroll') {
       if (!api.canScript()) { say(LAB.scriptLocked); return; }
+      if (journal.open) closeJournal();
       script.open = true; script.error = null;
       if (!script.code) { const first = RECIPES.find(recipe => api.profile().discoveredRecipes.includes(recipe.id)); script.code = recipeToAlchemyCode(first || null); }
       renderSheet(); draw();
@@ -292,6 +351,13 @@ export function mountLab(root, api) {
     if (name === 'clear') { apply(labClear(state)); return; }
     if (name === 'brew') { brew(); return; }
     if (name === 'script:close') { script.open = false; renderSheet(); return; }
+    if (name === 'journal:close') { closeJournal(); return; }
+    if (name.startsWith('journal:tab:')) { const tab = name.slice(12); if (JOURNAL_TABS.includes(tab)) { journal.tab = tab; renderJournal(); } return; }
+    if (name.startsWith('journal:use:')) {
+      const recipe = recipeById(name.slice(12));
+      if (recipe && api.profile().discoveredRecipes.includes(recipe.id)) { journal.open = false; renderJournal(); apply(labLoad(state, recipe.ingredients, recipe.process)); }
+      return;
+    }
     if (name === 'script:run') { runScript(); return; }
     if (name.startsWith('script:load:')) {
       const recipe = recipeById(name.slice(12));
@@ -306,6 +372,8 @@ export function mountLab(root, api) {
   }
   function onDown(e) {
     if (e.button !== 0 || !view || press) return;
+    // The Journal is not a modal: a tap on the room above it just closes it.
+    if (journal.open) { e.preventDefault(); closeJournal(); return; }
     const p = local(e), hit = hitAt(view.hits, p.x, p.y);
     if (!hit) { if (state.selection) apply(labSelect(state, null)); return; }
     e.preventDefault();
@@ -362,12 +430,16 @@ export function mountLab(root, api) {
   let last = 0;
   scheduler.frame(time => { if (time - last > 48) { last = time; draw(time); } });
 
-  say(state.line); renderDock(); renderSheet();
+  say(state.line); renderDock(); renderSheet(); renderJournal();
 
   return {
-    render() { say(state.line); el.querySelector('.cq-lab-tag').innerHTML = pairHTML(LAB.newPage); renderDock(); renderSheet(); draw(); },
-    /** Closes the script sheet if open; returns true when it did (Back closes the sheet first). */
-    closeSheet() { if (!script.open) return false; script.open = false; renderSheet(); return true; },
+    render() { say(state.line); el.querySelector('.cq-lab-tag').innerHTML = pairHTML(LAB.newPage); renderDock(); renderSheet(); renderJournal(); draw(); },
+    /** Closes the Journal or the script sheet if one is open; returns true when it did (Back closes a sheet first). */
+    closeSheet() {
+      if (journal.open) { closeJournal(); return true; }
+      if (!script.open) return false;
+      script.open = false; renderSheet(); return true;
+    },
     destroy() {
       destroyed = true;
       scheduler.cancelAll();
@@ -378,7 +450,7 @@ export function mountLab(root, api) {
     snapshot() {
       return {
         open: true, mix: [...state.mix], steps: [...state.steps], selection: state.selection, effect: state.effect,
-        lastResult: state.lastResult, newPage: state.newPage, line: state.line, script: script.open,
+        lastResult: state.lastResult, newPage: state.newPage, line: state.line, script: script.open, journal: journal.open ? journal.tab : null,
         hits: view ? view.hits.map(hit => ({ id: hit.id, kind: hit.kind, x: hit.x, y: hit.y, w: hit.w, h: hit.h })) : []
       };
     }

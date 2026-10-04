@@ -1320,7 +1320,8 @@ function settings(bar) {
   });
   bar.addEventListener('click', e => {
     const target = e.target.closest('button[data-action]');
-    if (S && e.detail === 0 && target && !target.disabled) perform(target.dataset.action);
+    // Keyboard activation only: a pointer's click was already handled on pointerdown (a toggle like 中文 would flip back).
+    if (S && e.detail === 0 && !e.pointerType && target && !target.disabled) perform(target.dataset.action);
   });
 }
 
