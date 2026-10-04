@@ -1,6 +1,6 @@
-# 09 — A different shift every day, honest grill words, eight more dishes
+# 09 — A different shift every day, honest grill words, more dishes and a sandwich plate
 
-Requested 2026-10-04 (an enhanced prompt in a cloud session); **approval by Papa still pending** — nothing here changes stars, locks or any rule in `design.md`. Depends on 01–08. Ships independently.
+Requested 2026-10-04 (an enhanced prompt in a cloud session). **Approved to ship 2026-10-04** by the person who requested it, in the same session ("slice 09 go"). That approval covers the slice as built: daily and per-visit deals, patty status words, the tray fix, 11 new dishes and the sandwich family. Two things were left open at approval and stay open: the toast sprites have not had an art review on a tablet, and the unlock pace (every 3 dishes) is a guess. Nothing here changes stars, locks or any rule in `design.md`. Depends on 01–08. Ships independently.
 
 ## What was wrong (found by reproducing it, not from the prompt's line numbers)
 
