@@ -28,3 +28,6 @@ server/agent-proxy/data/
 # generated Android workstation state / local acceptance reports
 apps/android/android/
 apps/android/.reports/
+
+# build artifacts
+*.apk
