@@ -32,6 +32,9 @@ const icon = (id, cls = "") => '<img class="' + cls + '" src="' + iconURL(id) + 
 // No stray space before ">": html() compares against the browser's serialisation, and a
 // mismatch rewrote the board and prep panels ten times a second, detaching CHOP mid-tap.
 const button = (action, content, attrs = "") => '<button type="button" data-action="' + action + '"' + (attrs ? " " + attrs : "") + '>' + content + '</button>';
+// English plurals read "1 dish", never "1 dishes"; the Chinese needs no plural.
+const dishes = n => n + (n === 1 ? " dish" : " dishes");
+const times = n => n + (n === 1 ? " time" : " times");
 const seconds = n => Math.max(0, Math.ceil(n));
 
 function kitchenSettings(settings) {
@@ -64,8 +67,8 @@ function career() {
   const unlocked = MENU_RECIPES.filter(recipe => recipe.unlockAt <= profile.totalServed).length;
   return '<div class="kq-career-heading"><b>' + pair("SHIFT " + goals.shiftNumber, "料理挑戰 " + goals.shiftNumber) + '</b></div>' +
     '<ul class="kq-goals">' + goals.targets.map(goal => '<li class="' + (goal.complete ? "complete" : "") + '"><span>' + label(GOALS[goal.id]) + '</span><b>' + goal.current + '/' + goal.target + '</b><progress max="' + goal.target + '" value="' + goal.current + '" aria-label="' + t(GOALS[goal.id]) + '"></progress></li>').join("") + '</ul>' +
-    '<p class="kq-unlock">' + (next ? pair("New recipe in " + (next.unlockAt - profile.totalServed) + " dishes", "再完成 " + (next.unlockAt - profile.totalServed) + " 份解鎖新食譜") : pair("All " + unlocked + " recipes unlocked", unlocked + " 道食譜全部解鎖")) +
-    ' · ' + pair(profile.totalServed + " dishes made", "累計完成 " + profile.totalServed + " 份") + '</p>';
+    '<p class="kq-unlock">' + (next ? pair("New recipe in " + dishes(next.unlockAt - profile.totalServed), "再完成 " + (next.unlockAt - profile.totalServed) + " 份解鎖新食譜") : pair("All " + unlocked + " recipes unlocked", unlocked + " 道食譜全部解鎖")) +
+    ' · ' + pair(dishes(profile.totalServed) + " made", "累計完成 " + profile.totalServed + " 份") + '</p>';
 }
 function cookbook() {
   const profile = S.model.profile;
@@ -73,7 +76,7 @@ function cookbook() {
     '<section class="kq-career" aria-label="' + t(["Cooking progress", "料理進度"]) + '">' + career() + '</section><div class="kq-book-grid">' + MENU_RECIPES.map(recipe => {
       const unlocked = recipe.unlockAt <= profile.totalServed;
       return '<article data-recipe-id="' + recipe.id + '" data-unlocked="' + unlocked + '"><img class="kq-dish" src="' + dishURL(recipe) + '" alt=""><h3>' + label(RECIPES[recipe.id]) + '</h3><ol>' + recipe.sequence.map((id, i) => '<li><b>' + (i + 1) + '</b>' + icon(id) + label(FOOD[id]) + '</li>').join("") + '</ol><p>' +
-        (unlocked ? pair("Served " + profile.recipeServes[recipe.id] + " times", "已完成 " + profile.recipeServes[recipe.id] + " 次") : pair("Unlocks in " + (recipe.unlockAt - profile.totalServed) + " dishes", "再完成 " + (recipe.unlockAt - profile.totalServed) + " 份解鎖")) + '</p></article>';
+        (unlocked ? pair("Served " + times(profile.recipeServes[recipe.id]), "已完成 " + profile.recipeServes[recipe.id] + " 次") : pair("Unlocks in " + dishes(recipe.unlockAt - profile.totalServed), "再完成 " + (recipe.unlockAt - profile.totalServed) + " 份解鎖")) + '</p></article>';
     }).join("") + '</div>';
 }
 function preparation(k) {
