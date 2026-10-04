@@ -35,3 +35,4 @@ Assemblies / My Blocks, booklets, curved rails and trains, animals, behaviours, 
 - `12-rail-parts-browser.md` — D23 (added 2026-10-04 at Papa's request): the parts browser moves into the left rail (categories → parts with Back, colours at the foot), the bottom tray goes, the rail keeps one width so the view never resizes
 - `13-low-end-render.md` — D24–D25 (added 2026-10-04 at Papa's request): reduced tier paints the baseplate studs and lights with Lambert (179k → 31k triangles); every tier renders only on demand
 - `14-step-down.md` — D26 (added 2026-10-04 at Papa's request): a standard-tier tablet that can't keep up while the view moves steps down quietly — pixel ratio 1, painted studs, no shadows
+- `15-drag-from-rail.md` — D27 (added 2026-10-04 at Papa's request): slide a part sideways out of the rail and let go on the plate to place it; tap-to-place unchanged

@@ -20,6 +20,7 @@ const label = (pair) => `${pair[0]} ${pair[1]}`;
 const HINTS = {
   choose: ["Choose a piece on the left, or tap a piece to edit it.", "從左邊選一塊積木，或點一塊來修改。"],
   place: ["Tap the baseplate to put the piece down.", "點底板，把積木放上去。"],
+  dragDrop: ["Let go where the piece should go.", "拖到想放的地方再放手。"],
   placed: ["Placed! Pick another piece, or edit this one.", "放好了！再選一塊，或修改這一塊。"],
   selected: ["Tap it again to turn it, or drag it to move it.", "再點一下可以旋轉，拖著它可以移動。"],
   moveTo: ["Tap the new spot for this piece.", "點一個新位置放這塊積木。"],
@@ -1108,6 +1109,8 @@ export class BrickLabRuntime {
        info card. click, not pointerdown: a swipe that scrolls the tray must
        not pick a part. */
     this.partsEl.addEventListener("click", (event) => {
+      /* The click that ends a drag out of the tray is not a tap (slice 15). */
+      if (this.trayDragEnded) { this.trayDragEnded = false; return; }
       const star = event.target.closest("[data-fav]");
       if (star) { this.toggleFavorite(star.dataset.fav); return; }
       const tile = event.target.closest("[data-part]");
@@ -1117,6 +1120,7 @@ export class BrickLabRuntime {
       this.armPlacement(this.activePartId);
       this.showInfo(this.activePartId);
     });
+    this.bindTrayDrag();
     if (this.searchEl) {
       this.searchEl.addEventListener("input", () => this.setFilters(this.searchEl.value, this.sizeFilter));
       this.searchEl.addEventListener("keydown", (event) => { if (event.key === "Enter") this.searchEl.blur(); });
@@ -1186,6 +1190,57 @@ export class BrickLabRuntime {
       find.setAttribute("aria-expanded", String(this.finding));
     }
     if (!this.finding && this.searchEl) this.searchEl.blur();
+  }
+
+  /* Slice 15: press a part and slide it sideways out of the rail; the ghost
+     follows the finger over the plate and letting go places it, exactly as a
+     tap there would. A mostly vertical slide still scrolls the rail (the tiles
+     are touch-action: pan-y). Let go over the rail and the part just stays
+     armed, as after a tap. */
+  bindTrayDrag() {
+    const canvas = this.renderer.domElement;
+    const overCanvas = (event) => {
+      const r = canvas.getBoundingClientRect();
+      return event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
+    };
+    this.partsEl.addEventListener("pointerdown", (event) => {
+      this.trayDragEnded = false;
+      const tile = event.target.closest("[data-part]");
+      if (!tile || this.mode !== "build" || event.button > 0) return;
+      this.trayDrag = { tile, partId: tile.dataset.part, x: event.clientX, y: event.clientY, id: event.pointerId, active: false };
+    });
+    this.partsEl.addEventListener("pointermove", (event) => {
+      const drag = this.trayDrag;
+      if (!drag || drag.id !== event.pointerId) return;
+      if (!drag.active) {
+        const dx = event.clientX - drag.x;
+        const dy = event.clientY - drag.y;
+        if (Math.abs(dx) < DRAG_START || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+        drag.active = true;
+        try { drag.tile.setPointerCapture(event.pointerId); } catch (error) { /* already released */ }
+        this.hideInfo();
+        this.activePartId = drag.partId;
+        this.markActivePart();
+        this.armPlacement(drag.partId);
+        this.setHint("☝️", HINTS.dragDrop);
+      }
+      if (overCanvas(event)) this.ghostAt(event);
+      else this.ghost.visible = false;
+    });
+    const end = (event, cancelled) => {
+      const drag = this.trayDrag;
+      if (!drag || drag.id !== event.pointerId) return;
+      this.trayDrag = null;
+      if (!drag.active) return;
+      this.trayDragEnded = true;
+      if (!cancelled && overCanvas(event) && this.placementArmed) this.onTap(event);
+      else {
+        this.ghost.visible = false;
+        this.setHint("☝️", HINTS.place);
+      }
+    };
+    this.partsEl.addEventListener("pointerup", (event) => end(event, false));
+    this.partsEl.addEventListener("pointercancel", (event) => end(event, true));
   }
 
   updateCategoryUI() {
@@ -1636,6 +1691,11 @@ export class BrickLabRuntime {
     if (this.drag) { this.onDragMove(event); return; }
     if (this.mode !== "build" || !this.ghost || (!this.placementArmed && !this.moveId)) return;
     if (event.buttons) return;
+    this.ghostAt(event);
+  }
+
+  /* The ghost under a pointer: hover, or a part dragged out of the tray. */
+  ghostAt(event) {
     const hits = this.pointFromEvent(event);
     const groundHit = hits.find((hit) => isGround(hit)) || hits.find((hit) => this.getPieceIdFromIntersection(hit));
     if (!groundHit) {
@@ -2150,7 +2210,7 @@ export class BrickLabRuntime {
       graphics: this.renderer ? this.renderer.domElement.dataset.sqGraphics : null,
       /* Last frame's cost, for the low-end check (slice 13). */
       render: this.renderer ? { quality: this.renderer.domElement.dataset.sqGraphicsQuality, calls: this.renderer.info.render.calls,
-        triangles: this.renderer.info.render.triangles, studs: this.studsPainted ? "painted" : "mesh", frames: this.frames || 0,
+        triangles: this.renderer.info.render.triangles, trayDrag: !!(this.trayDrag && this.trayDrag.active), studs: this.studsPainted ? "painted" : "mesh", frames: this.frames || 0,
         level: this.perf.level, pixelRatio: this.renderer.getPixelRatio(), shadows: !!(this.renderer.shadowMap.enabled && this.sun.castShadow) } : null,
       canvas: rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
       camera: this.camera ? { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, aspect: this.camera.aspect } : null,

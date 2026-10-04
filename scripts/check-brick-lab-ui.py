@@ -13,7 +13,8 @@ favourites and recents and opens an info card. Slice 12: the parts browser lives
 resizes, and there is no bottom tray. Slice 13: an idle lab draws no frames, and a low-memory tablet
 gets the reduced tier (studs painted on the plate, Lambert light, a fraction of the triangles) and still
 places pieces. Slice 14: a standard tablet that can't keep up steps down (painted studs, no shadows)
-without resizing the view. A pre-reader profile shows the icon-first UI.
+without resizing the view. Slice 15: a part slid sideways out of the rail places where it is let go.
+A pre-reader profile shows the icon-first UI.
 Requires Python Playwright. --target web checks dist/android-web after a build.
 """
 import argparse
@@ -371,6 +372,42 @@ def run(args):
                 s = snap()
                 check('Explore tap returns to Build with that piece selected', s['mode'] == 'build' and s['selectedId'] == placed)
                 page.screenshot(path=str(out / 'focus.png'))
+
+                # Slice 15: slide a part sideways out of the rail onto the plate.
+                pick(page, 'bricks')
+                tb = page.locator('.sqbl-part[data-part="brick_1x2"]').last.bounding_box()
+                cb = page.locator('.sqbl-stage canvas').bounding_box()
+                n0 = len(snap()['pieces'])
+                tx, ty = tb['x'] + tb['width'] / 2, tb['y'] + tb['height'] / 2
+                dx, dy = cb['x'] + cb['width'] * 0.56, cb['y'] + cb['height'] * 0.66
+                page.mouse.move(tx, ty)
+                page.mouse.down()
+                for i in range(1, 13):
+                    page.mouse.move(tx + (dx - tx) * i / 12, ty + (dy - ty) * i / 12)
+                s = snap()
+                check('Dragging a part out of the rail arms it, the ghost follows', s['render']['trayDrag'] and s['placementArmed'])
+                page.mouse.up()
+                page.wait_for_timeout(150)
+                s = snap()
+                check('Letting go over the plate places it, no info card', len(s['pieces']) == n0 + 1 and not s['placementArmed']
+                      and next(p for p in s['pieces'] if p['id'] == s['selectedId'])['partId'] == 'brick_1x2'
+                      and not page.locator('.sqbl-info').is_visible())
+                tb = page.locator('.sqbl-part[data-part="brick_1x2"]').last.bounding_box()
+                page.mouse.move(tb['x'] + 20, tb['y'] + 40)
+                page.mouse.down()
+                page.mouse.move(tb['x'] + 45, tb['y'] + 42)
+                page.mouse.move(tb['x'] + 70, tb['y'] + 44)
+                page.mouse.up()
+                page.wait_for_timeout(100)
+                s = snap()
+                check('Letting go over the rail leaves the part armed, places nothing', s['placementArmed'] and len(s['pieces']) == n0 + 1
+                      and not s['render']['trayDrag'])
+                page.mouse.move(tb['x'] + 30, tb['y'] + 30)
+                page.mouse.down()
+                page.mouse.move(tb['x'] + 32, tb['y'] + 70)
+                page.mouse.up()
+                check('A vertical slide on a tile is not a drag', not snap()['render']['trayDrag'])
+                act('undo')
 
                 check('Back handled', page.evaluate('SQPlatform.triggerBack()') is True)
                 page.wait_for_function("!document.querySelector('#stage .sqbl-app')")
