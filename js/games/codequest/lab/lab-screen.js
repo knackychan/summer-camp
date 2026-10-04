@@ -14,7 +14,7 @@ import { LAB_INGREDIENTS, LAB_FREE_INGREDIENTS, STATE_TOOL } from './ingredients
 import { LAB_RULES } from './rules.js';
 import { resolveExperiment, mixHint, labEntries, labKey, LAB_MAX_INGREDIENTS, LAB_MAX_STEPS } from './resolve.js';
 import { normalizeLab, recordFound, recordSeen, recordStates, journalReactions, journalPotions, journalIngredients } from './journal.js';
-import { drawLab, hitAt } from './lab-view.js';
+import { drawLab, hitAt, PARALLAX_MAX } from './lab-view.js';
 import { drawLabSprite, labSpriteSize } from './lab-art.js';
 
 const RULE = Object.fromEntries(LAB_RULES.map(rule => [rule.id, rule]));
@@ -198,6 +198,19 @@ export function mountLab(root, api) {
   }
   let tool = null;   // { step, start }: the tool the kid just used, for its little animation
   function useTool(step) { tool = { step, start: performance.now() }; }
+  // Back-layer parallax (lab-feel D6): leans away from a dragged ingredient, eases back after.
+  const lean = { x: 0, y: 0 };
+  let dragAt = null;   // { x, y } CSS px in the canvas while dragging
+  function leanToward(box) {
+    const target = dragAt && !api.reduced
+      ? { x: -(dragAt.x / box.width - 0.5) * 2 * PARALLAX_MAX, y: -(dragAt.y / box.height - 0.5) * 2 * (PARALLAX_MAX / 2) }
+      : { x: 0, y: 0 };
+    lean.x += (target.x - lean.x) * 0.25;
+    lean.y += (target.y - lean.y) * 0.25;
+    if (Math.abs(lean.x) < 0.05) lean.x = 0;
+    if (Math.abs(lean.y) < 0.05) lean.y = 0;
+    return { x: lean.x, y: lean.y };
+  }
 
   /* ----- drawing ----- */
   function draw(time = performance.now()) {
@@ -208,7 +221,8 @@ export function mountLab(root, api) {
     view = drawLab(canvas, {
       cssWidth: box.width, cssHeight: box.height, dpr: window.devicePixelRatio || 1, now: time,
       mix: state.mix, steps: state.steps, tint: hint.tint, shaky: hint.shaky, selection: state.selection, held: state.held,
-      tool: tool && time - tool.start < TOOL_MS ? tool : null, effect: state.effect, reduced: !!api.reduced
+      tool: tool && time - tool.start < TOOL_MS ? tool : null, effect: state.effect, reduced: !!api.reduced,
+      parallax: leanToward(box)
     });
     placeBubble(time, box);
     placeTag();
@@ -439,11 +453,11 @@ export function mountLab(root, api) {
       ghost.innerHTML = formIcon(labEntries([state.held || press.hit.ingredient])[0]);
       el.appendChild(ghost);
     }
-    if (ghost) ghost.style.transform = 'translate(' + (e.clientX - 24) + 'px,' + (e.clientY - 24) + 'px)';
+    if (ghost) { ghost.style.transform = 'translate(' + (e.clientX - 24) + 'px,' + (e.clientY - 24) + 'px)'; dragAt = local(e); }
   }
   function onUp(e) {
     if (!press || e.pointerId !== press.pointerId) return;
-    const done = press; press = null;
+    const done = press; press = null; dragAt = null;
     if (ghost) { ghost.remove(); ghost = null; }
     if (!done.moved) { if (done.wasSelected) apply(labSelect(state, null)); return; }
     const p = local(e), over = e.type === 'pointerup' ? hitAt(view && view.hits, p.x, p.y) : null;

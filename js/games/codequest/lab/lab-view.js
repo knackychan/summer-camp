@@ -7,7 +7,7 @@
    controller never has to know the layout. */
 import { Q } from '../palette.js';
 import { drawSprite, spriteSize } from '../pixel-art.js';
-import { px, drawLabSprite, labSpriteSize } from './lab-art.js';
+import { px, drawLabSprite, labSpriteSize, bayer, ramp, shadeRow, sphereLight, cylinderLight, ditherShadow, LAB_LIGHTS } from './lab-art.js';
 import { LAB_INGREDIENTS, SHELF_IDS, BAG_IDS } from './ingredients.js';
 import { fxTime, fxPose, drawEffect } from './lab-fx.js';
 
@@ -156,12 +156,39 @@ function drawWall(ctx, H, groups, paint) {
   for (let y = Math.floor(paint.y0 / 8) * 8; y < top; y += 8) {
     const shift = Math.abs(y / 8) % 2 ? 8 : 0;
     for (let x = Math.floor(paint.x0 / 16) * 16 - shift; x < paint.x1; x += 16) {
-      // Bricks near the fire and the lantern take the warm stone ramp.
-      const warm = Math.hypot(x + 8 - 160 - fire, (y + 4 - 110 - dy) * 1.4) < 78 || Math.hypot(x + 8 - 96 - fire, y + 4 - 20 - dy) < 34;
-      px(ctx, warm ? Q.warm : Q.stone, x + 1, y + 1, 15, 7);
-      if (hash(x, y) % 5 === 0) px(ctx, warm ? Q.warmLit : Q.stoneMid, x + 1, y + 1, 15, 1);
+      const bx = Math.floor(x / 16), by = Math.floor(y / 8);
+      // Fire and lantern light fall off brick by brick through the dither (lab-feel D6)…
+      const heat = Math.max(1 - Math.hypot(x + 8 - 160 - fire, (y + 4 - 110 - dy) * 1.4) / 86, 1 - Math.hypot(x + 8 - 96 - fire, y + 4 - 20 - dy) / 38);
+      const warm = heat * 2 > bayer(bx, by);
+      // …and the rest of the wall darkens away from the window, so the room has corners.
+      const lit = 0.72 - Math.min(0.5, Math.hypot((x + 8 - 160 - fire) / 2.2, y + 4 - 50 - dy) / 220);
+      const face = warm ? Q.warm : ramp(lit, bx, by, [Q.stoneDark, Q.stone, Q.stoneMid]);
+      px(ctx, face, x + 1, y + 1, 15, 7);
+      if (hash(x, y) % 5 === 0) px(ctx, warm ? Q.warmLit : face === Q.stoneDark ? Q.stone : Q.stoneMid, x + 1, y + 1, 15, 1);
       if (hash(y, x) % 9 === 0) px(ctx, Q.stoneDark, x + 4 + (hash(x, y) % 8), y + 3, 2, 1);
     }
+  }
+}
+
+/* Side-wall slivers at the canvas's left and right edges: darker stone whose brick
+   courses slant toward the vanishing point, so the room shows it has sides. */
+const SIDE = 10;
+function drawSides(ctx, H, groups, paint) {
+  const dy = H - LAB_H, top = 112 + dy, vpy = 50 + dy;
+  for (const side of [-1, 1]) {
+    const edge = side < 0 ? paint.x0 : paint.x1 - SIDE, corner = side < 0 ? edge + SIDE : edge - 1;
+    px(ctx, Q.stoneDark, edge, paint.y0, SIDE, top - paint.y0);
+    for (let c = 0; c < SIDE; c++) {
+      // c = 0 at the corner, SIDE − 1 at the canvas edge (nearest the viewer).
+      const x = side < 0 ? corner - 1 - c : corner + 1 + c, slant = (c + 1) / SIDE * 0.35;
+      for (let y = Math.floor(paint.y0 / 8) * 8; y < top; y += 8) {
+        const yy = Math.round(y + (y - vpy) * slant);
+        if (yy >= paint.y0 && yy < top) px(ctx, Q.deep, x, yy, 1, 1);
+        if (c % 5 === 2 && yy + 4 < top) px(ctx, Q.deep, x, yy + 1 + (Math.abs(y / 8) % 2 ? 4 : 0), 1, 3);
+      }
+    }
+    px(ctx, Q.outline, corner, paint.y0, 1, top - paint.y0);
+    px(ctx, Q.stone, corner - side, paint.y0, 1, top - paint.y0);
   }
 }
 
@@ -258,12 +285,16 @@ function drawShelf(ctx) {
   px(ctx, Q.sandLit, 300, 96, 14, 10); px(ctx, Q.sand, 302, 99, 10, 1); px(ctx, Q.sand, 302, 102, 8, 1);
 }
 
+const JAR_GLASS = Object.freeze(Array.from({ length: 19 }, (_, i) =>
+  ramp(cylinderLight((i - 9) / 9.5, [LAB_LIGHTS.moon, LAB_LIGHTS.lantern]) * 1.1, i, 0, [Q.space, Q.space2, Q.oceanDark])));
 function drawJar(ctx, hit, selected, lean = 0, state = 'raw') {
   const x = hit.x + lean, y = hit.y - (selected ? 3 : 0);
   const edge = selected ? Q.yellow : Q.outline;
   px(ctx, edge, x + 2, y + 3, 21, 21);
-  px(ctx, Q.space2, x + 3, y + 4, 19, 19);
+  // Round glass: each column lit as a cylinder from the moon and the lantern.
+  for (let i = 0; i < 19; i++) px(ctx, JAR_GLASS[i], x + 3 + i, y + 4, 1, 19);
   glow(ctx, 0.35, () => px(ctx, Q.snowShade, x + 3, y + 4, 19, 19));
+  px(ctx, Q.outline, x + 21, y + 5, 1, 17);
   drawForm(ctx, hit.ingredient, state, x + 6, y + 8);
   px(ctx, Q.white, x + 4, y + 6, 1, 8);
   px(ctx, Q.snowShade, x + 4, y + 15, 1, 3);
@@ -273,15 +304,62 @@ function drawJar(ctx, hit, selected, lean = 0, state = 'raw') {
   px(ctx, Q.woodDark, x + 7, y + 25, 11, 1);
 }
 
-function drawBench(ctx, H, paint) {
-  const dy = H - LAB_H, x0 = paint.x0, w = paint.x1 - paint.x0;
-  px(ctx, Q.woodDark, x0, 110 + dy, w, paint.y1 - 110 - dy);
-  for (let y = 112; y + dy < paint.y1; y += 9) {
-    px(ctx, Q.wood, x0, y + dy, w, 8);
-    for (let x = Math.floor(x0 / 53) * 53 + (y * 7) % 37; x < paint.x1; x += 53) px(ctx, Q.woodDark, x, y + 2 + dy, 9, 1);
+/* The bench top is a plane receding toward a vanishing point under the window (lab-feel
+   D6): its planks run away from the viewer and their seams converge; the far edge is in
+   shadow and the near edge catches the light. */
+function drawBench(ctx, H, groups, paint) {
+  const dy = H - LAB_H, back = 112 + dy, front = paint.y1, x0 = paint.x0, x1 = paint.x1;
+  const vpx = 160 + groups.centre.dx, vpy = 30 + dy, depth = Math.max(1, front - back);
+  // Plank seams are spaced 11 px at the back edge; at row y a seam sits at vpx + (sx − vpx)·k.
+  const spread = (front - vpy) / (back - vpy), seams = [];
+  for (let sx = Math.floor((vpx + (x0 - vpx) / spread) / 11) * 11 - 11; sx <= vpx + (x1 - vpx) / spread + 11; sx += 11) seams.push(sx);
+  for (let y = back; y < front; y++) {
+    const k = (y - vpy) / (back - vpy), near = (y - back) / depth;
+    shadeRow(ctx, y, x0, x1, x => ramp(0.36 + near * 1.4, x, y, [Q.woodDark, Q.wood, Q.wood]));
+    for (let i = 0; i < seams.length; i++) {
+      const x = Math.round(vpx + (seams[i] - vpx) * k);
+      if (x >= x0 && x < x1) px(ctx, near < 0.25 ? Q.outline : Q.woodDark, x, y, 1, 1);
+      // Now and then a plank ends: a short butt joint across it.
+      if (i + 1 < seams.length && hash(i, Math.floor((y - back) / 7)) % 23 === 0 && (y - back) % 7 === 3) {
+        const xr = Math.round(vpx + (seams[i + 1] - vpx) * k);
+        px(ctx, Q.woodDark, x + 1, y, Math.max(0, xr - x - 1), 1);
+      }
+    }
   }
-  px(ctx, Q.rockLit, x0, 110 + dy, w, 1);
-  px(ctx, Q.outline, x0, 111 + dy, w, 1);
+  px(ctx, Q.woodDark, x0, 110 + dy, x1 - x0, 2);
+  px(ctx, Q.rockLit, x0, 110 + dy, x1 - x0, 1);
+  px(ctx, Q.outline, x0, 111 + dy, x1 - x0, 1);
+}
+
+/* ---------- depth: shadows and the moonlight shaft (lab-feel D6) ---------- */
+// Half-density dithered dark: a soft shadow that still never leaves the palette.
+function ditherRect(ctx, color, x, y, w, h, density = 0.5) {
+  for (let row = y; row < y + h; row++) shadeRow(ctx, row, x, x + w, col => (density > bayer(col, row) ? color : null));
+}
+/** The shelf's shadow falls right and down onto the wall (right group, before the shelf). */
+function drawShelfShadow(ctx) {
+  ditherRect(ctx, Q.deep, 314, 14, 4, 84);
+  ditherRect(ctx, Q.deep, 208, 94, 110, 4);
+}
+/** Contact shadows on the bench under the books and the cat's bed (left / right group). */
+function drawBookShadow(ctx) { ditherShadow(ctx, Q.outline, 33, 111, 25, 2, 0.55); }
+function drawCatShadow(ctx) { ditherShadow(ctx, Q.outline, 299, 153, 19, 2, 0.5); }
+/** Under the burner's stones, on the cloth (centre group). */
+function drawBurnerShadow(ctx) { ditherShadow(ctx, Q.outline, 160, 143, 31, 3, 0.6); }
+
+/** A pale shaft of moonlight from the window down to the bench, with dust drifting in it (centre group). */
+function drawShaft(ctx, now, still) {
+  const top = 72, bottom = 124, at = y => {
+    const k = (y - top) / (bottom - top);
+    return [Math.round(130 - 34 * k), Math.round(190 - 26 * k)];
+  };
+  glow(ctx, 0.09, () => { for (let y = top; y < bottom; y++) { const [l, r] = at(y); px(ctx, Q.lilac, l, y, r - l, 1); } });
+  const t = still ? 0 : now / 1000;
+  for (let i = 0; i < 8; i++) {
+    const y = top + ((i * 29 + t * (3 + (i % 3))) % (bottom - top)), [l, r] = at(y);
+    const x = l + ((i * 37 + Math.sin(t * 0.7 + i) * 3) % (r - l) + (r - l)) % (r - l);
+    glow(ctx, 0.6, () => px(ctx, i % 3 ? Q.lilac : Q.white, x, y, 1, 1));
+  }
 }
 
 /** A blue cloth under the cauldron, like the mock's (centre group). */
@@ -360,13 +438,20 @@ function drawCauldron(ctx, options, frame, now, still) {
   const cx = 160 + shake, cy = 100, rad = 28;
   const [liquid, liquidLit] = TINT[options.tint] || EMPTY_LIQUID;
   pool(ctx, liquidLit, cx, 80, 34, 14, 0.09);
+  // The pot is a sphere lit per pixel (lab-feel D6): moon and lantern from above, and a
+  // red-hot rim where the burner's fire reaches round its belly.
+  const flicker = still ? 0 : (frame % 2) * 0.08;
   for (let y = 88; y <= 127; y++) {
     const hw = Math.floor(Math.sqrt(Math.max(0, rad * rad - (y - cy) * (y - cy))));
     if (hw < 1) continue;
     px(ctx, Q.outline, cx - hw - 1, y, hw * 2 + 2, 1);
-    px(ctx, Q.deep, cx - hw, y, hw * 2, 1);
-    px(ctx, Q.stoneDark, cx - hw + 2, y, Math.max(1, Math.floor(hw / 3)), 1);
-    if (y < 120) px(ctx, Q.stoneMid, cx - hw + 3, y, 1, 1);
+    shadeRow(ctx, y, cx - hw, cx + hw, x => {
+      const nx = (x + 0.5 - cx) / rad, ny = (y + 0.5 - cy) / rad, nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+      // Fire only reaches the lower rim, where the surface turns away from the viewer.
+      const rim = ny > 0.3 && nz < 0.62 ? sphereLight(nx, ny, nz, [LAB_LIGHTS.fire]) * (1 - nz / 0.62) * 1.6 + flicker : 0;
+      if (rim > 0.3 + bayer(x, y) * 0.3) return rim > 0.62 ? Q.lava : Q.red;
+      return ramp(sphereLight(nx, ny, nz) * 1.15, x, y, [Q.deep, Q.stoneDark, Q.stoneMid, Q.stoneLit]);
+    });
   }
   // Handles and rim.
   px(ctx, Q.outline, cx - 33, 92, 4, 8); px(ctx, Q.outline, cx + 29, 92, 4, 8);
@@ -487,9 +572,10 @@ function drawToolUse(ctx, tool, clock, reduced) {
   }
 }
 
-function drawLight(ctx, groups, paint) {
+function drawLight(ctx, groups, paint, frame, still) {
   const cx = 160 + groups.centre.dx, dy = groups.centre.dy, { x0, y0, x1, y1 } = paint;
-  pool(ctx, Q.lava, cx, 132 + dy, 64, 30, 0.07);
+  // The fire's warm pool breathes with the burner's flicker.
+  pool(ctx, Q.lava, cx, 132 + dy, 64, 30, still ? 0.07 : 0.06 + (frame % 2) * 0.02);
   pool(ctx, Q.oceanLit, cx, 92 + dy, 40, 18, 0.04);
   // A soft dark frame at the canvas edge (not the room edge, which may sit inside it).
   glow(ctx, 0.35, () => {
@@ -508,12 +594,55 @@ function homeIn(layout, id) {
   return { x: bag.x + 7 + width / 2, y: bag.y + 7 + height / 2 };
 }
 
+/* ---------- parallax + cached static layers (lab-feel D6) ---------- */
+export const PARALLAX_MAX = 4;
+/** The back layer's offset in whole logical px: the screen's drag lean plus a slow ±1 px sway; 0 when still. */
+export function parallaxOf(lean, now, still) {
+  if (still) return { x: 0, y: 0 };
+  const sway = Math.round(Math.sin((now / 6000) * Math.PI * 2));
+  const clamp = v => Math.max(-PARALLAX_MAX, Math.min(PARALLAX_MAX, Math.round(v)));
+  return { x: clamp((Number(lean && lean.x) || 0) + sway), y: clamp(Number(lean && lean.y) || 0) };
+}
+// Margin (logical px) the cached layers carry past the canvas, so parallax and shake never show an edge.
+const LAYER_MARGIN = PARALLAX_MAX + 2;
+const LAYERS = new WeakMap();
+/**
+ * Draws a layer that only changes with the room size. In a page it is drawn once into an
+ * offscreen canvas and blitted at `offset` (logical px) each frame; without a document
+ * (tests) it is drawn straight onto the canvas, so the palette checks still see every fill.
+ */
+function staticLayer(canvas, ctx, fit, paint, name, offset, draw) {
+  const doc = canvas.ownerDocument;
+  if (!doc || typeof ctx.drawImage !== 'function') {
+    ctx.setTransform(fit.device, 0, 0, fit.device, fit.ox + offset.x * fit.device, fit.oy + offset.y * fit.device);
+    draw(ctx);
+    return;
+  }
+  let store = LAYERS.get(canvas);
+  if (!store) LAYERS.set(canvas, store = {});
+  const key = [fit.canvasW, fit.canvasH, fit.device, fit.W, fit.H].join('x');
+  if (!store[name] || store[name].key !== key) {
+    const off = doc.createElement('canvas');
+    off.width = (paint.x1 - paint.x0) * fit.device;
+    off.height = (paint.y1 - paint.y0) * fit.device;
+    const c = off.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    c.setTransform(fit.device, 0, 0, fit.device, -paint.x0 * fit.device, -paint.y0 * fit.device);
+    draw(c);
+    store[name] = { key, off };
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(store[name].off, fit.ox + (paint.x0 + offset.x) * fit.device, fit.oy + (paint.y0 + offset.y) * fit.device);
+}
+
 /**
  * Draws the lab and returns `{ hits, fit }`. `hits` are CSS-px tap targets:
  * `{ id, kind: 'jar'|'bag'|'cauldron'|'prop'|'scroll'|'book'|'owl', x, y, w, h, ingredient?, step? }`.
  * Options: cssWidth, cssHeight, dpr, time (s), now (ms), mix, steps, tint, shaky, selection,
  * effect ({ ruleId | 'potion', intensity, start (ms, same clock as now), potionId?, lastIngredient? },
- * drawn by lab-fx.js), paused, reduced. Effects never change the hits.
+ * drawn by lab-fx.js), paused, reduced, parallax ({ x, y } logical px the screen leans the
+ * back layer by; clamped to ±4, ignored when paused or reduced). Effects and parallax never
+ * change the hits.
  */
 export function drawLab(canvas, options = {}) {
   if (!canvas) return null;
@@ -541,28 +670,40 @@ export function drawLab(canvas, options = {}) {
     x1: W + Math.ceil((fit.canvasW - fit.ox - W * fit.device) / fit.device), y1: H + Math.ceil((fit.canvasH - fit.oy - H * fit.device) / fit.device)
   };
 
+  // The back layer (wall, side walls, beam, window, lantern, plants) leans with the parallax;
+  // everything you can tap stays put.
+  const par = parallaxOf(options.parallax, now, still);
+  const lean = g => ({ dx: g.dx + par.x, dy: g.dy + par.y });
+  const wide = { x0: paint.x0 - LAYER_MARGIN, y0: paint.y0 - LAYER_MARGIN, x1: paint.x1 + LAYER_MARGIN, y1: paint.y1 + LAYER_MARGIN };
+
   drawBackdrop(ctx, fit);
-  place(room);
-  drawWall(ctx, H, groups, paint);
-  drawBeam(ctx, H, paint);
-  place(groups.centre);
+  staticLayer(canvas, ctx, fit, wide, 'back', { x: par.x + pose.shakeX, y: par.y + pose.shakeY }, c => {
+    drawWall(c, H, groups, wide);
+    drawSides(c, H, groups, paint);
+    drawBeam(c, H, wide);
+  });
+  place(lean(groups.centre));
   drawWindow(ctx, frame, still);
   drawLantern(ctx, frame, still);
-  place(groups.left);
+  place(lean(groups.left));
   drawPlants(ctx, frame, still);
   place(groups.right);
+  drawShelfShadow(ctx);
   drawShelf(ctx);
   // Jars lean toward a singularity (every jar sits right of it).
   for (const id of SHELF_IDS) drawJar(ctx, AT['jar:' + id], selection === 'jar:' + id, -pose.lean, selection === 'jar:' + id ? formOf(options.held).state : 'raw');
-  place(room);
-  drawBench(ctx, H, paint);
+  staticLayer(canvas, ctx, fit, wide, 'bench', { x: pose.shakeX, y: pose.shakeY }, c => drawBench(c, H, groups, wide));
   place(groups.centre);
   drawCloth(ctx);
+  drawBurnerShadow(ctx);
+  drawShaft(ctx, now, still);
   place(groups.left);
+  drawBookShadow(ctx);
   drawBookStack(ctx);
   drawOwl(ctx, now, still, pose);
   drawJournal(ctx);
   place(groups.right);
+  drawCatShadow(ctx);
   drawCat(ctx, now, still, pose);
   place(groups.centre);
   drawBurner(ctx, frame, still);
@@ -577,7 +718,7 @@ export function drawLab(canvas, options = {}) {
   place(groups.left);
   drawBag(ctx, selection, options.held);
   place(room);
-  drawLight(ctx, groups, paint);
+  drawLight(ctx, groups, paint, frame, still);
   // Effects are cauldron-centred: they draw in the centre group's core coordinates;
   // `shift` and `room` say where the other groups and the whole room sit from there.
   const c = groups.centre;

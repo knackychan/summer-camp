@@ -233,3 +233,44 @@ test('every effect draws palette-only in a 320×180 and a 480×240 room, hits un
     }
   }
 });
+
+/* ---------- lab-feel slice 02: depth look ---------- */
+import { bayer, ramp, sphereLight, cylinderLight, LAB_LIGHTS } from '../js/games/codequest/lab/lab-art.js';
+import { parallaxOf, PARALLAX_MAX } from '../js/games/codequest/lab/lab-view.js';
+
+test('shading helpers: ramp picks only its own palette steps, deterministically; lit sides are brighter', () => {
+  const steps = [Q.stoneDark, Q.stone, Q.stoneMid];
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+    assert.ok(bayer(x, y) > 0 && bayer(x, y) < 1);
+    for (const level of [-1, 0, 0.2, 0.5, 0.77, 1, 2]) {
+      const a = ramp(level, x, y, steps);
+      assert.ok(steps.includes(a) && CQ_HEX[a], `level ${level}`);
+      assert.equal(a, ramp(level, x, y, steps));
+    }
+  }
+  assert.equal(ramp(0, 3, 3, steps), Q.stoneDark);
+  assert.equal(ramp(1, 3, 3, steps), Q.stoneMid);
+  const [mx, my, mz] = LAB_LIGHTS.moon.dir;
+  assert.ok(sphereLight(mx, my, mz) > sphereLight(-mx, -my, mz), 'the moon side of a sphere is brighter');
+  assert.ok(sphereLight(0, 0.9, 0.4, [LAB_LIGHTS.fire]) > sphereLight(0, -0.9, 0.4, [LAB_LIGHTS.fire]), 'the fire lights from below');
+  assert.ok(cylinderLight(-0.6) >= 0 && cylinderLight(0.6) <= 1);
+});
+
+test('parallax leans the back layer only: hits never move, reduced motion and pause hold it at 0', () => {
+  assert.deepEqual(parallaxOf({ x: 9, y: -9 }, 0, false), { x: PARALLAX_MAX, y: -PARALLAX_MAX });
+  assert.deepEqual(parallaxOf({ x: 3, y: 1 }, 0, true), { x: 0, y: 0 });
+  const fills = extra => {
+    const canvas = new FakeCanvas(), log = [], fillRect = canvas.ctx.fillRect.bind(canvas.ctx);
+    let transform = '';
+    canvas.ctx.setTransform = (...m) => { transform = m.join(','); };
+    canvas.ctx.fillRect = (...rect) => { log.push(transform + '|' + canvas.ctx.fillStyle + rect.join(',')); fillRect(...rect); };
+    const out = drawLab(canvas, { cssWidth: 1280, cssHeight: 640, dpr: 1, now: 1500, ...extra });
+    return { log: log.join(';'), hits: out.hits, bad: canvas.ctx.bad };
+  };
+  const plain = fills({}), leaned = fills({ parallax: { x: 4, y: 2 } });
+  assert.notEqual(leaned.log, plain.log, 'the back layer moves');
+  assert.deepEqual(leaned.hits, plain.hits, 'tap targets stay put');
+  assert.deepEqual(leaned.bad, []);
+  assert.equal(fills({ reduced: true, parallax: { x: 4, y: 2 } }).log, fills({ reduced: true }).log, 'reduced motion ignores the lean');
+  assert.equal(fills({ paused: true, parallax: { x: -4, y: 0 } }).log, fills({ paused: true }).log, 'paused ignores the lean');
+});

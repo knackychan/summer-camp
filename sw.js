@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v159-lab-feel-01";
+const CACHE_NAME = "summer-quest-v160-lab-feel-02";
 const APP_SHELL = [
   "./",
   "./index.html",

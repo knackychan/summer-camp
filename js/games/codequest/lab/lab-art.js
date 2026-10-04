@@ -106,3 +106,58 @@ export function drawLabSprite(ctx, id, x, y, options = {}) {
 }
 
 export const LAB_SPRITE_IDS = Object.freeze(Object.keys(SPRITES));
+
+/* ---------- depth shading (lab-feel D6): the Pixel Planet's banded light ----------
+   A light level in 0..1 picks one of three palette steps (shadow, base, lit); between
+   bands a Bayer 4×4 ordered dither mixes neighbours, so light falls off in pixels,
+   never in blended colours. Pure: same (level, x, y) → same index. */
+export const BAYER4 = Object.freeze([0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]);
+/** Dither threshold in (0, 1) for a pixel. */
+export function bayer(x, y) { return (BAYER4[((y & 3) << 2) | (x & 3)] + 0.5) / 16; }
+/** Palette index for light `level` (0..1) at pixel (x, y) from a [shadow, base, lit] ramp. */
+export function ramp(level, x, y, steps) {
+  const v = Math.max(0, Math.min(1, Number(level) || 0)) * (steps.length - 1);
+  const band = Math.floor(v), frac = v - band;
+  return steps[Math.min(steps.length - 1, band + (frac > bayer(x, y) ? 1 : 0))];
+}
+/* Lights as unit directions toward the light (x right, y down, z toward the viewer). */
+const unit = (x, y, z) => { const n = Math.hypot(x, y, z) || 1; return Object.freeze([x / n, y / n, z / n]); };
+export const LAB_LIGHTS = Object.freeze({
+  fire: Object.freeze({ dir: unit(0, 0.75, 0.65), strength: 0.75 }),     // the burner, below and in front
+  moon: Object.freeze({ dir: unit(-0.15, -0.85, 0.5), strength: 0.55 }),  // the window, above
+  lantern: Object.freeze({ dir: unit(-0.7, -0.5, 0.5), strength: 0.35 })  // upper left
+});
+/** Lambert light on a surface normal from a list of lights, clamped to 0..1. */
+export function sphereLight(nx, ny, nz, lights = [LAB_LIGHTS.moon, LAB_LIGHTS.lantern]) {
+  let sum = 0;
+  for (const light of lights) sum += Math.max(0, nx * light.dir[0] + ny * light.dir[1] + nz * light.dir[2]) * light.strength;
+  return Math.max(0, Math.min(1, sum));
+}
+/** A vertical cylinder seen from the front: `nx` in -1..1 across its width. */
+export function cylinderLight(nx, lights) {
+  const x = Math.max(-1, Math.min(1, nx));
+  return sphereLight(x, 0, Math.sqrt(1 - x * x), lights);
+}
+/**
+ * Fills a row of pixels whose colour is `colorAt(x)`, one fillRect per run of the same
+ * colour (cheap on old tablets even when shading every pixel).
+ */
+export function shadeRow(ctx, y, x0, x1, colorAt) {
+  let start = x0, color = x0 < x1 ? colorAt(x0) : null;
+  for (let x = x0 + 1; x <= x1; x++) {
+    const next = x < x1 ? colorAt(x) : null;
+    if (next === color) continue;
+    if (color != null) px(ctx, color, start, y, x - start, 1);
+    start = x; color = next;
+  }
+}
+/** A dithered contact shadow: `density` (0..1) of the ellipse's pixels, densest at the centre. */
+export function ditherShadow(ctx, color, cx, cy, rx, ry, density = 0.6) {
+  for (let y = -ry; y <= ry; y++) {
+    const span = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry || 1))));
+    shadeRow(ctx, cy + y, cx - span, cx + span + 1, x => {
+      const d = Math.hypot((x - cx) / (rx || 1), y / (ry || 1));
+      return density * (1 - d * 0.7) > bayer(x, cy + y) ? color : null;
+    });
+  }
+}

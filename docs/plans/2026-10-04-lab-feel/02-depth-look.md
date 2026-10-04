@@ -44,3 +44,18 @@
 - Frame cost at 480×240, 2×: median draw ≤ 8 ms in Chrome desktop (logged by the harness), so Android 8 keeps ≥ 20 fps idle.
 - Screenshots at 1280×800 (EN) and 1024×600 (中文) are saved to `test-results/codequest-lab/feel-depth-*.png` and shown to Papa.
 - `node scripts/check.mjs` green.
+
+## Implementation notes (2026-10-04)
+
+- **Helpers** (`lab-art.js`): `BAYER4` + `bayer(x, y)`, `ramp(level, x, y, steps)` (any number of steps), `LAB_LIGHTS` (fire from below-front, moon from above, lantern upper left), `sphereLight`, `cylinderLight`, `shadeRow` (one fillRect per run of the same colour, so per-pixel shading stays cheap) and `ditherShadow`.
+- **Wall:** fire and lantern warmth now fall off brick by brick through the dither; the rest of the wall takes a 3-step stone ramp that darkens away from the window, so the corners recede. **Side walls:** 10-px slivers at the canvas's left and right edges with brick courses slanting toward the vanishing point.
+- **Bench:** a receding plane: plank seams 11 px apart at the back edge fan out toward the viewer from a vanishing point under the window, with the odd butt joint; the far edge is dithered into shadow.
+- **Volume:** the cauldron is shaded per pixel as a sphere (moon + lantern on a 4-step stone ramp), with a red-hot rim only where the surface turns away at its lower edge; the rim flickers with the burner. Jar glass is a cylinder ramp per column with a dark right edge. The mortar is left for slice 03, which redraws the tools.
+- **Shadows:** dithered contact shadows under the burner (on the cloth), the books and the cat's bed; the shelf casts a half-density shadow right and down onto the wall.
+- **Atmosphere:** a pale moonlight shaft from the window to the bench left of the cauldron, 8 dust motes drifting in it (held still under reduced motion / pause). The fire's warm pool breathes with the flicker.
+- **Parallax:** `parallaxOf(lean, now, still)` → whole logical px, ±4, plus a ±1 px sway on a 6 s cycle; 0 when paused or reduced. The back layer (wall, sides, beam, window, lantern, plants) moves; shelf, jars, bench and everything tappable do not. `lab-screen.js` leans it away from the dragged ingredient (`dragAt`) and eases back (×0.25 per draw) when the drag ends.
+- **Cache:** `staticLayer` draws the wall + sides + beam and the bench once per (canvas size, scale, room) into offscreen canvases that reach 6 logical px past the canvas (parallax + shake), then blits them. Without a document (node tests) it draws straight onto the canvas, so the palette tests still see every fill.
+- **Cost:** `drawLab` on a detached canvas at the 1280×800 stage, dpr 2 (2484 px wide): median 0.6 ms, p90 16 ms (the GPU flushes on some calls) in headless Chromium.
+- **Tests:** 2 new (helpers; parallax moves fills but never hits, ignored when reduced or paused). 17 in `codequest-lab-view.test.mjs`, 62 with `codequest-lab.test.mjs`. Lab harness green at all 4 sizes.
+- **Screenshots for Papa:** `test-results/codequest-lab/feel-depth-{open,lifted,drag}-1280x800.png` (EN) and `feel-depth-zh-{open,lifted,drag}-1024x600.png` (中文).
+- `sw.js` cache `summer-quest-v160-lab-feel-02`.
