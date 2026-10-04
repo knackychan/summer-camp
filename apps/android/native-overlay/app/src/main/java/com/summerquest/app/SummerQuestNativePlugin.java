@@ -9,6 +9,7 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.speech.tts.TextToSpeech;
+import android.view.WindowManager;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -16,7 +17,10 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Bounded device-capability bridge for Summer Quest.
@@ -31,6 +35,7 @@ public class SummerQuestNativePlugin extends Plugin {
     private AudioFocusRequest audioFocusRequest;
     private TextToSpeech textToSpeech;
     private volatile boolean textToSpeechReady = false;
+    private LanHub lan;
 
     private final AudioManager.OnAudioFocusChangeListener audioFocusListener = focusChange -> {
         JSObject data = new JSObject();
@@ -51,6 +56,7 @@ public class SummerQuestNativePlugin extends Plugin {
         textToSpeech = new TextToSpeech(getContext(), status -> {
             textToSpeechReady = status == TextToSpeech.SUCCESS;
         });
+        lan = new LanHub(getContext(), (name, data) -> notifyListeners(name, data, false));
     }
 
     @Override
@@ -72,6 +78,10 @@ public class SummerQuestNativePlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         releaseAudioFocusInternal();
+        if (lan != null) {
+            lan.shutdown();
+            lan = null;
+        }
         if (textToSpeech != null) {
             textToSpeech.stop();
             textToSpeech.shutdown();
@@ -123,6 +133,94 @@ public class SummerQuestNativePlugin extends Plugin {
     @PluginMethod
     public void releaseAudioFocus(PluginCall call) {
         releaseAudioFocusInternal();
+        call.resolve();
+    }
+
+    /* Home-wifi sessions (docs/plans/2026-10-04-brick-lab-multiplayer/ D1):
+       transport only. What the lines mean lives in the web runtime. */
+    @PluginMethod
+    public void lanHost(PluginCall call) {
+        if (lan == null) { call.reject("unavailable"); return; }
+        String name = call.getString("name");
+        if (name == null || name.trim().isEmpty()) name = "Summer Quest";
+        JSObject txtIn = call.getObject("txt", new JSObject());
+        Map<String, String> txt = new HashMap<>();
+        Iterator<String> keys = txtIn.keys();
+        while (keys.hasNext()) {
+            String key = keys.next();
+            txt.put(key, txtIn.optString(key, ""));
+        }
+        lan.host(name, txt, (port, actual, error) -> {
+            if (port == 0) { call.reject(error == null ? "socket" : error); return; }
+            JSObject result = new JSObject();
+            result.put("port", port);
+            result.put("name", actual);
+            if (error != null) result.put("warning", error);
+            call.resolve(result);
+        });
+    }
+
+    @PluginMethod
+    public void lanStop(PluginCall call) {
+        if (lan != null) lan.stopHosting();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void lanDiscover(PluginCall call) {
+        if (lan == null) { call.reject("unavailable"); return; }
+        lan.discover();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void lanStopDiscover(PluginCall call) {
+        if (lan != null) lan.stopDiscovery();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void lanJoin(PluginCall call) {
+        String host = call.getString("host");
+        Integer port = call.getInt("port");
+        if (lan == null || host == null || port == null) { call.reject("unavailable"); return; }
+        lan.join(host, port, (peer, error) -> {
+            if (peer == null) { call.reject(error); return; }
+            JSObject result = new JSObject();
+            result.put("peer", peer);
+            call.resolve(result);
+        });
+    }
+
+    @PluginMethod
+    public void lanSend(PluginCall call) {
+        String peer = call.getString("peer");
+        String line = call.getString("line");
+        if (lan != null && peer != null && line != null) lan.send(peer, line);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void lanClose(PluginCall call) {
+        String peer = call.getString("peer");
+        if (lan != null && peer != null) lan.closePeer(peer);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void lanLeave(PluginCall call) {
+        if (lan != null) lan.leave();
+        call.resolve();
+    }
+
+    /* While guests are building in this tablet's world (D9). */
+    @PluginMethod
+    public void keepAwake(PluginCall call) {
+        final boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        getActivity().runOnUiThread(() -> {
+            if (on) getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        });
         call.resolve();
     }
 

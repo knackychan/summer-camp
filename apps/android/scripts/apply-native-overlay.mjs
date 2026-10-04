@@ -16,6 +16,7 @@ const files = [
   ["app/src/main/AndroidManifest.xml", "app/src/main/AndroidManifest.xml"],
   ["app/src/main/java/com/summerquest/app/MainActivity.java", "app/src/main/java/com/summerquest/app/MainActivity.java"],
   ["app/src/main/java/com/summerquest/app/SummerQuestNativePlugin.java", "app/src/main/java/com/summerquest/app/SummerQuestNativePlugin.java"],
+  ["app/src/main/java/com/summerquest/app/LanHub.java", "app/src/main/java/com/summerquest/app/LanHub.java"],
 ];
 
 for (const [sourceRel, targetRel] of files) {

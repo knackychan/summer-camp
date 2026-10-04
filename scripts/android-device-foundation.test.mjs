@@ -133,6 +133,16 @@ test("native overlay registers a bounded Capacitor plugin before BridgeActivity 
   assert.doesNotMatch(plugin, /\.isBlank\(/, "native helpers must not require the Android 13 String.isBlank API");
   assert.match(plugin, /vibrator\.vibrate\(pattern, -1\)/, "API 24-25 must not call VibrationEffect");
   assert.match(overlay, /SummerQuestNativePlugin\.java/);
+  /* Home-wifi sessions (brick-lab multiplayer plan, slice 03): transport only, no location. */
+  const lan = read("apps/android/native-overlay/app/src/main/java/com/summerquest/app/LanHub.java");
+  assert.match(overlay, /LanHub\.java/);
+  for (const method of ["lanHost", "lanStop", "lanDiscover", "lanStopDiscover", "lanJoin", "lanSend", "lanClose", "lanLeave", "keepAwake"]) {
+    assert.match(plugin, new RegExp(`@PluginMethod\\s+public void ${method}\\(`), method);
+  }
+  assert.match(lan, /LINE_MAX = 64 \* 1024/);
+  assert.match(manifest, /android\.permission\.CHANGE_WIFI_MULTICAST_STATE/);
+  assert.doesNotMatch(lan + manifest, /ACCESS_COARSE_LOCATION|NEARBY_WIFI_DEVICES/);
+  assert.doesNotMatch(lan, /\.isBlank\(/);
   assert.match(manifest, /android\.permission\.INTERNET/);
   assert.match(manifest, /android\.permission\.VIBRATE/);
   assert.doesNotMatch(manifest, /CAMERA|RECORD_AUDIO|ACCESS_FINE_LOCATION|READ_CONTACTS|POST_NOTIFICATIONS/);
