@@ -109,7 +109,7 @@ const fxDraw = (ruleId, t, extra = {}) => draw(1280, 440, 1, {
 });
 
 test('every outcome draws at start, mid, end and lingering, with the hits unchanged', () => {
-  assert.equal(FX_IDS.length, 15);
+  assert.equal(FX_IDS.length, 19, 'potion + all 18 rules have an effect');
   const base = draw(1280, 440, 1).out.hits;
   for (const id of FX_IDS) for (const intensity of [1, 2, 3]) for (const reduced of [false, true]) {
     for (const t of [0, FX_BEAT / 2, FX_BEAT - 1, FX_BEAT * 3]) {
