@@ -1,5 +1,5 @@
 {
-  "target": "source",
+  "target": "web",
   "checks": [
     {
       "name": "1280x800: registry opens Code Quest",
@@ -87,6 +87,34 @@
     },
     {
       "name": "1280x800: 8 bubble never covers the cauldron or the strip (states)",
+      "ok": true
+    },
+    {
+      "name": "1280x800: F the room reaches every canvas edge (no black bars)",
+      "ok": true
+    },
+    {
+      "name": "1280x800: F a plate under each tool, inside the scene",
+      "ok": true
+    },
+    {
+      "name": "1280x800: F lifted → \"Drop in\" on the cauldron",
+      "ok": true
+    },
+    {
+      "name": "1280x800: F put down → the cauldron plate hides",
+      "ok": true
+    },
+    {
+      "name": "1280x800: F let go just beside the mortar → crushed anyway (near miss)",
+      "ok": true
+    },
+    {
+      "name": "1280x800: F a fling on nothing falls (one body, nothing in the cauldron)",
+      "ok": true
+    },
+    {
+      "name": "1280x800: F it lands, slides and goes home; no frame over 33 ms",
       "ok": true
     },
     {
@@ -198,6 +226,34 @@
       "ok": true
     },
     {
+      "name": "1280x600: F the room reaches every canvas edge (no black bars)",
+      "ok": true
+    },
+    {
+      "name": "1280x600: F a plate under each tool, inside the scene",
+      "ok": true
+    },
+    {
+      "name": "1280x600: F lifted → \"Drop in\" on the cauldron",
+      "ok": true
+    },
+    {
+      "name": "1280x600: F put down → the cauldron plate hides",
+      "ok": true
+    },
+    {
+      "name": "1280x600: F let go just beside the mortar → crushed anyway (near miss)",
+      "ok": true
+    },
+    {
+      "name": "1280x600: F a fling on nothing falls (one body, nothing in the cauldron)",
+      "ok": true
+    },
+    {
+      "name": "1280x600: F it lands, slides and goes home; no frame over 33 ms",
+      "ok": true
+    },
+    {
       "name": "1280x600: 7 host Back returns to the dungeon, not out of Code Quest",
       "ok": true
     },
@@ -303,6 +359,34 @@
     },
     {
       "name": "1024x600: 8 bubble never covers the cauldron or the strip (states)",
+      "ok": true
+    },
+    {
+      "name": "1024x600: F the room reaches every canvas edge (no black bars)",
+      "ok": true
+    },
+    {
+      "name": "1024x600: F a plate under each tool, inside the scene",
+      "ok": true
+    },
+    {
+      "name": "1024x600: F lifted → \"Drop in\" on the cauldron",
+      "ok": true
+    },
+    {
+      "name": "1024x600: F put down → the cauldron plate hides",
+      "ok": true
+    },
+    {
+      "name": "1024x600: F let go just beside the mortar → crushed anyway (near miss)",
+      "ok": true
+    },
+    {
+      "name": "1024x600: F a fling on nothing falls (one body, nothing in the cauldron)",
+      "ok": true
+    },
+    {
+      "name": "1024x600: F it lands, slides and goes home; no frame over 33 ms",
       "ok": true
     },
     {
@@ -414,6 +498,34 @@
       "ok": true
     },
     {
+      "name": "1366x768: F the room reaches every canvas edge (no black bars)",
+      "ok": true
+    },
+    {
+      "name": "1366x768: F a plate under each tool, inside the scene",
+      "ok": true
+    },
+    {
+      "name": "1366x768: F lifted → \"Drop in\" on the cauldron",
+      "ok": true
+    },
+    {
+      "name": "1366x768: F put down → the cauldron plate hides",
+      "ok": true
+    },
+    {
+      "name": "1366x768: F let go just beside the mortar → crushed anyway (near miss)",
+      "ok": true
+    },
+    {
+      "name": "1366x768: F a fling on nothing falls (one body, nothing in the cauldron)",
+      "ok": true
+    },
+    {
+      "name": "1366x768: F it lands, slides and goes home; no frame over 33 ms",
+      "ok": true
+    },
+    {
       "name": "1366x768: 7 host Back returns to the dungeon, not out of Code Quest",
       "ok": true
     },
@@ -444,6 +556,6 @@
   ],
   "pageErrors": [],
   "consoleErrors": [],
-  "browser": "149.0.7827.55",
+  "browser": "138.0.7204.183",
   "ok": true
 }
