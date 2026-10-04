@@ -192,8 +192,10 @@ test("directed knowledge resume retains its answer and question position, while 
 
 test("an unavailable saved activity offers a valid replacement without starting or crediting it",async()=>{
   const f=setup(),before=await f.bridge.snapshot(f.input);
-  const replacement=await f.bridge.start({...expected(f.input,before),availableGameIds:["history"]});
-  assert.equal(replacement.actionApplied,false);assert.equal(replacement.currentStep.domain,"history");
+  // The first step is day-seeded, so pick whichever game it is NOT as the only available one.
+  const only=before.currentStep.launch.gameId==="history"?"vocab":"history",domain=only==="history"?"history":"language";
+  const replacement=await f.bridge.start({...expected(f.input,before),availableGameIds:[only]});
+  assert.equal(replacement.actionApplied,false);assert.equal(replacement.currentStep.domain,domain);
   assert.equal(replacement.currentStep.startedAt,undefined);assert.equal(replacement.currentStep.progressAttempts,0);
   assert.notEqual(replacement.currentStep.id,before.currentStep.id);assert.equal(replacement.plan.activeStepIndex,0);
   const none=await f.bridge.start({...expected(f.input,replacement),availableGameIds:[]});
