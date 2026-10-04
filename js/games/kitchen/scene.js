@@ -8,6 +8,7 @@ import { Spring, clamp, lerp, easeOut, easeIn, seeded } from "./motion.js";
 import { sprite } from "./sprites.js";
 import { drawPerson, speech } from "./customers.js";
 import { LASAGNA_STEPS } from "./kitchen.js";
+import { PATTY } from "./strings.js";
 
 const TAU = Math.PI * 2;
 const FONT = "ui-monospace, Menlo, Consolas, 'Courier New', monospace";
@@ -16,6 +17,17 @@ const SPEECH_FONT = "'Nunito', system-ui, sans-serif";
 const BAND = { pasta: 4, sauce: 4, cheese: 3 };
 const BAND_WORD = { pasta: ["FLOP!", C.sandLit], sauce: ["SPLOUIT!", C.red], cheese: ["FLOUP!", C.yellow] };
 const SEND_TIME = .9;
+/* A patty still on the grill holds its place on the plate with a dashed tray this many art pixels tall
+   (a cooked patty is 7). The stack reserves the whole tray, so food added above it sits on top instead of
+   overlapping its label, and the extra height melts away when the cooked patty lands. */
+export const PENDING_THICK = 12;
+const SETTLE_TIME = .2;
+/** Art pixels a layer takes in the stack: `base` normally, the full tray while pending, easing back after it lands. */
+export function layerThickness(base, pending, settleAge) {
+  if (pending) return Math.max(base, PENDING_THICK);
+  if (settleAge === undefined || settleAge >= SETTLE_TIME) return base;
+  return base + Math.max(0, PENDING_THICK - base) * (1 - easeOut(settleAge / SETTLE_TIME));
+}
 const fill = (g, col, x, y, w, h) => { g.fillStyle = HEX[col]; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 
 /* Line breaks for a speech bubble, as [start, end) ranges so typing can reveal them in order. */
@@ -82,7 +94,7 @@ export class CounterScene {
   stackHeight(layers) {
     const fam = this.family;
     let art = fam === "burger" ? 8 + 17 : fam === "salad" ? 16 : 4;
-    layers.forEach(l => { art += (fam === "salad" ? .45 : 1) * (sprite(l.pending ? "patty-raw" : l.ingredient).thick || 4); });
+    layers.forEach(l => { art += (fam === "salad" ? .45 : 1) * layerThickness(sprite(l.pending ? "patty-raw" : l.ingredient).thick || 4, !!l.pending); });
     return art;
   }
   targetScale(layers) {
@@ -105,7 +117,7 @@ export class CounterScene {
   finishPatty(id) {
     const v = this.layers.find(l => l.layer.id === id && l.removed === undefined);
     if (!v) return;
-    v.layer = { id, ingredient: "patty" }; v.landed = false; v.born = this.now;
+    v.layer = { id, ingredient: "patty" }; v.landed = false; v.born = this.now; v.settle = this.now;
     v.arriveAt = this.now + (this.reduced ? .075 : .16);
     v.from = { x: this.dishX - this.w * .2, y: -20 };
   }
@@ -504,21 +516,23 @@ export class CounterScene {
       const vs = s * lerp(.4, 1, e);
       g.save(); if (p < 1) g.globalAlpha *= Math.min(1, .3 + p * 2);
       if (v.layer.pending) {
-        // Reserved place for a patty that is still on the grill: a dashed tray with a raw patty.
-        const bw = 52 * vs, bh = 12 * vs;
+        // Reserved place for a patty that is still on the grill: a dashed tray with a raw patty. It says what
+        // the pan is doing (cooking, flip, ready, burnt) in the same words as the ticket and the hint.
+        const bw = 52 * vs, bh = PENDING_THICK * vs, job = st.kitchen && st.kitchen.grill.find(entry => entry.targetLayerId === v.layer.id);
+        const words = PATTY[job ? job.phase : "side-one"], word = this.t(words[0].toUpperCase(), words[1]);
         g.globalAlpha *= .9; fill(g, C.sandLit, px - bw / 2, py - bh, bw, bh);
         g.strokeStyle = HEX[C.woodDark]; g.lineWidth = Math.max(2, vs * .6); g.setLineDash([vs * 2, vs * 1.5]); g.strokeRect(px - bw / 2, py - bh, bw, bh); g.setLineDash([]);
         const raw = sprite("patty-raw"); g.globalAlpha *= .3; g.drawImage(raw.canvas, px - raw.w * vs * .35, py - bh + vs, raw.w * vs * .7, raw.h * vs * .7);
         g.globalAlpha = 1; g.font = "900 " + Math.round(clamp(vs * 3, 11, 18)) + "px " + FONT; g.textAlign = "center"; g.textBaseline = "middle";
-        g.lineJoin = "round"; g.lineWidth = 4; g.strokeStyle = HEX[C.sandLit]; g.strokeText(this.t("ON THE GRILL", "煎肉排中"), px, py - bh / 2);
-        g.fillStyle = HEX[C.woodDark]; g.fillText(this.t("ON THE GRILL", "煎肉排中"), px, py - bh / 2);
+        g.lineJoin = "round"; g.lineWidth = 4; g.strokeStyle = HEX[C.sandLit]; g.strokeText(word, px, py - bh / 2);
+        g.fillStyle = HEX[C.woodDark]; g.fillText(word, px, py - bh / 2);
         this.hits.push({ id: v.layer.id, rect: { x: px - bw / 2, y: py - bh, w: bw, h: bh } });
       } else {
         this.drawSprite(g, id, px, py, vs, angle, squash, { tail: this.reduced ? 0 : v.tail.value });
         this.hits.push({ id: v.layer.id, ingredient: id, x: px, y: py, sx: vs * (1 + squash * .22), sy: vs * (1 - squash * .28), angle, sp });
       }
       g.restore();
-      height += (sp.thick || 4) * (fam === "salad" ? .45 : 1);
+      height += layerThickness(sp.thick || 4, !!v.layer.pending, v.settle === undefined ? undefined : this.now - v.settle) * (fam === "salad" ? .45 : 1);
     });
     for (const v of this.layers.filter(l => l.removed !== undefined && !l.layer.pending)) {
       const p = clamp((this.now - v.removed) / .18, 0, 1);

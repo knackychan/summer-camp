@@ -61,7 +61,7 @@ def run(args):
                         options.update(viewport={'width': width, 'height': height}, has_touch=True, service_workers='block')
                         return browser.new_context(**options)
 
-                context = RECOVERY['context_for'](Touch(), seed=V07['fixture'](16), offline=True)
+                context = RECOVERY['context_for'](Touch(), seed=V07['fixture'](16, pin='counter-ui-26'), offline=True)
                 context.route('https://fonts.googleapis.com/**', lambda route: route.fulfill(body='', content_type='text/css'))
                 # Today's Brain Gym trio is done, so games are open; the lock test re-closes it.
                 context.add_init_script("""(() => {
@@ -183,13 +183,32 @@ def run(args):
                 tap('.kq-tray[data-action="cookPatty"]')
                 s = state()
                 check('Raw patty reserves its place and opens the grill', s['layers'][0]['pending'] and s['view'] == 'grill' and s['kitchen']['grill'][0]['phase'] == 'side-one')
+
+                def patty_words():
+                    # What the plate's reserved patty is called on the ticket, on the customer card and in the hint.
+                    return page.evaluate('''() => ({
+                      heat: document.querySelector('.kq-ticket li.pending').dataset.heat,
+                      row: document.querySelector('.kq-ticket li.pending em').innerText,
+                      card: document.querySelector('.kq-queue .kq-order[aria-pressed="true"] .kq-order-status').innerText,
+                      hint: document.querySelector('.kq-hint').innerText })''')
+                words = patty_words()
+                check('While the patty cooks, the ticket, the customer card and the hint say it is on the grill',
+                      words == {'heat': 'side-one', 'row': 'On the grill', 'card': 'On the grill', 'hint': 'Patty on the grill. It needs a flip soon.'})
                 wait("s.kitchen.grill[0].phase === 'flip'")
+                page.wait_for_timeout(250)
+                words = patty_words()
+                check('When the pan needs a flip, the ticket, the customer card and the hint all say flip',
+                      words == {'heat': 'flip', 'row': 'Flip it!', 'card': 'Flip it!', 'hint': 'Flip the patty!'})
                 check('A busy pan shows in full in the strip', page.locator('.kq-strip [data-pan="0"]').count() == 1)
                 check('A big FLIP prompt appears on the grill', page.evaluate("(() => { const p = document.querySelector('.kq-prompt'); return p.hidden ? null : p.dataset.action; })()") == 'grill:0')
                 tap('.kq-station [data-action="grill:0"]')
                 check('Flip on the pan button', state()['kitchen']['grill'][0]['phase'] == 'side-two')
                 wait("s.kitchen.grill[0].phase === 'ready'")
                 check('A big TAKE IT OUT prompt appears when the patty is done', page.evaluate("(() => { const p = document.querySelector('.kq-prompt'); return p.hidden ? null : p.dataset.action; })()") == 'grill:0')
+                page.wait_for_timeout(250)
+                words = patty_words()
+                check('When the patty is done, the ticket, the customer card and the hint all say ready',
+                      words == {'heat': 'ready', 'row': 'Ready!', 'card': 'Ready!', 'hint': 'Take the patty out of the pan!'})
                 page.screenshot(path=str(out / 'grill-ready.png'))
                 tap('.kq-station [data-action="grill:0"]')
                 s = state()

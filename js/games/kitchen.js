@@ -4,9 +4,9 @@
    middle while customers, orders and every cooking timer stay on screen.
    Rules live in ./kitchen/model.js (unchanged v0.7 domain); this file is input,
    DOM and the hand-off to the pixel counter scene. */
-import { KitchenModel } from "./kitchen/model.js";
+import { KitchenModel, shiftSeeds, seedsFromKey } from "./kitchen/model.js";
 import { LASAGNA_STEPS } from "./kitchen/kitchen.js";
-import { FOOD, RECIPES, REQUESTS, GOALS, HEAT, REJECT, kitchenMessage } from "./kitchen/strings.js";
+import { FOOD, RECIPES, REQUESTS, GOALS, HEAT, PATTY, PATTY_HINT, REJECT, kitchenMessage } from "./kitchen/strings.js";
 import { MENU_RECIPES } from "./kitchen/recipes.js";
 import { normalizeProfile } from "./kitchen/progression.js";
 import { prepPlan } from "./kitchen/prep-plan.js";
@@ -77,11 +77,22 @@ function preparation(k) {
         (row.reserved || row.retry ? '<tr class="kq-reserved"><td colspan="5">' + (row.retry ? pair(row.retry + " patties need a retry at the grill.", row.retry + " 份肉排需要回煎鍋重做。") : pair(row.reserved + " patties already saved for these plates.", "已預留 " + row.reserved + " 份肉排。")) + '</td></tr>' : "");
     }).join("") + '</tbody></table></div>' : '<p class="kq-prep-clear">' + pair("All prepped. Finish the recipes, then serve!", "備料完成，照食譜做好再上菜！") + '</p>');
 }
-function activeHint() {
+/* What the pan holding this layer's patty is doing; a patty with no pan (it should not happen) reads as cooking. */
+function pattyPhase(layerId, k) {
+  const job = k.grill.find(entry => entry.targetLayerId === layerId);
+  return job ? job.phase : "side-one";
+}
+/* The pending patty that needs a hand soonest on the active plate, else whichever one is cooking. */
+function pendingPhase(layers, k) {
+  const phases = layers.filter(l => l.pending).map(l => pattyPhase(l.id, k));
+  return ["burnt", "ready", "flip"].find(phase => phases.includes(phase)) || phases[0] || null;
+}
+function activeHint(k = S.model.kitchen.snapshot()) {
   const m = S.model, report = m.evaluation();
   if (m.phase === "serving") return ["Delicious! Thank you, chef!", "好好吃！謝謝小廚師！"];
   if (m.waiting) return ["A new customer is coming!", "新客人快來了！"];
-  if (m.layers.some(l => l.pending)) return ["Patty on the grill: flip, then collect.", "肉排在煎：翻面後取出。"];
+  const cooking = pendingPhase(m.layers, k);
+  if (cooking) return PATTY_HINT[cooking];
   if (report.correct) return ["Ready to serve!", "可以上菜囉！"];
   const step = report.steps[report.firstMismatch];
   if (step.status === "wrong" || step.status === "extra") return ["Tap the wrong food to take it off.", "點放錯的食材拿掉它。"];
@@ -142,15 +153,17 @@ function strip(k) {
   const plan = button("view:plan", '<span class="kq-chip-copy">' + pair("Prep", "備料") + '</span>', 'class="kq-chip kq-chip--small" aria-pressed="' + (S.view === "plan") + '"');
   return plate + pans + board + oven + plan;
 }
-function ticket() {
+function ticket(k) {
   const m = S.model, report = m.evaluation(), layers = m.layers;
   const remove = layer => 'aria-label="' + t(["Remove " + FOOD[layer.ingredient][0], "移除" + FOOD[layer.ingredient][1]]) + '"';
   const rows = m.order.recipe.sequence.map((id, i) => {
     const layer = layers[i], status = layer && layer.pending ? "pending" : report.steps[i].status;
     // Only the rows that need attention say anything; the highlight carries the rest.
-    const detail = status === "pending" ? ["On the grill", "煎肉排中"] : status === "wrong" ? ["Wrong food", "放錯了"] : null;
-    const body = '<b>' + (i + 1) + '</b>' + icon(id) + '<span>' + label(FOOD[id]) + (detail ? '<em>' + t(detail) + '</em>' : "") + '</span><i class="kq-check">' + (status === "matched" ? "✓" : status === "wrong" ? "✗" : "") + '</i>';
-    return '<li class="' + status + (i === report.firstMismatch ? " next" : "") + '">' + (layer ? button("remove:" + layer.id, body, remove(layer)) : '<div>' + body + '</div>') + '</li>';
+    const heat = status === "pending" ? pattyPhase(layer.id, k) : null;
+    const detail = heat ? PATTY[heat] : status === "wrong" ? ["Wrong food", "放錯了"] : null;
+    const mark = status === "matched" ? "✓" : status === "wrong" ? "✗" : "";
+    const body = '<b>' + (i + 1) + '</b>' + icon(id) + '<span>' + label(FOOD[id]) + (detail ? '<em>' + t(detail) + '</em>' : "") + '</span><i class="kq-check">' + mark + '</i>';
+    return '<li class="' + status + (mark ? "" : " nomark") + (i === report.firstMismatch ? " next" : "") + '"' + (heat ? ' data-heat="' + heat + '"' : "") + '>' + (layer ? button("remove:" + layer.id, body, remove(layer)) : '<div>' + body + '</div>') + '</li>';
   }).join("");
   const extras = layers.slice(m.order.recipe.sequence.length).map(layer => '<li class="extra">' + button("remove:" + layer.id, '<b>+</b>' + icon(layer.ingredient) + '<span>' + label(FOOD[layer.ingredient]) + '<em>' + t(["Extra", "多放了"]) + '</em></span><i class="kq-check">✗</i>', remove(layer)) + '</li>').join("");
   const who = S.cast.of(m.order.id);
@@ -161,13 +174,14 @@ function ticket() {
 /* The customer list is a queue of toasts: who is at the counter, then who is in line.
    Cards are keyed by person so they slide in and out instead of blinking on every redraw. */
 function whoName(who) { return t(who.name); }
-function queueItems() {
+function queueItems(k) {
   const m = S.model, items = [];
   m.stations.forEach(st => {
     const c = S.scene.customers[st.slot], who = S.cast.of(st.order.id);
     if (!who || !c || c.id !== st.order.id || c.state !== "here") return;
     const recipe = st.order.recipe, title = RECIPES[recipe.id];
-    let status = st.evaluation.correct ? ["Ready!", "可以上菜！"] : st.layers.some(l => l.pending) ? ["On the grill", "煎肉排中"] : [st.evaluation.matchedPrefix + " / " + recipe.sequence.length, st.evaluation.matchedPrefix + " / " + recipe.sequence.length];
+    const cooking = pendingPhase(st.layers, k);
+    let status = st.evaluation.correct ? ["Ready!", "可以上菜！"] : cooking ? PATTY[cooking] : [st.evaluation.matchedPrefix + " / " + recipe.sequence.length, st.evaluation.matchedPrefix + " / " + recipe.sequence.length];
     if (st.phase === "serving") status = ["Thank you!", "謝謝！"];
     items.push({ key: "seat:" + who.id, tag: "button", who,
       html: '<img class="kq-face" src="' + portraitURL(who) + '" alt=""><span class="kq-order-copy"><b>' + whoName(who) + '</b><span>' + t(title) + '</span>' +
@@ -182,8 +196,8 @@ function queueItems() {
   });
   return items;
 }
-function syncQueue() {
-  const box = S.root.querySelector(".kq-queue"), items = queueItems();
+function syncQueue(k) {
+  const box = S.root.querySelector(".kq-queue"), items = queueItems(k);
   const live = new Map(Array.from(box.children).filter(el => !el.classList.contains("kq-toast-out")).map(el => [el.dataset.key, el]));
   let prev = null;
   items.forEach(item => {
@@ -362,15 +376,15 @@ function render() {
   S.root.dataset.view = S.view;
   S.root.dataset.lang = LANG;
   html(".kq-strip", strip(k));
-  html(".kq-ticket", ticket());
+  html(".kq-ticket", ticket(k));
   if (S.ticketOrderId !== m.order.id) { S.root.querySelector(".kq-ticket").scrollTop = 0; S.ticketOrderId = m.order.id; }
   html(".kq-orders h3", label(["Customers", "客人"]));
-  syncQueue();
+  syncQueue(k);
   const st = S.root.querySelector(".kq-station");
   st.hidden = S.view === "plate";
   if (S.view !== "plate") html(".kq-station", station(k));
   html(".kq-trays", trays(k));
-  html(".kq-hint", label(activeHint()));
+  html(".kq-hint", label(activeHint(k)));
   const noticeEl = S.root.querySelector(".kq-notice");
   if (noticeEl.textContent && noticeEl.textContent === S.root.querySelector(".kq-hint").textContent) noticeEl.textContent = "";
   if (S.noticeAt && performance.now() - S.noticeAt > NOTICE_MS) { S.root.querySelector(".kq-notice").textContent = ""; S.noticeAt = 0; }
@@ -578,13 +592,20 @@ function init(ctx) {
     '<img class="kq-hand" src="' + iconURL("hand") + '" alt="" aria-hidden="true" hidden>' +
     '<dialog class="kq-dialog"></dialog>';
   const saved = ctx.settings.kitchen && ctx.settings.kitchen.profiles && ctx.settings.kitchen.profiles[ctx.kid];
-  const model = new KitchenModel(29813, true, true, normalizeProfile(saved, ctx.best)); model.requestDifficulty("easy");
+  const profile = normalizeProfile(saved, ctx.best);
+  // One deal per kid per (Taipei) day and amount of progress: different tomorrow, and different again once a
+  // dish has been served since the last visit. The key is on root.dataset.seed and in snapshot().seed; to replay
+  // a shift (a bug report, a test) put that key in settings.kitchen.seed.
+  const pinned = ctx.settings.kitchen && typeof ctx.settings.kitchen.seed === "string" ? ctx.settings.kitchen.seed : "";
+  const seeds = pinned ? seedsFromKey(pinned) : shiftSeeds(ctx.kid, typeof ctx.today === "function" ? ctx.today() : "", profile.totalServed);
+  const model = new KitchenModel(seeds.orders, true, true, profile); model.requestDifficulty("easy");
   const audio = new KitchenAudio(() => !!(ctx.isMuted && ctx.isMuted()));
+  root.dataset.seed = seeds.key;
   ctx.mount.classList.add("kq-stage"); ctx.mount.appendChild(root);
   const canvas = root.querySelector("canvas");
   const reducedMotion = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   S = { root, ctx, model, audio, canvas, scene: null, scheduler: createScheduler(), paused: false, dialog: null, view: "plate", best: Number(ctx.best) || 0, serial: 0, last: 0, drawn: 0, hud: "" };
-  S.cast = new Cast(); S.cast.sync(model.stations);
+  S.cast = new Cast(seeds.cast); S.cast.sync(model.stations);
   const guide = ctx.settings.kitchen && ctx.settings.kitchen.tutorial;
   S.tutorial = model.profile.totalServed === 0 && !(guide && typeof guide === "object" && guide[ctx.kid] === "done");
   S.scene = new CounterScene(canvas, audio, { reducedMotion, lang: LANG, cast: S.cast });
@@ -647,7 +668,7 @@ export default {
   settings, init, stop,
   snapshot() {
     if (!S) return null;
-    return Object.assign(S.model.snapshot(), { paused: S.paused || !!S.covered || !!S.model.pendingMode || S.dialog === "book", dialog: S.dialog, lang: LANG, tutorial: !!S.tutorial, view: S.view, panel: S.view, best: S.best, scene: S.scene.diagnostics });
+    return Object.assign(S.model.snapshot(), { paused: S.paused || !!S.covered || !!S.model.pendingMode || S.dialog === "book", dialog: S.dialog, lang: LANG, seed: S.root.dataset.seed, tutorial: !!S.tutorial, view: S.view, panel: S.view, best: S.best, scene: S.scene.diagnostics });
   },
   /* Test hook: where a plate layer is drawn right now, so a harness can tap the real food. */
   layerPoint(id) { return S ? S.scene.layerPoint(id) : null; }

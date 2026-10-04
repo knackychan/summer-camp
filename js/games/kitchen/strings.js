@@ -10,7 +10,11 @@ export const RECIPES = {
   "garden-salad": ["Garden salad", "田園沙拉"], "baked-lasagna": ["Baked lasagna", "焗烤千層麵"],
   "pickle-crunch-burger": ["Pickle crunch burger", "脆酸黃瓜漢堡"],
   "double-stack-burger": ["Double stack burger", "雙層肉排漢堡"],
-  "chef-salad": ["Chef salad", "主廚沙拉"], "lasagna-feast": ["Lasagna feast", "千層麵盛宴"]
+  "chef-salad": ["Chef salad", "主廚沙拉"], "lasagna-feast": ["Lasagna feast", "千層麵盛宴"],
+  "veggie-melt": ["Veggie melt", "蔬菜起司堡"], "saucy-burger": ["Saucy burger", "醬香漢堡"],
+  "cheese-lover-burger": ["Cheese lover burger", "起司控漢堡"], "crunchy-pickle-salad": ["Crunchy pickle salad", "脆脆酸黃瓜沙拉"],
+  "cheesy-lasagna": ["Cheesy lasagna", "起司千層麵"], "everything-burger": ["Everything burger", "豪華全餐漢堡"],
+  "lasagna-duo": ["Lasagna duo", "雙份千層麵"], "triple-decker-burger": ["Triple decker burger", "三層肉排漢堡"]
 };
 export const REQUESTS = {
   "no-cheese": ["No cheese, please", "請不要加起司"],
@@ -26,6 +30,20 @@ export const HEAT = {
   empty: ["Start cooking", "開始煎肉排"], "side-one": ["Cooking side 1", "正在煎第一面"],
   flip: ["Flip now", "翻面囉"], "side-two": ["Cooking side 2", "正在煎第二面"],
   baking: ["Baking", "烘烤中"], ready: ["Collect", "取出"], burnt: ["Try again", "再試一次"]
+};
+/* What the patty reserved on a plate is doing right now. The ticket row, the customer card, the hint
+   under the counter and the dashed tray on the plate all read from here, so they can never disagree
+   with the pan. Keyed by the pan's phase. */
+export const PATTY = {
+  "side-one": ["On the grill", "煎肉排中"], "side-two": ["On the grill", "煎肉排中"],
+  flip: ["Flip it!", "翻面囉！"], ready: ["Ready!", "煎好了！"], burnt: ["Try again", "再試一次"]
+};
+export const PATTY_HINT = {
+  "side-one": ["Patty on the grill. It needs a flip soon.", "肉排在煎，等一下要翻面。"],
+  "side-two": ["Patty on the grill. Almost done!", "肉排在煎，快好了！"],
+  flip: ["Flip the patty!", "把肉排翻面！"],
+  ready: ["Take the patty out of the pan!", "把肉排從鍋子取出來！"],
+  burnt: ["That patty got too dark. Try a fresh one!", "這份肉排煎太久了，再煎一份新的吧！"]
 };
 export const REJECT = {
   full: ["The plate is full. Remove a layer first.", "盤子滿了，先移除一層食材。"],

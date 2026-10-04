@@ -1303,6 +1303,7 @@ function gameCtx(mountEl,game,kidId){
     settings:settings, rand:rand, shuffle:shuffle,
     isOverlayOpen:function(){return !!document.querySelector("body > .overlay:not(.hidden)");},
     isMuted:function(){return !sound;},
+    today:function(){return SQ_DAY.iso();},
     kids:KIDS, best:bestOf(kidId,game.bestKey||""),
     stars:starsOf(kidId),
     words:{easy:WORDS_EASY, hard:ALL_WORDS, all:ALL_WORDS, sentences:SENT, letters:LETTERS,

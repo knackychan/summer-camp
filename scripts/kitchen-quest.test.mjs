@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
-import { KitchenModel } from '../js/games/kitchen/model.js';
-import { LASAGNA_STEPS } from '../js/games/kitchen/kitchen.js';
-import { MENU_RECIPES, RecipeDeck, customizeRecipe, evaluateRecipe } from '../js/games/kitchen/recipes.js';
+import { KitchenModel, ALL_INGREDIENTS, shiftSeeds } from '../js/games/kitchen/model.js';
+import { LASAGNA_STEPS, CAPACITY } from '../js/games/kitchen/kitchen.js';
+import { FOOD, RECIPES, REQUESTS, PATTY, PATTY_HINT } from '../js/games/kitchen/strings.js';
+import { SPRITE_IDS, ICON_IDS } from '../js/games/kitchen/sprites.js';
+import { CAST, Cast, speech } from '../js/games/kitchen/customers.js';
+import { PENDING_THICK, layerThickness } from '../js/games/kitchen/scene.js';
+import { MENU_RECIPES, GUIDED_SERVES, RecipeDeck, customizeRecipe, evaluateRecipe } from '../js/games/kitchen/recipes.js';
 import { normalizeProfile, goalsFor, recordServe } from '../js/games/kitchen/progression.js';
 import { drawIngredient, drawKitchen, WIDTH, HEIGHT } from '../js/games/kitchen/pixel-art.js';
 import { HEX } from '../js/world/planet-palette.js';
@@ -288,10 +292,12 @@ assert.equal(reloaded.order.recipe.id, 'cheese-burger');
 assert.deepEqual(reloaded.snapshot().profile, earned);
 assert.notEqual(reloaded.profile, reloaded.profile);
 
-// Every expanded dish and generated request can be prepared through the real stations and served.
-const fullMenu = create('standard', normalizeProfile(undefined, 16));
+// Every dish and generated request can be prepared through the real stations and served.
+const everyDish = Math.max(...MENU_RECIPES.map(recipe => recipe.unlockAt));
+const fullMenu = create('standard', normalizeProfile(undefined, everyDish));
 const cookedRecipes = new Set(), cookedRequests = new Set();
-for (let served = 0; served < 16; served++) {
+let servedFull = 0;
+for (; servedFull < 80 && (cookedRecipes.size < MENU_RECIPES.length || cookedRequests.size < 3); servedFull++) {
   const order = fullMenu.order;
   for (const ingredient of order.recipe.sequence) {
     if (ingredient === 'patty' && fullMenu.kitchen.available(ingredient) === 0) {
@@ -324,9 +330,115 @@ for (let served = 0; served < 16; served++) {
   fullMenu.selectOrder(1 - fullMenu.activeSlot);
 }
 assert.equal(cookedRecipes.size, MENU_RECIPES.length);
+assert.ok(servedFull < 60, 'a shuffled deal reaches every dish in a reasonable number of orders: ' + servedFull);
 assert.deepEqual([...cookedRequests].sort(), ['extra-pickles', 'extra-tomato', 'no-cheese']);
-assert.equal(fullMenu.profile.totalServed, 32);
+assert.equal(fullMenu.profile.totalServed, everyDish + servedFull);
 assert.equal(Object.values(state(fullMenu).held).reduce((sum, amount) => sum + amount, 0), 0);
+
+// Recipe audit: every dish is well formed, preparable, drawable, bilingual and unlocked in order.
+const hasChinese = text => /[\u4e00-\u9fff]/.test(text);
+const stationFor = id => id === 'patty' ? 'grill' : id === 'lasagna' ? 'oven' : id === 'tomato' || id === 'lettuce' ? 'board' : 'pantry';
+assert.equal(new Set(MENU_RECIPES.map(recipe => recipe.id)).size, MENU_RECIPES.length, 'duplicate recipe id');
+assert.equal(new Set(MENU_RECIPES.map(recipe => recipe.sequence.join('|'))).size, MENU_RECIPES.length, 'two recipes share one sequence');
+assert.deepEqual(Object.keys(RECIPES).sort(), MENU_RECIPES.map(recipe => recipe.id).sort(), 'every recipe has a name and every name a recipe');
+for (const recipe of MENU_RECIPES) {
+  const where = recipe.id;
+  assert.ok(['burger', 'salad', 'lasagna'].includes(recipe.family), where + ' family');
+  assert.ok(recipe.sequence.length >= 1 && recipe.sequence.length <= 8, where + ' has 1 to 8 steps');
+  assert.ok(recipe.sequence.length + 2 <= fullMenu.maxLayers, where + ' leaves room on the plate for a request and a slip');
+  for (const ingredient of recipe.sequence) {
+    assert.ok(ALL_INGREDIENTS.includes(ingredient), where + ' uses unknown ' + ingredient);
+    assert.ok(FOOD[ingredient] && FOOD[ingredient].length === 2 && FOOD[ingredient].every(Boolean) && hasChinese(FOOD[ingredient][1]), ingredient + ' is bilingual');
+    assert.ok(SPRITE_IDS.includes(ingredient), where + ': no plate sprite for ' + ingredient);
+    assert.ok(ICON_IDS.includes(ingredient), where + ': no tray icon for ' + ingredient);
+    assert.ok(['grill', 'oven', 'board', 'pantry'].includes(stationFor(ingredient)));
+  }
+  assert.ok(RECIPES[recipe.id].length === 2 && RECIPES[recipe.id].every(Boolean) && hasChinese(RECIPES[recipe.id][1]), where + ' name is bilingual');
+  assert.ok(recipe.required.lasagna <= 4, where + ': one bake makes four portions');
+  assert.ok(recipe.required.lasagna <= CAPACITY.lasagna && recipe.required.patty <= CAPACITY.patty, where + ' fits the shelf');
+  assert.equal(evaluateRecipe(recipe.sequence, recipe.sequence).correct, true);
+  // Whatever customers ask for, the changed ticket is still a valid, serveable dish.
+  for (const request of Object.keys(REQUESTS)) {
+    const changed = customizeRecipe(recipe, request);
+    assert.equal(evaluateRecipe(changed.sequence, changed.sequence).correct, true);
+    assert.ok(changed.sequence.length >= 1 && changed.sequence.length + 2 <= fullMenu.maxLayers, where + ' + ' + request);
+  }
+}
+for (const request of Object.keys(REQUESTS)) assert.ok(REQUESTS[request].every(Boolean) && hasChinese(REQUESTS[request][1]), request);
+// Unlocks never go backwards, never leave a hole wider than four dishes, and start with the tour.
+const unlocks = MENU_RECIPES.map(recipe => recipe.unlockAt);
+assert.deepEqual(unlocks, [...unlocks].sort((a, b) => a - b));
+const steps = [...new Set(unlocks)];
+steps.slice(1).forEach((step, index) => assert.ok(step - steps[index] <= 4, 'gap before ' + step));
+assert.equal(unlocks.filter(unlockAt => unlockAt === 0).length, GUIDED_SERVES);
+assert.ok(MENU_RECIPES.length >= 14);
+// The lasagna tray holds exactly six layers: a seventh is refused with the full-tray message.
+assert.equal(LASAGNA_STEPS.length, 6);
+const tray = create();
+for (let layer = 0; layer < 7; layer++) kitchen(tray, 'lasagna:add:' + LASAGNA_STEPS[layer % 6]);
+assert.equal(state(tray).lasagnaLayers.length, 6);
+assert.equal(kitchen(tray, 'lasagna:add:pasta').ok, false);
+// Every regular can ask for every dish in both languages.
+for (const who of CAST) for (const recipe of MENU_RECIPES) {
+  const english = speech(who, { recipe }, 'en'), chinese = speech(who, { recipe }, 'zh');
+  assert.ok(english.includes(RECIPES[recipe.id][0].toLowerCase()) || english.includes(RECIPES[recipe.id][0].toUpperCase()), who.id + ' / ' + recipe.id);
+  assert.ok(chinese.includes(RECIPES[recipe.id][1]), who.id + ' / ' + recipe.id);
+}
+
+// A shift is dealt from kid + day + progress: reproducible from its key, different when any part changes.
+const deal = (seed, served, count = 12) => {
+  const dealer = new KitchenModel(seed, true, true, normalizeProfile(undefined, served)); dealer.requestDifficulty('easy');
+  // Two customers are seated at once, so the first two dishes are already on their tickets.
+  return [...dealer.stations.map(station => station.order.recipe.id), ...Array.from({ length: count - 2 }, () => dealer.deck.next().id)];
+};
+const seedFor = (kid, day, served) => shiftSeeds(kid, day, served);
+assert.deepEqual(seedFor('luis', '2026-10-04', 9), seedFor('luis', '2026-10-04', 9));
+assert.equal(seedFor('luis', '2026-10-04', 9).key, 'luis:2026-10-04:9');
+assert.ok(Number.isInteger(seedFor('luis', '2026-10-04', 9).orders) && seedFor('luis', '2026-10-04', 9).orders >= 0);
+assert.notEqual(seedFor('luis', '2026-10-04', 9).orders, seedFor('luis', '2026-10-04', 9).cast);
+const base = seedFor('luis', '2026-10-04', 9).orders;
+for (const other of [seedFor('ana', '2026-10-04', 9), seedFor('luis', '2026-10-05', 9), seedFor('luis', '2026-10-04', 10)]) assert.notEqual(other.orders, base);
+const days = Array.from({ length: 14 }, (_, day) => '2026-10-' + String(day + 1).padStart(2, '0'));
+const shifts = days.map(day => deal(seedFor('luis', day, 20).orders, 20));
+assert.deepEqual(shifts[0], deal(seedFor('luis', days[0], 20).orders, 20), 'same key, same shift');
+assert.ok(new Set(shifts.map(dealt => dealt.join())).size >= 12, 'nearly every day is a different shift');
+assert.ok(new Set(shifts.map(dealt => dealt[0])).size >= 4, 'the first dish varies from day to day');
+assert.ok(shifts.every(dealt => dealt.length === 12 && dealt.every(id => MENU_RECIPES.some(recipe => recipe.id === id))));
+// A cook who has not done the starting tour still gets it in authored order, whatever the day.
+const tour = MENU_RECIPES.filter(recipe => recipe.unlockAt < GUIDED_SERVES).map(recipe => recipe.id);
+for (const day of days) assert.deepEqual(deal(seedFor('luis', day, GUIDED_SERVES - 1).orders, GUIDED_SERVES - 1, tour.length), tour);
+// A cook past the tour is shuffled, and a dish unlocked mid-shift still arrives next.
+const veteran = new KitchenModel(seedFor('luis', days[3], 30).orders, true, true, normalizeProfile(undefined, 30)); veteran.requestDifficulty('easy');
+assert.equal(veteran.deck.recipes.length, MENU_RECIPES.filter(recipe => recipe.unlockAt <= 30).length);
+veteran.deck.next();
+veteran.deck.unlock([MENU_RECIPES[MENU_RECIPES.length - 1]]);
+assert.equal(veteran.deck.next().id, MENU_RECIPES[MENU_RECIPES.length - 1].id);
+assert.equal(veteran.snapshot().session > 0, true);
+// Customers walk in different orders on different days, and the same order on the same day.
+const firstFaces = days.map(day => { const cast = new Cast(seedFor('luis', day, 20).cast); const out = []; for (let i = 0; i < 4; i++) out.push(cast.draw(cast.visible()).id); return out.join(); });
+assert.ok(new Set(firstFaces).size >= 12);
+const castA = new Cast(seedFor('luis', days[0], 20).cast), castB = new Cast(seedFor('luis', days[0], 20).cast);
+assert.deepEqual([castA.draw(new Set()).id, castA.draw(new Set()).id], [castB.draw(new Set()).id, castB.draw(new Set()).id]);
+// The request rotation starts in a different place for different seeds but always visits all three requests.
+const offsets = new Set(days.map(day => new KitchenModel(seedFor('luis', day, 20).orders, true, true).requestOffset));
+assert.ok(offsets.size > 1 && [...offsets].every(offset => [0, 1, 2].includes(offset)));
+
+// A patty reserved on the plate is described by what its pan is doing, in both languages.
+for (const phase of ['side-one', 'side-two', 'flip', 'ready', 'burnt']) {
+  assert.ok(PATTY[phase].length === 2 && PATTY[phase].every(Boolean) && hasChinese(PATTY[phase][1]), 'status ' + phase);
+  assert.ok(PATTY_HINT[phase].length === 2 && PATTY_HINT[phase].every(Boolean) && hasChinese(PATTY_HINT[phase][1]), 'hint ' + phase);
+}
+assert.notDeepEqual(PATTY.flip, PATTY.ready);
+assert.notDeepEqual(PATTY['side-one'], PATTY.ready);
+// ...and it keeps the room it will fill: the dashed tray is taller than a cooked patty, and the extra melts away on landing.
+assert.ok(PENDING_THICK > 7);
+assert.equal(layerThickness(7, true, undefined), PENDING_THICK);
+assert.equal(layerThickness(3, false, undefined), 3, 'a cheese slice is never padded');
+assert.equal(layerThickness(7, false, 0), PENDING_THICK);
+assert.ok(layerThickness(7, false, .1) < PENDING_THICK && layerThickness(7, false, .1) > 7);
+assert.equal(layerThickness(7, false, .25), 7);
+const heights = [0, .05, .1, .15, .2].map(age => layerThickness(7, false, age));
+assert.deepEqual(heights, [...heights].sort((a, b) => b - a), 'the stack settles smoothly, never bounces');
 
 // Rendering stays on the shared palette and an integer pixel grid for every food.
 let rectangles = 0;
@@ -358,4 +470,4 @@ assert.equal(canvas.height, HEIGHT);
 assert.equal(context.imageSmoothingEnabled, false);
 assert.ok(rectangles > 1000);
 
-console.log('Kitchen Quest checks passed: recipes, orders, cooking, stock, prep, difficulty, stale input, saved shifts, unlocks, requests and pixel rendering.');
+console.log('Kitchen Quest checks passed: recipes, recipe audit, daily deals, orders, cooking, patty status, stock, prep, difficulty, stale input, saved shifts, unlocks, requests and pixel rendering.');
