@@ -20,3 +20,10 @@ Today Brick Lab changes a brick by calling `addPiece` / `removePiece` / recolour
 - `scripts/check-brick-lab-ui.py` unchanged and still green (solo behaviour identical).
 
 **DONE WHEN:** `node scripts/check.mjs` green; both tests pass; solo play on a tablet feels unchanged.
+
+## As built (2026-10-04)
+- `brick-share.js`: `checkOp`, `applyOp` (returns the inverse with `expect`), `createSequencer`, `createClient`, `createUndo`, `encode` / `decode` (one JSON line, 64 KB cap), `PROTO = 1`. A rejected request takes no `seq`. A new piece belongs to the asker (`by`); an undone delete keeps its first owner. Position checks: centre on the plate (|x|, |z| ≤ 32), 0 < y ≤ 200, rotation 0/90/180/270; the stacking height itself is the lab's job.
+- `brick-lab.js`: one sequencer per open world over `this.pieces`; `commit(op)` submits and `showOp()` brings the 3D scene in line; `change(op)` adds the solo undo snapshot and drops it again if the op is refused. Place, copy, drop-after-Move, drag, turn, recolour and remove all go through it. `addObject()` was split out of `addPiece()`, which still loads worlds and solo undo.
+- `sw.js` precaches `brick-share.js` (cache `summer-quest-v167-brick-share`).
+
+**Verified 2026-10-04:** `check.mjs` green (includes `scripts/brick-share.test.mjs`, 11 tests); `check-brick-lab-ui.py` 105/105 twice (every older check unchanged, plus "a placed piece remembers who placed it"). The "back to red" icon check now proves nothing was redrawn instead of racing a 150 ms timer.

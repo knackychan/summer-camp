@@ -11,6 +11,7 @@ import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, wor
 import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
+import { createSequencer } from "./brick-share.js";
 
 let THREE = null;
 let OrbitControls = null;
@@ -1643,6 +1644,7 @@ export class BrickLabRuntime {
     const stale = saved.grid !== GRID_VERSION;
     const pieces = stale ? this.settle(saved.pieces) : saved.pieces;
     pieces.forEach((instance) => this.addPiece(instance, false));
+    this.sequencer = createSequencer({ world: this.pieces, rules: this.shareRules() });
     this.syncRails();
     if (stale && pieces.length) this.scheduleSave();
     this.setMode("build", { quiet: true });
@@ -1658,6 +1660,7 @@ export class BrickLabRuntime {
     clearTimeout(this.saveTimer);
     this.saveNow(false, this.captureThumb());
     this.worldId = null;
+    this.sequencer = null;
     this.clearPlate();
     this.showMenu();
     return true;
@@ -1706,21 +1709,92 @@ export class BrickLabRuntime {
       z: Number(instance.z) || 0,
       rotation: normalRotation(instance.rotation),
     };
-    const part = getPart(clean.partId);
-    const object = makePieceMesh(part, getColorHex(clean.colorId), this.kit);
-    object.position.set(clean.x, clean.y, clean.z);
-    object.rotation.y = clean.rotation * Math.PI / 180;
-    object.userData.sqblPieceId = clean.id;
-    object.userData.sqblPieceRoot = true;
-    object.traverse((child) => {
-      if (child.isMesh) child.userData.sqblPieceId = clean.id;
-    });
-    this.scene.add(object);
+    if (typeof instance.by === "string") clean.by = instance.by;
     this.pieces.set(clean.id, clean);
-    this.sceneObjects.set(clean.id, object);
-    this.freeEndsCache = null;
+    this.addObject(clean);
     if (persist) this.scheduleSave();
     return clean.id;
+  }
+
+  /* The 3D object for a piece already in `pieces`. */
+  addObject(piece) {
+    const object = makePieceMesh(getPart(piece.partId), getColorHex(piece.colorId), this.kit);
+    object.position.set(piece.x, piece.y, piece.z);
+    object.rotation.y = piece.rotation * Math.PI / 180;
+    object.userData.sqblPieceId = piece.id;
+    object.userData.sqblPieceRoot = true;
+    object.traverse((child) => {
+      if (child.isMesh) child.userData.sqblPieceId = piece.id;
+    });
+    this.scene.add(object);
+    this.sceneObjects.set(piece.id, object);
+    this.freeEndsCache = null;
+  }
+
+  /* Multiplayer plan slice 02 (D5): every change is an op through the
+     sequencer — in-process when building alone, the host tablet's when
+     building together. The host's checks are the catalog, the plate and
+     the rail rules (D10). */
+  shareRules() {
+    return {
+      part: (id) => PARTS.find((part) => part.id === id) || null,
+      color: (id) => Object.prototype.hasOwnProperty.call(COLORS, id),
+      half: BASE_HALF,
+      blocked: (piece, ignoreId) => {
+        const part = getPart(piece.partId);
+        return isRail(part) && railClash(part, piece.x, piece.z, piece.rotation, this.railList(this.pieces, ignoreId), ignoreId);
+      },
+    };
+  }
+
+  /* Submit an op; on success the scene follows. Returns the applied change or null. */
+  commit(op) {
+    if (!this.sequencer) return null;
+    const result = this.sequencer.submit(this.kidId, { id: uid("req"), op });
+    if (result.t !== "apply") return null;
+    this.showOp(result.op, result.inverse);
+    return result;
+  }
+
+  /* commit() with a solo undo snapshot, dropped again when the op is refused. */
+  change(op) {
+    this.recordHistory();
+    const done = this.commit(op);
+    if (!done) {
+      this.history.pop();
+      this.updateUndoUI();
+    }
+    return done;
+  }
+
+  /* Bring the 3D scene in line with an op already applied to `pieces`. */
+  showOp(op, inverse) {
+    this.freeEndsCache = null;
+    if (op.type === "add") this.addObject(this.pieces.get(op.piece.id));
+    else if (op.type === "remove") {
+      const object = this.sceneObjects.get(op.id);
+      if (object) {
+        this.scene.remove(object);
+        disposeTree(object);
+      }
+      this.sceneObjects.delete(op.id);
+      if (this.selectedId === op.id) this.selectPiece(null);
+      if (this.moveId === op.id) { this.moveId = null; this.ghost.visible = false; }
+    } else if (op.type === "move") {
+      const piece = this.pieces.get(op.id);
+      const object = this.sceneObjects.get(op.id);
+      object.position.set(piece.x, piece.y, piece.z);
+      object.rotation.y = piece.rotation * Math.PI / 180;
+    } else if (op.type === "recolor") {
+      /* Swap the cached material in place: no rebuild, no DOM. The wheel's
+         tyre and the flower's centre keep their own colours. */
+      const from = this.kit.mat(getColorHex(inverse.colorId));
+      const to = this.kit.mat(getColorHex(op.colorId));
+      this.sceneObjects.get(op.id).traverse((node) => {
+        if (node.material === from) node.material = to;
+      });
+    }
+    this.scheduleSave();
   }
 
   removePiece(id, persist = true) {
@@ -2047,13 +2121,11 @@ export class BrickLabRuntime {
     if (!instance || !object) return true;
     const pos = drag.pos;
     this.snap = null;
-    if (cancelled || !pos || drag.blocked || (pos.x === instance.x && pos.y === instance.y && pos.z === instance.z)) {
+    const still = cancelled || !pos || drag.blocked || (pos.x === instance.x && pos.y === instance.y && pos.z === instance.z);
+    if (still || !this.change({ type: "move", id: drag.id, x: pos.x, y: pos.y, z: pos.z, rotation: instance.rotation })) {
       object.position.set(instance.x, instance.y, instance.z);
-      if (drag.blocked && !cancelled) this.setHint("🛤️", HINTS.railBusy);
+      if ((drag.blocked || !still) && !cancelled) this.setHint("🛤️", HINTS.railBusy);
     } else {
-      this.recordHistory();
-      Object.assign(instance, pos);
-      this.scheduleSave();
       this.setHint("✓", HINTS.moved);
       this.haptic("tap");
       this.syncRails(drag.id, true);
@@ -2082,17 +2154,16 @@ export class BrickLabRuntime {
       if (!targetHit) return;
       const instance = this.pieces.get(this.moveId);
       const land = this.landing(targetHit.point, getPart(instance.partId), instance.rotation, this.moveId);
-      if (land.blocked) { this.setHint("🛤️", HINTS.railBusy); return; }
-      this.recordHistory();
       const pos = land.pos;
-      Object.assign(instance, pos);
-      this.sceneObjects.get(this.moveId).position.set(pos.x, pos.y, pos.z);
+      if (land.blocked || !this.change({ type: "move", id: this.moveId, x: pos.x, y: pos.y, z: pos.z, rotation: instance.rotation })) {
+        this.setHint("🛤️", HINTS.railBusy);
+        return;
+      }
       const moved = this.moveId;
       this.moveId = null;
       this.snap = null;
       this.ghost.visible = false;
       this.selectPiece(moved);
-      this.scheduleSave();
       this.setHint("✓", HINTS.moved);
       this.syncRails(moved, true);
       return;
@@ -2103,8 +2174,11 @@ export class BrickLabRuntime {
       if (!targetHit) return;
       const part = getPart(this.activePartId);
       const land = this.landing(targetHit.point, part);
-      if (land.blocked) { this.setHint("🛤️", HINTS.railBusy); return; }
-      const id = this.addPiece({ id: uid(), partId: part.id, colorId: this.activeColorId, ...land.pos, rotation: 0 }, true);
+      const id = uid();
+      if (land.blocked || !this.change({ type: "add", piece: { id, partId: part.id, colorId: this.activeColorId, ...land.pos, rotation: 0 } })) {
+        this.setHint("🛤️", HINTS.railBusy);
+        return;
+      }
       this.placementArmed = false;
       this.snap = null;
       this.selectPiece(id);
@@ -2184,25 +2258,16 @@ export class BrickLabRuntime {
   /* Turning a piece whose sides differ in parity re-centres it on the studs. */
   rotateSelected() {
     if (!this.selectedId) return;
-    this.recordHistory();
     const id = this.selectedId;
     const instance = this.pieces.get(id);
     const rotation = (instance.rotation + 90) % 360;
     const land = this.landing(instance, getPart(instance.partId), rotation, id);
     /* A rail that would clip its neighbour once turned stays as it is. */
-    if (land.blocked) {
-      this.history.pop();
-      this.updateUndoUI();
+    if (land.blocked || !this.change({ type: "move", id, ...land.pos, rotation })) {
       this.setHint("🛤️", HINTS.railBusy);
       return;
     }
-    instance.rotation = rotation;
-    Object.assign(instance, land.pos);
-    const object = this.sceneObjects.get(id);
-    object.rotation.y = instance.rotation * Math.PI / 180;
-    object.position.set(instance.x, instance.y, instance.z);
     this.selectPiece(id);
-    this.scheduleSave();
     this.haptic("tap");
     this.syncRails(id, true);
   }
@@ -2225,7 +2290,11 @@ export class BrickLabRuntime {
       if (!spot) { this.setHint("🛤️", HINTS.railBusy); return; }
     }
     const pos = this.placementFor(spot, part, spot.rotation);
-    const id = this.addPiece({ ...original, id: uid(), ...pos, rotation: spot.rotation }, true);
+    const id = uid();
+    if (!this.change({ type: "add", piece: { id, partId: original.partId, colorId: original.colorId, ...pos, rotation: spot.rotation } })) {
+      this.setHint("🛤️", HINTS.railBusy);
+      return;
+    }
     this.selectPiece(id);
     this.focusPiece(id, 5.5);
     this.syncRails(id, true);
@@ -2233,8 +2302,7 @@ export class BrickLabRuntime {
 
   deleteSelected() {
     if (!this.selectedId) return;
-    const id = this.selectedId;
-    this.removePiece(id, true);
+    if (!this.change({ type: "remove", id: this.selectedId })) return;
     this.syncRails();
     this.setHint("🗑️", HINTS.removed);
     this.haptic("tap");
@@ -2254,20 +2322,10 @@ export class BrickLabRuntime {
     this.setHint("☝️", HINTS.moveTo);
   }
 
-  /* Swap the cached material in place: no rebuild, no DOM. The wheel's tyre
-     and the flower's centre keep their own colours. */
   recolorSelected(colorId) {
     if (!this.selectedId) return;
-    const instance = this.pieces.get(this.selectedId);
-    if (instance.colorId === colorId) return;
-    this.recordHistory();
-    const from = this.kit.mat(getColorHex(instance.colorId));
-    const to = this.kit.mat(getColorHex(colorId));
-    instance.colorId = colorId;
-    this.sceneObjects.get(this.selectedId).traverse((node) => {
-      if (node.material === from) node.material = to;
-    });
-    this.scheduleSave();
+    if (this.pieces.get(this.selectedId).colorId === colorId) return;
+    this.change({ type: "recolor", id: this.selectedId, colorId });
   }
 
   setMode(mode, options = {}) {

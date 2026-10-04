@@ -15,6 +15,7 @@ gets the reduced tier (studs painted on the plate, Lambert light, a fraction of 
 places pieces. Slice 14: a standard tablet that can't keep up steps down (painted studs, no shadows)
 without resizing the view. Slice 15: a part slid sideways out of the rail places where it is let go.
 Multiplayer plan slice 08: part icons are the real part, in the picked colour, drawn on the lab's own canvas.
+Multiplayer plan slice 02: every change goes through the op sequencer (placed pieces carry `by`).
 Multiplayer plan slice 01: the lab opens on the kid's worlds (the old single build becomes world 1); a new
 world starts empty; rename and delete from a card; Back leaves a world for the menu with its picture saved.
 A pre-reader profile shows the icon-first UI.
@@ -343,8 +344,10 @@ def run(args):
                 check('Rails keep their own colours: one icon per rail part', icons(lambda k: ':' not in k))
                 page.screenshot(path=str(out / 'icons-rails.png'), clip=rail_box)
                 page.locator('.sqbl-color[data-color="red"]').click()
+                drawn = snap()['tray']['iconsCached']
                 pick(page, 'bricks')
-                check('Back to red: icons come from the cache at once', icons(lambda k: k.endswith(':red'), wait=150))
+                check('Back to red: icons come from the cache, nothing redrawn', icons(lambda k: k.endswith(':red'), wait=400)
+                      and snap()['tray']['iconsCached'] == drawn)
                 check('Rail targets are tablet-sized', all(min(page.locator(sel).bounding_box()['width'], page.locator(sel).bounding_box()['height']) >= 44
                       for sel in ('.sqbl-rail-back', '.sqbl-rail-find', '.sqbl-part-slot >> nth=0')))
                 box = page.locator('.sqbl-stage canvas').bounding_box()
@@ -355,6 +358,8 @@ def run(args):
                 s = snap()
                 check('Tap places a piece and selects it', len(s['pieces']) == STARTER + 1 and s['selectedId'] and not s['placementArmed'])
                 placed = s['selectedId']
+                check('A placed piece remembers who placed it (multiplayer plan slice 02)',
+                      next(p for p in s['pieces'] if p['id'] == placed).get('by') == 'luis')
                 act('rotate')
                 rotated = next(p for p in snap()['pieces'] if p['id'] == placed)['rotation']
                 check('Rotate turns 90°', rotated == 90)
