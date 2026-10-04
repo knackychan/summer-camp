@@ -22,21 +22,25 @@ export const MENU_RECIPES = Object.freeze([
     recipe('double-stack-burger', ['patty', 'cheese', 'patty', 'cheese', 'pickles'], 'burger', 8),
     recipe('chef-salad', ['lettuce', 'tomato', 'pickles', 'cheese', 'tomato', 'sauce'], 'salad', 12),
     recipe('lasagna-feast', ['lasagna', 'lettuce', 'tomato', 'cheese'], 'lasagna', 16),
-    // Unlocks continue every four dishes. Only foods the kitchen already has, so no new tray,
-    // stock or sprite: each is a new order of the same pieces, from 2 to 7 steps.
+    // Unlocks continue every three dishes (the first nine unlock every four). Only foods the kitchen
+    // already has, so no new tray or stock: each is a new order of the same pieces, from 2 to 7 steps.
     recipe('veggie-melt', ['cheese', 'tomato', 'lettuce'], 'burger', 20),
-    recipe('saucy-burger', ['patty', 'sauce', 'lettuce', 'tomato'], 'burger', 24),
-    recipe('cheese-lover-burger', ['patty', 'cheese', 'cheese', 'cheese'], 'burger', 28),
-    recipe('crunchy-pickle-salad', ['lettuce', 'pickles', 'cheese', 'pickles', 'sauce'], 'salad', 32),
-    recipe('cheesy-lasagna', ['lasagna', 'cheese', 'sauce'], 'lasagna', 36),
-    recipe('everything-burger', ['patty', 'cheese', 'tomato', 'lettuce', 'pickles', 'sauce'], 'burger', 40),
-    recipe('lasagna-duo', ['lasagna', 'lasagna', 'cheese'], 'lasagna', 44),
-    recipe('triple-decker-burger', ['patty', 'cheese', 'patty', 'tomato', 'patty', 'cheese', 'sauce'], 'burger', 48)
+    recipe('saucy-burger', ['patty', 'sauce', 'lettuce', 'tomato'], 'burger', 23),
+    recipe('cheese-lover-burger', ['patty', 'cheese', 'cheese', 'cheese'], 'burger', 26),
+    recipe('crunchy-pickle-salad', ['lettuce', 'pickles', 'cheese', 'pickles', 'sauce'], 'salad', 29),
+    recipe('cheesy-lasagna', ['lasagna', 'cheese', 'sauce'], 'lasagna', 32),
+    recipe('everything-burger', ['patty', 'cheese', 'tomato', 'lettuce', 'pickles', 'sauce'], 'burger', 35),
+    recipe('lasagna-duo', ['lasagna', 'lasagna', 'cheese'], 'lasagna', 38),
+    recipe('triple-decker-burger', ['patty', 'cheese', 'patty', 'tomato', 'patty', 'cheese', 'sauce'], 'burger', 41),
+    // Sandwiches: toast instead of buns, same fillings. The first plate family added since the menu began.
+    recipe('cheese-sandwich', ['cheese', 'tomato'], 'sandwich', 44),
+    recipe('garden-sandwich', ['lettuce', 'tomato', 'cheese', 'pickles'], 'sandwich', 47),
+    recipe('patty-melt', ['patty', 'cheese', 'sauce'], 'sandwich', 50)
 ]);
 /** The starting menu is the guided tour: it is dealt in authored order until a cook has served that many dishes. */
 export const GUIDED_SERVES = MENU_RECIPES.filter(entry => entry.unlockAt === 0).length;
 /** Dishes named for an ingredient never ask to drop it ("no cheese" on a Cheese lover burger). */
-const NO_REQUESTS = new Set(['cheese-lover-burger', 'cheesy-lasagna']);
+const NO_REQUESTS = new Set(['cheese-lover-burger', 'cheesy-lasagna', 'cheese-sandwich']);
 /** Requests change the ticket and its ingredient counts together, leaving the menu untouched. */
 export function customizeRecipe(base, request) {
     if (NO_REQUESTS.has(base.id)) return base;

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { KitchenModel, ALL_INGREDIENTS, shiftSeeds } from '../js/games/kitchen/model.js';
 import { LASAGNA_STEPS, CAPACITY } from '../js/games/kitchen/kitchen.js';
 import { FOOD, RECIPES, REQUESTS, PATTY, PATTY_HINT } from '../js/games/kitchen/strings.js';
-import { SPRITE_IDS, ICON_IDS } from '../js/games/kitchen/sprites.js';
+import { SPRITE_IDS, ICON_IDS, COVER } from '../js/games/kitchen/sprites.js';
 import { CAST, Cast, speech } from '../js/games/kitchen/customers.js';
 import { PENDING_THICK, layerThickness } from '../js/games/kitchen/scene.js';
 import { MENU_RECIPES, GUIDED_SERVES, RecipeDeck, customizeRecipe, evaluateRecipe } from '../js/games/kitchen/recipes.js';
@@ -343,7 +343,8 @@ assert.equal(new Set(MENU_RECIPES.map(recipe => recipe.sequence.join('|'))).size
 assert.deepEqual(Object.keys(RECIPES).sort(), MENU_RECIPES.map(recipe => recipe.id).sort(), 'every recipe has a name and every name a recipe');
 for (const recipe of MENU_RECIPES) {
   const where = recipe.id;
-  assert.ok(['burger', 'salad', 'lasagna'].includes(recipe.family), where + ' family');
+  assert.ok(['burger', 'salad', 'lasagna', 'sandwich'].includes(recipe.family), where + ' family');
+  if (COVER[recipe.family]) assert.ok(COVER[recipe.family].every(id => SPRITE_IDS.includes(id)), where + ': no sprite for its bread or bun');
   assert.ok(recipe.sequence.length >= 1 && recipe.sequence.length <= 8, where + ' has 1 to 8 steps');
   assert.ok(recipe.sequence.length + 2 <= fullMenu.maxLayers, where + ' leaves room on the plate for a request and a slip');
   for (const ingredient of recipe.sequence) {
@@ -371,7 +372,9 @@ assert.deepEqual(unlocks, [...unlocks].sort((a, b) => a - b));
 const steps = [...new Set(unlocks)];
 steps.slice(1).forEach((step, index) => assert.ok(step - steps[index] <= 4, 'gap before ' + step));
 assert.equal(unlocks.filter(unlockAt => unlockAt === 0).length, GUIDED_SERVES);
-assert.ok(MENU_RECIPES.length >= 14);
+assert.ok(MENU_RECIPES.length >= 20);
+assert.deepEqual(Object.keys(COVER).sort(), ['burger', 'sandwich']);
+assert.ok(new Set(MENU_RECIPES.map(recipe => recipe.family)).size === 4, 'every plate family is on the menu');
 // The lasagna tray holds exactly six layers: a seventh is refused with the full-tray message.
 assert.equal(LASAGNA_STEPS.length, 6);
 const tray = create();

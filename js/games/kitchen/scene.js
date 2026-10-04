@@ -5,7 +5,7 @@
 import { HEX, C } from "../../world/planet-palette.js";
 import { MATERIALS } from "./ingredients.js";
 import { Spring, clamp, lerp, easeOut, easeIn, seeded } from "./motion.js";
-import { sprite } from "./sprites.js";
+import { sprite, COVER } from "./sprites.js";
 import { drawPerson, speech } from "./customers.js";
 import { LASAGNA_STEPS } from "./kitchen.js";
 import { PATTY } from "./strings.js";
@@ -93,7 +93,8 @@ export class CounterScene {
   slotX(slot) { return Math.round(this.w * (slot === 0 ? .7 : .3)); }
   stackHeight(layers) {
     const fam = this.family;
-    let art = fam === "burger" ? 8 + 17 : fam === "salad" ? 16 : 4;
+    const cover = COVER[fam];
+    let art = cover ? sprite(cover[0]).h + sprite(cover[1]).h : fam === "salad" ? 16 : 4;
     layers.forEach(l => { art += (fam === "salad" ? .45 : 1) * layerThickness(sprite(l.pending ? "patty-raw" : l.ingredient).thick || 4, !!l.pending); });
     return art;
   }
@@ -372,9 +373,10 @@ export class CounterScene {
         const bowl = sprite("bowl"); g.drawImage(bowl.canvas, 1, 42 - bowl.h);
         y = 33; recipe.sequence.forEach(id => { const s = sprite(id); g.drawImage(s.canvas, Math.round(32 - s.w / 2), y - s.h); y -= 2; });
       } else {
-        if (recipe.family === "burger") put("bun-base");
+        const cover = COVER[recipe.family];
+        if (cover) put(cover[0]);
         recipe.sequence.forEach(put);
-        if (recipe.family === "burger") put("bun-top");
+        if (cover) put(cover[1]);
       }
       this.minis.set(key, canvas);
     }
@@ -499,9 +501,10 @@ export class CounterScene {
     g.save(); g.translate(x, y + bump); g.rotate(this.reduced ? 0 : bump * .0015);
     g.drawImage(plate.canvas, -plate.w * pS / 2, -plate.h * pS * .45, plate.w * pS, plate.h * pS); g.restore();
     const anchor = y - 1 * s, fam = this.family;
-    if (fam === "burger") this.drawSprite(g, "bun-base", x, anchor + bump * .8, s, 0, this.reduced ? 0 : Math.abs(bump) * .02);
+    const cover = COVER[fam];
+    if (cover) this.drawSprite(g, cover[0], x, anchor + bump * .8, s, 0, this.reduced ? 0 : Math.abs(bump) * .02);
     else if (fam === "salad") this.drawSprite(g, "bowl", x, anchor + bump * .8, s);
-    let height = fam === "burger" ? sprite("bun-base").thick : fam === "salad" ? 6 : 0;
+    let height = cover ? sprite(cover[0]).thick : fam === "salad" ? 6 : 0;
     const live = this.layers.filter(v => v.removed === undefined);
     live.forEach((v, i) => {
       const id = v.layer.pending ? "patty-raw" : v.layer.ingredient, sp = sprite(id);
@@ -540,7 +543,7 @@ export class CounterScene {
     }
     if (service >= 0) {
       const p = clamp(service / .16, 0, 1), ty = anchor - height * s;
-      if (fam === "burger") this.drawSprite(g, "bun-top", x, ty - (1 - easeOut(p)) * 130, s, this.reduced ? 0 : Math.sin(service * 29) * Math.exp(-service * 10) * .02, this.reduced ? 0 : Math.sin(service * 30) * Math.exp(-service * 9) * .8);
+      if (cover) this.drawSprite(g, cover[1], x, ty - (1 - easeOut(p)) * 130, s, this.reduced ? 0 : Math.sin(service * 29) * Math.exp(-service * 10) * .02, this.reduced ? 0 : Math.sin(service * 30) * Math.exp(-service * 9) * .8);
       if (p === 1 && !this.serveImpact) this.lidImpact(ty);
     }
     g.restore();

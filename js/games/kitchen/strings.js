@@ -14,7 +14,9 @@ export const RECIPES = {
   "veggie-melt": ["Veggie melt", "蔬菜起司堡"], "saucy-burger": ["Saucy burger", "醬香漢堡"],
   "cheese-lover-burger": ["Cheese lover burger", "起司控漢堡"], "crunchy-pickle-salad": ["Crunchy pickle salad", "脆脆酸黃瓜沙拉"],
   "cheesy-lasagna": ["Cheesy lasagna", "起司千層麵"], "everything-burger": ["Everything burger", "豪華全餐漢堡"],
-  "lasagna-duo": ["Lasagna duo", "雙份千層麵"], "triple-decker-burger": ["Triple decker burger", "三層肉排漢堡"]
+  "lasagna-duo": ["Lasagna duo", "雙份千層麵"], "triple-decker-burger": ["Triple decker burger", "三層肉排漢堡"],
+  "cheese-sandwich": ["Cheese sandwich", "起司番茄三明治"], "garden-sandwich": ["Garden sandwich", "田園蔬菜三明治"],
+  "patty-melt": ["Patty melt", "肉排起司三明治"]
 };
 export const REQUESTS = {
   "no-cheese": ["No cheese, please", "請不要加起司"],
