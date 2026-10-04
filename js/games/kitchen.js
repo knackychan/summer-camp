@@ -179,6 +179,7 @@ function ticket(k) {
   const extras = layers.slice(m.order.recipe.sequence.length).map(layer => '<li class="extra">' + button("remove:" + layer.id, '<b>+</b>' + icon(layer.ingredient) + '<span>' + label(FOOD[layer.ingredient]) + '<em>' + t(["Extra", "多放了"]) + '</em></span><i class="kq-check">✗</i>', remove(layer)) + '</li>').join("");
   const who = S.cast.of(m.order.id);
   return '<div class="kq-ticket-heading"><span class="kq-who">' + (who ? '<img class="kq-face" src="' + portraitURL(who) + '" alt="">' + whoName(who) : t(["Order", "點餐"])) + '</span>' + button("read", pair("Listen", "聽"), 'class="kq-listen"') + '</div>' +
+    '<img class="kq-dish-small" src="' + dishURL(m.order.recipe) + '" alt="">' +
     '<h3>' + label(RECIPES[m.order.recipe.id]) + '</h3>' + (m.order.request ? '<p class="kq-request">' + label(REQUESTS[m.order.request]) + '</p>' : "") +
     '<ol>' + rows + extras + '</ol>';
 }

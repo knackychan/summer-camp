@@ -239,6 +239,24 @@ body.game-mode:has(.kq) .summer-companion{border:2px solid #0b0a1f;border-radius
   .kq-ticket li>button,.kq-ticket li>div{min-height:44px;padding:3px 5px}
   .kq-setbar button{padding:2px 8px}
 }
+/* Small landscape tablets (≤ 1280 wide): the recipe becomes a slim always-visible left rail
+   (dish + icon/name rows) so the counter gets the width. Larger screens keep the 3-column ticket. */
+.kq-dish-small{display:none}
+@media (max-width:1280px) and (min-width:721px) and (orientation:landscape){
+  .kq-main{grid-template-columns:104px minmax(0,1fr) clamp(160px,15vw,200px);grid-template-rows:minmax(0,1fr);grid-template-areas:"ticket counter orders";gap:6px}
+  .kq-ticket{padding:4px;overflow-x:hidden}
+  .kq-ticket-heading{margin-bottom:2px;justify-content:center}
+  .kq-ticket-heading .kq-who{display:none}
+  .kq .kq-listen{min-width:44px;padding:2px 6px;font-size:12px}
+  .kq-dish-small{display:block;width:64px;height:48px;margin:0 auto 2px;image-rendering:pixelated}
+  .kq-ticket h3{font-size:12px;line-height:1.1;text-align:center;margin-bottom:4px}
+  .kq-request{font-size:11px;padding:3px 4px;margin-bottom:4px!important}
+  .kq-ticket ol{gap:3px}
+  .kq-ticket li>button,.kq-ticket li>div,.kq-ticket li.nomark>button,.kq-ticket li.nomark>div{grid-template-columns:28px minmax(0,1fr);gap:4px;min-height:44px;padding:2px 3px;font-size:11px;line-height:1.1}
+  .kq-ticket li img{width:28px;height:28px}
+  .kq-ticket li>*>b,.kq-ticket li em,.kq-ticket li .kq-check{display:none}
+  .kq-ticket li span{overflow-wrap:anywhere}
+}
 /* Phones and narrow portrait: one column; the game page scrolls instead of squeezing. */
 @media (max-width:720px){
   .stage.arena.kq-stage{overflow-y:auto}
