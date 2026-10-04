@@ -1,10 +1,20 @@
 // Kitchen Quest v0.7: independent dishes, shared kitchen, and persistent cooking progress.
 import { ALL_INGREDIENTS } from './ingredients.js';
-import { RecipeDeck, RECIPES, MENU_RECIPES, evaluateRecipe, customizeRecipe } from './recipes.js';
+import { RecipeDeck, RECIPES, MENU_RECIPES, GUIDED_SERVES, evaluateRecipe, customizeRecipe } from './recipes.js';
+import { seeded, hashSeed } from './motion.js';
 import { KitchenSimulation } from './kitchen.js';
 import { normalizeProfile, goalsFor, recordServe } from './progression.js';
 export { INGREDIENTS, ALL_INGREDIENTS, MATERIALS } from './ingredients.js';
 export const SERVICE_SECONDS = .82;
+/** A shift is dealt from one text key; the same key always reproduces the same orders and the same customers. */
+export function seedsFromKey(key) {
+    return { key, orders: hashSeed(key + ':orders'), cast: hashSeed(key + ':cast') };
+}
+/** One deal per cook per day per amount of progress, and per visit: a new day, a dish served since the last visit,
+ *  or another visit the same day (`run` counts the earlier ones) deals a different shift. The first visit keeps the plain key. */
+export function shiftSeeds(kid, day, totalServed, run = 0) {
+    return seedsFromKey([kid, day, totalServed].join(':') + (run > 0 ? ':r' + run : ''));
+}
 const emptyDish = (order) => ({ food: [], order, phase: 'editing', feedbackVisible: false, elapsed: 0, waitRemaining: 0, arrivalAge: 0 });
 const copyOrder = (order) => order ? { ...order, recipe: { ...order.recipe,
         required: { ...order.recipe.required }, sequence: [...order.recipe.sequence] } } : undefined;
@@ -29,8 +39,12 @@ export class KitchenModel {
         this.ordersServed = 0;
         this._profile = normalizeProfile(profile);
         this.orderCount = 0;
-        this.deck = new RecipeDeck(seed, this.menu);
+        // Customer requests rotate extra-tomato / extra-pickles / no-cheese; the seed picks where the rotation starts.
+        this.requestOffset = Math.floor(seeded(seed ^ 0x5bd1e995)() * 3);
+        this.deck = this.newDeck();
     }
+    /** A cook who has served the whole starting menu is past the guided tour, so the deal is shuffled from the first order. */
+    newDeck() { return new RecipeDeck(this.seed, this.menu, { guided: this._profile.totalServed < GUIDED_SERVES }); }
     get profile() { return normalizeProfile(this._profile); }
     get goals() { return goalsFor(this._profile); }
     get menu() { return this.cookingEnabled ? MENU_RECIPES.filter(recipe => recipe.unlockAt <= this._profile.totalServed) : RECIPES; }
@@ -132,7 +146,7 @@ export class KitchenModel {
         this.pendingDifficulty = undefined;
         this.ordersServed = 0;
         this.orderCount = 0;
-        this.deck = new RecipeDeck(this.seed, this.menu);
+        this.deck = this.newDeck();
         this.kitchen = mode === 'orders' && this.cookingEnabled ? new KitchenSimulation({ rawPatties: this.directCooking, difficulty: this.difficulty }) : undefined;
         this.dishes = mode === 'orders' ? [emptyDish(this.newOrder()), emptyDish(this.newOrder())] : [emptyDish()];
     }
@@ -146,7 +160,7 @@ export class KitchenModel {
         this.orderCount++;
         if (this.difficulty === 'standard' && this.orderCount > 5 && (this.orderCount - 5) % 3 === 0) {
             const requests = ['no-cheese', 'extra-tomato', 'extra-pickles'];
-            const start = ((this.orderCount - 5) / 3 - 1) % requests.length;
+            const start = ((this.orderCount - 5) / 3 - 1 + this.requestOffset) % requests.length;
             for (let i = 0; i < requests.length; i++) {
                 const request = requests[(start + i) % requests.length], customized = customizeRecipe(recipe, request);
                 if (customized !== recipe) { order.recipe = customized; order.request = request; break; }

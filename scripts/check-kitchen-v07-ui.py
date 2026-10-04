@@ -26,7 +26,7 @@ RECOVERY = runpy.run_path(str(ROOT / 'scripts/check-architecture-recovery.py'))
 SNAPSHOT = "SQGames.get('kitchen').snapshot()"
 
 
-def fixture(total):
+def fixture(total, pin=None):
     seed = RECOVERY['saved_fixture']('hub')
     saved = json.loads(seed['keyquest:v2'])
     # A supplied profile is authoritative even when the legacy best is higher.
@@ -36,6 +36,9 @@ def fixture(total):
         'recipeServes': {'cheese-burger': total}, 'completedShifts': 0,
         'shift': {'served': total, 'recipes': ['cheese-burger'], 'families': ['burger']}
     }}}
+    # Kitchen deals each cook a different shift every day; a harness pins one to keep its flow fixed.
+    if pin:
+        saved['settings']['kitchen']['seed'] = pin
     seed['keyquest:v2'] = json.dumps(saved)
     seed['sq:famSettings'] = json.dumps({'tts_enabled': '1'})
     return seed

@@ -3,6 +3,13 @@
 export function seeded(seed) {
     return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t ^= t + Math.imul(t ^ t >>> 7, 61 | t); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 }
+/** Any text to a 32-bit seed (FNV-1a), so "luis:2026-10-04:7" always deals the same shift. */
+export function hashSeed(text) {
+    let h = 0x811c9dc5;
+    const source = String(text);
+    for (let i = 0; i < source.length; i++) { h ^= source.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return h >>> 0;
+}
 /** Stable, bounded cosmetic springs (src/core/motion.ts). They never affect recipe state. */
 export class Spring {
     constructor(frequency = 19, damping = 0.55, limit = 1) {

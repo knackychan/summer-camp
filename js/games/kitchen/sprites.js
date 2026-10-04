@@ -103,6 +103,15 @@ const DRAW = {
     px(C.lava, 6, 1, 12, 1); px(C.lava, 24, 1, 6, 1);
     px(C.red, 9, 4, 2, 1); px(C.outline, 9, 4); px(C.red, 30, 4, 2, 1); px(C.outline, 31, 4);
   }],
+  // Toast for the sandwich family: a flat slice below, a slice with a crust cap on top.
+  "bread-base": [48, 7, 5, px => {
+    slab(px, 48, [[2, C.wood], [0, C.sand], [0, C.sandLit], [0, C.sandLit], [0, C.sand], [0, C.wood], [2, C.woodDark]]);
+    px(C.white, 5, 2, 14, 1); px(C.white, 26, 3, 10, 1);
+  }],
+  "bread-top": [48, 10, 0, px => {
+    slab(px, 48, [[8, C.wood], [4, C.wood], [2, C.sand], [1, C.sandLit], [0, C.sandLit], [0, C.sandLit], [0, C.sand], [0, C.wood], [1, C.wood], [3, C.woodDark]]);
+    px(C.white, 9, 3, 12, 1); px(C.white, 28, 4, 8, 1); px(C.sand, 14, 6, 3, 1); px(C.sand, 31, 5, 2, 1);
+  }],
   "bun-top": [48, 17, 0, px => {
     const rows = [[15, C.sand], [10, C.sand], [7, C.sandLit], [5, C.sandLit], [3, C.sand], [2, C.sand], [1, C.sand], [1, C.sand], [0, C.sand], [0, C.sand], [0, C.sand], [0, C.sand], [0, C.wood], [0, C.wood], [1, C.wood], [2, C.woodDark], [4, C.woodDark]];
     slab(px, 48, rows);
@@ -154,6 +163,9 @@ export function sprite(id) {
   }
   return cache.get(id);
 }
+
+/* The two pieces that wrap a family's layers: bottom first, then top. Salad and lasagna are served in a bowl or a dish. */
+export const COVER = { burger: ["bun-base", "bun-top"], sandwich: ["bread-base", "bread-top"] };
 
 /* Small DOM icons for trays, tickets and cards. The browser upscales them pixelated. */
 const urls = new Map();
@@ -284,9 +296,10 @@ export function dishURL(recipe) {
     g.drawImage(bowl.canvas, 1, 41 - bowl.h);
     y = 30; recipe.sequence.forEach(id => { const s = sprite(id); g.drawImage(s.canvas, Math.round(32 - s.w / 2), y - 2); y -= 2; });
   } else {
-    if (recipe.family === "burger") put("bun-base");
+    const cover = COVER[recipe.family];
+    if (cover) put(cover[0]);
     recipe.sequence.forEach(put);
-    if (recipe.family === "burger") put("bun-top");
+    if (cover) put(cover[1]);
   }
   urls.set(key, canvas.toDataURL());
   return urls.get(key);

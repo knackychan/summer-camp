@@ -2,7 +2,7 @@ import { MENU_RECIPES } from './recipes.js';
 
 const LIMIT = 1000000;
 const ids = MENU_RECIPES.map(recipe => recipe.id);
-const families = ['burger', 'salad', 'lasagna'];
+const families = ['burger', 'salad', 'lasagna', 'sandwich'];
 const count = value => typeof value === 'number' && Number.isFinite(value) ? Math.min(LIMIT, Math.max(0, Math.floor(value))) : 0;
 const own = (value, key) => value && typeof value === 'object' && !Array.isArray(value) && Object.hasOwn(value, key) ? value[key] : undefined;
 const known = (value, allowed) => Array.isArray(value) ? [...new Set(value.filter(item => allowed.includes(item)))] : [];
