@@ -12,6 +12,7 @@ import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
 import { createSequencer } from "./brick-share.js";
+import { createLanSession } from "../game-services/lan-session.js";
 
 let THREE = null;
 let OrbitControls = null;
@@ -65,6 +66,7 @@ const MENU = {
   worlds: ["My worlds", "我的世界"],
   join: ["Join a world", "加入世界"],
   joinSoon: ["Coming soon: build together on the home wifi", "即將推出：在家裡的 Wi-Fi 一起蓋"],
+  needsApp: ["Building together needs the Summer Quest app", "一起蓋需要 Summer Quest 應用程式"],
   newWorld: ["New world", "新世界"],
   open: ["Open", "打開"],
   more: ["More", "更多"],
@@ -632,6 +634,8 @@ export class BrickLabRuntime {
     this.preReader = !!options.preReader;
     this.storage = new BrickLabStorage(this.kidId);
     this.worlds = new BrickWorlds(this.kidId);
+    /* Home-wifi session (multiplayer plan D2): unavailable outside the app. */
+    this.lan = createLanSession(options.lanTransport);
     this.worldId = null; /* the world being built; null while the menu shows */
     this.menuEdit = null; /* { id, step: "actions" | "rename" | "delete" } */
     this.mode = "build";
@@ -763,7 +767,7 @@ export class BrickLabRuntime {
               <h2 class="sqbl-menu-title"><span aria-hidden="true">🗺️</span> ${escapeHtml(MENU.worlds[0])} <span lang="zh-TW">${escapeHtml(MENU.worlds[1])}</span></h2>
               <div class="sqbl-worlds" data-worlds></div>
               <h2 class="sqbl-menu-title"><span aria-hidden="true">👋</span> ${escapeHtml(MENU.join[0])} <span lang="zh-TW">${escapeHtml(MENU.join[1])}</span></h2>
-              <p class="sqbl-join-note" data-join>${pre ? "🛜 ⏳" : escapeHtml(say(MENU.joinSoon))}</p>
+              <p class="sqbl-join-note" data-join>${this.lan.available ? (pre ? "🛜 ⏳" : escapeHtml(say(MENU.joinSoon))) : (pre ? "📱" : escapeHtml(say(MENU.needsApp)))}</p>
             </div>
           </div>
         </div>
@@ -2530,6 +2534,7 @@ export class BrickLabRuntime {
     });
     return {
       menu: !!(this.menuEl && !this.menuEl.hidden),
+      lan: this.lan.available,
       world: this.worldId,
       worlds: this.worlds.list().map((w) => ({ id: w.id, name: w.name, count: w.count, thumb: !!w.thumb })),
       mode: this.mode,
@@ -2578,6 +2583,7 @@ export class BrickLabRuntime {
     if (this.resizeObserver) this.resizeObserver.disconnect();
     if (this.previewWatch) this.previewWatch.disconnect();
     if (this.thumbs) this.thumbs.dispose();
+    if (this.lan) this.lan.dispose();
     if (this.onOutsidePress) this.root.removeEventListener("pointerdown", this.onOutsidePress, true);
     if (this.onInput) INPUT_EVENTS.forEach((type) => this.root.removeEventListener(type, this.onInput, { capture: true }));
     if (this.controls) this.controls.dispose();

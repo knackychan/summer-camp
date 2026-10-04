@@ -270,6 +270,8 @@ def run(args):
                 check('Brick Lab opens on the world menu: one world, the starter village', s['menu'] and s['world'] is None
                       and [w['count'] for w in s['worlds']] == [STARTER] and len(s['pieces']) == 0
                       and '我的世界' in page.locator('.sqbl-menu').inner_text() and '加入' in page.locator('.sqbl-menu').inner_text())
+                check('In a browser, Join says building together needs the app (no plugin, solo as before)', s['lan'] is False
+                      and '應用程式' in page.locator('[data-join]').inner_text())
                 check('World cards are tablet-sized', all(page.locator(sel).first.bounding_box()['height'] >= 48
                       for sel in ('.sqbl-world-open', '.sqbl-world-new', '.sqbl-world-more')))
                 page.screenshot(path=str(out / 'menu.png'))

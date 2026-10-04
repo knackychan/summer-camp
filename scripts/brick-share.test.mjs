@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { COLORS, getPart, PARTS } from "../js/brick-lab/brick-catalog.js";
 import {
-  applyOp, checkOp, createClient, createSequencer, createUndo, decode, encode, MESSAGE_MAX, sameState,
+  applyOp, checkOp, createClient, createSequencer, createUndo, sameState,
 } from "../js/brick-lab/brick-share.js";
 
 const rules = {
@@ -149,17 +149,6 @@ test("sameState compares place, part and colour only", () => {
   assert.ok(!sameState(brick("a"), brick("a", 1.5)));
   assert.ok(sameState(null, null));
   assert.ok(!sameState(null, brick("a")));
-});
-
-test("messages: one line each, oversized ones dropped, junk ignored", () => {
-  const line = encode({ t: "req", id: "1", op: { type: "remove", id: "a" } });
-  assert.ok(!line.includes("\n"));
-  assert.equal(decode(line).op.id, "a");
-  assert.equal(encode({ t: "req", pad: "x".repeat(MESSAGE_MAX) }), null);
-  assert.equal(decode("x".repeat(MESSAGE_MAX + 1)), null);
-  assert.equal(decode("{not json"), null);
-  assert.equal(decode("[1,2]"), null);
-  assert.equal(decode('{"no":"type"}'), null);
 });
 
 test("the real catalog: every part and colour passes the checks", () => {

@@ -16,7 +16,6 @@
    it), the op is refused instead of undoing someone else's work. */
 
 export const PROTO = 1;
-export const MESSAGE_MAX = 64 * 1024;
 const ID_MAX = 64;
 const Y_MAX = 200;
 const FIELDS = ["partId", "colorId", "x", "y", "z", "rotation"];
@@ -170,20 +169,4 @@ export function createUndo(limit = 40) {
     get size() { return stack.length; },
     clear() { stack.length = 0; },
   };
-}
-
-/* One line on the wire, or null when it would be too big. */
-export function encode(message) {
-  const line = JSON.stringify(message);
-  return line.length > MESSAGE_MAX ? null : line;
-}
-
-export function decode(line) {
-  if (typeof line !== "string" || line.length > MESSAGE_MAX) return null;
-  try {
-    const message = JSON.parse(line);
-    return message && typeof message === "object" && typeof message.t === "string" ? message : null;
-  } catch {
-    return null;
-  }
 }
