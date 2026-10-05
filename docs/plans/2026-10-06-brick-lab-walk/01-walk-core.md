@@ -18,3 +18,5 @@
 - `sw.js` — `brick-walk.js` precached; cache bumped.
 
 **DONE WHEN:** `node scripts/check.mjs` green and runs `brick-walk.test.mjs`.
+
+**Shipped 2026-10-06:** `js/brick-lab/brick-walk.js` + `scripts/brick-walk.test.mjs` (21 tests: stick directions, step up a plate and a brick, two bricks a wall, jump onto two but not three, peak 2.5, ceiling, walking under a high roof, ledge fall, island edge, wall slide, long-frame cut, riders (hat and a brick on it, not a roof or a neighbour), snapOut, reach, look clamp, behind view and its pull-in, eyes view). `check.mjs` already globs `scripts/*.test.mjs`, so no change there; green after `npm run build:android-web` refreshed the local payload for the new file. `sw.js` precaches it, cache `v179-brick-walk-core`. Nothing imports the module yet (slice 02). Convention noted in the module: yaw = Three's `rotation.y`, so yaw 0 faces +z, like a piece's `rotation`.
