@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { COLORS, getPart, PARTS } from "../js/brick-lab/brick-catalog.js";
 import {
-  applyOp, checkOp, createClient, createSequencer, createUndo, sameState,
+  applyOp, checkOp, createClient, createSequencer, createUndo, PROTO, sameState,
 } from "../js/brick-lab/brick-share.js";
 
 const rules = {
@@ -157,4 +157,41 @@ test("the real catalog: every part and colour passes the checks", () => {
     const op = { type: "add", piece: { id: `p${i}`, partId: part.id, colorId: Object.keys(COLORS)[i % 13], x: 0, y: getPart(part.id).height / 2 || 0.1, z: 0, rotation: 0 } };
     assert.equal(checkOp(op, world, rules), null, part.id);
   });
+});
+
+const fig = (extra = {}) => ({ id: "f", partId: "fig_boy", colorId: "red", x: 0, y: 2.025, z: 0.5, rotation: 0, ...extra });
+
+test("a pose op sets the pose and the spot, and its inverse puts both back", () => {
+  const world = worldOf(fig());
+  const op = { type: "pose", id: "f", pose: { p: "sit" }, x: 0, y: 1.6, z: 1 };
+  assert.equal(checkOp(op, world, rules), null);
+  const back = applyOp(op, world);
+  assert.deepEqual(world.get("f").pose, { p: "sit" });
+  assert.equal(world.get("f").z, 1);
+  assert.equal(checkOp(back, world, rules), null);
+  applyOp(back, world);
+  assert.equal("pose" in world.get("f"), false);
+  assert.equal(world.get("f").z, 0.5);
+});
+
+test("a pose op is refused for a missing piece, a bad shape, the rules' veto or off the plate", () => {
+  const world = worldOf(fig());
+  assert.equal(checkOp({ type: "pose", id: "nope", pose: null, x: 0, y: 2, z: 0.5 }, world, rules), "id");
+  assert.equal(checkOp({ type: "pose", id: "f", pose: "wave", x: 0, y: 2, z: 0.5 }, world, rules), "shape");
+  assert.equal(checkOp({ type: "pose", id: "f", pose: { p: "wave" }, x: 0, y: 2, z: 0.5 }, world, { ...rules, pose: () => false }), "catalog");
+  assert.equal(checkOp({ type: "pose", id: "f", pose: { p: "wave" }, x: 99, y: 2, z: 0.5 }, world, rules), "place");
+});
+
+test("a removed posed piece comes back posed; expect sees a pose change", () => {
+  const world = worldOf(fig({ pose: { p: "wave" } }));
+  const back = applyOp({ type: "remove", id: "f" }, world);
+  applyOp(back, world);
+  assert.deepEqual(world.get("f").pose, { p: "wave" });
+  const before = { ...world.get("f") };
+  applyOp({ type: "pose", id: "f", pose: { p: "cheer" }, x: 0, y: 2.025, z: 0.5 }, world);
+  assert.equal(checkOp({ type: "move", id: "f", x: 2, y: 2.025, z: 0.5, rotation: 0, expect: { ...before, pose: JSON.stringify({ p: "wave" }) } }, world, rules), "changed");
+});
+
+test("PROTO is 4: poses are new on the wire", () => {
+  assert.equal(PROTO, 4);
 });
