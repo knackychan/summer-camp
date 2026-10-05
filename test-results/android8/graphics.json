@@ -1,6 +1,6 @@
 {
   "browser": "138.0.7204.183",
-  "target": "web",
+  "target": "source",
   "scope": "Desktop Chromium engine, emulated Android 8 identity and 2GB memory, real WebGL rendering; no Android 8 hardware attached.",
   "cases": [
     {
@@ -10,7 +10,7 @@
         {
           "id": "solar",
           "kind": "webgl2",
-          "draws": 312,
+          "draws": 234,
           "width": 1004,
           "cssWidth": 1004,
           "antialias": false,
@@ -20,7 +20,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl2",
-          "draws": 133,
+          "draws": 86,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -30,9 +30,9 @@
         {
           "id": "bricklab",
           "kind": "webgl2",
-          "draws": 359,
-          "width": 1004,
-          "cssWidth": 1004,
+          "draws": 35,
+          "width": 820,
+          "cssWidth": 820,
           "antialias": false,
           "glError": 0,
           "contextRestored": true
@@ -65,7 +65,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 137,
+          "draws": 119,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -75,7 +75,7 @@
         {
           "id": "bricklab",
           "kind": "webgl",
-          "draws": 349,
+          "draws": 25,
           "width": 820,
           "cssWidth": 820,
           "antialias": false,
@@ -100,7 +100,7 @@
         {
           "id": "solar",
           "kind": "webgl",
-          "draws": 312,
+          "draws": 234,
           "width": 1004,
           "cssWidth": 1004,
           "antialias": false,
@@ -110,7 +110,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 127,
+          "draws": 117,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -120,7 +120,7 @@
         {
           "id": "bricklab",
           "kind": "webgl",
-          "draws": 521,
+          "draws": 30,
           "width": 820,
           "cssWidth": 820,
           "antialias": false,
@@ -145,7 +145,7 @@
         {
           "id": "solar",
           "kind": "webgl",
-          "draws": 312,
+          "draws": 234,
           "width": 1004,
           "cssWidth": 1004,
           "antialias": false,
@@ -155,7 +155,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 161,
+          "draws": 118,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -165,7 +165,7 @@
         {
           "id": "bricklab",
           "kind": "webgl",
-          "draws": 349,
+          "draws": 25,
           "width": 820,
           "cssWidth": 820,
           "antialias": false,

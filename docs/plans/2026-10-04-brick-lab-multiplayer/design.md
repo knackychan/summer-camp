@@ -62,3 +62,5 @@ Other kids' cursors or held bricks; typing an IP by hand (only if the home route
 - `06-when-things-go-wrong.md` — D9, D11
 - `07-device-acceptance.md` — all, on real tablets
 - `08-real-part-icons.md` — D12 (independent; may ship first)
+
+**Amended 2026-10-05 (found on the real tablets, slice 07):** the 64 KB line cap of D10 stays, but the host's welcome no longer has to fit in one line. A world past about 600 bricks is sent as the welcome plus `world` lines (`more` in the welcome), and the guest loads it once they are all in. `PROTO` is 2; a tablet on the older APK gets the "update" line instead of half a world.
