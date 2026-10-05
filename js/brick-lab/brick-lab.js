@@ -699,6 +699,8 @@ export class BrickLabRuntime {
     this.kit = makeKit(this.runtime.reduced);
     this.reducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     this.renderShell();
+    await this.cssReady;
+    if (this.destroyed) return this;
     this.setupScene();
     this.setupThumbs();
     this.bindUI();
@@ -790,6 +792,15 @@ export class BrickLabRuntime {
 
         <div class="sqbl-toast" data-toast role="status" aria-live="polite"></div>
       </section>`;
+
+    /* The scene is sized from the styled stage: until the stylesheet is in,
+       the stage is the whole mount and the first frames would be stretched. */
+    const link = this.root.querySelector("link[rel=stylesheet]");
+    this.cssReady = link.sheet ? Promise.resolve() : new Promise((done) => {
+      link.addEventListener("load", done, { once: true });
+      link.addEventListener("error", done, { once: true });
+      setTimeout(done, 3000);
+    });
 
     this.app = this.root.querySelector(".sqbl-app");
     this.stage = this.root.querySelector("[data-stage]");
