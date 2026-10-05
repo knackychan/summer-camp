@@ -1,6 +1,6 @@
 # Slice 02 — Corner slope, eave, lattice frame, support bracket, window
 
-**Decisions:** D2 (5 parts), D4 (window pane), D7. **Depends on:** 01 (`top`, `CATALOG_ID`, slope `studs` honoured).
+**Decisions:** D2 (5 parts), D4 (window pane), D7. **Depends on:** 01 (stacking change, `CATALOG_ID`, slope `studs` honoured).
 
 ## Changes
 - `js/brick-lab/brick-catalog.js` — `slope_corner_2x2` (`shape: "slopeCorner"`), `slope_inv_2x2` (`shape: "slopeInv"`), in Slopes; `frame_2x4` (`shape: "frame"`), `brace_1x2` (`shape: "brace"`), `window_1x2` (`shape: "window"`, 2.4 tall), in Structure. All recolourable.
