@@ -242,14 +242,18 @@ MORE_PARTS = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2', 'slope_1
               'rock', 'mushroom', 'log_2x4', 'crate_2x2', 'barrel', 'fence_post', 'railing_1x2',
               # Parts-survey plan (docs/plans/2026-10-05-brick-lab-parts-survey/) slice 01: tiles.
               'tile_1x1', 'tile_1x2', 'tile_1x3', 'tile_1x4', 'tile_1x6', 'tile_1x8', 'tile_2x2', 'tile_2x3', 'tile_2x4',
-              'tile_grille_1x2', 'tile_round_1x1', 'tile_round_2x2', 'tile_quarter_1x1')
-MORE_COUNTS = {'plates': 9, 'tiles': 13, 'slopes': 7, 'wheels': 3, 'structure': 4, 'nature': 4, 'scenery': 5}
+              'tile_grille_1x2', 'tile_round_1x1', 'tile_round_2x2', 'tile_quarter_1x1',
+              # Parts-survey slice 02: plates.
+              'plate_1x6', 'plate_1x8', 'plate_2x3', 'plate_2x8', 'plate_4x6', 'plate_round_1x1', 'plate_rounded_1x2',
+              'plate_corner_2x2', 'plate_wedge_2x2')
+MORE_COUNTS = {'plates': 18, 'tiles': 13, 'slopes': 7, 'wheels': 3, 'structure': 4, 'nature': 4, 'scenery': 5}
 FIXED_ICONS = ('rock', 'mushroom', 'log_2x4')
 ICON_SRC = "(id) => { const img = document.querySelector('.sqbl-part[data-part=\"' + id + '\"] .sqbl-part-preview img'); return img ? img.src : null; }"
 SEEN = {}
 # Parts a brick is dropped on, with half their height: it must land on top (D3, amended: anything stacks).
 STACK_ON = (('wheel_large', 0.8), ('plate_round_2x2', 0.2), ('frame_2x4', 0.6), ('brace_1x2', 0.6), ('window_1x2', 1.2),
-            ('fence_post', 2.4), ('railing_1x2', 0.6), ('rock', 0.5), ('tile_2x4', 0.2), ('tile_round_2x2', 0.2))
+            ('fence_post', 2.4), ('railing_1x2', 0.6), ('rock', 0.5), ('tile_2x4', 0.2), ('tile_round_2x2', 0.2),
+            ('plate_rounded_1x2', 0.2), ('plate_corner_2x2', 0.2), ('plate_wedge_2x2', 0.2))
 WINDOW_GLASS = '#9fd3ee'
 
 
@@ -277,7 +281,9 @@ def lab_more_parts(page, snap, check, out):
 
     def selected():
         s = snap()
-        return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+        found = [p for p in s['pieces'] if p['id'] == s['selectedId']]
+        assert found, 'no piece selected'
+        return found[0]
 
     def drop_on(part, base):
         """Arm a part and tap the base piece: the new piece (it is selected)."""
@@ -359,6 +365,22 @@ def lab_more_parts(page, snap, check, out):
     undo()
     undo()
 
+    # A 2×8 plate placed past the village's west end, then turned, stays on the baseplate (D4; the
+    # snap clamps every footprint to the plate, so the 8-long side never hangs over).
+    arm('plate_2x8')
+    s = snap()
+    far = min((p for p in s['pieces'] if 'screen' in p), key=lambda p: p['x'])
+    tap(far['screen']['x'] - 60, far['screen']['y'])
+    edge = selected()
+    page.locator('.sqbl-app [data-action="rotate"]').click()
+    page.wait_for_timeout(200)
+    turned = selected()
+    inside = lambda p, w, d: abs(p['x']) + w / 2 <= 32 and abs(p['z']) + d / 2 <= 32
+    check(f'A 2×8 plate placed and turned stays on the baseplate {edge["x"], edge["z"], turned["x"], turned["z"]}',
+          edge['partId'] == 'plate_2x8' and inside(edge, 2, 8) and inside(turned, 8, 2))
+    undo()
+    undo()
+
     brick = place('brick_2x4')
     mushroom = drop_on('mushroom', brick)
     check('A mushroom dropped on a 2×4 brick sits on the brick', abs(mushroom['y'] - (brick['y'] + 0.6 + 0.6)) < 0.01)
@@ -386,6 +408,10 @@ h1{font-size:20px;margin:0 0 4px}p{margin:0 0 16px;color:#5b6b7b}h2{font-size:15
 .cell{background:#fff;border:1px solid #dde4ec;border-radius:12px;padding:8px 6px;text-align:center}
 .cell img{width:96px;height:96px;object-fit:contain;display:block;margin:0 auto 4px}.cell small{display:block;color:#6b7a89}
 .cell.none{background:#fde8e8}</style><h1>Brick Lab parts · 積木零件 (TITLE)</h1><p>NOTE</p>BODY"""
+
+
+class SheetDone(Exception):
+    """--sheet ran its own checks: skip the main suite."""
 
 
 def seed_worlds(page, worlds):
@@ -715,7 +741,7 @@ def run(args):
                 base = f'http://127.0.0.1:{server.server_port}'
                 if args.sheet:
                     parts_sheet(browser, base, args, report, check, out)
-                    raise StopIteration
+                    raise SheetDone
                 page.goto(base + '/index.html', wait_until='domcontentloaded')
                 RECOVERY['ready'](page)
                 RECOVERY['wait_screen'](page, 'hub')
@@ -1134,7 +1160,7 @@ def run(args):
                 tp.screenshot(path=str(out / 'categories-1024x600.png'))
                 tp.evaluate('SQPlatform.triggerBack()')
                 touch.close()
-            except StopIteration:
+            except SheetDone:
                 pass
             except Exception as error:
                 report['failure'] = str(error)

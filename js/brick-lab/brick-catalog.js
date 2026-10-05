@@ -89,6 +89,17 @@ export const PARTS = Object.freeze([
   rect("plate_2x6", ["Plate 2×6", "薄板 2×6"], "2×6", 2, 6, PLATE_HEIGHT, "plates"),
   rect("plate_4x4", ["Plate 4×4", "薄板 4×4"], "4×4", 4, 4, PLATE_HEIGHT, "plates"),
   { id: "plate_round_2x2", label: ["Round Plate 2×2", "圓薄板 2×2"], size: "", category: "plates", shape: "roundPlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: true },
+  /* Plates (docs/plans/2026-10-05-brick-lab-parts-survey/ slice 02). The corner
+     plate's empty cell still counts as taken (parts-survey D5). */
+  rect("plate_1x6", ["Plate 1×6", "薄板 1×6"], "1×6", 1, 6, PLATE_HEIGHT, "plates"),
+  rect("plate_1x8", ["Plate 1×8", "薄板 1×8"], "1×8", 1, 8, PLATE_HEIGHT, "plates"),
+  rect("plate_2x3", ["Plate 2×3", "薄板 2×3"], "2×3", 2, 3, PLATE_HEIGHT, "plates"),
+  rect("plate_2x8", ["Plate 2×8", "薄板 2×8"], "2×8", 2, 8, PLATE_HEIGHT, "plates"),
+  rect("plate_4x6", ["Plate 4×6", "薄板 4×6"], "4×6", 4, 6, PLATE_HEIGHT, "plates"),
+  { id: "plate_round_1x1", label: ["Round Plate 1×1", "圓薄板 1×1"], size: "", category: "plates", shape: "roundPlate", width: 1, depth: 1, height: PLATE_HEIGHT, studs: true },
+  { id: "plate_rounded_1x2", label: ["Rounded Plate 1×2", "圓角薄板 1×2"], size: "", category: "plates", shape: "roundedPlate", width: 1, depth: 2, height: PLATE_HEIGHT, studs: true },
+  { id: "plate_corner_2x2", label: ["Corner Plate", "轉角薄板"], size: "", category: "plates", shape: "cornerPlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: true },
+  { id: "plate_wedge_2x2", label: ["Cut-Corner Plate", "斜角薄板"], size: "", category: "plates", shape: "wedgePlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: true },
   /* Tiles (docs/plans/2026-10-05-brick-lab-parts-survey/ slice 01). */
   tile("tile_1x1", ["Tile 1×1", "光面板 1×1"], "1×1", 1, 1),
   tile("tile_1x2", ["Tile 1×2", "光面板 1×2"], "1×2", 1, 2),

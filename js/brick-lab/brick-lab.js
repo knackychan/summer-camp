@@ -741,6 +741,63 @@ function makeRailingPiece(part, colorHex, kit) {
   }), colorHex, kit);
 }
 
+/* A plate-thick slab from a footprint outline (world x, z points or a ready
+   THREE.Shape whose y is world −z), bevelled like bevelBox. */
+function footprintSlab(outline, height, bevel = 0.025) {
+  let shape = outline;
+  if (Array.isArray(outline)) {
+    shape = new THREE.Shape();
+    outline.forEach(([x, z], i) => (i ? shape.lineTo(x, -z) : shape.moveTo(x, -z)));
+    shape.lineTo(outline[0][0], -outline[0][1]);
+  }
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth: height - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 12,
+  });
+  g.translate(0, 0, -(height - bevel * 2) / 2);
+  g.rotateX(-Math.PI / 2);
+  return g;
+}
+
+/* Rounded plate 1×2 (parts-survey slice 02): both short ends fully round. */
+function makeRoundedPlatePiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const r = part.width / 2 - SEAM - 0.025;
+    const half = part.depth / 2 - part.width / 2;
+    const shape = new THREE.Shape();
+    shape.moveTo(r, -half);
+    shape.lineTo(r, half);
+    shape.absarc(0, half, r, 0, Math.PI, false);
+    shape.lineTo(-r, -half);
+    shape.absarc(0, -half, r, Math.PI, TAU, false);
+    const list = [footprintSlab(shape, part.height)];
+    addStuds(list, studRow(part.width), studRow(part.depth), part.height / 2);
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Corner plate 2×2 (parts-survey slice 02): an L of three cells; the front
+   right cell is empty but still counts as taken (D5). */
+function makeCornerPlatePiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const a = part.width / 2 - SEAM - 0.025;
+    const g = SEAM + 0.025;
+    const list = [footprintSlab([[-a, -a], [a, -a], [a, -g], [-g, -g], [-g, a], [-a, a]], part.height)];
+    [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5]].forEach(([x, z]) => addStuds(list, [x], [z], part.height / 2));
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Cut-corner plate 2×2 (parts-survey slice 02): the front right corner cut
+   off at 45°, three studs. */
+function makeWedgePlatePiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const a = part.width / 2 - SEAM - 0.025;
+    const list = [footprintSlab([[-a, -a], [a, -a], [a, 0], [0, a], [-a, a]], part.height)];
+    [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5]].forEach(([x, z]) => addStuds(list, [x], [z], part.height / 2));
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
 /* Grille tile 1×2 (parts-survey slice 01): a thin base with five bars along
    its length on top, so four shallow grooves run lengthwise; no studs. */
 function makeGrillePiece(part, colorHex, kit) {
@@ -1023,6 +1080,9 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "axle") return makeAxlePiece(part, colorHex, kit);
   if (part.shape === "roundPlate") return makeRoundPlatePiece(part, colorHex, kit);
   if (part.shape === "grille") return makeGrillePiece(part, colorHex, kit);
+  if (part.shape === "roundedPlate") return makeRoundedPlatePiece(part, colorHex, kit);
+  if (part.shape === "cornerPlate") return makeCornerPlatePiece(part, colorHex, kit);
+  if (part.shape === "wedgePlate") return makeWedgePlatePiece(part, colorHex, kit);
   if (part.shape === "quarterTile") return makeQuarterTilePiece(part, colorHex, kit);
   if (part.shape === "slopeCorner") return makeSlopeCornerPiece(part, colorHex, kit);
   if (part.shape === "slopeInv") return makeSlopeInvPiece(part, colorHex, kit);

@@ -18,3 +18,11 @@
 - `scripts/check-brick-lab-ui.py` — `NEW_PARTS` gains the 9 ids (arm and build < 50 ms, real-part icon); a 1×1 brick dropped over the corner plate's empty cell lands at the plate's height, not on the baseplate (D5, expected); `plate_2x8` placed at the baseplate's edge stays inside it in both turns.
 
 **DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; 68 parts, Plates shows 18.
+
+## As built (2026-10-05)
+- Shipped as planned: 68 parts, Plates 18.
+- New `footprintSlab(outline, height)` in `brick-lab.js`: a bevelled plate-thick extrusion of a footprint outline (world x, z points, or a `THREE.Shape`); the rounded (stadium outline), corner (L of three cells, inner corner just off the empty cell) and cut-corner (pentagon, cut from the right edge's middle to the front edge's middle) plates use it. `plate_round_1x1` reuses the round-plate builder.
+- Tests: the 9 plates arm fast with real icons; Plates 18; a brick lands on top of the rounded, corner and cut-corner plates (on the corner plate it rests at plate height wherever it lands — the empty cell counts as taken, D5); a 2×8 plate placed past the village's west end and turned stays on the baseplate (the snap clamps every footprint to the plate). 170/170; `--sheet` 68/68 icons in red and blue.
+- The plan's edge test ("placed at the baseplate's edge") became "placed and turned stays on the baseplate": a tap that reliably lands at the very edge of the plate isn't available from the home view. The clamp in `snapAxis` is what keeps any footprint on the plate.
+- Harness fix found here: `--sheet` ended the run with `raise StopIteration`, and a `next()` with no match inside a check raises the same exception, so a missing piece silently ended the main suite as "passed" (122/122). `--sheet` now raises its own `SheetDone`, and `selected()` asserts a piece is selected. Earlier slice runs reached their last check (158 / 163 checks), so they were complete.
+- `sw.js` `CACHE_NAME` → `summer-quest-v174-brick-plates`.

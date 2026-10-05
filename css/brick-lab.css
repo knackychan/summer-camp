@@ -159,6 +159,13 @@
 .sqbl-part-preview[data-preview^=tile_round_]{border-radius:50%;height:24px}
 .sqbl-part-preview[data-shape=quarterTile]{border-radius:0 100% 0 0}
 .sqbl-part-preview[data-shape=grille]{background:repeating-linear-gradient(90deg,var(--sqbl-piece,#c91a09) 0 5px,rgba(0,0,0,.35) 5px 7px)!important}
+/* Tray previews for the parts-survey slice 02 plates. */
+.sqbl-part-preview[data-preview=plate_1x6],.sqbl-part-preview[data-preview=plate_1x8],.sqbl-part-preview[data-preview=plate_2x8]{width:48px;height:16px}
+.sqbl-part-preview[data-preview=plate_2x3],.sqbl-part-preview[data-preview=plate_4x6]{width:40px;height:22px}
+.sqbl-part-preview[data-preview=plate_round_1x1]{width:24px;height:22px;border-radius:50%}
+.sqbl-part-preview[data-shape=roundedPlate]{width:40px;height:18px;border-radius:9px}
+.sqbl-part-preview[data-shape=cornerPlate]{width:32px;height:28px;clip-path:polygon(0 0,100% 0,100% 50%,50% 50%,50% 100%,0 100%)}
+.sqbl-part-preview[data-shape=wedgePlate]{width:32px;height:28px;clip-path:polygon(0 0,100% 0,100% 50%,50% 100%,0 100%)}
 .sqbl-part-preview[data-preview=rail_curve_90]{width:38px;height:38px;border-radius:0;background:radial-gradient(circle at 0 100%,transparent 0 11px,#575d65 11px 14px,#8a5c3b 14px 24px,#575d65 24px 27px,transparent 27px)}
 .sqbl-part-preview[data-preview=rail_cross]{width:38px;height:38px;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:#8a5c3b;border-radius:0}
 .sqbl-part-preview[data-preview=rail_junction_t]{width:38px;height:38px;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%);background:#8a5c3b;border-radius:0}
