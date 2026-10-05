@@ -1093,7 +1093,7 @@ try {
   fail("solar data load", error.message);
 }
 
-// Brick Lab catalog (docs/plans/2026-10-03-brick-lab/ slices 09–11): unique part ids, every
+// Brick Lab catalog (docs/plans/2026-10-03-brick-lab/ slices 09–11, 2026-10-05-brick-catalog/): unique part ids, every
 // part and category bilingual, no empty or unknown category, rail ends on whole studs.
 try {
   var brickMod = await import(new URL("js/brick-lab/brick-catalog.js", root));
@@ -1119,6 +1119,40 @@ try {
     if (!brickMod.PARTS.some(function (p) { return p.category === id; })) fail("bricklab", "category " + id + " has no parts");
   });
   Object.keys(brickMod.COLORS).forEach(function (id) { assertPair(brickMod.COLOR_NAMES[id], "bricklab.color." + id); });
+  // Catalog plan (docs/plans/2026-10-05-brick-catalog/): model parts are well-formed data (C1),
+  // their colour slots exist (C2), stacking flags make sense (C5), and the palette finishes are real colours (C3).
+  var KINDS = ["box", "cyl", "cone", "ball", "dome", "torus", "lathe", "prism", "studs"];
+  var finite = function (value) {
+    if (Array.isArray(value)) return value.every(finite);
+    return typeof value === "number" && Number.isFinite(value);
+  };
+  brickMod.PARTS.forEach(function (part) {
+    if (!(part.width >= 1 && Number.isInteger(part.width) && part.depth >= 1 && Number.isInteger(part.depth))) fail("bricklab", part.id + " footprint must be whole studs");
+    if (!(part.height > 0)) fail("bricklab", part.id + " needs a height");
+    if (part.top != null && !(part.top > 0 && part.top <= part.height + 0.01)) fail("bricklab", part.id + " top must sit inside its height");
+    if (part.sink != null && !(part.sink > 0 && part.sink < 2)) fail("bricklab", part.id + " sink out of range");
+    if (part.shape !== "model") return;
+    if (!Array.isArray(part.model) || !part.model.length) { fail("bricklab", part.id + " model is empty"); return; }
+    var mains = 0;
+    part.model.forEach(function (prim, i) {
+      var kinds = KINDS.filter(function (k) { return prim[k] != null; });
+      if (kinds.length !== 1) fail("bricklab", part.id + " primitive " + i + " needs exactly one kind (" + kinds.join(",") + ")");
+      var slot = prim.c || "main";
+      if (slot === "main") mains += 1;
+      else if (!brickMod.FINISHES[slot]) fail("bricklab", part.id + " primitive " + i + " has unknown colour slot " + slot);
+      ["at", "rot", "s"].forEach(function (key) {
+        if (prim[key] != null && !(Array.isArray(prim[key]) && prim[key].length === 3 && finite(prim[key]))) fail("bricklab", part.id + " primitive " + i + " bad " + key);
+      });
+      if (kinds.length === 1 && !finite(prim[kinds[0]])) fail("bricklab", part.id + " primitive " + i + " has a non-number size");
+      if (prim.at && (Math.abs(prim.at[0]) > part.width / 2 + 4.5 || Math.abs(prim.at[2]) > part.depth / 2 + 4.5 || prim.at[1] < -2 || prim.at[1] > part.height + 2)) {
+        fail("bricklab", part.id + " primitive " + i + " sits far outside its footprint");
+      }
+    });
+    if (!!part.fixed !== (mains === 0)) fail("bricklab", part.id + " fixed flag must match having no main slot");
+  });
+  Object.keys(brickMod.COLOR_FINISH).forEach(function (id) { if (!(id in brickMod.COLORS)) fail("bricklab", "finish for unknown colour " + id); });
+  Object.keys(brickMod.FINISHES).forEach(function (id) { if (!finite(brickMod.FINISHES[id].hex)) fail("bricklab", "finish " + id + " needs a hex"); });
+  if (new Set(Object.values(brickMod.COLORS)).size !== Object.keys(brickMod.COLORS).length) fail("bricklab", "palette colours must have distinct hex values");
 } catch (error) {
   fail("bricklab catalog load", error.message);
 }

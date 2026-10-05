@@ -14,6 +14,8 @@ resizes, and there is no bottom tray. Slice 13: an idle lab draws no frames, and
 gets the reduced tier (studs painted on the plate, Lambert light, a fraction of the triangles) and still
 places pieces. Slice 14: a standard tablet that can't keep up steps down (painted studs, no shadows)
 without resizing the view. Slice 15: a part slid sideways out of the rail places where it is let go.
+Catalog plan (2026-10-05): eighteen categories, every part draws its rendered tray picture and arms in
+< 50 ms, a minifig rides a horse and wears a helmet, 21 colours slide sideways in three rows.
 A pre-reader profile shows the icon-first UI.
 Requires Python Playwright. --target web checks dist/android-web after a build.
 """
@@ -47,6 +49,93 @@ def pick(page, category):
 
 NEW_PARTS = ('brick_1x3', 'brick_2x5', 'plate_1x4', 'plate_2x6', 'slope_45', 'wheel_med', 'axle',
              'rail_curve_90', 'rail_junction_t', 'rail_cross', 'platform_4x4')
+
+
+CATEGORIES = ('bricks', 'plates', 'slopes', 'round', 'structure', 'doors', 'wheels', 'vehicles', 'connectors', 'rails',
+              'nature', 'figures', 'animals', 'accessories', 'home', 'castle', 'pirates', 'space')
+
+
+def catalog_checks(page, snap, check, out):
+    """Catalog plan (docs/plans/2026-10-05-brick-catalog/): 18 categories, every part draws its tray
+    picture and arms in < 50 ms; a minifig rides a horse and wears a helmet; 21 colours slide sideways."""
+    def tap(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(150)
+
+    box = page.locator('.sqbl-stage canvas').bounding_box()
+    check('Eighteen categories in build order', page.evaluate(
+          "Array.from(document.querySelectorAll('.sqbl-category'), e => e.dataset.category)") == list(CATEGORIES))
+    slow, bare, seen = [], [], set()
+    for cat in CATEGORIES:
+        pick(page, cat)
+        page.wait_for_function(SNAP + '.tray.thumbsPending === 0', timeout=60000)
+        page.wait_for_timeout(50)
+        if page.locator('.sqbl-parts .sqbl-part-preview:not(.has-thumb)').count():
+            bare.append(cat)
+        ids = page.evaluate("Array.from(new Set(Array.from(document.querySelectorAll('.sqbl-parts .sqbl-part'), e => e.dataset.part)))")
+        for part in ids:
+            if part in seen:
+                continue
+            seen.add(part)
+            ms = page.evaluate(f"(() => {{ const t = performance.now(); document.querySelector('.sqbl-part[data-part=\"{part}\"]').click(); return performance.now() - t; }})()")
+            if ms >= 50:
+                slow.append((part, round(ms, 1)))
+        page.locator('.sqbl-left-rail').screenshot(path=str(out / f'catalog-{cat}.png'))
+    check(f'Every category shows a rendered picture of each part {bare}', not bare and not snap()['tray']['thumbsFailed'])
+    check(f'All {len(seen)} parts arm and build their geometry in < 50 ms {slow}', len(seen) >= 200 and not slow)
+
+    info = page.locator('.sqbl-info')
+    pick(page, 'animals')
+    page.locator('.sqbl-part[data-part="horse"]').click()
+    check('An animal comes in its own colours (info card, EN + 中文)', info.is_visible() and '馬' in info.inner_text()
+          and 'own colours' in info.inner_text())
+    page.locator('.sqbl-tray-title').click()
+
+    # Stacking (C5): a sitting minifig rides the horse, a helmet drops over its head. The info
+    # card is closed before each tap: it sits over the bottom-left of the view.
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+    page.locator('.sqbl-part[data-part="horse"]').click()
+    page.locator('.sqbl-tray-title').click()
+    tap(box['x'] + box['width'] * 0.6, box['y'] + box['height'] * 0.72)
+    s = snap()
+    horse = next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+    check('A horse places', horse['partId'] == 'horse')
+    pick(page, 'figures')
+    page.locator('.sqbl-part[data-part="fig_sitting"]').click()
+    page.locator('.sqbl-tray-title').click()
+    tap(horse['screen']['x'], horse['screen']['y'])
+    s = snap()
+    rider = next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+    saddle = horse['y'] - 2.0 + 2.65
+    check(f'A sitting minifig rides on the saddle {rider["y"]}', rider['partId'] == 'fig_sitting' and abs(rider['y'] - 1.4 - saddle) < 0.02)
+    pick(page, 'accessories')
+    page.locator('.sqbl-part[data-part="hat_knight"]').click()
+    page.locator('.sqbl-tray-title').click()
+    tap(rider['screen']['x'], rider['screen']['y'])
+    s = snap()
+    helmet = next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+    check(f'A helmet drops over the rider\'s head {helmet["y"]}', helmet['partId'] == 'hat_knight'
+          and abs(helmet['y'] - 0.8 - (rider['y'] - 1.4 + 2.75 - 0.95)) < 0.02)
+    page.wait_for_timeout(300)
+    page.screenshot(path=str(out / 'catalog-rider.png'))
+
+    # Colours (C3): 21 in three rows that slide sideways; a selected piece takes gold.
+    colors = page.locator('.sqbl-colors')
+    rows = page.evaluate("new Set(Array.from(document.querySelectorAll('.sqbl-color'), e => Math.round(e.getBoundingClientRect().top))).size")
+    check('21 colours in three rows that slide sideways', page.locator('.sqbl-color').count() == 21 and rows == 3
+          and colors.evaluate('e => e.scrollWidth > e.clientWidth') and 'has-more-x' in colors.get_attribute('class'))
+    pick(page, 'bricks')
+    page.locator('.sqbl-part[data-part="brick_2x4"]').click()
+    page.locator('.sqbl-tray-title').click()
+    tap(box['x'] + box['width'] * 0.75, box['y'] + box['height'] * 0.8)
+    page.locator('.sqbl-color[data-color="gold"]').click()
+    s = snap()
+    check('A selected piece can be painted gold', next(p for p in s['pieces'] if p['id'] == s['selectedId'])['colorId'] == 'gold'
+          and colors.evaluate('e => e.scrollLeft > 0'))
+    for _ in range(4):
+        page.locator('.sqbl-app [data-action="undo"]').click()
+    page.wait_for_timeout(200)
 
 
 def lab_slices_09_11(page, snap, check, out):
@@ -147,7 +236,8 @@ def lab_slices_09_11(page, snap, check, out):
     check('Search finds parts by their 中文 name', sorted(snap()['tray']['parts']) == sorted(
           ['rail_straight', 'rail_curve_90', 'rail_junction_t', 'rail_cross']))
     search.fill('2x4')
-    check('Search reads 2x4 as 2×4', set(snap()['tray']['parts']) == {'brick_2x4', 'plate_2x4'})
+    found = set(snap()['tray']['parts'])
+    check('Search reads 2x4 as 2×4', {'brick_2x4', 'plate_2x4', 'tile_2x4'} <= found and 'brick_2x2' not in found)
     search.fill('')
     page.locator('.sqbl-size').select_option('2×2')
     parts = set(snap()['tray']['parts'])
@@ -269,7 +359,7 @@ def run(args):
                 # Slice 08 / 12: neither switching category nor switching rail view resizes the 3D view (flash).
                 sizes = {(round(b['width']), round(b['height']))}
                 rail = page.locator('.sqbl-left-rail').bounding_box()['width']
-                for cat in ('plates', 'slopes', 'wheels', 'connectors', 'rails', 'structure', 'nature', 'bricks'):
+                for cat in CATEGORIES[1:] + CATEGORIES[:1]:
                     pick(page, cat)
                     b = page.locator('.sqbl-stage canvas').bounding_box()
                     sizes.add((round(b['width']), round(b['height'])))
@@ -417,6 +507,7 @@ def run(args):
                 check('Reopen restores the build', page.evaluate("SummerQuest.openGame('bricklab')")['ok'])
                 page.wait_for_function(SNAP + ' && ' + SNAP + f'.pieces.length === {STARTER + 1}')
                 lab_slices_09_11(page, snap, check, out)
+                catalog_checks(page, snap, check, out)
                 page.evaluate('SQPlatform.triggerBack()')
                 page.wait_for_function("!document.querySelector('#stage .sqbl-app')")
 
@@ -546,7 +637,7 @@ def run(args):
                 tp.wait_for_timeout(200)
                 check('A finger scrolls the category list without picking a category',
                       tp.evaluate(SNAP)['tray']['view'] == 'categories' and lst.evaluate('e => e.scrollTop') > 0)
-                for cat in ('rails', 'structure', 'nature', 'bricks'):
+                for cat in ('rails', 'structure', 'nature', 'space', 'bricks'):
                     pick(tp, cat)
                     if tp.evaluate(SNAP)['tray']['category'] != cat:
                         break
@@ -555,8 +646,12 @@ def run(args):
                 tp.set_viewport_size({'width': 1024, 'height': 600})
                 tp.locator('.sqbl-rail-back').click()
                 tp.wait_for_timeout(200)
-                check('At 1024×600 all eight categories fit above the colours',
-                      lst.evaluate('e => e.scrollHeight <= e.clientHeight') and 'has-more' not in lst.get_attribute('class'))
+                # Catalog C4: eighteen categories scroll inside the rail on every tablet, above the colours.
+                lb = lst.bounding_box()
+                check('At 1024×600 the categories scroll above the colours',
+                      'has-more' in lst.get_attribute('class') and lb['y'] + lb['height'] <= tp.locator('.sqbl-colors').bounding_box()['y'])
+                pick(tp, 'space')
+                check('…and the last one is reachable', tp.evaluate(SNAP)['tray']['category'] == 'space')
                 tp.evaluate('SQPlatform.triggerBack()')
                 touch.close()
             except Exception as error:
