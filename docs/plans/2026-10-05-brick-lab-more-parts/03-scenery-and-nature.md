@@ -32,3 +32,18 @@
 - Screenshot for Papa: a little camp scene — log cabin, crates and barrels, a fence line, rocks and mushrooms (`.tmp/brick-lab-ui/scenery-camp.png`).
 
 **DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; 46 parts across 9 categories; Papa has seen the camp screenshot.
+
+## As built (2026-10-05)
+- Shipped as planned: 46 parts in 9 categories (Nature 4, Scenery 5).
+- Rock: `IcosahedronGeometry(1, 1)`, each shared corner pushed by `seeded(20261005)` (mulberry32) to 0.82–1.12 of its radius, bottom flattened, fitted to 1.86 × 1.0 × 1.86; grey `#8f9294` at roughness 0.82.
+- Mushroom: cream stem, red dome cap with an underside disc, five flattened white dots turned to the dome's normal; three fixed materials.
+- Log: 12-sided trunk along z, radius 0.6 (so it sits in its 2×4 footprint narrower than 2 studs; the box still covers 2×4), tan end faces in a darker ring.
+- Crate: inset core, four corner battens, three raised planks a side, a four-board lid; one recolourable material, no studs.
+- Barrel: lathe 0.36 → 0.46 → 0.36, flat lid; two dark iron torus hoops (fixed, like the wheel's tyre).
+- Fence post: 1×1 footing, 0.56 post, 0.78 cap, one stud; 4.8 tall. Railing: studded top rail, two posts, a lower rail.
+- Fixed colours through `FIXED_COLOR_SHAPES` (`rock`, `mushroom`, `log`); their materials use roughnesses no palette colour uses, so a recolour never touches them.
+- Short screens: at heights ≤ 760 px the two-column category tiles go from 56 to 50 px tall (still above 44 px) so nine categories fit above the colours at 1024×600 (272 / 272 px). A pre-reader's larger tiles scroll there, with the existing "more below" fade.
+- Search: "2x4" also finds the log now (2×4 footprint).
+- Tests: `lab_more_parts` covers slices 01–03 (20 parts): fast arm and real icons; counts Plates 9 / Slopes 7 / Wheels 3 / Structure 4 / Nature 4 / Scenery 5; bricks land on top of fence post, railing and rock; a mushroom on a 2×4 brick sits on the brick and a brick then lands on the mushroom; crate on log, barrel on crate; with blue picked, rock / mushroom / log icons have no colour in their key and crate / barrel are `:blue`; the rock's icon is byte-identical in a second kid's session. All nine categories switch without resizing the view and are reachable on a short tablet. 158/158 browser checks.
+- Screenshot for Papa: `.tmp/brick-lab-ui/scenery-camp.png` — a log shelter with a plate roof, stacked crates with barrels, a fence of posts and railings, rocks, mushrooms, trees and flowers.
+- `sw.js` `CACHE_NAME` → `summer-quest-v172-brick-scenery`.

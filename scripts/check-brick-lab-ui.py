@@ -204,7 +204,7 @@ def lab_slices_09_11(page, snap, check, out):
     check('Search finds parts by their 中文 name', sorted(snap()['tray']['parts']) == sorted(
           ['rail_straight', 'rail_curve_90', 'rail_junction_t', 'rail_cross']))
     search.fill('2x4')
-    check('Search reads 2x4 as 2×4', set(snap()['tray']['parts']) == {'brick_2x4', 'plate_2x4', 'frame_2x4'})
+    check('Search reads 2x4 as 2×4', set(snap()['tray']['parts']) == {'brick_2x4', 'plate_2x4', 'frame_2x4', 'log_2x4'})
     search.fill('')
     page.locator('.sqbl-size').select_option('2×2')
     parts = set(snap()['tray']['parts'])
@@ -238,23 +238,30 @@ def lab_slices_09_11(page, snap, check, out):
 
 # More-parts plan (docs/plans/2026-10-05-brick-lab-more-parts/), by slice.
 MORE_PARTS = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2', 'slope_1x1', 'slope_1x2', 'peak_1x2', 'wheel_large',
-              'slope_corner_2x2', 'slope_inv_2x2', 'frame_2x4', 'brace_1x2', 'window_1x2')
-MORE_COUNTS = {'plates': 9, 'slopes': 7, 'wheels': 3, 'structure': 4}
+              'slope_corner_2x2', 'slope_inv_2x2', 'frame_2x4', 'brace_1x2', 'window_1x2',
+              'rock', 'mushroom', 'log_2x4', 'crate_2x2', 'barrel', 'fence_post', 'railing_1x2')
+MORE_COUNTS = {'plates': 9, 'slopes': 7, 'wheels': 3, 'structure': 4, 'nature': 4, 'scenery': 5}
+FIXED_ICONS = ('rock', 'mushroom', 'log_2x4')
+ICON_SRC = "(id) => { const img = document.querySelector('.sqbl-part[data-part=\"' + id + '\"] .sqbl-part-preview img'); return img ? img.src : null; }"
+SEEN = {}
 # Parts a brick is dropped on, with half their height: it must land on top (D3, amended: anything stacks).
-STACK_ON = (('wheel_large', 0.8), ('plate_round_2x2', 0.2), ('frame_2x4', 0.6), ('brace_1x2', 0.6), ('window_1x2', 1.2))
+STACK_ON = (('wheel_large', 0.8), ('plate_round_2x2', 0.2), ('frame_2x4', 0.6), ('brace_1x2', 0.6), ('window_1x2', 1.2),
+            ('fence_post', 2.4), ('railing_1x2', 0.6), ('rock', 0.5))
 WINDOW_GLASS = '#9fd3ee'
 
 
 def lab_more_parts(page, snap, check, out):
-    """More-parts plan slices 01-02: the new parts arm fast with real-part icons, the categories hold
-    what they should, a brick lands on top of a tree and of each STACK_ON part, and recolouring a
-    window changes its frame but never its pane (D4)."""
+    """More-parts plan slices 01-03: the new parts arm fast with real-part icons, the categories hold
+    what they should, a brick lands on top of a tree and of each STACK_ON part, recolouring a
+    window changes its frame but never its pane, rock / mushroom / log icons keep their own colours
+    while crate and barrel take the picked one (D4), and scenery stacks: a mushroom on a brick, a brick
+    on the mushroom, a crate on a log, a barrel on the crate."""
     def tap(x, y):
         page.mouse.click(x, y)
         page.wait_for_timeout(150)
 
     def arm(part):
-        for c in ('bricks', 'plates', 'slopes', 'wheels', 'structure'):
+        for c in ('bricks', 'plates', 'slopes', 'wheels', 'structure', 'nature', 'scenery'):
             pick(page, c)
             if page.locator(f'.sqbl-part[data-part="{part}"]').count():
                 break
@@ -269,10 +276,18 @@ def lab_more_parts(page, snap, check, out):
         s = snap()
         return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
 
-    def stack_on(base):
-        """Arm a 1×1 brick and tap the base piece: the new brick (it is selected)."""
-        arm('brick_1x1')
+    def drop_on(part, base):
+        """Arm a part and tap the base piece: the new piece (it is selected)."""
+        arm(part)
         tap(base['screen']['x'], base['screen']['y'])
+        return selected()
+
+    def stack_on(base):
+        return drop_on('brick_1x1', base)
+
+    def place(part):
+        arm(part)
+        tap(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.62)
         return selected()
 
     pieces0 = len(snap()['pieces'])
@@ -284,7 +299,7 @@ def lab_more_parts(page, snap, check, out):
         page.wait_for_timeout(900)
         if ms >= 50:
             slow.append((part, round(ms, 1)))
-        if not any(k.startswith(part + ':') for k in snap()['tray']['icons']):
+        if not any(k == part or k.startswith(part + ':') for k in snap()['tray']['icons']):
             plain.append(part)
     check(f'More-parts: each new part arms and builds in < 50 ms {slow}', not slow)
     check(f'More-parts: each new part has a real-part icon {plain}', not plain)
@@ -295,6 +310,17 @@ def lab_more_parts(page, snap, check, out):
         page.wait_for_timeout(900)
         page.screenshot(path=str(out / f'more-parts-{c}.png'), clip=page.locator('.sqbl-left-rail').bounding_box())
     check(f'More-parts: category counts {counts}', counts == MORE_COUNTS)
+    page.locator('.sqbl-color[data-color="blue"]').click()
+    pick(page, 'scenery')
+    page.wait_for_timeout(900)
+    keys = snap()['tray']['icons']
+    pick(page, 'nature')
+    page.wait_for_timeout(900)
+    keys = keys + snap()['tray']['icons']
+    check(f'Rock, mushroom and log icons keep their own colours; crate and barrel take the picked one {sorted(keys)}',
+          all(k in keys for k in FIXED_ICONS) and 'crate_2x2:blue' in keys and 'barrel:blue' in keys)
+    SEEN['rock'] = page.evaluate(ICON_SRC, 'rock')
+    page.locator('.sqbl-color[data-color="red"]').click()
 
     page.locator('.sqbl-app [data-action="home-view"]').click()
     page.wait_for_timeout(900)
@@ -304,9 +330,7 @@ def lab_more_parts(page, snap, check, out):
     undo()
 
     for part, half in STACK_ON:
-        arm(part)
-        tap(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.62)
-        base = selected()
+        base = place(part)
         check(f'{part} places on the plate', base['partId'] == part)
         steps = 2
         if part == 'window_1x2':
@@ -321,6 +345,21 @@ def lab_more_parts(page, snap, check, out):
         for _ in range(steps):
             undo()
     page.locator('.sqbl-color[data-color="red"]').click()
+
+    brick = place('brick_2x4')
+    mushroom = drop_on('mushroom', brick)
+    check('A mushroom dropped on a 2×4 brick sits on the brick', abs(mushroom['y'] - (brick['y'] + 0.6 + 0.6)) < 0.01)
+    check('…and a brick dropped on the mushroom lands on top of it', abs(stack_on(mushroom)['y'] - (mushroom['y'] + 1.2)) < 0.01)
+    for _ in range(3):
+        undo()
+    log = place('log_2x4')
+    crate = drop_on('crate_2x2', log)
+    check('A crate dropped on a log stacks on the log', abs(crate['y'] - (log['y'] + 1.2)) < 0.01)
+    barrel = drop_on('barrel', crate)
+    check('A barrel dropped on a crate stacks on the crate', abs(barrel['y'] - (crate['y'] + 1.2)) < 0.01)
+    page.screenshot(path=str(out / 'stack-scenery.png'))
+    for _ in range(3):
+        undo()
     check('Undo leaves the world as it was', len(snap()['pieces']) == pieces0)
 
 
@@ -570,7 +609,7 @@ def run(args):
                 # Slice 08 / 12: neither switching category nor switching rail view resizes the 3D view (flash).
                 sizes = {(round(b['width']), round(b['height']))}
                 rail = page.locator('.sqbl-left-rail').bounding_box()['width']
-                for cat in ('plates', 'slopes', 'wheels', 'connectors', 'rails', 'structure', 'nature', 'bricks'):
+                for cat in ('plates', 'slopes', 'wheels', 'connectors', 'rails', 'structure', 'nature', 'scenery', 'bricks'):
                     pick(page, cat)
                     b = page.locator('.sqbl-stage canvas').bounding_box()
                     sizes.add((round(b['width']), round(b['height'])))
@@ -810,6 +849,11 @@ def run(args):
                 enter_world(page)
                 check('Pre-reader UI is icon-first', page.evaluate(SNAP + '.preReader') and page.locator('.sqbl-app.is-pre-reader').count() == 1
                       and 'Build' not in page.locator('.sqbl-mode-toggle').inner_text())
+                pick(page, 'nature')
+                page.wait_for_timeout(900)
+                check('The rock is the same rock in a new session (fixed seed: same icon)',
+                      SEEN.get('rock') and page.evaluate(ICON_SRC, 'rock') == SEEN['rock'])
+                page.locator('.sqbl-rail-back').click()
                 ys = {p['id']: (p['x'], p['y'], p['z']) for p in snap()['pieces']}
                 check('Each kid has their own build, an old save re-settled to brick proportions',
                       ys == {'a': (1, 0.6, 1), 'b': (1, 1.4, 1), 'c': (-1.5, 0.6, 3.5)})
@@ -916,7 +960,7 @@ def run(args):
                 tp.wait_for_timeout(200)
                 check('A finger scrolls the category list without picking a category',
                       tp.evaluate(SNAP)['tray']['view'] == 'categories' and lst.evaluate('e => e.scrollTop') > 0)
-                for cat in ('rails', 'structure', 'nature', 'bricks'):
+                for cat in ('rails', 'structure', 'nature', 'scenery', 'bricks'):
                     pick(tp, cat)
                     if tp.evaluate(SNAP)['tray']['category'] != cat:
                         break
@@ -925,8 +969,10 @@ def run(args):
                 tp.set_viewport_size({'width': 1024, 'height': 600})
                 tp.locator('.sqbl-rail-back').click()
                 tp.wait_for_timeout(200)
-                check('At 1024×600 all eight categories fit above the colours',
-                      lst.evaluate('e => e.scrollHeight <= e.clientHeight') and 'has-more' not in lst.get_attribute('class'))
+                fit = lst.evaluate('e => [e.scrollHeight, e.clientHeight]')
+                check(f'At 1024×600 all nine categories fit above the colours {fit}',
+                      fit[0] <= fit[1] and 'has-more' not in lst.get_attribute('class'))
+                tp.screenshot(path=str(out / 'categories-1024x600.png'))
                 tp.evaluate('SQPlatform.triggerBack()')
                 touch.close()
             except Exception as error:

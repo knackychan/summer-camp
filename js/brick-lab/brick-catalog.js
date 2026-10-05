@@ -119,10 +119,18 @@ export const PARTS = Object.freeze([
   { id: "window_1x2", label: ["Window", "窗戶"], size: "", category: "structure", shape: "window", width: 1, depth: 2, height: BRICK_HEIGHT * 2, studs: true },
   { id: "tree_small", label: ["Small Tree", "小樹"], size: "", category: "nature", shape: "tree", width: 2, depth: 2, height: 4, studs: false },
   { id: "flower", label: ["Flower", "花"], size: "", category: "nature", shape: "flower", width: 1, depth: 1, height: 0.9, studs: false },
+  /* More-parts slice 03: rock, mushroom and log keep their own colours. */
+  { id: "rock", label: ["Rock", "石頭"], size: "", category: "nature", shape: "rock", width: 2, depth: 2, height: 1, studs: false },
+  { id: "mushroom", label: ["Mushroom", "蘑菇"], size: "", category: "nature", shape: "mushroom", width: 1, depth: 1, height: BRICK_HEIGHT, studs: false },
+  { id: "log_2x4", label: ["Log", "木頭"], size: "", category: "scenery", shape: "log", width: 2, depth: 4, height: BRICK_HEIGHT, studs: false },
+  { id: "crate_2x2", label: ["Crate", "木箱"], size: "", category: "scenery", shape: "crate", width: 2, depth: 2, height: BRICK_HEIGHT, studs: false },
+  { id: "barrel", label: ["Barrel", "木桶"], size: "", category: "scenery", shape: "barrel", width: 1, depth: 1, height: BRICK_HEIGHT, studs: false },
+  { id: "fence_post", label: ["Fence Post", "柵欄柱"], size: "", category: "scenery", shape: "fencePost", width: 1, depth: 1, height: BRICK_HEIGHT * 4, studs: true },
+  { id: "railing_1x2", label: ["Railing", "欄杆"], size: "", category: "scenery", shape: "railing", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
 ]);
 
 /* Parts drawn in their own fixed colours: the palette does not recolour them. */
-export const FIXED_COLOR_SHAPES = Object.freeze(["rail", "tree"]);
+export const FIXED_COLOR_SHAPES = Object.freeze(["rail", "tree", "rock", "mushroom", "log"]);
 
 export const CATEGORIES = Object.freeze([
   { id: "bricks", label: ["Bricks", "積木"], icon: "🧱" },
@@ -133,6 +141,7 @@ export const CATEGORIES = Object.freeze([
   { id: "rails", label: ["Rails", "軌道"], icon: "🛤️" },
   { id: "structure", label: ["Structure", "結構"], icon: "🏗️" },
   { id: "nature", label: ["Nature", "自然"], icon: "🌳" },
+  { id: "scenery", label: ["Scenery", "景物"], icon: "🪵" },
 ]);
 
 /* Footprint in studs, "width×depth": the tray's size filter and the info card. */

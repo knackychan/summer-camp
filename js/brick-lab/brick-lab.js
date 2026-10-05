@@ -543,6 +543,204 @@ function makeWindowPiece(part, colorHex, kit) {
   return group;
 }
 
+/* A small seeded random (mulberry32): the same numbers on every tablet. */
+function seeded(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* Fits a geometry's bounding box to a w × h × d box centred on the origin. */
+function fitBox(g, w, h, d) {
+  g.computeBoundingBox();
+  const b = g.boundingBox;
+  g.translate(-(b.min.x + b.max.x) / 2, -(b.min.y + b.max.y) / 2, -(b.min.z + b.max.z) / 2);
+  g.scale(w / (b.max.x - b.min.x), h / (b.max.y - b.min.y), d / (b.max.z - b.min.z));
+  return g;
+}
+
+/* Rock (more-parts slice 03): a low-poly boulder, the same on every tablet —
+   an icosahedron with every corner pushed by a fixed-seed random, a flat
+   bottom, fixed grey (D4, D7). */
+function makeRockPiece(part, kit) {
+  const geometry = kit.geo(part.id, () => {
+    const g = new THREE.IcosahedronGeometry(1, 1);
+    const random = seeded(20261005);
+    const position = g.attributes.position;
+    const moved = new Map();
+    for (let i = 0; i < position.count; i += 1) {
+      /* Corners are repeated per face: move each shared corner once. */
+      const key = [position.getX(i), position.getY(i), position.getZ(i)].map((v) => v.toFixed(4)).join(",");
+      if (!moved.has(key)) moved.set(key, 0.82 + random() * 0.3);
+      const k = moved.get(key);
+      position.setXYZ(i, position.getX(i) * k, Math.max(position.getY(i) * k, -0.45), position.getZ(i) * k);
+    }
+    g.computeVertexNormals();
+    return fitBox(g, part.width - SEAM * 2 - 0.1, part.height, part.depth - SEAM * 2 - 0.1);
+  });
+  const group = new THREE.Group();
+  group.add(mesh(geometry, kit.mat(0x8f9294, 0.82)));
+  return group;
+}
+
+/* Mushroom (more-parts slice 03): a cream stem under a red dome cap with
+   white dots; all three colours fixed (D4). */
+function makeMushroomPiece(part, kit) {
+  const hh = part.height / 2;
+  const capBase = -hh + 0.62;
+  const capR = 0.46;
+  const capH = hh - capBase;
+  const stem = kit.geo("mushroom:stem", () => {
+    const g = new THREE.CylinderGeometry(0.17, 0.22, 0.66, 14);
+    g.translate(0, -hh + 0.33, 0);
+    return g;
+  });
+  const cap = kit.geo("mushroom:cap", () => {
+    const dome = new THREE.SphereGeometry(capR, 18, 8, 0, TAU, 0, Math.PI / 2);
+    dome.scale(1, capH / capR, 1);
+    const under = new THREE.CircleGeometry(capR, 18);
+    under.rotateX(Math.PI / 2);
+    const g = mergeGeometries([dome, under]);
+    g.translate(0, capBase, 0);
+    return g;
+  });
+  const dots = kit.geo("mushroom:dots", () => mergeGeometries([[0, 0.05], [0.9, 0.55], [2.3, 0.6], [3.7, 0.5], [5.1, 0.62]].map(([turn, tilt]) => {
+    const g = new THREE.SphereGeometry(0.075, 8, 5);
+    /* Flattened along z, then turned so z follows the dome's normal. */
+    g.scale(1, 1, 0.45);
+    /* A point on the dome at angle `turn` round and `tilt` down from the top. */
+    const a = tilt * Math.PI / 2;
+    const x = Math.sin(a) * Math.cos(turn) * capR;
+    const z = Math.sin(a) * Math.sin(turn) * capR;
+    const y = Math.cos(a) * capH;
+    g.lookAt(new THREE.Vector3(x / capR, y / capH, z / capR));
+    g.translate(x, capBase + y, z);
+    return g;
+  })));
+  const group = new THREE.Group();
+  group.add(mesh(stem, kit.mat(0xefe2c4, 0.6)));
+  group.add(mesh(cap, kit.mat(0xd0281c, 0.5)));
+  group.add(mesh(dots, kit.mat(0xfbfbf6, 0.5), false));
+  return group;
+}
+
+/* Log (more-parts slice 03): a 12-sided trunk lying along the 4-stud axis (z),
+   brown bark with tan end faces and a darker ring; fixed colours (D4). */
+function makeLogPiece(part, kit) {
+  const r = part.height / 2;
+  const length = part.depth - SEAM * 2;
+  const bark = kit.geo(`${part.id}:bark`, () => {
+    const g = new THREE.CylinderGeometry(r, r, length, 12, 1, true);
+    g.rotateX(Math.PI / 2);
+    return g;
+  });
+  const ends = kit.geo(`${part.id}:ends`, () => mergeGeometries([-1, 1].map((side) => {
+    const g = new THREE.CircleGeometry(r * 0.8, 12);
+    if (side < 0) g.rotateY(Math.PI);
+    g.translate(0, 0, side * length / 2);
+    return g;
+  })));
+  const rings = kit.geo(`${part.id}:rings`, () => mergeGeometries([-1, 1].map((side) => {
+    const g = new THREE.RingGeometry(r * 0.8, r, 12);
+    if (side < 0) g.rotateY(Math.PI);
+    g.translate(0, 0, side * length / 2);
+    return g;
+  })));
+  const group = new THREE.Group();
+  group.add(mesh(bark, kit.mat(0x6b3a1c, 0.85)));
+  group.add(mesh(ends, kit.mat(0xd9b27c, 0.7)));
+  group.add(mesh(rings, kit.mat(0x9a6233, 0.7)));
+  return group;
+}
+
+/* Crate 2×2 (more-parts slice 03): a box of raised planks with corner battens
+   and a planked lid, in the picked colour. */
+function makeCratePiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const hw = part.width / 2 - SEAM;
+    const hd = part.depth / 2 - SEAM;
+    const hh = part.height / 2;
+    const inset = 0.05;
+    const batten = 0.16;
+    const list = [boxAt((hw - inset) * 2, part.height - 0.02, (hd - inset) * 2, 0, -0.01, 0)];
+    [-1, 1].forEach((sx) => [-1, 1].forEach((sz) => list.push(boxAt(batten, part.height, batten, sx * (hw - batten / 2), 0, sz * (hd - batten / 2)))));
+    const planks = 3;
+    const gap = 0.05;
+    const plank = (part.height - gap * (planks + 1)) / planks;
+    for (let i = 0; i < planks; i += 1) {
+      const y = -hh + gap + plank / 2 + i * (plank + gap);
+      [-1, 1].forEach((s) => {
+        list.push(boxAt((hw - batten) * 2, plank, inset, 0, y, s * (hd - inset / 2)));
+        list.push(boxAt(inset, plank, (hd - batten) * 2, s * (hw - inset / 2), y, 0));
+      });
+    }
+    const lid = 4;
+    const board = ((hd - batten) * 2 - gap * (lid - 1)) / lid;
+    for (let i = 0; i < lid; i += 1) {
+      list.push(boxAt((hw - batten) * 2, 0.04, board, 0, hh - 0.02, -hd + batten + board / 2 + i * (board + gap)));
+    }
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Barrel (more-parts slice 03): a bulging lathe with a flat lid in the picked
+   colour, and two dark iron hoops. */
+function makeBarrelPiece(part, colorHex, kit) {
+  const hh = part.height / 2;
+  const body = kit.geo(part.id, () => new THREE.LatheGeometry([
+    [0, -hh], [0.36, -hh], [0.43, -hh * 0.5], [0.46, 0], [0.43, hh * 0.5], [0.36, hh], [0, hh],
+  ].map(([x, y]) => new THREE.Vector2(x, y)), 20));
+  const hoops = kit.geo(`${part.id}:hoops`, () => mergeGeometries([-1, 1].map((side) => {
+    const g = new THREE.TorusGeometry(0.445, 0.028, 6, 24);
+    g.rotateX(Math.PI / 2);
+    g.translate(0, side * hh * 0.5, 0);
+    return g;
+  })));
+  const group = new THREE.Group();
+  group.add(mesh(body, kit.mat(colorHex)));
+  group.add(mesh(hoops, kit.mat(0x3d4246, 0.4, 0.3)));
+  return group;
+}
+
+/* Fence post (more-parts slice 03): a square post four bricks tall on a 1×1
+   footing, with a cap and one stud on top. */
+function makeFencePostPiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const hh = part.height / 2;
+    const foot = 0.24;
+    const cap = 0.2;
+    const list = [
+      boxAt(1 - SEAM * 2, foot, 1 - SEAM * 2, 0, -hh + foot / 2, 0),
+      boxAt(0.56, part.height - foot - cap, 0.56, 0, (foot - cap) / 2, 0),
+      boxAt(0.78, cap, 0.78, 0, hh - cap / 2, 0),
+    ];
+    addStuds(list, [0], [0], hh);
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Railing 1×2 (more-parts slice 03): two posts, a lower rail and a studded
+   top rail, open between. The rails run along z. */
+function makeRailingPiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const hw = part.width / 2 - SEAM;
+    const hd = part.depth / 2 - SEAM;
+    const hh = part.height / 2;
+    const top = 0.24;
+    const post = 0.22;
+    const list = [boxAt(hw * 2, top, hd * 2, 0, hh - top / 2, 0)];
+    [-1, 1].forEach((sz) => list.push(boxAt(post, part.height - top, post, 0, -top / 2, sz * (hd - post / 2 - 0.06))));
+    list.push(boxAt(0.14, 0.14, hd * 2 - 0.2, 0, -hh + 0.4, 0));
+    addStuds(list, studRow(part.width), studRow(part.depth), hh);
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
 /* Round plate 2×2 (more-parts slice 01): a disc with chamfered rims and a
    2×2 grid of studs. */
 function makeRoundPlatePiece(part, colorHex, kit) {
@@ -788,6 +986,13 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "frame") return makeFramePiece(part, colorHex, kit);
   if (part.shape === "brace") return makeBracePiece(part, colorHex, kit);
   if (part.shape === "window") return makeWindowPiece(part, colorHex, kit);
+  if (part.shape === "rock") return makeRockPiece(part, kit);
+  if (part.shape === "mushroom") return makeMushroomPiece(part, kit);
+  if (part.shape === "log") return makeLogPiece(part, kit);
+  if (part.shape === "crate") return makeCratePiece(part, colorHex, kit);
+  if (part.shape === "barrel") return makeBarrelPiece(part, colorHex, kit);
+  if (part.shape === "fencePost") return makeFencePostPiece(part, colorHex, kit);
+  if (part.shape === "railing") return makeRailingPiece(part, colorHex, kit);
   return makeRectPiece(part, colorHex, kit);
 }
 
