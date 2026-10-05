@@ -5,7 +5,7 @@
    have real proportions and studs on a studded baseplate. */
 import { loadThree, createRenderer, releaseContext, firstFrame, observeResize } from "../games/three-runtime.js";
 import {
-  BRICK_HEIGHT, CATEGORIES, COLORS, COLOR_NAMES, FIXED_COLOR_SHAPES, PARTS, PLATE_HEIGHT, getColorHex, getPart, partDims,
+  BRICK_HEIGHT, CATEGORIES, COLORS, COLOR_FINISH, COLOR_NAMES, FINISHES, PARTS, PLATE_HEIGHT, getColorHex, getPart, isFixedColor, partDims,
 } from "./brick-catalog.js";
 import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, worldConnectors } from "./brick-rails.js";
 import { BrickLabStorage } from "./brick-storage.js";
@@ -62,6 +62,8 @@ const SNAP_GUIDES = {
   rail: ["Snaps to a nearby rail end. Turn it until the ends face each other.", "靠近軌道接頭就會自動接上。轉一轉，讓接頭對好。"],
   wheel: ["Put it next to an axle or a brick.", "放在車軸或積木旁邊。"],
   plant: ["Plants straight into the baseplate.", "直接種在底板上。"],
+  head: ["Put it on a minifigure's head.", "放在小人偶的頭上。"],
+  seat: ["Put a minifigure on it to sit or ride.", "把小人偶放上去，就能坐或騎。"],
 };
 
 const RECENT_MAX = 5;
@@ -118,6 +120,12 @@ function partLabel(part, preReader) {
 function heightText(part) {
   if (isRail(part)) return TRAY.flat;
   if (Math.abs(part.height - BRICK_HEIGHT) < 0.01) return ["1 brick tall", "1 塊積木高"];
+  /* Tall parts count bricks (a minifigure is "about 4 bricks tall"). */
+  if (part.height > BRICK_HEIGHT) {
+    const bricks = Math.max(1, Math.round(part.height / BRICK_HEIGHT));
+    const exact = Math.abs(bricks * BRICK_HEIGHT - part.height) < 0.05;
+    return [`${exact ? "" : "about "}${bricks} bricks tall`, `${exact ? "" : "大約 "}${bricks} 塊積木高`];
+  }
   const plates = Math.max(1, Math.round(part.height / PLATE_HEIGHT));
   return [`${plates} ${plates === 1 ? "plate" : "plates"} tall`, `${plates} 片薄板高`];
 }
@@ -125,7 +133,9 @@ function heightText(part) {
 function snapGuide(part) {
   if (isRail(part)) return SNAP_GUIDES.rail;
   if (part.shape === "wheel") return SNAP_GUIDES.wheel;
-  if (part.shape === "tree" || part.shape === "flower") return SNAP_GUIDES.plant;
+  if (part.ground) return SNAP_GUIDES.plant;
+  if (part.sink) return SNAP_GUIDES.head;
+  if (part.top != null) return SNAP_GUIDES.seat;
   return SNAP_GUIDES.studs;
 }
 
@@ -172,6 +182,18 @@ function litMaterial(cheap, params) {
   return new THREE.MeshLambertMaterial(lambert);
 }
 
+/* Palette hex → its finish (catalog C3): gold and silver shine, trans
+   colours are see-through. Looked up by hex so recolouring keeps working
+   through kit.mat(hex). */
+const PALETTE_FINISH = new Map(Object.keys(COLOR_FINISH).map((id) => [COLORS[id], COLOR_FINISH[id]]));
+
+function finishMaterial(cheap, hex, finish = {}) {
+  const params = { color: hex, roughness: finish.roughness == null ? 0.42 : finish.roughness, metalness: finish.metalness || 0 };
+  if (finish.emissive) Object.assign(params, { emissive: finish.emissive, emissiveIntensity: 0.9 });
+  if (finish.opacity) Object.assign(params, { transparent: true, opacity: finish.opacity, depthWrite: false });
+  return litMaterial(cheap, params);
+}
+
 function makeKit(cheap) {
   const geos = new Map();
   const mats = new Map();
@@ -187,8 +209,13 @@ function makeKit(cheap) {
     geo: (key, make) => keep(geos, key, make),
     /* Satin plastic by default: soft lo-fi highlights, not mirror gloss (slice 08). */
     cheap,
-    mat: (hex, roughness = 0.45, metalness = 0) => keep(mats, `${hex}:${roughness}:${metalness}`,
-      () => litMaterial(cheap, { color: hex, roughness, metalness })),
+    mat: (hex, roughness, metalness = 0) => (roughness == null && PALETTE_FINISH.has(hex)
+      ? keep(mats, `${hex}:finish`, () => finishMaterial(cheap, hex, PALETTE_FINISH.get(hex)))
+      : keep(mats, `${hex}:${roughness == null ? 0.45 : roughness}:${metalness}`,
+        () => litMaterial(cheap, { color: hex, roughness: roughness == null ? 0.45 : roughness, metalness }))),
+    /* A model part's fixed slot (catalog C2): its own key, so a palette
+       recolour never swaps it. */
+    finish: (name) => keep(mats, `finish:${name}`, () => finishMaterial(cheap, (FINISHES[name] || FINISHES.grey).hex, FINISHES[name] || FINISHES.grey)),
     /* Any other shared material (rail glow, connector dots), freed with the lab. */
     custom: (key, make) => keep(mats, key, make),
     dispose() {
@@ -528,7 +555,118 @@ function makeFlowerPiece(part, colorHex, kit) {
   return group;
 }
 
+/* Model parts (catalog C1): a part is a list of primitives, each in part
+   space (x across, y up from the part's floor, z towards its front) with a
+   colour slot. Every slot becomes one merged geometry, cached per part, so a
+   piece is one draw call per colour. */
+const DEG = Math.PI / 180;
+const segs = (n, kit) => (kit.cheap ? Math.max(6, Math.round(n * 0.6)) : n);
+
+function prismShape(points, flip = 1) {
+  const shape = new THREE.Shape();
+  points.forEach(([u, v], i) => (i ? shape.lineTo(u, v * flip) : shape.moveTo(u, v * flip)));
+  return shape;
+}
+
+/* One primitive → geometry in part space (the floor at y = 0). */
+function primitiveGeometry(p, kit) {
+  let g;
+  let y = 0;
+  if (p.box) {
+    const [w, h, d] = p.box;
+    const bevel = p.bevel == null ? (Math.min(w, h, d) >= 0.3 ? 0.03 : 0) : p.bevel;
+    g = bevel ? bevelBox(w, h, d, bevel) : new THREE.BoxGeometry(w, h, d);
+    y = h / 2;
+  } else if (p.cyl) {
+    /* [r, h], or [top r, bottom r, h] for a taper. */
+    const [top, b, c] = p.cyl;
+    const bottom = c == null ? top : b;
+    const h = c == null ? b : c;
+    g = new THREE.CylinderGeometry(top, bottom, h, segs(p.seg || 18, kit), 1, !!p.open);
+    if (p.axis === "x") { g.rotateZ(Math.PI / 2); y = Math.max(top, bottom); }
+    else if (p.axis === "z") { g.rotateX(Math.PI / 2); y = Math.max(top, bottom); }
+    else y = h / 2;
+  } else if (p.cone) {
+    const [r, h] = p.cone;
+    g = new THREE.ConeGeometry(r, h, segs(p.seg || 18, kit));
+    y = h / 2;
+  } else if (p.ball != null) {
+    g = new THREE.SphereGeometry(p.ball, segs(p.seg || 14, kit), segs(p.segH || 10, kit));
+    y = p.ball * (p.s ? p.s[1] : 1);
+  } else if (p.dome != null) {
+    g = new THREE.SphereGeometry(p.dome, segs(p.seg || 18, kit), segs(p.segH || 8, kit), 0, TAU, 0, Math.PI / 2);
+  } else if (p.torus) {
+    const [radius, tube] = p.torus;
+    g = new THREE.TorusGeometry(radius, tube, segs(p.segT || 8, kit), segs(p.seg || 20, kit), (p.arc || 360) * DEG);
+    if (p.axis === "y") { g.rotateX(Math.PI / 2); y = tube; }
+    else if (p.axis === "x") { g.rotateY(Math.PI / 2); y = radius + tube; }
+    else y = radius + tube;
+  } else if (p.lathe) {
+    g = new THREE.LatheGeometry(p.lathe.map(([r, h]) => new THREE.Vector2(r, h)), segs(p.seg || 18, kit));
+  } else if (p.prism) {
+    const len = p.len || 1;
+    const axis = p.axis || "z";
+    const bevel = p.bevel || 0;
+    const flip = axis === "y" ? -1 : 1;
+    const shape = prismShape(p.prism, flip);
+    (p.holes || []).forEach((hole) => shape.holes.push(new THREE.Path(hole.map(([u, v]) => new THREE.Vector2(u, v * flip)))));
+    g = new THREE.ExtrudeGeometry(shape, {
+      depth: len - bevel * 2, bevelEnabled: !!bevel, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 1, curveSegments: 8,
+    });
+    g.translate(0, 0, -(len - bevel * 2) / 2);
+    /* Outline (u, v): z → u across and pushed along x; y → (x, z) plan pushed up. */
+    if (axis === "x") g.rotateY(-Math.PI / 2);
+    /* A plan pushed up: `at` y is its floor. */
+    else if (axis === "y") { g.rotateX(-Math.PI / 2); g.translate(0, len / 2, 0); }
+  } else if (p.studs) {
+    const list = [];
+    const points = Array.isArray(p.studs[0]) ? p.studs : [].concat(...studRow(p.studs[0]).map((x) => studRow(p.studs[1]).map((z) => [x, z])));
+    points.forEach(([x, z]) => {
+      const stud = studGeometry(segs(12, kit));
+      stud.translate(x, 0, z);
+      list.push(stud);
+    });
+    g = mergeGeometries(list);
+  } else {
+    throw new Error(`unknown primitive in ${JSON.stringify(p)}`);
+  }
+  if (p.s) g.scale(p.s[0], p.s[1], p.s[2]);
+  if (p.rot) {
+    if (p.rot[0]) g.rotateX(p.rot[0] * DEG);
+    if (p.rot[1]) g.rotateY(p.rot[1] * DEG);
+    if (p.rot[2]) g.rotateZ(p.rot[2] * DEG);
+  }
+  const at = p.at || [0, null, 0];
+  /* `at` is the primitive's centre; a missing y sits it on the floor. */
+  g.translate(at[0] || 0, at[1] == null ? y : at[1], at[2] || 0);
+  return g;
+}
+
+/* The colour slots a model uses, `main` (the palette) first. */
+function modelSlots(part) {
+  const slots = Array.from(new Set(part.model.map((p) => p.c || "main")));
+  return slots.sort((a, b) => (a === "main" ? -1 : b === "main" ? 1 : 0));
+}
+
+function makeModelPiece(part, colorHex, kit) {
+  const group = new THREE.Group();
+  modelSlots(part).forEach((slot) => {
+    const geometry = kit.geo(`${part.id}:${slot}`, () => {
+      const merged = mergeGeometries(part.model.filter((p) => (p.c || "main") === slot).map((p) => primitiveGeometry(p, kit)));
+      merged.translate(0, -part.height / 2, 0);
+      merged.computeBoundingBox();
+      merged.computeBoundingSphere();
+      return merged;
+    });
+    const finish = slot === "main" ? null : FINISHES[slot];
+    const see = finish && (finish.opacity || finish.emissive);
+    group.add(mesh(geometry, slot === "main" ? kit.mat(colorHex) : kit.finish(slot), !see));
+  });
+  return group;
+}
+
 function makePieceMesh(part, colorHex, kit) {
+  if (part.model) return makeModelPiece(part, colorHex, kit);
   if (part.shape === "wheel") return makeWheelPiece(part, colorHex, kit);
   if (part.shape === "rail") return makeRailPiece(part, kit);
   if (part.shape === "tree") return makeTreePiece(part, kit);
@@ -639,6 +777,11 @@ export class BrickLabRuntime {
     this.rails = { edges: [], linked: new Map(), free: [], circuit: new Set() };
     this.freeEndsCache = null;
     this.snap = null;
+    /* Catalog C7: tray pictures rendered from the real part, per part + colour. */
+    this.thumbs = new Map();
+    this.thumbWant = new Map();
+    this.thumbRigs = new Map();
+    this.thumbFailed = false;
   }
 
   cleanPrefs(prefs) {
@@ -980,6 +1123,7 @@ export class BrickLabRuntime {
     const perf = this.perf;
     const gap = time - perf.last;
     perf.last = time;
+    if (perf.skipNext) { perf.skipNext = false; return; }
     if (this.kit.cheap || perf.level >= 3 || gap > 250) {
       perf.sum = 0;
       perf.count = 0;
@@ -1052,6 +1196,7 @@ export class BrickLabRuntime {
     if (this.scene) this.renderer.render(this.scene, this.camera);
     this.invalidate();
     if (this.categoryListEl) [this.categoryListEl, this.partsEl].forEach((list) => this.markScrollable(list));
+    if (this.markColorsScrollable) this.markColorsScrollable();
   }
 
   bindUI() {
@@ -1316,6 +1461,154 @@ export class BrickLabRuntime {
     this.trayCount = count;
     this.markScrollable(this.partsEl);
     this.updateCategoryUI();
+    this.paintPreviews(this.partsEl);
+  }
+
+  /* Catalog C7: tray and info-card pictures. A preview shows its part's
+     picture in the active colour once rendered; until then (or if pictures
+     can't be made) the CSS sketch stays. A colour change keeps the old
+     picture until the new one is ready, so nothing flickers. */
+  thumbKey(part, colorId = this.activeColorId) {
+    return isFixedColor(part) ? part.id : `${part.id}:${colorId}`;
+  }
+
+  paintPreviews(root = this.root) {
+    if (!root) return;
+    root.querySelectorAll("[data-preview]").forEach((el) => {
+      const part = getPart(el.dataset.preview);
+      const key = this.thumbKey(part);
+      el.dataset.thumb = key;
+      const url = this.thumbs.get(key);
+      if (url) this.showThumb(el, url);
+      else if (!this.thumbFailed) this.thumbWant.set(key, { part, colorId: this.activeColorId });
+    });
+  }
+
+  showThumb(el, url) {
+    el.style.setProperty("--sqbl-thumb", `url("${url}")`);
+    el.classList.add("has-thumb");
+  }
+
+  /* Called by the loop: a few pictures per frame, inside a small time budget. */
+  drawThumbs() {
+    if (!this.thumbWant.size || !this.renderer) return false;
+    const start = performance.now();
+    const budget = this.kit.cheap ? 5 : 9;
+    for (const [key, want] of this.thumbWant) {
+      this.thumbWant.delete(key);
+      let url = this.thumbs.get(key);
+      if (!url) {
+        try {
+          url = this.renderThumb(want.part, want.colorId);
+        } catch (error) {
+          this.thumbFailed = true;
+          this.thumbWant.clear();
+          return true;
+        }
+        this.thumbs.set(key, url);
+        /* Oldest pictures go first; a few hundred is plenty. */
+        if (this.thumbs.size > 320) this.thumbs.delete(this.thumbs.keys().next().value);
+      }
+      this.root.querySelectorAll(`[data-thumb="${key}"]`).forEach((el) => this.showThumb(el, url));
+      if (performance.now() - start > budget) break;
+    }
+    return true;
+  }
+
+  /* One part, framed from the front-right and above, into an off-screen
+     target 2× the picture size; box-filtered down (cheap anti-aliasing) and
+     encoded to sRGB on the CPU, because a render target holds linear colour. */
+  renderThumb(part, colorId, W = 96, H = 80) {
+    const S = 2;
+    if (!this.thumbRigs.has(`${W}x${H}`)) {
+      const scene = new THREE.Scene();
+      scene.add(new THREE.HemisphereLight(0xf2f5ff, 0x8f8070, 1.25));
+      const sun = new THREE.DirectionalLight(0xfff3e0, 2.1);
+      sun.position.set(3, 7, 5);
+      scene.add(sun);
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      const lut = new Uint8ClampedArray(256);
+      for (let i = 0; i < 256; i += 1) {
+        const v = i / 255;
+        lut[i] = Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
+      }
+      this.thumbRigs.set(`${W}x${H}`, {
+        scene, canvas, ctx, lut,
+        camera: new THREE.PerspectiveCamera(26, W / H, 0.05, 400),
+        target: new THREE.WebGLRenderTarget(W * S, H * S),
+        pixels: new Uint8Array(W * S * H * S * 4),
+        image: ctx.createImageData(W, H),
+      });
+    }
+    const rig = this.thumbRigs.get(`${W}x${H}`);
+    const object = makePieceMesh(part, getColorHex(colorId), this.kit);
+    rig.scene.add(object);
+    rig.scene.updateMatrixWorld();
+    const box = new THREE.Box3().setFromObject(object);
+    const centre = box.getCenter(new THREE.Vector3());
+    const radius = Math.max(0.4, box.getSize(new THREE.Vector3()).length() / 2);
+    const distance = radius / Math.sin(rig.camera.fov * DEG / 2) * 0.9;
+    rig.camera.position.copy(centre).addScaledVector(new THREE.Vector3(0.6, 0.62, 1).normalize(), distance);
+    rig.camera.near = distance / 20;
+    rig.camera.far = distance * 3;
+    rig.camera.zoom = 1;
+    rig.camera.updateProjectionMatrix();
+    rig.camera.lookAt(centre);
+    rig.camera.updateMatrixWorld();
+    /* Zoom until the part's box fills the picture (a sphere fit leaves tall
+       and flat parts small). */
+    let reach = 0;
+    const corner = new THREE.Vector3();
+    for (let i = 0; i < 8; i += 1) {
+      corner.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(rig.camera);
+      reach = Math.max(reach, Math.abs(corner.x), Math.abs(corner.y));
+    }
+    if (reach > 0) {
+      rig.camera.zoom = 0.94 / reach;
+      rig.camera.updateProjectionMatrix();
+    }
+    const renderer = this.renderer;
+    const before = renderer.getRenderTarget();
+    const clear = renderer.getClearColor(new THREE.Color());
+    const clearAlpha = renderer.getClearAlpha();
+    try {
+      renderer.setRenderTarget(rig.target);
+      renderer.setClearColor(0x000000, 0);
+      renderer.clear();
+      renderer.render(rig.scene, rig.camera);
+      renderer.readRenderTargetPixels(rig.target, 0, 0, W * S, H * S, rig.pixels);
+    } finally {
+      renderer.setRenderTarget(before);
+      renderer.setClearColor(clear, clearAlpha);
+      rig.scene.remove(object);
+      disposeTree(object);
+    }
+    /* Blending over a clear target leaves premultiplied colour: average it,
+       then un-premultiply. Rows come bottom-up from GL. */
+    const src = rig.pixels;
+    const out = rig.image.data;
+    const row = W * S * 4;
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        let r = 0; let g = 0; let b = 0; let a = 0;
+        for (let dy = 0; dy < S; dy += 1) {
+          let i = (y * S + dy) * row + x * S * 4;
+          for (let dx = 0; dx < S; dx += 1, i += 4) { r += src[i]; g += src[i + 1]; b += src[i + 2]; a += src[i + 3]; }
+        }
+        const o = ((H - 1 - y) * W + x) * 4;
+        if (!a) { out[o] = out[o + 1] = out[o + 2] = out[o + 3] = 0; continue; }
+        const k = 255 / a;
+        out[o] = rig.lut[Math.min(255, Math.round(r * k))];
+        out[o + 1] = rig.lut[Math.min(255, Math.round(g * k))];
+        out[o + 2] = rig.lut[Math.min(255, Math.round(b * k))];
+        out[o + 3] = Math.round(a / (S * S));
+      }
+    }
+    rig.ctx.putImageData(rig.image, 0, 0);
+    return rig.canvas.toDataURL("image/png");
   }
 
   markActivePart() {
@@ -1364,7 +1657,7 @@ export class BrickLabRuntime {
     const part = getPart(partId);
     const pre = this.preReader;
     const fav = this.prefs.favorites.includes(part.id);
-    const fixed = FIXED_COLOR_SHAPES.includes(part.shape);
+    const fixed = isFixedColor(part);
     const line = (pair) => (pre ? "" : `<p>${escapeHtml(say(pair))}</p>`);
     const swatches = fixed ? "" : `<div class="sqbl-info-swatches" aria-hidden="true">${Object.keys(COLORS).map((id) => `<i style="background:${cssHex(getColorHex(id))}"></i>`).join("")}</div>`;
     this.infoEl.innerHTML = `
@@ -1381,6 +1674,7 @@ export class BrickLabRuntime {
       ${line(snapGuide(part))}`;
     this.infoEl.hidden = false;
     this.infoPartId = part.id;
+    this.paintPreviews(this.infoEl);
   }
 
   hideInfo() {
@@ -1400,6 +1694,13 @@ export class BrickLabRuntime {
         else this.refreshGhost();
       });
     });
+    /* 21 colours slide sideways in three rows (catalog C3); a fade at the
+       right edge says there are more. */
+    const sideways = () => this.colorsEl.classList.toggle("has-more-x",
+      this.colorsEl.scrollLeft + this.colorsEl.clientWidth < this.colorsEl.scrollWidth - 2);
+    this.colorsEl.addEventListener("scroll", sideways, { passive: true });
+    this.markColorsScrollable = sideways;
+    sideways();
     this.setActiveColor(this.activeColorId, true);
   }
 
@@ -1407,7 +1708,19 @@ export class BrickLabRuntime {
     if (colorId === this.activeColorId && !force) return;
     this.activeColorId = colorId;
     this.colorsEl.querySelectorAll("[data-color]").forEach((item) => item.classList.toggle("is-active", item.dataset.color === colorId));
+    /* A selected gold piece shows its swatch even when it sits past the edge. */
+    const swatch = this.colorsEl.querySelector(`[data-color="${colorId}"]`);
+    if (swatch) {
+      const left = swatch.offsetLeft - this.colorsEl.offsetLeft;
+      const view = this.colorsEl;
+      if (left < view.scrollLeft) view.scrollLeft = left;
+      else if (left + swatch.offsetWidth > view.scrollLeft + view.clientWidth) view.scrollLeft = left + swatch.offsetWidth - view.clientWidth;
+    }
     this.app.style.setProperty("--sqbl-piece", cssHex(getColorHex(colorId)));
+    if (this.renderer) {
+      this.paintPreviews(this.partsEl);
+      if (this.infoPartId) this.paintPreviews(this.infoEl);
+    }
   }
 
   loadInitialState() {
@@ -1556,17 +1869,22 @@ export class BrickLabRuntime {
       /* Rails sit on the baseplate studs. */
       return { pos: { x, y: STUD_H + part.height / 2, z }, join: onPlate ? join : null, blocked: railClash(part, x, z, rotation, rails, ignoreId) };
     }
-    /* Trees and flowers plug in at ground level. */
-    if (part.shape === "tree" || part.shape === "flower") return { pos: { x, y: part.height / 2, z }, join: null, blocked: false };
+    /* The old tree and flower plug in at ground level (catalog C5). */
+    if (part.ground) return { pos: { x, y: part.height / 2, z }, join: null, blocked: false };
     const probe = pieceBounds({ x, y: 0, z, rotation }, part);
     let top = 0;
+    let under = null;
     for (const [id, instance] of pool) {
       if (id === ignoreId) continue;
       const otherPart = getPart(instance.partId);
-      if (otherPart.shape === "wheel" || otherPart.shape === "tree" || otherPart.shape === "flower") continue;
+      /* Nothing rests on a wheel; a seat or a saddle is lower than the part. */
+      if (otherPart.support === false) continue;
       const other = pieceBounds(instance, otherPart);
-      if (overlap2D(probe, other)) top = Math.max(top, other.maxY);
+      const rest = otherPart.top == null ? other.maxY : other.minY + otherPart.top;
+      if (overlap2D(probe, other) && rest > top) { top = rest; under = otherPart; }
     }
+    /* A hat drops over the head it lands on. */
+    if (part.sink && under && under.head) top -= part.sink;
     return { pos: { x, y: Math.round((top + part.height / 2) * 1000) / 1000, z }, join: null, blocked: false };
   }
 
@@ -2167,6 +2485,8 @@ export class BrickLabRuntime {
     const loop = (time) => {
       if (this.destroyed) return;
       this.raf = requestAnimationFrame(loop);
+      /* Tray pictures (catalog C7) never count as a slow frame (slice 14). */
+      if (this.drawThumbs()) this.perf.skipNext = true;
       if (this.cameraTween) {
         const t = clamp((time - this.cameraTween.start) / this.cameraTween.duration, 0, 1);
         const eased = 1 - Math.pow(1 - t, 3);
@@ -2189,6 +2509,8 @@ export class BrickLabRuntime {
         this.placeBubble();
       }
       this.renderer.render(this.scene, this.camera);
+      /* The scene's own cost: a tray picture drawn later must not stand in for it. */
+      this.frameCost = { calls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles };
       this.frames = (this.frames || 0) + 1;
       this.measureFrame(time);
     };
@@ -2221,8 +2543,8 @@ export class BrickLabRuntime {
       undo: this.history.length,
       graphics: this.renderer ? this.renderer.domElement.dataset.sqGraphics : null,
       /* Last frame's cost, for the low-end check (slice 13). */
-      render: this.renderer ? { quality: this.renderer.domElement.dataset.sqGraphicsQuality, calls: this.renderer.info.render.calls,
-        triangles: this.renderer.info.render.triangles, trayDrag: !!(this.trayDrag && this.trayDrag.active), studs: this.studsPainted ? "painted" : "mesh", frames: this.frames || 0,
+      render: this.renderer ? { quality: this.renderer.domElement.dataset.sqGraphicsQuality,
+        calls: (this.frameCost || this.renderer.info.render).calls, triangles: (this.frameCost || this.renderer.info.render).triangles, trayDrag: !!(this.trayDrag && this.trayDrag.active), studs: this.studsPainted ? "painted" : "mesh", frames: this.frames || 0,
         level: this.perf.level, pixelRatio: this.renderer.getPixelRatio(), shadows: !!(this.renderer.shadowMap.enabled && this.sun.castShadow) } : null,
       canvas: rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
       camera: this.camera ? { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, aspect: this.camera.aspect } : null,
@@ -2236,6 +2558,8 @@ export class BrickLabRuntime {
         view: this.railView, finding: this.finding, category: this.activeCategory, query: this.query, size: this.sizeFilter, count: this.trayCount || 0,
         parts: this.partsEl ? Array.from(this.partsEl.querySelectorAll("[data-part]"), (el) => el.dataset.part) : [],
         favorites: this.prefs.favorites.slice(), recents: this.prefs.recents.slice(), info: this.infoPartId,
+        thumbs: this.partsEl ? this.partsEl.querySelectorAll(".sqbl-part-preview.has-thumb").length : 0, thumbsPending: this.thumbWant.size,
+        thumbsFailed: this.thumbFailed,
       },
       pieces,
     };
@@ -2256,6 +2580,9 @@ export class BrickLabRuntime {
     if (this.onInput) INPUT_EVENTS.forEach((type) => this.root.removeEventListener(type, this.onInput, { capture: true }));
     if (this.controls) this.controls.dispose();
     if (this.scene) disposeTree(this.scene, true);
+    this.thumbRigs.forEach((rig) => rig.target.dispose());
+    this.thumbs.clear();
+    this.thumbWant.clear();
     if (this.kit) this.kit.dispose();
     if (this.renderer) this.renderer.dispose();
     if (this.runtime) releaseContext(this.runtime);
