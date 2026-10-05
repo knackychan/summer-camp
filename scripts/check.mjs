@@ -1172,6 +1172,8 @@ try {
     (part.model || []).forEach(function (prim, i) {
       if (prim.j != null && !joints[prim.j]) fail("bricklab", part.id + " primitive " + i + " names undeclared joint " + prim.j);
     });
+    // Slice 03 (A3): no animal is left stiff.
+    if (part.category === "animals" && (!part.joints || !part.body)) fail("bricklab", part.id + " is an animal without joints and a body");
     if (!part.joints) return;
     if (!poseMod.POSES[part.body] || !poseMod.posesFor(part).length) fail("bricklab", part.id + " has joints but no pose list fits them");
     Object.keys(joints).forEach(function (name) {
@@ -1182,11 +1184,16 @@ try {
       }
       if (!part.model.some(function (p) { return p.j === name; })) fail("bricklab", part.id + " joint " + name + " moves nothing");
       if (!poseMod.JOINT_LABELS[name]) fail("bricklab", part.id + " joint " + name + " has no EN + 中文 chip name (JOINT_LABELS)");
+      if (d.nod) {
+        var n = d.nod;
+        if (["x", "y", "z"].indexOf(n.axis) < 0 || !(n.step > 0) || !(n.min <= 0 && n.max >= 0)) fail("bricklab", part.id + " joint " + name + " nod needs an axis, step > 0 and min ≤ 0 ≤ max");
+        if (!poseMod.JOINT_LABELS[name + ".nod"]) fail("bricklab", part.id + " " + name + ".nod has no chip name");
+      }
       if (!poseMod.stopsOf(d).some(function (a) { return Math.abs(a) < 1e-6; })) fail("bricklab", part.id + " joint " + name + ": 0° must be a stop");
     });
     poseMod.posesFor(part).forEach(function (p) {
       Object.keys(p.angles).forEach(function (j) {
-        if (!poseMod.stopsOf(joints[j]).some(function (a) { return Math.abs(a - p.angles[j]) < 1e-6; })) fail("bricklab", part.id + " pose " + p.id + " puts " + j + " between stops");
+        if (!poseMod.stopsOf(poseMod.jointDef(part, j)).some(function (a) { return Math.abs(a - p.angles[j]) < 1e-6; })) fail("bricklab", part.id + " pose " + p.id + " puts " + j + " between stops");
       });
     });
   });

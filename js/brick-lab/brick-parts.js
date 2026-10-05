@@ -171,18 +171,32 @@ const ring = (r, n, f) => range(n, (i) => f(Math.sin(i / n * Math.PI * 2) * r, M
 const legs4 = (x, z, h, r = 0.1, c = "main", y0 = 0) => [[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([sx, sz]) => ({ cyl: [r, h], at: [sx * x, y0 + h / 2, sz * z], c }));
 const eyes = (x, y, z, r = 0.07) => mirror({ ball: r, at: [x, y, z], c: "black", seg: 8, segH: 6 });
 
-/* A horse a minifig can ride: its saddle is `top` (C5). */
+/* Animal joints (moving-parts slice 03): every animal faces +z. Pins sit at
+   the neck, the tail root, the top of the legs and the wing roots. */
+const turnHead = (at) => ({ at, axis: "y", step: 45, min: -90, max: 90, nod: { axis: "x", step: 22.5, min: -45, max: 22.5 } });
+const swingTail = (at, axis = "y") => ({ at, axis, step: 22.5, min: -45, max: 45 });
+const swingLegs = (at) => ({ at, axis: "x", step: 22.5, min: -45, max: 45 });
+const flapWings = (at) => ({ at, axis: "z", step: 22.5, min: -45, max: 45, mirror: true });
+const openJaw = (at) => ({ at, axis: "x", step: 15, min: -30, max: 0 });
+/* Four legs → front pair (forward of the middle) and back pair. */
+const legPairs = (list) => flatten(list).map((p) => ({ ...p, j: p.at[2] >= 0 ? "legsF" : "legsB" }));
+const beast = (body, joints, extra = {}) => ({ body, joints: Object.freeze(joints), ...extra });
+
+/* A horse a minifig can ride: its saddle is `top` (C5). Extras high up and
+   forward (a horn) turn with the head; the rest (a saddle) stay on the body. */
 const horse = (id, label, coat, mane, hoof, extras) => model(id, label, "animals", 2, 4, 4.0, [
   { ball: 0.8, s: [0.9, 0.9, 2.0], at: [0, 1.95, -0.2], c: coat },
-  legs4(0.38, 1.1, 1.35, 0.17, coat), legs4(0.38, 1.1, 0.14, 0.19, hoof),
-  { cyl: [0.34, 0.42, 1.3], rot: [35, 0, 0], at: [0, 2.8, 1.3], c: coat },
-  { ball: 0.4, s: [0.9, 0.95, 1.6], rot: [25, 0, 0], at: [0, 3.3, 1.85], c: coat },
-  eyes(0.28, 3.5, 1.85, 0.06),
-  mirror({ cone: [0.09, 0.28], at: [0.17, 3.75, 1.62], c: coat, seg: 5 }),
-  { box: [0.14, 1.2, 0.5], rot: [35, 0, 0], at: [0, 3.05, 1.1], c: mane, bevel: 0 },
-  { cyl: [0.2, 0.06, 1.3], rot: [25, 0, 0], at: [0, 1.8, -2.0], c: mane },
-  extras,
-], { top: 2.65 });
+  legPairs([legs4(0.38, 1.1, 1.35, 0.17, coat), legs4(0.38, 1.1, 0.14, 0.19, hoof)]),
+  tag([
+    { cyl: [0.34, 0.42, 1.3], rot: [35, 0, 0], at: [0, 2.8, 1.3], c: coat },
+    { ball: 0.4, s: [0.9, 0.95, 1.6], rot: [25, 0, 0], at: [0, 3.3, 1.85], c: coat },
+    eyes(0.28, 3.5, 1.85, 0.06),
+    mirror({ cone: [0.09, 0.28], at: [0.17, 3.75, 1.62], c: coat, seg: 5 }),
+    { box: [0.14, 1.2, 0.5], rot: [35, 0, 0], at: [0, 3.05, 1.1], c: mane, bevel: 0 },
+  ], "head"),
+  { cyl: [0.2, 0.06, 1.3], rot: [25, 0, 0], at: [0, 1.8, -2.0], c: mane, j: "tail" },
+  flatten(extras).map((p) => (p.at && p.at[2] > 0.9 && p.at[1] > 2.8 ? { ...p, j: "head" } : p)),
+], beast("quad", { head: turnHead([0, 2.3, 0.9]), tail: swingTail([0, 2.2, -1.75], "z"), legsF: swingLegs([0, 1.35, 1.1]), legsB: swingLegs([0, 1.35, -1.1]) }, { top: 2.65 }));
 
 export const MORE_CATEGORIES = Object.freeze([
   { id: "round", label: ["Round & Cones", "圓形 · 圓錐"], icon: "🔴" },
@@ -589,151 +603,175 @@ export const MORE_PARTS = Object.freeze([
     mirror({ box: [0.16, 1.3, 0.04], at: [0.42, 2.2, 0.41], c: "blue", bevel: 0 }),
   ], { height: 4.2 }),
 
-  /* ── Animals (their own colours, C2) ── */
+  /* ── Animals (their own colours, C2; joints and poses: moving-parts slice 03) ── */
   model("dog", ["Dog", "小狗"], "animals", 1, 2, 1.3, [
     { ball: 0.4, s: [0.9, 0.85, 1.5], at: [0, 0.68, -0.1], c: "tan" },
-    { ball: 0.32, at: [0, 1.0, 0.55], c: "tan" }, { ball: 0.15, s: [1, 0.8, 1.3], at: [0, 0.92, 0.85], c: "tan" },
-    { ball: 0.07, at: [0, 0.97, 1.03], c: "black", seg: 6, segH: 4 }, eyes(0.12, 1.1, 0.83, 0.05),
-    mirror({ ball: 0.12, s: [0.6, 1.4, 0.8], at: [0.28, 1.08, 0.48], c: "brown" }),
-    legs4(0.2, 0.42, 0.42, 0.09, "tan"),
-    { cyl: [0.05, 0.4], rot: [-40, 0, 0], at: [0, 0.95, -0.72], c: "tan" },
-  ]),
+    tag([
+      { ball: 0.32, at: [0, 1.0, 0.55], c: "tan" }, { ball: 0.15, s: [1, 0.8, 1.3], at: [0, 0.92, 0.85], c: "tan" },
+      { ball: 0.07, at: [0, 0.97, 1.03], c: "black", seg: 6, segH: 4 }, eyes(0.12, 1.1, 0.83, 0.05),
+      mirror({ ball: 0.12, s: [0.6, 1.4, 0.8], at: [0.28, 1.08, 0.48], c: "brown" }),
+    ], "head"),
+    legPairs(legs4(0.2, 0.42, 0.42, 0.09, "tan")),
+    { cyl: [0.05, 0.4], rot: [-40, 0, 0], at: [0, 0.95, -0.72], c: "tan", j: "tail" },
+  ], beast("quad", { head: turnHead([0, 0.95, 0.35]), tail: swingTail([0, 0.82, -0.6]), legsF: swingLegs([0, 0.42, 0.42]), legsB: swingLegs([0, 0.42, -0.42]) })),
   model("cat", ["Cat", "小貓"], "animals", 1, 2, 1.2, [
     { ball: 0.36, s: [0.85, 0.85, 1.45], at: [0, 0.62, -0.1], c: "orange" },
-    { ball: 0.3, at: [0, 0.95, 0.5], c: "orange" },
-    mirror({ cone: [0.1, 0.22], at: [0.17, 1.27, 0.48], c: "orange", seg: 4 }),
-    eyes(0.11, 1.0, 0.77, 0.05), { ball: 0.04, at: [0, 0.9, 0.8], c: "pink", seg: 6, segH: 4 },
-    legs4(0.18, 0.4, 0.4, 0.08, "orange"),
-    { torus: [0.32, 0.05], arc: 150, rot: [0, 90, 0], at: [0, 0.95, -0.6], c: "orange", seg: 10, segT: 5 },
-  ]),
+    tag([
+      { ball: 0.3, at: [0, 0.95, 0.5], c: "orange" },
+      mirror({ cone: [0.1, 0.22], at: [0.17, 1.27, 0.48], c: "orange", seg: 4 }),
+      eyes(0.11, 1.0, 0.77, 0.05), { ball: 0.04, at: [0, 0.9, 0.8], c: "pink", seg: 6, segH: 4 },
+    ], "head"),
+    legPairs(legs4(0.18, 0.4, 0.4, 0.08, "orange")),
+    { torus: [0.32, 0.05], arc: 150, rot: [0, 90, 0], at: [0, 0.95, -0.6], c: "orange", seg: 10, segT: 5, j: "tail" },
+  ], beast("quad", { head: turnHead([0, 0.85, 0.3]), tail: swingTail([0, 0.75, -0.45]), legsF: swingLegs([0, 0.4, 0.4]), legsB: swingLegs([0, 0.4, -0.4]) })),
   horse("horse", ["Horse", "馬"], "wood", "black", "black", [{ box: [1.1, 0.12, 1.1], at: [0, 2.62, -0.2], c: "red" }]),
   horse("unicorn", ["Unicorn", "獨角獸"], "white", "pink", "gold", [{ cone: [0.08, 0.7], rot: [35, 0, 0], at: [0, 3.95, 2.2], c: "gold", seg: 6 }]),
   model("cow", ["Cow", "乳牛"], "animals", 2, 4, 2.6, [
     { box: [1.4, 1.1, 2.6], at: [0, 1.55, -0.2], c: "white", bevel: 0.15 },
     [[0.71, 1.6, 0.4], [-0.71, 1.4, -0.6], [0.4, 2.1, -0.9]].map(([x, y, z]) => ({ ball: 0.32, s: [0.25, 0.8, 1], at: [x, y, z], c: "black", seg: 8, segH: 6 })),
-    legs4(0.45, 0.9, 1.0, 0.16, "white"),
-    { box: [0.9, 0.85, 0.9], at: [0, 2.0, 1.4], c: "white", bevel: 0.12 },
-    { box: [0.85, 0.42, 0.25], at: [0, 1.75, 1.88], c: "pink", bevel: 0.08 },
-    eyes(0.25, 2.2, 1.86, 0.06),
-    mirror({ cone: [0.07, 0.3], rot: [0, 0, -60], at: [0.55, 2.45, 1.3], c: "cream", seg: 6 }),
+    legPairs(legs4(0.45, 0.9, 1.0, 0.16, "white")),
+    tag([
+      { box: [0.9, 0.85, 0.9], at: [0, 2.0, 1.4], c: "white", bevel: 0.12 },
+      { box: [0.85, 0.42, 0.25], at: [0, 1.75, 1.88], c: "pink", bevel: 0.08 },
+      eyes(0.25, 2.2, 1.86, 0.06),
+      mirror({ cone: [0.07, 0.3], rot: [0, 0, -60], at: [0.55, 2.45, 1.3], c: "cream", seg: 6 }),
+    ], "head"),
     { ball: 0.22, at: [0, 0.95, -0.3], c: "pink", seg: 8, segH: 6 },
-    { cyl: [0.04, 0.8], at: [0, 1.6, -1.55], c: "black" },
-  ], { top: 2.1 }),
+    { cyl: [0.04, 0.8], at: [0, 1.6, -1.55], c: "black", j: "tail" },
+  ], beast("quad", { head: turnHead([0, 1.9, 1.0]), tail: swingTail([0, 2.0, -1.55], "z"), legsF: swingLegs([0, 1.0, 0.9]), legsB: swingLegs([0, 1.0, -0.9]) }, { top: 2.1 })),
   model("pig", ["Pig", "小豬"], "animals", 2, 2, 1.2, [
     { ball: 0.5, s: [1, 0.9, 1.35], at: [0, 0.65, -0.05], c: "pink" },
     { cyl: [0.18, 0.15], axis: "z", at: [0, 0.68, 0.72], c: "pink" },
     mirror({ ball: 0.035, at: [0.07, 0.7, 0.8], c: "black", seg: 5, segH: 4 }), eyes(0.2, 0.88, 0.58, 0.05),
     mirror({ cone: [0.12, 0.2], rot: [20, 0, 0], at: [0.24, 1.12, 0.35], c: "pink", seg: 4 }),
-    legs4(0.26, 0.38, 0.32, 0.1, "pink"),
-    { torus: [0.08, 0.025], at: [0, 0.75, -0.72], rot: [0, 90, 0], c: "pink", seg: 8, segT: 4 },
-  ]),
+    legPairs(legs4(0.26, 0.38, 0.32, 0.1, "pink")),
+    { torus: [0.08, 0.025], at: [0, 0.75, -0.72], rot: [0, 90, 0], c: "pink", seg: 8, segT: 4, j: "tail" },
+  ], beast("quad", { tail: swingTail([0, 0.75, -0.66]), legsF: swingLegs([0, 0.32, 0.38]), legsB: swingLegs([0, 0.32, -0.38]) })),
   model("sheep", ["Sheep", "綿羊"], "animals", 2, 2, 1.6, [
     [[0, 0.9, 0, 0.5], [0.3, 1.0, 0.35, 0.36], [-0.3, 1.0, 0.3, 0.36], [0.3, 1.0, -0.35, 0.36], [-0.3, 1.05, -0.3, 0.36], [0, 1.2, 0, 0.36]].map(([x, y, z, r]) => ({ ball: r, at: [x, y, z], c: "white", seg: 10, segH: 7 })),
-    { ball: 0.26, s: [0.85, 1, 1.15], at: [0, 1.15, 0.72], c: "black" },
-    eyes(0.11, 1.2, 0.97, 0.05).map((p) => ({ ...p, c: "white" })),
-    legs4(0.28, 0.32, 0.6, 0.08, "black"),
-  ]),
+    tag([
+      { ball: 0.26, s: [0.85, 1, 1.15], at: [0, 1.15, 0.72], c: "black" },
+      eyes(0.11, 1.2, 0.97, 0.05).map((p) => ({ ...p, c: "white" })),
+    ], "head"),
+    legPairs(legs4(0.28, 0.32, 0.6, 0.08, "black")),
+  ], beast("quad", { head: turnHead([0, 1.05, 0.5]), legsF: swingLegs([0, 0.6, 0.32]), legsB: swingLegs([0, 0.6, -0.32]) })),
   model("chicken", ["Chicken", "雞"], "animals", 1, 1, 1.1, [
     { ball: 0.3, s: [0.85, 0.9, 1.1], at: [0, 0.5, -0.05], c: "white" },
-    { ball: 0.18, at: [0, 0.82, 0.22], c: "white" },
-    { box: [0.06, 0.16, 0.2], at: [0, 1.02, 0.2], c: "red", bevel: 0 },
-    { cone: [0.06, 0.16], rot: [90, 0, 0], at: [0, 0.8, 0.44], c: "orange", seg: 5 },
-    eyes(0.1, 0.86, 0.33, 0.035),
+    tag([
+      { ball: 0.18, at: [0, 0.82, 0.22], c: "white" },
+      { box: [0.06, 0.16, 0.2], at: [0, 1.02, 0.2], c: "red", bevel: 0 },
+      { cone: [0.06, 0.16], rot: [90, 0, 0], at: [0, 0.8, 0.44], c: "orange", seg: 5 },
+      eyes(0.1, 0.86, 0.33, 0.035),
+    ], "head"),
     mirror({ cyl: [0.03, 0.25], at: [0.1, 0.12, 0], c: "orange" }),
-  ]),
+  ], beast("bird", { head: turnHead([0, 0.7, 0.12]) })),
   model("duck", ["Duck", "鴨子"], "animals", 1, 2, 1.0, [
     { ball: 0.34, s: [0.9, 0.8, 1.4], at: [0, 0.32, -0.1], c: "yellow" },
-    { ball: 0.22, at: [0, 0.75, 0.3], c: "yellow" },
-    { ball: 0.12, s: [1, 0.4, 1.4], at: [0, 0.7, 0.55], c: "orange", seg: 8, segH: 6 },
-    eyes(0.11, 0.82, 0.45, 0.04),
-    { cone: [0.12, 0.25], rot: [-110, 0, 0], at: [0, 0.5, -0.55], c: "yellow", seg: 6 },
-  ]),
+    tag([
+      { ball: 0.22, at: [0, 0.75, 0.3], c: "yellow" },
+      { ball: 0.12, s: [1, 0.4, 1.4], at: [0, 0.7, 0.55], c: "orange", seg: 8, segH: 6 },
+      eyes(0.11, 0.82, 0.45, 0.04),
+    ], "head"),
+    { cone: [0.12, 0.25], rot: [-110, 0, 0], at: [0, 0.5, -0.55], c: "yellow", seg: 6, j: "tail" },
+  ], beast("bird", { head: turnHead([0, 0.55, 0.2]), tail: swingTail([0, 0.45, -0.45]) })),
   model("rabbit", ["Rabbit", "兔子"], "animals", 1, 1, 1.4, [
     { ball: 0.3, s: [0.9, 1, 1.1], at: [0, 0.4, -0.05], c: "white" },
-    { ball: 0.22, at: [0, 0.8, 0.12], c: "white" },
-    mirror({ ball: 0.09, s: [0.8, 3, 0.5], at: [0.09, 1.2, 0.05], rot: [0, 0, -8], c: "white", seg: 8, segH: 6 }),
-    eyes(0.1, 0.85, 0.3, 0.04), { ball: 0.035, at: [0, 0.78, 0.34], c: "pink", seg: 5, segH: 4 },
+    tag([
+      { ball: 0.22, at: [0, 0.8, 0.12], c: "white" },
+      mirror({ ball: 0.09, s: [0.8, 3, 0.5], at: [0.09, 1.2, 0.05], rot: [0, 0, -8], c: "white", seg: 8, segH: 6 }),
+      eyes(0.1, 0.85, 0.3, 0.04), { ball: 0.035, at: [0, 0.78, 0.34], c: "pink", seg: 5, segH: 4 },
+    ], "head"),
     { ball: 0.1, at: [0, 0.3, -0.4], c: "white", seg: 6, segH: 4 },
-  ]),
+  ], beast("quad", { head: turnHead([0, 0.65, 0.05]) })),
   model("frog", ["Frog", "青蛙"], "animals", 1, 1, 0.7, [
     { ball: 0.36, s: [1, 0.6, 1.1], at: [0, 0.25, 0], c: "green" },
     mirror({ ball: 0.13, at: [0.17, 0.5, 0.22], c: "white", seg: 8, segH: 6 }),
     eyes(0.19, 0.53, 0.33, 0.05),
-    mirror({ ball: 0.12, s: [1.2, 0.5, 1.8], at: [0.33, 0.08, -0.15], c: "green", seg: 8, segH: 4 }),
-  ]),
+    mirror({ ball: 0.12, s: [1.2, 0.5, 1.8], at: [0.33, 0.08, -0.15], c: "green", seg: 8, segH: 4, j: "legsB" }),
+  ], beast("frog", { legsB: swingLegs([0, 0.12, 0]) })),
   model("fish", ["Fish", "魚"], "animals", 1, 2, 1.0, [
     { ball: 0.3, s: [0.6, 1.1, 1.5], at: [0, 0.5, 0.15], c: "orange" },
-    { prism: [[-0.45, 0.15], [-0.45, 0.85], [-0.1, 0.5]].map(([u, v]) => [u - 0.15, v]), len: 0.06, axis: "x", c: "orange" },
+    { prism: [[-0.45, 0.15], [-0.45, 0.85], [-0.1, 0.5]].map(([u, v]) => [u - 0.15, v]), len: 0.06, axis: "x", c: "orange", j: "tail" },
     eyes(0.12, 0.6, 0.5, 0.05),
-  ]),
+  ], beast("fish", { tail: swingTail([0, 0.5, -0.25]) })),
   model("shark", ["Shark", "鯊魚"], "animals", 2, 4, 1.7, [
     { ball: 0.55, s: [0.8, 0.8, 3.0], at: [0, 0.6, 0.1], c: "grey", seg: 16 },
     { ball: 0.48, s: [0.75, 0.5, 2.8], at: [0, 0.42, 0.15], c: "white", seg: 16 },
     { prism: [[-0.3, 1.0], [0.4, 1.0], [-0.3, 1.7]], len: 0.08, axis: "x", c: "grey" },
-    { prism: [[-1.5, 0.6], [-1.98, 1.4], [-1.8, 0.6], [-1.98, 0.1]], len: 0.08, axis: "x", c: "grey" },
+    { prism: [[-1.5, 0.6], [-1.98, 1.4], [-1.8, 0.6], [-1.98, 0.1]], len: 0.08, axis: "x", c: "grey", j: "tail" },
     mirror({ prism: [[0, 0], [0.8, -0.3], [0.8, 0.1]], len: 0.06, axis: "z", at: [0.35, 0.4, 0.6], c: "grey" }),
     eyes(0.3, 0.75, 1.3, 0.05),
     { box: [0.4, 0.04, 0.06], at: [0, 0.48, 1.62], c: "black", bevel: 0 },
-  ]),
+  ], beast("jaw", { tail: swingTail([0, 0.6, -1.45]) })),
   model("parrot", ["Parrot", "鸚鵡"], "animals", 1, 1, 1.4, [
     { ball: 0.26, s: [0.9, 1.4, 0.9], at: [0, 0.6, 0], c: "red" },
-    { ball: 0.2, at: [0, 1.08, 0.08], c: "red" },
-    { cone: [0.08, 0.18], rot: [120, 0, 0], at: [0, 1.0, 0.3], c: "yellow", seg: 5 },
-    eyes(0.1, 1.12, 0.22, 0.035),
-    mirror({ ball: 0.14, s: [0.4, 1.4, 0.9], at: [0.22, 0.65, -0.05], c: "blue", seg: 8, segH: 6 }),
+    tag([
+      { ball: 0.2, at: [0, 1.08, 0.08], c: "red" },
+      { cone: [0.08, 0.18], rot: [120, 0, 0], at: [0, 1.0, 0.3], c: "yellow", seg: 5 },
+      eyes(0.1, 1.12, 0.22, 0.035),
+    ], "head"),
+    mirror({ ball: 0.14, s: [0.4, 1.4, 0.9], at: [0.22, 0.65, -0.05], c: "blue", seg: 8, segH: 6, j: "wings" }),
     { box: [0.18, 0.5, 0.06], rot: [20, 0, 0], at: [0, 0.2, -0.25], c: "blue", bevel: 0 },
     { box: [0.5, 0.06, 0.12], at: [0, 0.03, 0.05], c: "wood", bevel: 0 },
-  ]),
+  ], beast("bird", { head: turnHead([0, 0.9, 0.05]), wings: flapWings([0.2, 0.85, -0.05]) })),
   model("crocodile", ["Crocodile", "鱷魚"], "animals", 2, 6, 0.9, [
     { ball: 0.5, s: [1.3, 0.75, 2.6], at: [0, 0.38, -0.3], c: "green" },
-    { box: [0.7, 0.32, 1.6], at: [0, 0.32, 2.0], c: "green", bevel: 0.08 },
+    { box: [0.7, 0.32, 1.6], at: [0, 0.32, 2.0], c: "green", bevel: 0.08, j: "jaw" },
     { box: [0.66, 0.08, 1.5], at: [0, 0.32, 2.05], c: "white", bevel: 0 },
     mirror({ ball: 0.12, at: [0.25, 0.58, 1.3], c: "green", seg: 8, segH: 6 }), eyes(0.27, 0.66, 1.38, 0.04),
-    { cone: [0.4, 2.2], rot: [-90, 0, 0], at: [0, 0.3, -2.6], s: [1.2, 1, 0.5], c: "green", seg: 8 },
+    { cone: [0.4, 2.2], rot: [-90, 0, 0], at: [0, 0.3, -2.6], s: [1.2, 1, 0.5], c: "green", seg: 8, j: "tail" },
     range(5, (i) => ({ cone: [0.08, 0.16], at: [0, 0.78, 0.6 - i * 0.45], c: "green", seg: 4 })),
-    legs4(0.6, 0.8, 0.3, 0.11, "green"),
-  ]),
+    legPairs(legs4(0.6, 0.8, 0.3, 0.11, "green")),
+  ], beast("jaw", { jaw: openJaw([0, 0.36, 1.2]), tail: swingTail([0, 0.35, -1.5]), legsF: swingLegs([0, 0.3, 0.8]), legsB: swingLegs([0, 0.3, -0.8]) })),
   model("dragon", ["Dragon", "龍"], "animals", 4, 6, 4.2, [
     { ball: 0.85, s: [0.95, 0.9, 1.8], at: [0, 1.6, -0.3] },
     { ball: 0.6, s: [0.9, 0.6, 1.6], at: [0, 1.25, -0.25], c: "yellow" },
-    legs4(0.55, 0.9, 1.0, 0.2, "main"),
-    { cyl: [0.32, 0.42, 1.4], rot: [40, 0, 0], at: [0, 2.6, 1.15] },
-    { box: [0.8, 0.6, 1.1], at: [0, 3.25, 1.75], bevel: 0.12 },
-    eyes(0.38, 3.45, 1.75, 0.08).map((p) => ({ ...p, c: "yellow" })),
-    mirror({ cone: [0.08, 0.5], rot: [-30, 0, -15], at: [0.25, 3.75, 1.45], c: "cream", seg: 6 }),
-    mirror({ prism: [[0.4, 0], [2.0, 1.3], [1.9, 0.2], [1.2, -0.3]], len: 0.06, axis: "z", at: [0.2, 2.2, -0.2], c: "darkRed" }),
-    { cone: [0.4, 2.4], rot: [-100, 0, 0], at: [0, 1.4, -2.4], c: "main", seg: 10 },
+    legPairs(legs4(0.55, 0.9, 1.0, 0.2, "main")),
+    tag([
+      { cyl: [0.32, 0.42, 1.4], rot: [40, 0, 0], at: [0, 2.6, 1.15] },
+      { box: [0.8, 0.6, 1.1], at: [0, 3.25, 1.75], bevel: 0.12 },
+      eyes(0.38, 3.45, 1.75, 0.08).map((p) => ({ ...p, c: "yellow" })),
+      mirror({ cone: [0.08, 0.5], rot: [-30, 0, -15], at: [0.25, 3.75, 1.45], c: "cream", seg: 6 }),
+    ], "head"),
+    mirror({ prism: [[0.4, 0], [2.0, 1.3], [1.9, 0.2], [1.2, -0.3]], len: 0.06, axis: "z", at: [0.2, 2.2, -0.2], c: "darkRed", j: "wings" }),
+    { cone: [0.4, 2.4], rot: [-100, 0, 0], at: [0, 1.4, -2.4], c: "main", seg: 10, j: "tail" },
     range(4, (i) => ({ cone: [0.1, 0.3], at: [0, 2.35 - i * 0.05, 0.5 - i * 0.55], c: "yellow", seg: 4 })),
-  ], { top: 2.4 }),
+  ], beast("dragon", { head: turnHead([0, 2.2, 0.7]), wings: flapWings([0.6, 2.2, -0.2]), tail: swingTail([0, 1.5, -1.2]), legsF: swingLegs([0, 1.0, 0.9]), legsB: swingLegs([0, 1.0, -0.9]) }, { top: 2.4 })),
   model("turtle", ["Turtle", "烏龜"], "animals", 2, 2, 0.9, [
     { dome: 0.75, s: [1, 0.85, 1.1], at: [0, 0.1, 0], c: "green", seg: 12, segH: 5 },
     { cyl: [0.78, 0.1], at: [0, 0.12, 0], c: "lime" },
-    { ball: 0.22, at: [0, 0.3, 0.9], c: "lime" }, eyes(0.1, 0.38, 1.06, 0.04),
-    legs4(0.5, 0.45, 0.2, 0.12, "lime"),
-  ]),
+    tag([{ ball: 0.22, at: [0, 0.3, 0.9], c: "lime" }, eyes(0.1, 0.38, 1.06, 0.04)], "head"),
+    legPairs(legs4(0.5, 0.45, 0.2, 0.12, "lime")),
+  ], beast("quad", { head: turnHead([0, 0.3, 0.7]), legsF: swingLegs([0, 0.2, 0.45]), legsB: swingLegs([0, 0.2, -0.45]) })),
   model("owl", ["Owl", "貓頭鷹"], "animals", 1, 1, 1.4, [
     { ball: 0.36, s: [1, 1.3, 0.9], at: [0, 0.6, 0], c: "brown" },
     { ball: 0.24, s: [1, 1.2, 0.5], at: [0, 0.5, 0.15], c: "tan" },
-    mirror({ ball: 0.13, at: [0.14, 0.95, 0.24], c: "yellow", seg: 10, segH: 8 }), eyes(0.14, 0.95, 0.36, 0.06),
-    { cone: [0.05, 0.12], rot: [180, 0, 0], at: [0, 0.82, 0.32], c: "orange", seg: 4 },
-    mirror({ cone: [0.08, 0.2], rot: [0, 0, -20], at: [0.22, 1.08, 0], c: "brown", seg: 4 }),
-  ]),
+    tag([
+      mirror({ ball: 0.13, at: [0.14, 0.95, 0.24], c: "yellow", seg: 10, segH: 8 }), eyes(0.14, 0.95, 0.36, 0.06),
+      { cone: [0.05, 0.12], rot: [180, 0, 0], at: [0, 0.82, 0.32], c: "orange", seg: 4 },
+      mirror({ cone: [0.08, 0.2], rot: [0, 0, -20], at: [0.22, 1.08, 0], c: "brown", seg: 4 }),
+    ], "head"),
+  ], beast("bird", { head: turnHead([0, 0.8, 0]) })),
   model("monkey", ["Monkey", "猴子"], "animals", 1, 1, 1.5, [
     { ball: 0.3, s: [0.9, 1.2, 0.85], at: [0, 0.55, 0], c: "brown" },
-    { ball: 0.27, at: [0, 1.1, 0.05], c: "brown" },
-    { ball: 0.18, s: [1.1, 0.9, 0.6], at: [0, 1.06, 0.22], c: "tan" }, eyes(0.08, 1.15, 0.3, 0.04),
-    mirror({ ball: 0.1, s: [0.5, 1, 1], at: [0.28, 1.12, 0], c: "tan", seg: 8, segH: 6 }),
+    tag([
+      { ball: 0.27, at: [0, 1.1, 0.05], c: "brown" },
+      { ball: 0.18, s: [1.1, 0.9, 0.6], at: [0, 1.06, 0.22], c: "tan" }, eyes(0.08, 1.15, 0.3, 0.04),
+      mirror({ ball: 0.1, s: [0.5, 1, 1], at: [0.28, 1.12, 0], c: "tan", seg: 8, segH: 6 }),
+    ], "head"),
     mirror({ cyl: [0.06, 0.6], rot: [0, 0, 20], at: [0.3, 0.55, 0.05], c: "brown" }),
-    { torus: [0.3, 0.05], arc: 200, rot: [0, 90, 0], at: [0, 0.45, -0.4], c: "brown", seg: 12, segT: 5 },
-  ]),
+    { torus: [0.3, 0.05], arc: 200, rot: [0, 90, 0], at: [0, 0.45, -0.4], c: "brown", seg: 12, segT: 5, j: "tail" },
+  ], beast("quad", { head: turnHead([0, 0.85, 0.05]), tail: swingTail([0, 0.45, -0.25]) })),
   model("penguin", ["Penguin", "企鵝"], "animals", 1, 1, 1.3, [
     { ball: 0.34, s: [0.95, 1.5, 0.9], at: [0, 0.55, 0], c: "black" },
     { ball: 0.26, s: [0.9, 1.4, 0.5], at: [0, 0.5, 0.22], c: "white" },
-    eyes(0.1, 0.95, 0.27, 0.04).map((p) => ({ ...p, c: "white" })),
-    { cone: [0.06, 0.16], rot: [90, 0, 0], at: [0, 0.88, 0.36], c: "orange", seg: 5 },
+    tag([
+      eyes(0.1, 0.95, 0.27, 0.04).map((p) => ({ ...p, c: "white" })),
+      { cone: [0.06, 0.16], rot: [90, 0, 0], at: [0, 0.88, 0.36], c: "orange", seg: 5 },
+    ], "head"),
     mirror({ ball: 0.1, s: [1, 0.3, 1.4], at: [0.12, 0.03, 0.15], c: "orange", seg: 6, segH: 4 }),
-    mirror({ ball: 0.12, s: [0.3, 1.4, 0.7], rot: [0, 0, 15], at: [0.34, 0.6, 0], c: "black", seg: 6, segH: 6 }),
-  ]),
+    mirror({ ball: 0.12, s: [0.3, 1.4, 0.7], rot: [0, 0, 15], at: [0.34, 0.6, 0], c: "black", seg: 6, segH: 6, j: "wings" }),
+  ], beast("bird", { head: turnHead([0, 0.9, 0]), wings: flapWings([0.3, 0.82, 0]) })),
 
   /* ── Hats and hair: 2×1 like a minifig, they sink over its head (C5) ── */
   hat("hat_crown", ["Crown", "王冠"], 0.45, 0.75, [

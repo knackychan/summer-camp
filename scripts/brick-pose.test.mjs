@@ -111,3 +111,53 @@ test("focus mode: every preset has a sign, every jointed part's joints have EN +
     assert.match(JOINT_LABELS[j][1], /[\u3400-\u9fff]/);
   }));
 });
+
+/* Moving parts slice 03: animals by body type, a head that turns and nods,
+   wings that open as a mirrored pair. */
+import { jointDef, jointKeys } from "../js/brick-lab/brick-pose.js";
+
+const quad = {
+  id: "quad_test", body: "quad", width: 1, depth: 2, height: 1.3,
+  joints: {
+    head: { at: [0, 1, 0.4], axis: "y", step: 45, min: -90, max: 90, nod: { axis: "x", step: 22.5, min: -45, max: 22.5 } },
+    tail: { at: [0, 0.9, -0.6], axis: "y", step: 22.5, min: -45, max: 45 },
+    legsF: { at: [0, 0.4, 0.4], axis: "x", step: 22.5, min: -45, max: 45 },
+    legsB: { at: [0, 0.4, -0.4], axis: "x", step: 22.5, min: -45, max: 45 },
+  },
+};
+
+test("a nod is its own key on the head: head.nod", () => {
+  assert.deepEqual(jointKeys(quad), ["head", "head.nod", "tail", "legsF", "legsB"]);
+  assert.equal(jointDef(quad, "head.nod").axis, "x");
+  assert.equal(jointDef(quad, "tail.nod"), null);
+  assert.equal(jointAngles(quad, { p: "headUp" })["head.nod"], -22.5);
+  assert.equal(jointAngles(quad, { p: "sniff" })["head.nod"], 22.5);
+  assert.deepEqual(cleanPose(quad, { p: "stand", t: { "head.nod": 1, "tail.nod": 1 } }), { p: "stand", t: { "head.nod": 1 } });
+  assert.ok(JOINT_LABELS["head.nod"]);
+});
+
+test("all 20 animals have joints and a body; each only gets the poses its joints allow", () => {
+  const animals = PARTS.filter((p) => p.category === "animals");
+  assert.equal(animals.length, 20);
+  animals.forEach((p) => {
+    assert.ok(p.joints && Object.keys(p.joints).length && POSES[p.body], p.id);
+    assert.ok(posesFor(p).length >= 2, `${p.id} has something to pose`);
+  });
+  const ids = (id) => posesFor(getPart(id)).map((p) => p.id);
+  assert.ok(ids("dog").includes("headUp") && ids("dog").includes("lookL"));
+  assert.ok(!ids("pig").includes("lookL"), "the pig's face is on its body: no head to turn");
+  assert.ok(ids("dragon").includes("wingsOpen"));
+  assert.ok(ids("crocodile").includes("mouthOpen") && ids("crocodile").includes("swish"));
+  assert.ok(!ids("shark").includes("mouthOpen"));
+  assert.ok(ids("fish").includes("swim") && ids("frog").includes("jump"));
+  assert.equal(jointAngles(getPart("crocodile"), { p: "mouthOpen" }).jaw, -30);
+  assert.equal(getPart("dragon").joints.wings.mirror, true);
+  assert.equal(getPart("horse").top, 2.65, "the saddle is unchanged");
+});
+
+test("legs split by side of the body: front legs forward of the middle, back legs behind", () => {
+  const dog = getPart("dog");
+  dog.model.filter((m) => m.j === "legsF").forEach((m) => assert.ok(m.at[2] > 0));
+  dog.model.filter((m) => m.j === "legsB").forEach((m) => assert.ok(m.at[2] < 0));
+  assert.equal(dog.model.filter((m) => m.j === "legsF").length, 2);
+});
