@@ -161,3 +161,51 @@ test("legs split by side of the body: front legs forward of the middle, back leg
   dog.model.filter((m) => m.j === "legsB").forEach((m) => assert.ok(m.at[2] < 0));
   assert.equal(dog.model.filter((m) => m.j === "legsF").length, 2);
 });
+
+/* Moving parts slice 04 (P1, P2): alive loops are pure maths, seeded per piece;
+   the nearest pieces move, the rest stay still. */
+import { aliveAngles, nearestIds, seedOf } from "../js/brick-lab/brick-pose.js";
+
+test("alive angles: on top of the pose, inside every joint's range, the same at the same moment", () => {
+  PARTS.filter((p) => p.joints).forEach((part) => {
+    const seed = seedOf("piece-" + part.id);
+    for (let t = 0; t < 12; t += 0.37) {
+      const a = aliveAngles(part, null, t, seed, 1);
+      Object.keys(a).forEach((key) => {
+        const def = jointDef(part, key);
+        assert.ok(a[key] >= def.min - 1e-6 && a[key] <= def.max + 1e-6, `${part.id} ${key} ${a[key]} at ${t}`);
+      });
+      assert.deepEqual(aliveAngles(part, null, t, seed, 1), a);
+    }
+  });
+});
+
+test("alive loops move something on every jointed part, and differ between pieces", () => {
+  PARTS.filter((p) => p.joints).forEach((part) => {
+    const seed = seedOf("a");
+    const moved = [0.5, 1.3, 2.9, 4.1, 6.6].some((t) => JSON.stringify(aliveAngles(part, null, t, seed, 1)) !== JSON.stringify(aliveAngles(part, null, 0, seed, 1)));
+    assert.ok(moved, `${part.id} never moves`);
+  });
+  const dog = getPart("dog");
+  assert.notDeepEqual(aliveAngles(dog, null, 3, seedOf("a"), 1), aliveAngles(dog, null, 3, seedOf("b"), 1));
+});
+
+test("reduced motion moves half as far; the pose is the starting point", () => {
+  const dog = getPart("dog");
+  const seed = seedOf("x");
+  const rest = jointAngles(dog, null);
+  const full = aliveAngles(dog, null, 1.7, seed, 1);
+  const half = aliveAngles(dog, null, 1.7, seed, 0.5);
+  Object.keys(full).forEach((k) => assert.ok(Math.abs((half[k] - rest[k]) - (full[k] - rest[k]) / 2) < 1e-6, k));
+  const fig = getPart("fig_boy");
+  const cheer = aliveAngles(fig, { p: "cheer" }, 0.2, seed, 1);
+  assert.ok(cheer.armL < -150, "a cheering figure keeps its arms up");
+});
+
+test("the nearest pieces move, up to the cap", () => {
+  const points = Array.from({ length: 50 }, (_, i) => ({ id: "p" + i, x: i, z: 0 }));
+  const near = nearestIds(points, 0, 0, 40);
+  assert.equal(near.size, 40);
+  assert.ok(near.has("p0") && near.has("p39") && !near.has("p40"));
+  assert.equal(nearestIds(points, 49, 0, 3).has("p49"), true);
+});

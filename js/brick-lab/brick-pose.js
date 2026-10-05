@@ -196,3 +196,59 @@ export function sitShift(rotation, sign = 1) {
 export function sitOffset() {
   return { y: -SIT.drop / 2, z: -SIT.back };
 }
+
+/* ── Play (slice 04, P1, P2): figures and animals alive in place ── */
+
+/* A stable number from a piece id: each piece starts its loop at its own moment. */
+export function seedOf(id) {
+  let h = 2166136261;
+  const text = String(id);
+  for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619) >>> 0;
+  return h;
+}
+
+const wave = (t, period, phase = 0) => Math.sin((t / period) * Math.PI * 2 + phase);
+/* 1 during the first `on` seconds of every `every` seconds, else 0. */
+const burst = (t, every, on) => (((t % every) + every) % every < on ? 1 : 0);
+
+/* What each body type does when alive, as degrees added to the pose. */
+const LOOPS = {
+  minifig(t, ph, slot) {
+    const out = { head: 25 * wave(t, 5, ph), armL: 10 * wave(t, 3, ph), armR: 10 * wave(t, 3, ph + Math.PI) };
+    /* Now and then a wave: the right arm goes up and shakes for 1.5 s. */
+    if (burst(t + slot, 8 + (slot % 4), 1.5)) out.armR = { to: -135 + 20 * wave(t, 0.5) };
+    return out;
+  },
+  quad: (t, ph) => ({ tail: 30 * wave(t, 0.6, ph), head: 20 * wave(t, 4, ph), "head.nod": 8 * wave(t, 3, ph) }),
+  dragon: (t, ph) => ({ tail: 20 * wave(t, 2, ph), head: 20 * wave(t, 4, ph), "head.nod": 8 * wave(t, 3, ph), wings: 20 * wave(t, 2.2, ph) }),
+  bird: (t, ph, slot) => ({ head: 30 * wave(t, 3, ph), wings: 30 * burst(t + slot, 4, 0.8) * Math.abs(wave(t, 0.4)), tail: 15 * wave(t, 1, ph) }),
+  jaw: (t, ph, slot) => ({ tail: 20 * wave(t, 2.5, ph), jaw: -20 * burst(t + slot, 6, 0.8), legsF: 10 * wave(t, 2.5, ph), legsB: -10 * wave(t, 2.5, ph) }),
+  fish: (t, ph) => ({ tail: 30 * wave(t, 1.2, ph) }),
+  frog: (t, ph, slot) => ({ legsB: 5 * wave(t, 2, ph) + 30 * burst(t + slot, 3, 0.4) }),
+};
+LOOPS.minifigSeated = LOOPS.minifig;
+
+/* Joint angles at `seconds` for an alive piece: its pose plus its body's loop,
+   moved `scale` as far (0.5 with reduced motion), kept inside each joint. */
+export function aliveAngles(part, pose, seconds, seed, scale = 1) {
+  const base = jointAngles(part, pose);
+  const loop = LOOPS[part && part.body];
+  if (!loop) return base;
+  const phase = (seed % 6283) / 1000;
+  const slot = seed % 10;
+  const add = loop(seconds, phase, slot);
+  const out = { ...base };
+  Object.keys(add).forEach((key) => {
+    if (!(key in base)) return;
+    const def = jointDef(part, key);
+    const value = add[key];
+    const target = typeof value === "object" ? base[key] + (value.to - base[key]) * scale : base[key] + value * scale;
+    out[key] = Math.max(def.min, Math.min(def.max, Math.round(target * 1000) / 1000));
+  });
+  return out;
+}
+
+/* The ids of up to `cap` points nearest (x, z): the pieces that move in Play. */
+export function nearestIds(points, x, z, cap) {
+  return new Set(points.slice().sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z)).slice(0, cap).map((p) => p.id));
+}
