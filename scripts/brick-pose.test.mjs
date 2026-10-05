@@ -101,3 +101,13 @@ test("hats and hair turn with the head; torso extras stay on the body", () => {
   const pirate = getPart("fig_pirate");
   assert.ok(pirate.model.filter((m) => m.box && m.at[1] < 2.7 && m.c === "main").every((m) => !m.j), "stripes stay on the torso");
 });
+
+import { JOINT_LABELS } from "../js/brick-lab/brick-pose.js";
+
+test("focus mode: every preset has a sign, every jointed part's joints have EN + 中文 names (slice 02)", () => {
+  Object.keys(POSES).forEach((body) => POSES[body].forEach((p) => assert.ok(typeof p.icon === "string" && p.icon.length, `${body} ${p.id}`)));
+  PARTS.filter((p) => p.joints).forEach((p) => Object.keys(p.joints).forEach((j) => {
+    assert.ok(JOINT_LABELS[j], `${p.id} ${j} has no chip name`);
+    assert.match(JOINT_LABELS[j][1], /[\u3400-\u9fff]/);
+  }));
+});

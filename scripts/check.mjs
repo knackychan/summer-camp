@@ -1166,6 +1166,7 @@ try {
   Object.keys(poseMod.POSES).forEach(function (body) {
     poseMod.POSES[body].forEach(function (p) { assertPair(p.label, "bricklab.pose." + body + "." + p.id); });
   });
+  Object.keys(poseMod.JOINT_LABELS).forEach(function (j) { assertPair(poseMod.JOINT_LABELS[j], "bricklab.joint." + j); });
   brickMod.PARTS.forEach(function (part) {
     var joints = part.joints || {};
     (part.model || []).forEach(function (prim, i) {
@@ -1180,6 +1181,7 @@ try {
         return;
       }
       if (!part.model.some(function (p) { return p.j === name; })) fail("bricklab", part.id + " joint " + name + " moves nothing");
+      if (!poseMod.JOINT_LABELS[name]) fail("bricklab", part.id + " joint " + name + " has no EN + 中文 chip name (JOINT_LABELS)");
       if (!poseMod.stopsOf(d).some(function (a) { return Math.abs(a) < 1e-6; })) fail("bricklab", part.id + " joint " + name + ": 0° must be a stop");
     });
     poseMod.posesFor(part).forEach(function (p) {

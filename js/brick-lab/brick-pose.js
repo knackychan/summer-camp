@@ -11,28 +11,39 @@
    thigh under the hip pivot, and moves half a stud back onto the back row. */
 export const SIT = Object.freeze({ drop: 0.85, back: 0.5 });
 
-const preset = (id, en, zh, angles = {}, extra = {}) =>
-  Object.freeze({ id, label: Object.freeze([en, zh]), angles: Object.freeze(angles), ...extra });
+/* `icon` stands on a pose card until its picture is drawn (slice 02, F3):
+   Emoji 5.0 or older, so Android 8 draws it. */
+const preset = (id, en, zh, icon, angles = {}, extra = {}) =>
+  Object.freeze({ id, label: Object.freeze([en, zh]), icon, angles: Object.freeze(angles), ...extra });
 
 export const POSES = Object.freeze({
   minifig: Object.freeze([
-    preset("stand", "Stand", "站好"),
-    preset("sit", "Sit", "坐下", { legL: -90, legR: -90 }, { sit: true }),
-    preset("wave", "Wave", "揮手", { armR: -135 }),
-    preset("cheer", "Cheer", "歡呼", { armL: -180, armR: -180 }),
-    preset("walk", "Walk", "走路", { armL: 45, armR: -45, legL: -22.5, legR: 22.5 }),
-    preset("point", "Point", "指向", { armR: -90 }),
-    preset("lookL", "Look left", "看左邊", { head: 45 }),
-    preset("lookR", "Look right", "看右邊", { head: -45 }),
+    preset("stand", "Stand", "站好", "🙂"),
+    preset("sit", "Sit", "坐下", "💺", { legL: -90, legR: -90 }, { sit: true }),
+    preset("wave", "Wave", "揮手", "👋", { armR: -135 }),
+    preset("cheer", "Cheer", "歡呼", "🙌", { armL: -180, armR: -180 }),
+    preset("walk", "Walk", "走路", "🚶", { armL: 45, armR: -45, legL: -22.5, legR: 22.5 }),
+    preset("point", "Point", "指向", "👉", { armR: -90 }),
+    preset("lookL", "Look left", "看左邊", "⬅️", { head: 45 }),
+    preset("lookR", "Look right", "看右邊", "➡️", { head: -45 }),
   ]),
   /* The Sitting Minifigure part comes seated: its rest is sitting. */
   minifigSeated: Object.freeze([
-    preset("seated", "Sit", "坐好"),
-    preset("wave", "Wave", "揮手", { armR: -135 }),
-    preset("cheer", "Cheer", "歡呼", { armL: -180, armR: -180 }),
-    preset("lookL", "Look left", "看左邊", { head: 45 }),
-    preset("lookR", "Look right", "看右邊", { head: -45 }),
+    preset("seated", "Sit", "坐好", "💺"),
+    preset("wave", "Wave", "揮手", "👋", { armR: -135 }),
+    preset("cheer", "Cheer", "歡呼", "🙌", { armL: -180, armR: -180 }),
+    preset("lookL", "Look left", "看左邊", "⬅️", { head: 45 }),
+    preset("lookR", "Look right", "看右邊", "➡️", { head: -45 }),
   ]),
+});
+
+/* What each joint is called on a focus-mode chip (slice 02). */
+export const JOINT_LABELS = Object.freeze({
+  head: Object.freeze(["Head", "頭"]),
+  armL: Object.freeze(["Left arm", "左手"]),
+  armR: Object.freeze(["Right arm", "右手"]),
+  legL: Object.freeze(["Left leg", "左腳"]),
+  legR: Object.freeze(["Right leg", "右腳"]),
 });
 
 const round = (n) => Math.round(n * 1000) / 1000;
