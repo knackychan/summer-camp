@@ -1022,3 +1022,22 @@ import { IF_TESTS, repeatCounts, ifTests, insertAfter, canUnwrap, unwrap, setRep
   assert.deepEqual(sel([2, 3], 6), [6]);
 }
 console.log('Code Quest UX polish: card-menu strip edits verified.');
+
+// Facing + Rune plan slice 03: the runner names the open calls so the strip can light the running call card.
+{
+  const runner = new ProgramRunner([A('move', 'a-top'), CALL('rune', 'c-1'), A('turnRight', 'a-r'), CALL('outer', 'c-2')],
+    { rune: [A('move', 'a-in1'), A('move', 'a-in2')], outer: [CALL('rune', 'c-3')] });
+  const env = { test: () => false };
+  const seen = [];
+  for (let i = 0; i < 8; i++) {
+    const event = runner.step(env);
+    if (event.type !== 'action') break;
+    seen.push([event.uid, runner.activeCalls().map(call => call.uid + ':' + call.name).join('>')]);
+  }
+  assert.deepEqual(seen, [
+    ['a-top', ''], ['a-in1', 'c-1:rune'], ['a-in2', 'c-1:rune'], ['a-r', ''],
+    ['a-in1', 'c-2:outer>c-3:rune'], ['a-in2', 'c-2:outer>c-3:rune']
+  ]);
+  assert.equal(runner.step(env).type, 'done');
+  assert.deepEqual(runner.activeCalls(), []);
+}

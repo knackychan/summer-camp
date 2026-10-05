@@ -115,6 +115,7 @@ export const MESSAGES = Object.freeze({
   warded: ['Ward active. Incoming damage will be reduced.', '守護效果啟動，接下來的傷害會降低。'], noWard: ['No ward tonic is available.', '沒有可用的守護藥水。'],
   incoming: ['The archer is signaling a shot. Your next turn can react to it.', '弓手正在預告射擊；下一個回合可以對它做出反應。'], poisoned: ['Poison is active. It will tick after the dungeon turn.', '毒素正在作用，地下城回合結束時會造成傷害。'],
   turnLeftStep: ['Left turn — toward the hero’s left hand.', '左轉——往英雄的左手邊。'], turnRightStep: ['Right turn — toward the hero’s right hand.', '右轉——往英雄的右手邊。'],
+  runeRunning: ['Running your Rune…', '正在執行你的符文……'], runeDone: ['Rune finished — back to Main.', '符文跑完了——回到主程式。'],
   worldTurn: ['Now the dungeon takes its turn.', '現在輪到地下城行動。'], resting: ['The hero needs a quick rest. Change the plan and reset the room.', '英雄需要休息一下。調整計畫，再重設房間。'],
   won: ['Quest clear! Your program worked.', '闖關成功！你的程式成功了。'], firstReward: ['New loot added to your camp.', '新戰利品已放進營地。'], improved: ['New smallest program for this quest!', '這一關有新的最短程式紀錄！'],
   selected: ['Selected. Choose Repeat or IF to wrap the selected cards.', '已選取。可以用「重複」或「如果」包住這些卡。'], selectContiguous: ['Select cards next to each other before wrapping them.', '要包起來的卡片必須彼此相鄰。'], wrapEmpty: ['Add an action first, then wrap it.', '先加入動作，再把它包起來。'],

@@ -222,7 +222,7 @@ function nodeIcon(node) {
   if (node.type === 'call' || node.type === 'on') return glyph('call');
   return glyph('data');
 }
-const running = node => !!(node.uid && node.uid === S.activeUid);
+const running = node => !!(node.uid && (node.uid === S.activeUid || (S.activeCalls || []).includes(node.uid)));
 
 function codeUnlocked() { return modeFor(S.profile) === 'architect'; }
 function allowedRepresentations() {
@@ -239,12 +239,13 @@ function defaultRepresentation() {
 }
 
 /* ---------- program strip (redesign slice 04) ---------- */
-function miniCards(nodes) {
+/** `lit` false keeps a copy's cards dark: a call card's mini row lights only while that call runs. */
+function miniCards(nodes, lit = true) {
   if (!nodes.length) return '<span class="cq-mini empty">' + glyph('data') + '</span>';
   return nodes.map(node => {
-    const cls = 'cat-' + nodeCategory(node) + (running(node) ? ' executing' : '');
-    if (node.type === 'repeat' || node.type === 'forOf') return '<span class="cq-mini-bracket ' + cls + '"><i>' + label(nodeShort(node)) + '</i>' + miniCards(node.body) + '</span>';
-    if (node.type === 'if') return '<span class="cq-mini-bracket ' + cls + '"><i>?</i>' + miniCards(node.then) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else) : '') + '</span>';
+    const cls = 'cat-' + nodeCategory(node) + (lit && running(node) ? ' executing' : '');
+    if (node.type === 'repeat' || node.type === 'forOf') return '<span class="cq-mini-bracket ' + cls + '"><i>' + label(nodeShort(node)) + '</i>' + miniCards(node.body, lit) + '</span>';
+    if (node.type === 'if') return '<span class="cq-mini-bracket ' + cls + '"><i>?</i>' + miniCards(node.then, lit) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else, lit) : '') + '</span>';
     return '<span class="cq-mini ' + cls + '" title="' + esc(t(nodeTitle(node))) + '">' + nodeIcon(node) + '</span>';
   }).join('');
 }
@@ -252,8 +253,10 @@ function stripCard(node, index, selected) {
   const cls = 'cat-' + nodeCategory(node) + (selected ? ' selected' : '') + (running(node) ? ' executing' : '') + (node.uid && node.uid === S.justAdded ? ' just-added' : '');
   const head = '<i class="cq-num">' + (index + 1) + '</i>' + nodeIcon(node) + '<b>' + label(nodeShort(node)) + '</b>';
   const attrs = 'aria-pressed="' + selected + '" aria-label="' + esc((index + 1) + '. ' + t(nodeTitle(node))) + '"';
-  if (node.type === 'repeat' || node.type === 'forOf' || node.type === 'if') {
-    const body = node.type === 'if' ? miniCards(node.then) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else) : '') : miniCards(node.body);
+  // A Rune call shows the Rune's own cards, the way Repeat shows its body (facing-and-rune D6).
+  const runeCall = node.type === 'call' && node.name === 'rune';
+  if (node.type === 'repeat' || node.type === 'forOf' || node.type === 'if' || runeCall) {
+    const body = runeCall ? miniCards(S.runeProgram, running(node)) : node.type === 'if' ? miniCards(node.then) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else) : '') : miniCards(node.body);
     return '<div class="cq-bracket ' + cls + '">' + button('select:' + index, head, 'class="cq-bracket-head" ' + attrs) + '<div class="cq-bracket-body">' + body + '</div></div>';
   }
   return button('select:' + index, head, 'class="cq-card ' + cls + '" ' + attrs);
@@ -900,12 +903,32 @@ function turnFx(event, now) {
   return { kind: 'turn', target: turn[0], from, to, side: turn[1], start: now, duration: 560 };
 }
 
+/* The strip follows the running program (facing-and-rune D5): while a Rune call's body runs
+   the strip shows Rune, and it goes back to Main when the call returns. */
+function followRune() {
+  const calls = S.model.runner && S.model.runner.activeCalls ? S.model.runner.activeCalls() : [];
+  S.activeCalls = calls.map(call => call.uid).filter(Boolean);
+  if (S.model.phase !== 'executing' || !S.level.available.logic.includes('callRune')) return;
+  const next = calls.some(call => call.name === 'rune') ? 'rune' : 'main';
+  if (next === S.editor) return;
+  S.editor = next; closeMenu();
+  notify(next === 'rune' ? MESSAGES.runeRunning : MESSAGES.runeDone);
+}
+/** A finished, stopped or reset run hands the strip back to what the kid was editing. */
+function restoreEditor() {
+  S.activeCalls = [];
+  if (S.editorBeforeRun == null) return;
+  S.editor = S.editorBeforeRun; S.editorBeforeRun = null;
+}
+
 function executeOne(auto) {
   if (!S || S.paused || S.dialog || !beginIfNeeded()) return;
   S.autoRun = !!auto;
+  if (S.editorBeforeRun == null) S.editorBeforeRun = S.editor;
   const event = S.model.step();
   const now = performance.now();
   S.activeUid = event.uid || null;
+  followRune();
   if (event.type === 'action') {
     if (event.detail && event.detail.source === 'inventory' && event.detail.item) {
       S.profile = consumePotion(S.profile, event.detail.item, 1); saveProfile();
@@ -956,6 +979,7 @@ function executeOne(auto) {
     if (!auto) notify(S.fx.side === 'left' ? MESSAGES.turnLeftStep : MESSAGES.turnRightStep);
     else announce(FACING[S.fx.to]);
   }
+  if (S.model.phase !== 'executing') restoreEditor();
   render();
   if (S.model.phase === 'won') { completeQuest(); return; }
   if (S.model.phase === 'resting' || S.model.phase === 'programming') {
@@ -1029,7 +1053,7 @@ function startLevel(level, options = {}) {
   S.level = level; S.model = createModel(level);
   if (!preserveProgram) { S.program = []; S.runeProgram = []; S.extraFunctions = {}; S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
   else { S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
-  S.editor = 'main'; S.goalOpen = false; S.debugOpen = false; S.menuOpen = false; S.menuWrap = false; S.camera = HOME();
+  S.editor = 'main'; S.editorBeforeRun = null; S.activeCalls = []; S.goalOpen = false; S.debugOpen = false; S.menuOpen = false; S.menuWrap = false; S.camera = HOME();
   S.representation = level.codingView === 'hybrid' && allowedRepresentations().includes('hybrid') ? 'hybrid' : defaultRepresentation();
   S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false;
   const activeBehaviors=behaviorAllowedForLevel(level)&&['hero','companion'].some(owner=>{const saved=behaviorFor(S.profile,owner);return saved.enabled&&saved.source.trim();});
@@ -1287,7 +1311,7 @@ function perform(actionId) {
   if (actionId === 'clear') { if (currentProgram().length) { pushUndo(); setCurrentProgram([]); currentSelection().clear(); render(); } return; }
   if (actionId === 'run') { closeMenu(); executeOne(true); return; }
   if (actionId === 'step') { closeMenu(); executeOne(false); return; }
-  if (actionId === 'reset') { closeMenu(); S.camera = HOME(); S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']); render(); return; }
+  if (actionId === 'reset') { closeMenu(); restoreEditor(); S.camera = HOME(); S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']); render(); return; }
   if (actionId === 'map') { openDialog('map'); return; }
   if (actionId === 'camp') { openDialog('camp'); return; }
   if (actionId === 'lab') { openLab(); return; }

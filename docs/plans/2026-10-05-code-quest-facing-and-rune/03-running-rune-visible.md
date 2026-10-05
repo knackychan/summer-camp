@@ -1,6 +1,7 @@
 # Slice 03: Running Rune is visible
 
 **Status:** Approved by Papa 2026-10-05 (`design.md` D4, D5, D6 call brackets).
+**Implemented:** 2026-10-05. `activeCalls()` returns `[{ uid, name }]` instead of bare uids, so the UI can tell a Rune call from other written functions without searching the program tree. check.mjs and check-codequest-ui.py green.
 **Goal:** While a Rune call runs, the kid sees which call card is running and which Rune card is running.
 **Depends on:** 01
 **Files:** `js/games/codequest/interpreter.js`, `js/games/codequest.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `scripts/codequest.test.mjs`, `scripts/check-codequest-ui.py`.

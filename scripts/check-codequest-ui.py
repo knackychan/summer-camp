@@ -317,6 +317,34 @@ def run(args):
                 check(f'{tag}: a Rune call can never land inside Rune', state()['runeProgram'] == rune_before)
                 act('strip:main')
                 check(f'{tag}: back on Main the Rune card returns', state()['editor'] == 'main' and library_has('logic:callRune'))
+                # Slice 03: the strip follows a running Rune and lights exactly the running card.
+                act('strip:rune')
+                act('add:move')
+                act('strip:main')
+                for a_id in ('logic:callRune', 'add:turnRight', 'logic:callRune'):
+                    act(a_id)
+                check(f'{tag}: q10 program built (Rune = Move ×2; Main = Rune, Right, Rune)',
+                      [n['type'] for n in state()['program']] == ['call', 'action', 'call'] and len(state()['runeProgram']) == 2)
+                act('strip:rune')
+                trail = []
+                for _ in range(3):
+                    act('step')
+                    trail.append((state()['editor'], page.evaluate("document.querySelectorAll('.cq-strip .executing').length")))
+                page.screenshot(path=str(out / f'rune-step-{tag}.png'))
+                check(f'{tag}: stepping shows Rune while it runs, then Main, one lit card each time',
+                      trail == [('rune', 1), ('rune', 1), ('main', 1)], trail)
+                act('reset')
+                check(f'{tag}: reset hands the strip back to the tab being edited before Step', state()['editor'] == 'rune')
+                act('strip:main')
+                page.screenshot(path=str(out / f'rune-call-cards-{tag}.png'))
+                check(f'{tag}: a Rune call card shows the cards inside the Rune', page.evaluate(
+                    "[...document.querySelectorAll('.cq-strip .cq-bracket.cat-func')].map(b => b.querySelectorAll('.cq-bracket-body .cq-mini').length).join()") == '2,2')
+                act('run')
+                page.wait_for_function(SNAPSHOT + ".model.phase === 'won' || " + SNAPSHOT + ".dialog === 'win'", timeout=30000)
+                check(f'{tag}: q10 wins with the Rune program and the strip is back on Main', state()['editor'] == 'main')
+                page.wait_for_selector('[data-action="win:continue"]', state='attached')
+                act('win:continue')
+                page.wait_for_function('!' + SNAPSHOT + '.dialog')
 
                 problems, sides = [], {}
 

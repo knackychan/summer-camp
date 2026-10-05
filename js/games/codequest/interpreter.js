@@ -83,6 +83,11 @@ export class ProgramRunner {
     if (frame.assign && frame.callerScope) frame.callerScope[frame.assign] = scalar(frame.returnValue);
   }
 
+  /** Open function calls, outermost first: [{ uid, name }]. Read-only; lets the UI light the running call card. */
+  activeCalls() {
+    return this.stack.filter(frame => frame.kind === 'function').map(frame => ({ uid: frame.uid || null, name: frame.name }));
+  }
+
   step(env = {}) {
     if (this.halted) return { type: this.error ? 'error' : 'done', reason: this.error || undefined };
 
@@ -167,7 +172,7 @@ export class ProgramRunner {
         const childScope = Object.create(frame.scope);
         desc.params.forEach((param, index) => { const value = evalExpr(node.args[index], frame.scope, env); childScope[param] = value && typeof value === 'object' && value.__cqEnemyRef === true ? value : scalar(value); });
         const calls = frame.calls.concat(node.name);
-        this.stack.push({ kind: 'function', name: node.name, assign: node.assign, callerScope: frame.scope, returnValue: null, calls, scope: childScope });
+        this.stack.push({ kind: 'function', name: node.name, uid: node.uid, assign: node.assign, callerScope: frame.scope, returnValue: null, calls, scope: childScope });
         this.stack.push({ kind: 'block', nodes: desc.body, index: 0, calls, scope: childScope });
         continue;
       }
