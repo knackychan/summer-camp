@@ -14,6 +14,8 @@ resizes, and there is no bottom tray. Slice 13: an idle lab draws no frames, and
 gets the reduced tier (studs painted on the plate, Lambert light, a fraction of the triangles) and still
 places pieces. Slice 14: a standard tablet that can't keep up steps down (painted studs, no shadows)
 without resizing the view. Slice 15: a part slid sideways out of the rail places where it is let go.
+Catalog plan (2026-10-05): twenty categories in build order, every part arms in < 50 ms and gets its
+real-part icon, a minifig rides a horse and wears a helmet, 21 colours slide sideways in three rows.
 Multiplayer plan slice 08: part icons are the real part, in the picked colour, drawn on the lab's own canvas.
 Multiplayer plan slice 02: every change goes through the op sequencer (placed pieces carry `by`).
 Multiplayer plan slice 05: on a pretend home wifi (in-page loopback), a sibling joins the open world, builds,
@@ -101,6 +103,10 @@ def pick(page, category):
         back.click()
     page.locator(f'.sqbl-category[data-category="{category}"]').click()
 
+
+# Catalog plan (docs/plans/2026-10-05-brick-catalog/ C4, A4): shape categories, then the world.
+CATEGORIES = ('bricks', 'plates', 'tiles', 'slopes', 'round', 'structure', 'doors', 'wheels', 'vehicles', 'connectors',
+              'rails', 'nature', 'scenery', 'figures', 'animals', 'accessories', 'home', 'castle', 'pirates', 'space')
 
 NEW_PARTS = ('brick_1x3', 'brick_2x5', 'plate_1x4', 'plate_2x6', 'slope_45', 'wheel_med', 'axle',
              'rail_curve_90', 'rail_junction_t', 'rail_cross', 'platform_4x4')
@@ -204,7 +210,9 @@ def lab_slices_09_11(page, snap, check, out):
     check('Search finds parts by their 中文 name', sorted(snap()['tray']['parts']) == sorted(
           ['rail_straight', 'rail_curve_90', 'rail_junction_t', 'rail_cross']))
     search.fill('2x4')
-    check('Search reads 2x4 as 2×4', set(snap()['tray']['parts']) == {'brick_2x4', 'plate_2x4', 'tile_2x4', 'frame_2x4', 'log_2x4'})
+    found = set(snap()['tray']['parts'])
+    check('Search reads 2x4 as 2×4', {'brick_2x4', 'plate_2x4', 'tile_2x4', 'frame_2x4', 'log_2x4', 'table'} <= found
+          and 'brick_2x2' not in found)
     search.fill('')
     page.locator('.sqbl-size').select_option('2×2')
     parts = set(snap()['tray']['parts'])
@@ -251,7 +259,9 @@ MORE_PARTS = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2', 'slope_1
               'slope_30_1x2', 'slope_inv_1x2', 'slope_curved_2x2', 'slope_curved_1x2',
               # Parts-survey slice 04: arch, door, big window, leaves.
               'arch_1x4', 'door_1x4x6', 'window_1x4x3', 'leaves')
-MORE_COUNTS = {'bricks': 14, 'plates': 18, 'tiles': 13, 'slopes': 11, 'wheels': 3, 'structure': 7, 'nature': 5, 'scenery': 5}
+# Counts as the catalog plan left them (round parts and doors moved to their own categories, A4).
+MORE_COUNTS = {'bricks': 16, 'plates': 19, 'tiles': 13, 'slopes': 15, 'round': 12, 'wheels': 4, 'structure': 11, 'doors': 6,
+               'nature': 17, 'scenery': 5}
 FIXED_ICONS = ('rock', 'mushroom', 'log_2x4', 'leaves')
 DOOR_KNOB = '#3d4246'
 ICON_SRC = "(id) => { const img = document.querySelector('.sqbl-part[data-part=\"' + id + '\"] .sqbl-part-preview img'); return img ? img.src : null; }"
@@ -276,7 +286,7 @@ def lab_more_parts(page, snap, check, out):
         page.wait_for_timeout(150)
 
     def arm(part):
-        for c in ('bricks', 'plates', 'tiles', 'slopes', 'wheels', 'structure', 'nature', 'scenery'):
+        for c in CATEGORIES:
             pick(page, c)
             if page.locator(f'.sqbl-part[data-part="{part}"]').count():
                 break
@@ -417,6 +427,114 @@ def lab_more_parts(page, snap, check, out):
     for _ in range(3):
         undo()
     check('Undo leaves the world as it was', len(snap()['pieces']) == pieces0)
+
+
+def catalog_checks(page, snap, check, out):
+    """Catalog plan (docs/plans/2026-10-05-brick-catalog/): 20 categories in build order; every part arms in
+    < 50 ms and gets its real-part icon; an animal comes in its own colours; a sitting minifig rides a horse
+    and a helmet drops over its head (C5); 21 colours slide sideways in three rows and paint a piece gold."""
+    def tap(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(150)
+
+    def undo():
+        page.locator('.sqbl-app [data-action="undo"]').dispatch_event('pointerdown')
+        page.wait_for_timeout(150)
+
+    def selected():
+        s = snap()
+        return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+
+    def close_info():
+        page.locator('.sqbl-tray-title').click()
+
+    pieces0 = len(snap()['pieces'])
+    box = page.locator('.sqbl-stage canvas').bounding_box()
+    check('Twenty categories in build order', page.evaluate(
+          "Array.from(document.querySelectorAll('.sqbl-category'), e => e.dataset.category)") == list(CATEGORIES))
+    slow, bare, seen = [], [], set()
+    for cat in CATEGORIES:
+        pick(page, cat)
+        ids = [p for p in snap()['tray']['parts'] if p not in seen]
+        for part in ids:
+            seen.add(part)
+            page.locator(f'.sqbl-part[data-part="{part}"]').first.scroll_into_view_if_needed()
+            ms = page.evaluate(f"(() => {{ const t = performance.now(); document.querySelector('.sqbl-part[data-part=\"{part}\"]').click(); return performance.now() - t; }})()")
+            if ms >= 50:
+                slow.append((part, round(ms, 1)))
+        close_info()
+        # Icons are drawn for parts on screen: walk the list down, letting each screenful finish.
+        parts = page.locator('.sqbl-parts')
+        parts.evaluate('e => { e.scrollTop = 0; }')
+        keys = set()
+        while True:
+            page.wait_for_function(SNAP + '.tray.iconsPending === 0', timeout=60000)
+            page.wait_for_timeout(120)
+            keys |= set(snap()['tray']['icons'])
+            if parts.evaluate('e => e.scrollTop + e.clientHeight >= e.scrollHeight - 2'):
+                break
+            parts.evaluate('e => { e.scrollTop += e.clientHeight; }')
+            page.wait_for_timeout(120)
+        missing = [p for p in snap()['tray']['parts'] if not any(k == p or k.startswith(p + ':') for k in keys)]
+        if missing:
+            bare.append((cat, missing))
+        parts.evaluate('e => { e.scrollTop = 0; }')
+        page.wait_for_timeout(300)
+        page.screenshot(path=str(out / f'catalog-{cat}.png'), clip=page.locator('.sqbl-left-rail').bounding_box())
+    check(f'Every part in every category gets its real-part icon {bare}', not bare)
+    check(f'All {len(seen)} parts arm and build their geometry in < 50 ms {slow}', len(seen) == 238 and not slow)
+
+    info = page.locator('.sqbl-info')
+    pick(page, 'animals')
+    page.locator('.sqbl-part[data-part="horse"]').click()
+    check('An animal comes in its own colours (info card, EN + 中文)', info.is_visible() and '馬' in info.inner_text()
+          and 'own colours' in info.inner_text())
+    close_info()
+
+    # Stacking (C5): a sitting minifig rides the horse, a helmet drops over its head.
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+    page.locator('.sqbl-part[data-part="horse"]').click()
+    close_info()
+    tap(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.62)
+    horse = selected()
+    check('A horse places', horse['partId'] == 'horse')
+    pick(page, 'figures')
+    page.locator('.sqbl-part[data-part="fig_sitting"]').click()
+    close_info()
+    tap(horse['screen']['x'], horse['screen']['y'])
+    rider = selected()
+    saddle = horse['y'] - 2.0 + 2.65
+    check(f'A sitting minifig rides on the saddle {rider["y"]}', rider['partId'] == 'fig_sitting' and abs(rider['y'] - 1.4 - saddle) < 0.02)
+    pick(page, 'accessories')
+    page.locator('.sqbl-part[data-part="hat_knight"]').click()
+    close_info()
+    tap(rider['screen']['x'], rider['screen']['y'])
+    helmet = selected()
+    check(f'A helmet drops over the rider\'s head {helmet["y"]}', helmet['partId'] == 'hat_knight'
+          and abs(helmet['y'] - 0.8 - (rider['y'] - 1.4 + 2.75 - 0.95)) < 0.02)
+    page.wait_for_timeout(300)
+    page.screenshot(path=str(out / 'catalog-rider.png'))
+    for _ in range(3):
+        undo()
+
+    # Colours (C3): 21 in three rows that slide sideways; a selected piece takes gold.
+    colors = page.locator('.sqbl-colors')
+    rows = page.evaluate("new Set(Array.from(document.querySelectorAll('.sqbl-color'), e => Math.round(e.getBoundingClientRect().top))).size")
+    check('21 colours in three rows that slide sideways', page.locator('.sqbl-color').count() == 21 and rows == 3
+          and colors.evaluate('e => e.scrollWidth > e.clientWidth') and 'has-more-x' in colors.get_attribute('class'))
+    pick(page, 'bricks')
+    page.locator('.sqbl-part[data-part="brick_2x4"]').click()
+    close_info()
+    tap(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.62)
+    page.locator('.sqbl-color[data-color="gold"]').click()
+    page.wait_for_timeout(200)
+    check('A selected piece can be painted gold, and the swatch slides into view',
+          selected()['colorId'] == 'gold' and colors.evaluate('e => e.scrollLeft > 0'))
+    page.locator('.sqbl-color[data-color="red"]').click()
+    for _ in range(3):
+        undo()
+    check('Catalog checks leave the world as it was', len(snap()['pieces']) == pieces0)
 
 
 # More-parts plan slice 04: one picture of every part, and the cost of the new parts.
@@ -816,7 +934,7 @@ def run(args):
                 # Slice 08 / 12: neither switching category nor switching rail view resizes the 3D view (flash).
                 sizes = {(round(b['width']), round(b['height']))}
                 rail = page.locator('.sqbl-left-rail').bounding_box()['width']
-                for cat in ('plates', 'tiles', 'slopes', 'wheels', 'connectors', 'rails', 'structure', 'nature', 'scenery', 'bricks'):
+                for cat in CATEGORIES[1:] + CATEGORIES[:1]:
                     pick(page, cat)
                     b = page.locator('.sqbl-stage canvas').bounding_box()
                     sizes.add((round(b['width']), round(b['height'])))
@@ -1028,6 +1146,7 @@ def run(args):
                 check('The world comes back as it was left', len(snap()['pieces']) == STARTER + 1)
                 lab_slices_09_11(page, snap, check, out)
                 lab_more_parts(page, snap, check, out)
+                catalog_checks(page, snap, check, out)
                 leave_lab(page)
 
                 # Same door as Paint: through the Games category lock, stopped only by a Papa app pause.
@@ -1167,7 +1286,7 @@ def run(args):
                 tp.wait_for_timeout(200)
                 check('A finger scrolls the category list without picking a category',
                       tp.evaluate(SNAP)['tray']['view'] == 'categories' and lst.evaluate('e => e.scrollTop') > 0)
-                for cat in ('tiles', 'rails', 'structure', 'nature', 'scenery', 'bricks'):
+                for cat in ('tiles', 'rails', 'structure', 'nature', 'scenery', 'space', 'bricks'):
                     pick(tp, cat)
                     if tp.evaluate(SNAP)['tray']['category'] != cat:
                         break
@@ -1176,9 +1295,14 @@ def run(args):
                 tp.set_viewport_size({'width': 1024, 'height': 600})
                 tp.locator('.sqbl-rail-back').click()
                 tp.wait_for_timeout(200)
-                fit = lst.evaluate('e => [e.scrollHeight, e.clientHeight]')
-                check(f'At 1024×600 all ten categories fit above the colours {fit}',
-                      fit[0] <= fit[1] and 'has-more' not in lst.get_attribute('class'))
+                # Catalog C4: twenty categories scroll inside the rail on every tablet, above the colours.
+                lb = lst.bounding_box()
+                check('At 1024×600 the categories scroll above the colours',
+                      'has-more' in lst.get_attribute('class') and lb['y'] + lb['height'] <= tp.locator('.sqbl-colors').bounding_box()['y'])
+                pick(tp, 'space')
+                check('…and the last one is reachable', tp.evaluate(SNAP)['tray']['category'] == 'space')
+                tp.locator('.sqbl-rail-back').click()
+                tp.wait_for_timeout(200)
                 tp.screenshot(path=str(out / 'categories-1024x600.png'))
                 tp.evaluate('SQPlatform.triggerBack()')
                 touch.close()
