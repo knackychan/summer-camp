@@ -238,3 +238,13 @@
 .sqbl-lost b{font-size:18px;font-weight:800}
 @keyframes sqbl-look{50%{transform:translateY(-6px)}}
 @media (prefers-reduced-motion:reduce){.sqbl-lost-av{animation:none}}
+
+/* Catalog plan (docs/plans/2026-10-05-brick-catalog/) C3: 21 colours in the
+   same three rows; the grid slides sideways, a fade says there are more. */
+.sqbl-colors{grid-template-columns:none;grid-template-rows:repeat(3,auto);grid-auto-flow:column;grid-auto-columns:calc((100% - 24px) / 5);overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;scrollbar-width:none;touch-action:pan-x;padding:8px 4px 4px}
+.sqbl-colors::-webkit-scrollbar{display:none}
+.sqbl-colors.has-more-x{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent)}
+.sqbl-app.is-pre-reader .sqbl-colors{grid-template-columns:none;grid-auto-columns:calc((100% - 18px) / 4)}
+.sqbl-color[data-color^=trans]{background:linear-gradient(135deg,rgba(255,255,255,.85) 0 22%,transparent 22% 48%,rgba(255,255,255,.55) 48% 58%,transparent 58%),repeating-conic-gradient(rgba(30,50,70,.14) 0 25%,transparent 0 50%) 0 0/10px 10px,var(--sqbl-swatch);opacity:.9}
+.sqbl-color[data-color=gold],.sqbl-color[data-color=silver]{background:linear-gradient(135deg,rgba(255,255,255,.65),transparent 45%,rgba(0,0,0,.22)),var(--sqbl-swatch)}
+@media(max-width:520px){.sqbl-colors,.sqbl-app.is-pre-reader .sqbl-colors{grid-template-columns:none;grid-auto-columns:calc((100% - 12px) / 3)}}

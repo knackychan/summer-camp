@@ -15,6 +15,7 @@
 const SIZE = { width: 56, height: 36 }; /* CSS pixels */
 const VIEW = [1, 0.95, 1.35]; /* camera direction: from the front right, above */
 const MARGIN = 1.08;
+const CACHE_MAX = 480;
 
 export function createThumbs({ THREE, renderer, cheap = false, perFrame = 3 }) {
   const cache = new Map();
@@ -179,6 +180,9 @@ export function createThumbs({ THREE, renderer, cheap = false, perFrame = 3 }) {
         drawn += 1;
         if (!url) continue;
         cache.set(key, url);
+        /* 238 parts × 21 colours could pile up: the oldest icons go first
+           (brick-catalog plan A5). An icon already shown keeps its picture. */
+        if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
         listeners.forEach((listener) => listener(key, url));
       }
       return drawn;

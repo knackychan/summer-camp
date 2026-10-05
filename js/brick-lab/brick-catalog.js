@@ -2,6 +2,8 @@
    Every kid-facing label is an [en, zh] pair. */
 /* Real proportions on a 1-unit stud pitch: a brick is 9.6 mm tall on an 8 mm
    pitch (1.2), a plate a third of that (0.4) — slice 05, D10. */
+import { CATEGORY_ORDER, MORE_CATEGORIES, MORE_PARTS } from "./brick-parts.js";
+
 export const BRICK_UNIT = 1;
 export const BRICK_HEIGHT = 1.2;
 export const PLATE_HEIGHT = 0.4;
@@ -21,6 +23,23 @@ export const COLORS = Object.freeze({
   black: 0x1b2a34,
   tan: 0xe4cd9e,
   brown: 0x582a12,
+  /* Catalog plan (docs/plans/2026-10-05-brick-catalog/ C3). */
+  lime: 0xbbe90b,
+  darkBlue: 0x0a3463,
+  azure: 0x36aebf,
+  darkRed: 0x720e0f,
+  gold: 0xd9a933,
+  silver: 0xb4b9bf,
+  transClear: 0xe6f4fb,
+  transBlue: 0x58a6e4,
+});
+
+/* Palette colours that are not plain satin plastic (C3): metallic or see-through. */
+export const COLOR_FINISH = Object.freeze({
+  gold: Object.freeze({ metalness: 0.3, roughness: 0.3 }),
+  silver: Object.freeze({ metalness: 0.3, roughness: 0.28 }),
+  transClear: Object.freeze({ opacity: 0.38, roughness: 0.15 }),
+  transBlue: Object.freeze({ opacity: 0.55, roughness: 0.15 }),
 });
 
 export const COLOR_NAMES = Object.freeze({
@@ -37,6 +56,54 @@ export const COLOR_NAMES = Object.freeze({
   black: ["Black", "黑色"],
   tan: ["Tan", "米色"],
   brown: ["Brown", "咖啡色"],
+  lime: ["Lime", "萊姆綠"],
+  darkBlue: ["Dark blue", "深藍色"],
+  azure: ["Azure", "天藍色"],
+  darkRed: ["Dark red", "深紅色"],
+  gold: ["Gold", "金色"],
+  silver: ["Silver", "銀色"],
+  transClear: ["See-through", "透明"],
+  transBlue: ["See-through blue", "透明藍"],
+});
+
+/* Fixed finishes a model part's non-palette slots use (C2): a minifig's
+   face, wood, glass, a torch flame. Never recoloured. */
+export const FINISHES = Object.freeze({
+  skin: { hex: 0xf2cd37 },
+  black: { hex: 0x1b2a34 },
+  white: { hex: 0xf4f4f4 },
+  grey: { hex: 0xa0a5a9 },
+  dark: { hex: 0x6c6e68 },
+  red: { hex: 0xc91a09 },
+  blue: { hex: 0x0055bf },
+  navy: { hex: 0x0a3463 },
+  green: { hex: 0x237841 },
+  leaf: { hex: 0x4b9f4a },
+  lime: { hex: 0xa5ca18 },
+  yellow: { hex: 0xf5c518 },
+  orange: { hex: 0xfe8a18 },
+  pink: { hex: 0xf4a6c4 },
+  purple: { hex: 0x6846a5 },
+  brown: { hex: 0x582a12 },
+  wood: { hex: 0x8b5a2b },
+  tan: { hex: 0xe4cd9e },
+  sand: { hex: 0xc7a96b },
+  darkRed: { hex: 0x720e0f },
+  azure: { hex: 0x36aebf },
+  cream: { hex: 0xfff3d6 },
+  gold: { hex: 0xe0b23a, metalness: 0.3, roughness: 0.3 },
+  silver: { hex: 0xc8cdd4, metalness: 0.3, roughness: 0.28 },
+  steel: { hex: 0x8a9097, metalness: 0.3, roughness: 0.32 },
+  glass: { hex: 0xd8eef8, opacity: 0.4, roughness: 0.12 },
+  water: { hex: 0x3f9be0, opacity: 0.62, roughness: 0.15 },
+  glow: { hex: 0xfff2b0, emissive: 0xffd25a },
+  fire: { hex: 0xff8a1f, emissive: 0xff5a00 },
+  screen: { hex: 0x1c3f66, emissive: 0x2c7fd0 },
+  neon: { hex: 0x9ff5ff, emissive: 0x3fd8ff },
+  beam: { hex: 0xa8f0ff, emissive: 0x3fd8ff, opacity: 0.22 },
+  redLight: { hex: 0xff4a3a, emissive: 0xd01800 },
+  amberLight: { hex: 0xffb020, emissive: 0xc07000 },
+  greenLight: { hex: 0x4fe07a, emissive: 0x10a040 },
 });
 
 const rect = (id, label, size, w, d, h = BRICK_HEIGHT, category = "bricks", studs = true) => ({
@@ -83,9 +150,9 @@ export const PARTS = Object.freeze([
   /* Parts-survey slice 03: a longer brick, a pillar, round bricks and a cone. */
   rect("brick_1x6", ["Brick 1×6", "積木 1×6"], "1×6", 1, 6),
   { id: "pillar_1x1x3", label: ["Pillar", "柱子"], size: "1×1", category: "bricks", shape: "rect", width: 1, depth: 1, height: BRICK_HEIGHT * 3, studs: true },
-  { id: "brick_round_1x1", label: ["Round Brick 1×1", "圓積木 1×1"], size: "", category: "bricks", shape: "roundPlate", width: 1, depth: 1, height: BRICK_HEIGHT, studs: true },
-  { id: "brick_round_2x2", label: ["Round Brick 2×2", "圓積木 2×2"], size: "", category: "bricks", shape: "roundPlate", width: 2, depth: 2, height: BRICK_HEIGHT, studs: true },
-  { id: "cone_1x1", label: ["Cone", "圓錐"], size: "", category: "bricks", shape: "cone", width: 1, depth: 1, height: BRICK_HEIGHT, studs: true },
+  { id: "brick_round_1x1", label: ["Round Brick 1×1", "圓積木 1×1"], size: "", category: "round", shape: "roundPlate", width: 1, depth: 1, height: BRICK_HEIGHT, studs: true },
+  { id: "brick_round_2x2", label: ["Round Brick 2×2", "圓積木 2×2"], size: "", category: "round", shape: "roundPlate", width: 2, depth: 2, height: BRICK_HEIGHT, studs: true },
+  { id: "cone_1x1", label: ["Cone", "圓錐"], size: "", category: "round", shape: "cone", width: 1, depth: 1, height: BRICK_HEIGHT, studs: true },
   rect("plate_1x1", ["Plate 1×1", "薄板 1×1"], "1×1", 1, 1, PLATE_HEIGHT, "plates"),
   rect("plate_1x2", ["Plate 1×2", "薄板 1×2"], "1×2", 1, 2, PLATE_HEIGHT, "plates"),
   rect("plate_1x3", ["Plate 1×3", "薄板 1×3"], "1×3", 1, 3, PLATE_HEIGHT, "plates"),
@@ -94,7 +161,7 @@ export const PARTS = Object.freeze([
   rect("plate_2x4", ["Plate 2×4", "薄板 2×4"], "2×4", 2, 4, PLATE_HEIGHT, "plates"),
   rect("plate_2x6", ["Plate 2×6", "薄板 2×6"], "2×6", 2, 6, PLATE_HEIGHT, "plates"),
   rect("plate_4x4", ["Plate 4×4", "薄板 4×4"], "4×4", 4, 4, PLATE_HEIGHT, "plates"),
-  { id: "plate_round_2x2", label: ["Round Plate 2×2", "圓薄板 2×2"], size: "", category: "plates", shape: "roundPlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: true },
+  { id: "plate_round_2x2", label: ["Round Plate 2×2", "圓薄板 2×2"], size: "", category: "round", shape: "roundPlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: true },
   /* Plates (docs/plans/2026-10-05-brick-lab-parts-survey/ slice 02). The corner
      plate's empty cell still counts as taken (parts-survey D5). */
   rect("plate_1x6", ["Plate 1×6", "薄板 1×6"], "1×6", 1, 6, PLATE_HEIGHT, "plates"),
@@ -102,7 +169,7 @@ export const PARTS = Object.freeze([
   rect("plate_2x3", ["Plate 2×3", "薄板 2×3"], "2×3", 2, 3, PLATE_HEIGHT, "plates"),
   rect("plate_2x8", ["Plate 2×8", "薄板 2×8"], "2×8", 2, 8, PLATE_HEIGHT, "plates"),
   rect("plate_4x6", ["Plate 4×6", "薄板 4×6"], "4×6", 4, 6, PLATE_HEIGHT, "plates"),
-  { id: "plate_round_1x1", label: ["Round Plate 1×1", "圓薄板 1×1"], size: "", category: "plates", shape: "roundPlate", width: 1, depth: 1, height: PLATE_HEIGHT, studs: true },
+  { id: "plate_round_1x1", label: ["Round Plate 1×1", "圓薄板 1×1"], size: "", category: "round", shape: "roundPlate", width: 1, depth: 1, height: PLATE_HEIGHT, studs: true },
   { id: "plate_rounded_1x2", label: ["Rounded Plate 1×2", "圓角薄板 1×2"], size: "", category: "plates", shape: "roundedPlate", width: 1, depth: 2, height: PLATE_HEIGHT, studs: true },
   { id: "plate_corner_2x2", label: ["Corner Plate", "轉角薄板"], size: "", category: "plates", shape: "cornerPlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: true },
   { id: "plate_wedge_2x2", label: ["Cut-Corner Plate", "斜角薄板"], size: "", category: "plates", shape: "wedgePlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: true },
@@ -156,14 +223,15 @@ export const PARTS = Object.freeze([
   /* More-parts slice 02. The window's pane keeps its own see-through colour. */
   { id: "frame_2x4", label: ["Lattice Frame", "格子框架"], size: "", category: "structure", shape: "frame", width: 2, depth: 4, height: BRICK_HEIGHT, studs: true },
   { id: "brace_1x2", label: ["Support Bracket", "支架"], size: "", category: "structure", shape: "brace", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
-  { id: "window_1x2", label: ["Window", "窗戶"], size: "", category: "structure", shape: "window", width: 1, depth: 2, height: BRICK_HEIGHT * 2, studs: true },
+  { id: "window_1x2", label: ["Window", "窗戶"], size: "", category: "doors", shape: "window", width: 1, depth: 2, height: BRICK_HEIGHT * 2, studs: true },
   /* Parts-survey slice 04. The space under the arch and the doorway count as
      taken (parts-survey D5); the door doesn't open (D6). */
   { id: "arch_1x4", label: ["Arch 1×4", "拱形積木 1×4"], size: "", category: "structure", shape: "arch", width: 1, depth: 4, height: BRICK_HEIGHT, studs: true },
-  { id: "door_1x4x6", label: ["Door", "門"], size: "", category: "structure", shape: "door", width: 1, depth: 4, height: BRICK_HEIGHT * 6, studs: true },
-  { id: "window_1x4x3", label: ["Big Window", "大窗戶"], size: "", category: "structure", shape: "window", width: 1, depth: 4, height: BRICK_HEIGHT * 3, studs: true },
-  { id: "tree_small", label: ["Small Tree", "小樹"], size: "", category: "nature", shape: "tree", width: 2, depth: 2, height: 4, studs: false },
-  { id: "flower", label: ["Flower", "花"], size: "", category: "nature", shape: "flower", width: 1, depth: 1, height: 0.9, studs: false },
+  { id: "door_1x4x6", label: ["Door", "門"], size: "", category: "doors", shape: "door", width: 1, depth: 4, height: BRICK_HEIGHT * 6, studs: true },
+  { id: "window_1x4x3", label: ["Big Window", "大窗戶"], size: "", category: "doors", shape: "window", width: 1, depth: 4, height: BRICK_HEIGHT * 3, studs: true },
+  /* The two that plant straight into the baseplate (catalog C5: `ground`). */
+  { id: "tree_small", label: ["Small Tree", "小樹"], size: "", category: "nature", shape: "tree", width: 2, depth: 2, height: 4, studs: false, ground: true },
+  { id: "flower", label: ["Flower", "花"], size: "", category: "nature", shape: "flower", width: 1, depth: 1, height: 0.9, studs: false, ground: true },
   /* More-parts slice 03: rock, mushroom and log keep their own colours. */
   { id: "rock", label: ["Rock", "石頭"], size: "", category: "nature", shape: "rock", width: 2, depth: 2, height: 1, studs: false },
   { id: "mushroom", label: ["Mushroom", "蘑菇"], size: "", category: "nature", shape: "mushroom", width: 1, depth: 1, height: BRICK_HEIGHT, studs: false },
@@ -173,10 +241,18 @@ export const PARTS = Object.freeze([
   { id: "barrel", label: ["Barrel", "木桶"], size: "", category: "scenery", shape: "barrel", width: 1, depth: 1, height: BRICK_HEIGHT, studs: false },
   { id: "fence_post", label: ["Fence Post", "柵欄柱"], size: "", category: "scenery", shape: "fencePost", width: 1, depth: 1, height: BRICK_HEIGHT * 4, studs: true },
   { id: "railing_1x2", label: ["Railing", "欄杆"], size: "", category: "scenery", shape: "railing", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
+  /* The catalog plan (docs/plans/2026-10-05-brick-catalog/): parts drawn from data. */
+  ...MORE_PARTS,
 ]);
 
 /* Parts drawn in their own fixed colours: the palette does not recolour them. */
 export const FIXED_COLOR_SHAPES = Object.freeze(["rail", "tree", "rock", "mushroom", "log", "leaves"]);
+
+/* True when the palette does not recolour the part: the shapes above, and
+   model parts with no `main` slot (catalog C2). */
+export function isFixedColor(part) {
+  return !!part.fixed || FIXED_COLOR_SHAPES.includes(part.shape);
+}
 
 export const CATEGORIES = Object.freeze([
   { id: "bricks", label: ["Bricks", "積木"], icon: "🧱" },
@@ -189,7 +265,9 @@ export const CATEGORIES = Object.freeze([
   { id: "structure", label: ["Structure", "結構"], icon: "🏗️" },
   { id: "nature", label: ["Nature", "自然"], icon: "🌳" },
   { id: "scenery", label: ["Scenery", "景物"], icon: "🪵" },
-]);
+  ...MORE_CATEGORIES,
+  /* Shape categories first, then the world (catalog C4). */
+].sort((a, b) => CATEGORY_ORDER.indexOf(a.id) - CATEGORY_ORDER.indexOf(b.id)));
 
 /* Footprint in studs, "width×depth": the tray's size filter and the info card. */
 export function partDims(part) {

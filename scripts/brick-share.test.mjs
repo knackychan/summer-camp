@@ -37,8 +37,8 @@ test("the host refuses what the catalog or the plate can't hold", () => {
   const world = worldOf(brick("a"));
   const bad = [
     [{ type: "add", piece: brick("a") }, "id"],
-    [{ type: "add", piece: { ...brick("n"), partId: "rocket" } }, "catalog"],
-    [{ type: "add", piece: { ...brick("n"), colorId: "gold" } }, "catalog"],
+    [{ type: "add", piece: { ...brick("n"), partId: "hoverboard" } }, "catalog"],
+    [{ type: "add", piece: { ...brick("n"), colorId: "plaid" } }, "catalog"],
     [{ type: "add", piece: brick("n", 40) }, "place"],
     [{ type: "add", piece: { ...brick("n"), y: -1 } }, "place"],
     [{ type: "add", piece: { ...brick("n"), rotation: 45 } }, "place"],
@@ -47,7 +47,7 @@ test("the host refuses what the catalog or the plate can't hold", () => {
     [{ type: "move", id: "ghost", x: 0, y: 0.6, z: 0, rotation: 0 }, "id"],
     [{ type: "move", id: "a", x: 0, y: 0.6, z: -33, rotation: 0 }, "place"],
     [{ type: "remove", id: "ghost" }, "id"],
-    [{ type: "recolor", id: "a", colorId: "gold" }, "catalog"],
+    [{ type: "recolor", id: "a", colorId: "plaid" }, "catalog"],
     [{ type: "explode", id: "a" }, "shape"],
     [null, "shape"],
   ];
