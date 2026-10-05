@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v179-brick-walk-core";
+const CACHE_NAME = "summer-quest-v180-brick-walk-step-in";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -229,6 +229,7 @@ const APP_SHELL = [
   "./js/brick-lab/brick-lab.js",
   "./js/brick-lab/brick-camera.js",
   "./js/brick-lab/brick-walk.js",
+  "./js/brick-lab/brick-walk-view.js",
   "./js/brick-lab/brick-catalog.js",
   "./js/brick-lab/brick-parts.js",
   "./js/brick-lab/brick-rails.js",

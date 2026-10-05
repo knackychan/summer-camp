@@ -278,3 +278,17 @@
 .sqbl-app.is-pre-reader .sqbl-pose-name{display:none}.sqbl-app.is-pre-reader .sqbl-pose-card{min-height:64px;grid-template-rows:56px}
 @media(max-height:640px){.sqbl-pose-card{width:76px;min-height:80px;grid-template-rows:42px auto}.sqbl-pose-pic{height:42px;width:64px}}
 .sqbl-bubble button[hidden]{display:none}
+
+/* Walking a minifig (docs/plans/2026-10-06-brick-lab-walk/, W5): a joystick
+   at the bottom left, Jump at the bottom right, Build top left. Overlays, so
+   the view never resizes (D14); the camera buttons, the tools bubble, the
+   mode switch and Home step aside while walking. */
+.sqbl-walk{position:absolute;inset:0;z-index:4;pointer-events:none}.sqbl-walk[hidden]{display:none}
+.sqbl-walk button,.sqbl-walk-stick{pointer-events:auto;touch-action:none;font:inherit}
+.sqbl-walk-exit{position:absolute;top:12px;left:12px;min-height:56px;padding:0 18px;border-radius:16px;border:0;background:#2e9d5b;color:#fff;font-weight:800;font-size:16px;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.sqbl-walk-stick{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:62px;width:136px;height:136px;border-radius:50%;background:rgba(255,255,255,.26);border:3px solid rgba(255,255,255,.8);box-shadow:0 8px 22px rgba(0,0,0,.18)}
+.sqbl-walk-knob{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25);pointer-events:none}
+.sqbl-walk-jump{position:absolute;right:max(18px,env(safe-area-inset-right));bottom:74px;width:88px;height:88px;border-radius:50%;border:0;background:var(--sqbl-blue);color:#fff;font-weight:800;font-size:13px;display:grid;place-content:center;justify-items:center;gap:2px;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.sqbl-walk-jump b{font-size:30px;line-height:1}
+.sqbl-walk-jump:active,.sqbl-walk-exit:active{transform:scale(.94)}
+.sqbl-app.is-walking .sqbl-cam,.sqbl-app.is-walking .sqbl-bubble,.sqbl-app.is-walking .sqbl-mode-toggle,.sqbl-app.is-walking [data-action=home-view]{visibility:hidden}

@@ -186,6 +186,11 @@ export function createUndo(limit = 40) {
       if (stack.length > limit) stack.shift();
     },
     pop: () => stack.pop() || null,
+    /* The last `count` inverses become one step, undone last first (a walk's moves). */
+    group(count) {
+      if (count < 2) return;
+      stack.push(stack.splice(-count).reverse());
+    },
     get size() { return stack.length; },
     clear() { stack.length = 0; },
   };

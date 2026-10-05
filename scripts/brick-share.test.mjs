@@ -117,6 +117,20 @@ test("shared undo: only your own last change, and not once a sibling changed it"
   assert.equal(undo2.pop(), null);
 });
 
+test("undo group: a walk's moves come back off the stack as one step, last first (walk plan W2)", () => {
+  const undo = createUndo();
+  undo.push({ type: "remove", id: "earlier" });
+  undo.push({ type: "move", id: "fig" });
+  undo.push({ type: "move", id: "hat" });
+  undo.group(2);
+  assert.equal(undo.size, 2);
+  assert.deepEqual(undo.pop(), [{ type: "move", id: "hat" }, { type: "move", id: "fig" }]);
+  undo.group(1);
+  assert.deepEqual(undo.pop(), { type: "remove", id: "earlier" }, "a group of one stays a single op");
+  undo.group(0);
+  assert.equal(undo.size, 0);
+});
+
 test("undoing a delete brings the brick back with its first owner", () => {
   const world = worldOf(brick("a", 0.5, 0, { by: "leo" }));
   const host = createSequencer({ world, rules });

@@ -343,6 +343,15 @@ export class BrickTogether {
   undoLast() {
     const inverse = this.undo.pop();
     if (!inverse) return false;
+    /* A walk lands as several moves, undone together (brick-lab-walk W2). */
+    if (Array.isArray(inverse)) {
+      inverse.forEach((op) => this.undoOne(op));
+      return true;
+    }
+    return this.undoOne(inverse);
+  }
+
+  undoOne(inverse) {
     if (this.role === "guest") {
       this.request(inverse, { undo: true });
       return true;

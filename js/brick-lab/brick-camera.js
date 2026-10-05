@@ -212,6 +212,8 @@ export function createKidCamera({ camera, element, limits, view, reducedMotion =
       api.animateTo({ ...back.view, lift: 0 }, ms);
     },
     setLimits(next) { bounds = { ...bounds, ...next }; set(state); },
+    /* Someone else drove the camera (a minifig walk): put it back on the next update. */
+    refresh() { dirty = true; },
     jumpTo(next) { stopMotion(); set({ ...state, ...next }); },
     animateTo(next, ms = 450) {
       glide = null;

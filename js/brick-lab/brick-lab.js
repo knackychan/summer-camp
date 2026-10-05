@@ -9,6 +9,8 @@ import {
 } from "./brick-catalog.js";
 import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, worldConnectors } from "./brick-rails.js";
 import { createKidCamera } from "./brick-camera.js";
+import { ridersOf, snapOut, solids } from "./brick-walk.js";
+import { createWalk } from "./brick-walk-view.js";
 import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
@@ -44,7 +46,18 @@ const HINTS = {
   circuit: ["Circuit complete!", "軌道接成一圈了！"],
   changed: ["Someone changed that", "有人改過了"],
   placedBy: (name) => [`${name} put this one here.`, `這塊是 ${name} 放的。`],
+  walk: ["Walk with the circle. Point the ＋ and press Place.", "用圓圈走路。把＋對準，再按「放上去」。"],
 };
+
+/* Walking a minifig (docs/plans/2026-10-06-brick-lab-walk/). */
+const WALK = {
+  walk: ["Walk", "走走看"],
+  build: ["Build", "建造"],
+  jump: ["Jump", "跳"],
+  stick: ["Walk around", "走來走去"],
+};
+/* Back in Build after a walk: close to the figure, looking the way it looked. */
+const WALK_EXIT_DISTANCE = 24;
 
 /* Parts tray and info card (slice 11). */
 const TRAY = {
@@ -1541,6 +1554,7 @@ export class BrickLabRuntime {
     this.rails = { edges: [], linked: new Map(), free: [], circuit: new Set() };
     this.freeEndsCache = null;
     this.snap = null;
+    this.walk = null; /* walking a minifig: { id, riders, standIn, view, fov } */
   }
 
   cleanPrefs(prefs) {
@@ -1629,6 +1643,7 @@ export class BrickLabRuntime {
                 ${tool("rotate", "↻", ["Turn", "旋轉"])}
                 ${tool("duplicate", "⧉", ["Copy", "複製"])}
                 ${tool("pose", "🤸", ["Pose", "姿勢"], " hidden")}
+                ${tool("walk", "🚶", WALK.walk, " hidden")}
                 ${tool("delete", "🗑", ["Remove", "拿掉"], ' class="is-danger"')}
               </div>
             </div>
@@ -1644,6 +1659,11 @@ export class BrickLabRuntime {
                 <div class="sqbl-focus-joints" data-focus-joints role="group" aria-label="Parts 部位"></div>
                 <div class="sqbl-focus-poses" data-focus-poses role="group" aria-label="Poses 姿勢"></div>
               </div>
+            </div>
+            <div class="sqbl-walk" data-walk hidden>
+              <button type="button" class="sqbl-walk-exit" data-walk-act="exit" aria-label="${escapeHtml(label(WALK.build))}">🔨${pre ? "" : ` <span>${escapeHtml(label(WALK.build))}</span>`}</button>
+              <div class="sqbl-walk-stick" data-walk-stick role="group" aria-label="${escapeHtml(label(WALK.stick))}"><i class="sqbl-walk-knob" data-walk-knob></i></div>
+              <button type="button" class="sqbl-walk-jump" data-walk-act="jump" aria-label="${escapeHtml(label(WALK.jump))}"><b aria-hidden="true">⤒</b>${pre ? "" : `<span>${escapeHtml(label(WALK.jump))}</span>`}</button>
             </div>
             <div class="sqbl-cam" role="toolbar" aria-label="Camera 鏡頭">${CAMERA_BUTTONS.map((b) => `
               <button type="button" class="sqbl-cam-btn" data-cam="${b.id}" aria-label="${escapeHtml(label(b.label))}"><svg viewBox="0 0 32 32" aria-hidden="true">${b.icon}</svg></button>`).join("")}
@@ -1698,6 +1718,8 @@ export class BrickLabRuntime {
     this.joinEl = this.root.querySelector("[data-join]");
     this.crewEl = this.root.querySelector("[data-crew]");
     this.lostEl = this.root.querySelector("[data-lost]");
+    this.walkToolEl = this.root.querySelector("[data-action=walk]");
+    this.walkEl = this.root.querySelector("[data-walk]");
   }
 
   setupScene() {
@@ -2048,6 +2070,7 @@ export class BrickLabRuntime {
     this.root.querySelector("[data-action=delete]").addEventListener("pointerdown", () => this.deleteSelected());
     this.root.querySelector("[data-action=move]").addEventListener("pointerdown", () => this.beginMoveSelected());
     this.poseToolEl.addEventListener("pointerdown", () => this.enterFocus(this.selectedId));
+    this.walkToolEl.addEventListener("pointerdown", () => this.enterWalk(this.selectedId));
     this.focusEl.addEventListener("click", (event) => {
       const button = event.target.closest("[data-focus-act],[data-focus-pose],[data-focus-joint]");
       if (!button || !this.focus) return;
@@ -2574,6 +2597,7 @@ export class BrickLabRuntime {
      on the menu itself Back belongs to the host. */
   back() {
     if (this.destroyed || !this.menuEl) return false;
+    if (this.walk) return this.leaveWalk();
     if (this.focus) return this.leaveFocus();
     if (!this.menuEl.hidden) {
       if (!this.menuEdit) return false;
@@ -2619,6 +2643,7 @@ export class BrickLabRuntime {
   }
 
   leaveWorld() {
+    this.leaveWalk();
     this.leaveFocus();
     if (this.together.role === "guest") {
       this.together.leave();
@@ -3222,6 +3247,7 @@ export class BrickLabRuntime {
   }
 
   onPointerMove(event) {
+    if (this.walk) return; /* walking: a drag looks around */
     if (this.drag) { this.onDragMove(event); return; }
     if (this.mode !== "build" || !this.ghost || (!this.placementArmed && !this.moveId)) return;
     if (event.buttons) return;
@@ -3326,6 +3352,7 @@ export class BrickLabRuntime {
   }
 
   onTap(event) {
+    if (this.walk) return; /* walking: the buttons do the building (W10) */
     const hits = this.pointFromEvent(event);
     const pieceHit = hits.find((hit) => this.getPieceIdFromIntersection(hit));
     const pieceId = pieceHit ? this.getPieceIdFromIntersection(pieceHit) : null;
@@ -3423,6 +3450,12 @@ export class BrickLabRuntime {
     if (this.poseToolEl.hidden === posable) {
       this.poseToolEl.hidden = !posable;
       this.bubble.width = 0; /* one more or one fewer tool: measure again */
+    }
+    /* W1: a standing minifig can walk; not yet while building together (slice 05). */
+    const walkable = !!(this.selectedId && this.canWalk(this.pieces.get(this.selectedId))) && !this.together.shared;
+    if (this.walkToolEl.hidden === walkable) {
+      this.walkToolEl.hidden = !walkable;
+      this.bubble.width = 0;
     }
     if (shown !== this.bubble.shown) {
       this.bubble.shown = shown;
@@ -3707,9 +3740,143 @@ export class BrickLabRuntime {
     }
   }
 
+  /* W1: standing minifigs walk; seated ones, a sitting pose and animals don't. */
+  canWalk(piece) {
+    if (!piece) return false;
+    const part = getPart(piece.partId);
+    return part.body === "minifig" && !isSitting(part, piece.pose);
+  }
+
+  /* Step into a minifig (walk plan W1–W5, slice 02). The figure and what
+     rides on it hide; a stand-in walks for them, driven by brick-walk-view.js
+     with the kid camera off. Nothing changes in the world until the walk ends. */
+  enterWalk(id) {
+    const piece = id && this.pieces.get(id);
+    if (!piece || this.walk || this.focus || this.mode !== "build" || this.together.shared || !this.canWalk(piece)) return false;
+    this.hideInfo();
+    this.selectPiece(null);
+    this.placementArmed = false;
+    this.moveId = null;
+    this.snap = null;
+    this.ghost.visible = false;
+    const boxOf = (p) => pieceBounds(p, shapeOf(p));
+    const riders = Array.from(ridersOf(id, this.pieces, boxOf));
+    [id, ...riders].forEach((pid) => { this.sceneObjects.get(pid).visible = false; });
+    const standIn = this.walkStandIn(id, riders);
+    this.scene.add(standIn);
+    const lift = shapeOf(piece).height / 2;
+    this.cam.enabled = false;
+    this.app.classList.add("is-walking");
+    this.walkEl.hidden = false;
+    this.walk = { id, riders, standIn, fov: this.camera.fov };
+    this.walk.view = createWalk({
+      camera: this.camera, canvas: this.renderer.domElement, overlay: this.walkEl, standIn, lift, half: BASE_HALF,
+      start: { x: piece.x, y: piece.y - lift, z: piece.z, yaw: piece.rotation * DEG },
+      boxes: solids(this.pieces, boxOf, new Set([id, ...riders])),
+      reducedMotion: this.reducedMotion, onExit: () => this.leaveWalk(),
+    });
+    this.setHint("🚶", HINTS.walk);
+    this.haptic("tap");
+    this.invalidate();
+    return true;
+  }
+
+  /* The walking stand-in: the figure jointed (its legs swing, W7) with its
+     riders placed as they sit on it, in the figure's own frame. Never hit by
+     a tap or the crosshair. */
+  walkStandIn(id, riders) {
+    const figure = this.pieces.get(id);
+    const yaw = figure.rotation * DEG;
+    const cos = Math.cos(-yaw);
+    const sin = Math.sin(-yaw);
+    const group = new THREE.Group();
+    group.position.set(figure.x, figure.y, figure.z);
+    group.rotation.y = yaw;
+    [id, ...riders].forEach((pid) => {
+      const piece = this.pieces.get(pid);
+      const part = getPart(piece.partId);
+      const object = part.joints ? makeJointedPiece(part, getColorHex(piece.colorId), this.kit, piece.pose)
+        : makePieceMesh(part, getColorHex(piece.colorId), this.kit);
+      const dx = piece.x - figure.x;
+      const dz = piece.z - figure.z;
+      object.position.set(dx * cos + dz * sin, piece.y - figure.y, -dx * sin + dz * cos);
+      object.rotation.y = piece.rotation * DEG - yaw;
+      object.traverse((node) => {
+        node.raycast = () => {};
+        if (pid === id && node.userData.sqblJoint) node.userData.sqblWalker = true;
+      });
+      group.add(object);
+    });
+    return group;
+  }
+
+  /* Leave walking. `keep`: the figure and its riders land where it walked
+     to, as one Undo step (W2, W3); otherwise they stay where they were. */
+  leaveWalk(keep = true) {
+    const walk = this.walk;
+    if (!walk) return false;
+    const end = walk.view.state();
+    const look = walk.view.look();
+    walk.view.dispose();
+    this.walk = null;
+    this.scene.remove(walk.standIn);
+    disposeTree(walk.standIn);
+    this.walkEl.hidden = true;
+    this.app.classList.remove("is-walking");
+    this.camera.fov = walk.fov;
+    this.camera.updateProjectionMatrix();
+    [walk.id, ...walk.riders].forEach((pid) => {
+      const object = this.sceneObjects.get(pid);
+      if (object) object.visible = true;
+    });
+    if (keep && this.pieces.has(walk.id)) this.landWalk(walk.id, walk.riders.filter((pid) => this.pieces.has(pid)), end);
+    const figure = this.pieces.get(walk.id);
+    this.cam.enabled = true;
+    /* The kid camera sits behind the figure, looking where the walk looked. */
+    if (figure) this.cam.jumpTo({ x: figure.x, z: figure.z, yaw: look.yaw + Math.PI, distance: WALK_EXIT_DISTANCE, lift: 0 });
+    this.cam.refresh();
+    if (figure) this.selectPiece(walk.id);
+    this.setHint("🧱", HINTS.choose);
+    this.invalidate();
+    return true;
+  }
+
+  /* W2: snapped to the studs and the nearest 90°, landing like any drop; the
+     riders keep their place on it, turned with it (W3). */
+  landWalk(id, riders, end) {
+    const figure = this.pieces.get(id);
+    const out = snapOut(end);
+    const skip = new Set([id, ...riders]);
+    const pool = new Map(Array.from(this.pieces).filter(([pid]) => !skip.has(pid)));
+    const pos = this.landing({ x: out.x, z: out.z }, shapeOf(figure), out.rotation, id, pool).pos;
+    if (pos.x === figure.x && pos.y === figure.y && pos.z === figure.z && out.rotation === figure.rotation) return;
+    const turn = (out.rotation - figure.rotation) * DEG;
+    const cos = Math.cos(turn);
+    const sin = Math.sin(turn);
+    const round = (v) => Math.round(v * 1000) / 1000;
+    const ops = [{ type: "move", id, x: pos.x, y: pos.y, z: pos.z, rotation: out.rotation }];
+    riders.forEach((pid) => {
+      const rider = this.pieces.get(pid);
+      const dx = rider.x - figure.x;
+      const dz = rider.z - figure.z;
+      ops.push({ type: "move", id: pid, x: round(pos.x + dx * cos + dz * sin), y: round(rider.y + pos.y - figure.y), z: round(pos.z - dx * sin + dz * cos),
+        rotation: normalRotation(rider.rotation + out.rotation - figure.rotation) });
+    });
+    /* One Undo step: one solo snapshot, or the host's inverses grouped. */
+    const solo = !this.together.role;
+    if (solo) this.recordHistory();
+    const before = this.together.undo.size;
+    const done = ops.filter((op) => this.commit(op)).length;
+    if (solo && !done) this.history.pop();
+    if (!solo) this.together.undo.group(this.together.undo.size - before);
+    this.syncRails();
+    this.updateUndoUI();
+  }
+
   setMode(mode, options = {}) {
     mode = mode === "explore" ? "explore" : "build";
     if (this.mode === mode) return;
+    this.leaveWalk();
     this.leaveFocus();
     this.mode = mode;
     this.moveId = null;
@@ -3763,6 +3930,12 @@ export class BrickLabRuntime {
   }
 
   undo() {
+    /* Undo while walking takes back the walk: the figure stays where it was. */
+    if (this.walk) {
+      this.leaveWalk(false);
+      this.setHint("↶", HINTS.undone);
+      return;
+    }
     if (this.together.role) {
       if (this.together.undoLast()) this.haptic("tap");
       this.updateUndoUI();
@@ -3838,8 +4011,10 @@ export class BrickLabRuntime {
     const loop = (time) => {
       if (this.destroyed) return;
       this.raf = requestAnimationFrame(loop);
-      /* Slides, glides and button turns move the camera here (K1–K5). */
-      this.cam.update(time);
+      /* Slides, glides and button turns move the camera here (K1–K5);
+         while walking, the walk does (walk plan W8). */
+      if (this.walk) this.walk.view.frame(time);
+      else this.cam.update(time);
       /* Circuit rails breathe softly (still with reduced motion). */
       const glowing = this.rails.circuit.size && !this.reducedMotion;
       if (glowing) {
@@ -3939,6 +4114,8 @@ export class BrickLabRuntime {
       })() : [],
       placementArmed: this.placementArmed,
       moving: !!this.moveId,
+      /* Walking a minifig (walk plan): the walker, its riders, where it is and where it looks. */
+      walk: this.walk ? { id: this.walk.id, riders: this.walk.riders.slice(), ...this.walk.view.state(), look: this.walk.view.look() } : null,
       dragging: !!(this.drag && this.drag.active),
       toolsShown: this.bubble.shown,
       baseplateStuds: this.baseplateStuds,
@@ -3974,6 +4151,7 @@ export class BrickLabRuntime {
      GL context. */
   destroy() {
     if (this.destroyed) return;
+    if (this.walk) this.leaveWalk();
     if (this.scene && this.worldId) this.saveNow(false, this.captureThumb());
     this.destroyed = true;
     clearTimeout(this.saveTimer);
