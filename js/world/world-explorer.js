@@ -359,7 +359,13 @@ function createWorld(options){
     var img=frames[Math.min(frames.length-1,pose.frame||idle)];
     var w=Math.round(img.width*pose.sx),h=Math.round(img.height*pose.sy);
     var x=item.x+pose.dx-Math.floor(w/2),y=item.y+pose.dy-Math.round((img.height-2)*pose.sy);
-    if(item.kind!=="moon"){
+    if(item.kind==="place"){
+      /* Landmarks stand on a dark oval base so they read on any ground (readability slice 04). */
+      ctx.globalAlpha=0.55;ctx.fillStyle=HEX[C.outline];
+      var base=Math.max(3,Math.floor(img.width*0.42));
+      ctx.fillRect(item.x-base+1,item.y-1,base*2-2,1);ctx.fillRect(item.x-base,item.y,base*2,2);ctx.fillRect(item.x-base+2,item.y+2,base*2-4,1);
+      ctx.globalAlpha=1;
+    }else if(item.kind!=="moon"){
       ctx.globalAlpha=0.35;ctx.fillStyle=HEX[C.outline];
       var half=Math.max(2,Math.floor(img.width*0.35));
       ctx.fillRect(item.x-half,item.y,half*2,1);ctx.fillRect(item.x-half+1,item.y+1,half*2-2,1);

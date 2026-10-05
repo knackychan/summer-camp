@@ -69,6 +69,8 @@ export function fbm(v, scale, seed){
        + 0.35*valueNoise(v[0]*scale*2.1, v[1]*scale*2.1, v[2]*scale*2.1, seed+1);
 }
 
+/* Ground under sprites stays calm (planet-focus-readability slice 04): coarse two-tone
+   patches and few specks in snow, arcade and forest, so sprites read against it. */
 function biomeColor(biome, h, n, fine, gap){
   switch (biome) {
     case "village":
@@ -77,21 +79,21 @@ function biomeColor(biome, h, n, fine, gap){
       if (h < 0.1 || n > 0.64) return C.greenLit;
       return h > 0.93 ? C.greenDark : C.green;
     case "arcade":
-      if (h < 0.04) return C.cyan;
-      if (h < 0.07) return C.pink;
-      if (h < 0.09) return C.yellow;
-      return fine > 0.6 ? C.purple : C.purpleDark;
+      if (h < 0.012) return C.cyan;
+      if (h < 0.022) return C.pink;
+      if (h < 0.03) return C.yellow;
+      return n > 0.6 ? C.purple : C.purpleDark;
     case "volcano":
       if (gap < -0.39) return C.lava;
       if (gap < -0.35) return C.rockDark;
       if (Math.abs(fine-0.5) < 0.025) return C.lava;
       return n > 0.6 ? C.rockLit : n < 0.38 ? C.rockDark : C.rock;
     case "snow":
-      if (h < 0.05) return C.steel;
-      return n < 0.42 ? C.snowShade : C.white;
+      if (h < 0.012) return C.steel;
+      return n < 0.56 ? C.snowShade : C.white;
     case "forest":
-      if (h < 0.06) return C.greenDeep;
-      return fine > 0.66 ? C.greenLit : fine > 0.55 ? C.green : C.greenDark;
+      if (h < 0.02) return C.greenDeep;
+      return n > 0.66 ? C.greenLit : n > 0.54 ? C.green : C.greenDark;
     case "grove":
       if (h < 0.04) return C.cyan;
       return fine > 0.7 ? C.lilac : fine > 0.6 ? C.pink : C.magenta;
