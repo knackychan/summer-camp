@@ -798,6 +798,41 @@ function makeWedgePlatePiece(part, colorHex, kit) {
   }), colorHex, kit);
 }
 
+/* Cone 1×1 (parts-survey slice 03): a round base tapering to a small flat
+   top with one stud. */
+function makeConePiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const hh = part.height / 2;
+    const r = part.width / 2 - SEAM;
+    const top = STUD_R + 0.03;
+    const body = new THREE.LatheGeometry([
+      [0, -hh], [r, -hh], [r, -hh + 0.14], [top, hh], [0, hh],
+    ].map(([x, y]) => new THREE.Vector2(x, y)), 24);
+    const list = [body];
+    addStuds(list, [0], [0], hh);
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Curved slope (parts-survey slice 03): a short flat strip at the back, then
+   a curve bowing up and over down to a thin front lip; no studs. */
+function makeSlopeCurvedPiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const bevel = 0.03;
+    const hd = part.depth / 2 - SEAM - bevel;
+    const hh = part.height / 2 - bevel;
+    const back = hd - part.depth * 0.2;
+    const shape = new THREE.Shape();
+    shape.moveTo(hd, -hh);
+    shape.lineTo(hd, hh);
+    shape.lineTo(back, hh);
+    shape.quadraticCurveTo(-hd, hh, -hd, -hh + 0.1);
+    shape.lineTo(-hd, -hh);
+    shape.lineTo(hd, -hh);
+    return mergeGeometries([extrudeProfile(part.width, shape, bevel)]);
+  }), colorHex, kit);
+}
+
 /* Grille tile 1×2 (parts-survey slice 01): a thin base with five bars along
    its length on top, so four shallow grooves run lengthwise; no studs. */
 function makeGrillePiece(part, colorHex, kit) {
@@ -1080,6 +1115,8 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "axle") return makeAxlePiece(part, colorHex, kit);
   if (part.shape === "roundPlate") return makeRoundPlatePiece(part, colorHex, kit);
   if (part.shape === "grille") return makeGrillePiece(part, colorHex, kit);
+  if (part.shape === "cone") return makeConePiece(part, colorHex, kit);
+  if (part.shape === "slopeCurved") return makeSlopeCurvedPiece(part, colorHex, kit);
   if (part.shape === "roundedPlate") return makeRoundedPlatePiece(part, colorHex, kit);
   if (part.shape === "cornerPlate") return makeCornerPlatePiece(part, colorHex, kit);
   if (part.shape === "wedgePlate") return makeWedgePlatePiece(part, colorHex, kit);

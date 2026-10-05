@@ -80,6 +80,12 @@ export const PARTS = Object.freeze([
   rect("brick_2x4", ["Brick 2×4", "積木 2×4"], "2×4", 2, 4),
   rect("brick_2x5", ["Brick 2×5", "積木 2×5"], "2×5", 2, 5),
   rect("brick_2x6", ["Brick 2×6", "積木 2×6"], "2×6", 2, 6),
+  /* Parts-survey slice 03: a longer brick, a pillar, round bricks and a cone. */
+  rect("brick_1x6", ["Brick 1×6", "積木 1×6"], "1×6", 1, 6),
+  { id: "pillar_1x1x3", label: ["Pillar", "柱子"], size: "1×1", category: "bricks", shape: "rect", width: 1, depth: 1, height: BRICK_HEIGHT * 3, studs: true },
+  { id: "brick_round_1x1", label: ["Round Brick 1×1", "圓積木 1×1"], size: "", category: "bricks", shape: "roundPlate", width: 1, depth: 1, height: BRICK_HEIGHT, studs: true },
+  { id: "brick_round_2x2", label: ["Round Brick 2×2", "圓積木 2×2"], size: "", category: "bricks", shape: "roundPlate", width: 2, depth: 2, height: BRICK_HEIGHT, studs: true },
+  { id: "cone_1x1", label: ["Cone", "圓錐"], size: "", category: "bricks", shape: "cone", width: 1, depth: 1, height: BRICK_HEIGHT, studs: true },
   rect("plate_1x1", ["Plate 1×1", "薄板 1×1"], "1×1", 1, 1, PLATE_HEIGHT, "plates"),
   rect("plate_1x2", ["Plate 1×2", "薄板 1×2"], "1×2", 1, 2, PLATE_HEIGHT, "plates"),
   rect("plate_1x3", ["Plate 1×3", "薄板 1×3"], "1×3", 1, 3, PLATE_HEIGHT, "plates"),
@@ -119,6 +125,11 @@ export const PARTS = Object.freeze([
   /* Small slopes (more-parts slice 01): the 1×1 "cheese" slope is studless. */
   { id: "slope_1x1", label: ["Slope 1×1", "斜坡 1×1"], size: "", category: "slopes", shape: "slope", width: 1, depth: 1, height: 0.8, studs: false },
   { id: "slope_1x2", label: ["Slope 1×2", "斜坡 1×2"], size: "", category: "slopes", shape: "slope", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
+  /* Parts-survey slice 03: a low slope, a small eave and two curved slopes. */
+  { id: "slope_30_1x2", label: ["Low Slope 1×2", "矮斜坡 1×2"], size: "", category: "slopes", shape: "slope", width: 1, depth: 2, height: 0.8, studs: true },
+  { id: "slope_inv_1x2", label: ["Small Eave", "小屋簷"], size: "", category: "slopes", shape: "slopeInv", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
+  { id: "slope_curved_2x2", label: ["Curved Slope 2×2", "弧形斜坡 2×2"], size: "", category: "slopes", shape: "slopeCurved", width: 2, depth: 2, height: 0.8, studs: false },
+  { id: "slope_curved_1x2", label: ["Curved Slope 1×2", "弧形斜坡 1×2"], size: "", category: "slopes", shape: "slopeCurved", width: 1, depth: 2, height: 0.8, studs: false },
   { id: "slope_45", label: ["Roof Peak 45°", "屋脊 45°"], size: "", category: "slopes", shape: "peak", width: 2, depth: 2, height: BRICK_HEIGHT, studs: false },
   { id: "peak_1x2", label: ["Ridge Cap", "小屋脊"], size: "", category: "slopes", shape: "peak", width: 1, depth: 2, height: BRICK_HEIGHT, studs: false },
   { id: "slope_corner_2x2", label: ["Corner Slope", "轉角斜坡"], size: "", category: "slopes", shape: "slopeCorner", width: 2, depth: 2, height: BRICK_HEIGHT, studs: true },

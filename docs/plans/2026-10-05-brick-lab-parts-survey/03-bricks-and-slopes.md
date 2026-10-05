@@ -19,3 +19,12 @@
 - Screenshot for Papa: a small car or tower using round bricks, cones, curved slopes and tiles (`.tmp/brick-lab-ui/survey-curves.png`).
 
 **DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; 77 parts (Bricks 14, Slopes 11); Papa has seen the screenshot.
+
+## As built (2026-10-05)
+- Shipped as planned: 77 parts, Bricks 14, Slopes 11.
+- Round bricks reuse `makeRoundPlatePiece` at `BRICK_HEIGHT` (one stud on the 1×1, four on the 2×2); the pillar is a `rect` three bricks tall with the size caption "1×1".
+- `makeConePiece`: a 24-sided lathe from the full round base (with a 0.14 upright foot) to a top just wider than a stud, one stud on top.
+- `makeSlopeCurvedPiece`: a flat back strip 20 % of the depth, then a quadratic curve bowing up and over down to a 0.1 front lip, extruded across the width; no studs. The 1×2 and 2×2 share it. The low slope and small eave needed no builder change (`slope` with `depth / 2 − 1` for the back row, `slopeInv` with its one-stud foot).
+- Tests: the 9 parts arm fast with real icons; Bricks 14 / Slopes 11; a brick lands on top of the cone, the curved 2×2 slope and the round 2×2 brick; a pillar dropped on a 2×4 brick stands three bricks tall on it. 177/177; `--sheet` 77/77 icons in red and blue; 300 new parts orbit at 8.2 fps vs plain bricks 5.5.
+- Screenshot for Papa: `.tmp/brick-lab-ui/survey-curves.png` — a red car whose bonnet and boot are curved slopes with a tiled roof, a round-brick tower with cones on top, and a pillar, low slope, small eave, 1×6 brick, curved 1×2 and round 1×1 beside it.
+- `sw.js` `CACHE_NAME` → `summer-quest-v175-brick-curves`.

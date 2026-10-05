@@ -245,15 +245,19 @@ MORE_PARTS = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2', 'slope_1
               'tile_grille_1x2', 'tile_round_1x1', 'tile_round_2x2', 'tile_quarter_1x1',
               # Parts-survey slice 02: plates.
               'plate_1x6', 'plate_1x8', 'plate_2x3', 'plate_2x8', 'plate_4x6', 'plate_round_1x1', 'plate_rounded_1x2',
-              'plate_corner_2x2', 'plate_wedge_2x2')
-MORE_COUNTS = {'plates': 18, 'tiles': 13, 'slopes': 7, 'wheels': 3, 'structure': 4, 'nature': 4, 'scenery': 5}
+              'plate_corner_2x2', 'plate_wedge_2x2',
+              # Parts-survey slice 03: bricks and slopes.
+              'brick_1x6', 'pillar_1x1x3', 'brick_round_1x1', 'brick_round_2x2', 'cone_1x1',
+              'slope_30_1x2', 'slope_inv_1x2', 'slope_curved_2x2', 'slope_curved_1x2')
+MORE_COUNTS = {'bricks': 14, 'plates': 18, 'tiles': 13, 'slopes': 11, 'wheels': 3, 'structure': 4, 'nature': 4, 'scenery': 5}
 FIXED_ICONS = ('rock', 'mushroom', 'log_2x4')
 ICON_SRC = "(id) => { const img = document.querySelector('.sqbl-part[data-part=\"' + id + '\"] .sqbl-part-preview img'); return img ? img.src : null; }"
 SEEN = {}
 # Parts a brick is dropped on, with half their height: it must land on top (D3, amended: anything stacks).
 STACK_ON = (('wheel_large', 0.8), ('plate_round_2x2', 0.2), ('frame_2x4', 0.6), ('brace_1x2', 0.6), ('window_1x2', 1.2),
             ('fence_post', 2.4), ('railing_1x2', 0.6), ('rock', 0.5), ('tile_2x4', 0.2), ('tile_round_2x2', 0.2),
-            ('plate_rounded_1x2', 0.2), ('plate_corner_2x2', 0.2), ('plate_wedge_2x2', 0.2))
+            ('plate_rounded_1x2', 0.2), ('plate_corner_2x2', 0.2), ('plate_wedge_2x2', 0.2),
+            ('cone_1x1', 0.6), ('slope_curved_2x2', 0.4), ('brick_round_2x2', 0.6))
 WINDOW_GLASS = '#9fd3ee'
 
 
@@ -382,6 +386,9 @@ def lab_more_parts(page, snap, check, out):
     undo()
 
     brick = place('brick_2x4')
+    pillar = drop_on('pillar_1x1x3', brick)
+    check('A pillar on a 2×4 brick stands three bricks tall on it', abs(pillar['y'] - (brick['y'] + 0.6 + 1.8)) < 0.01)
+    undo()
     mushroom = drop_on('mushroom', brick)
     check('A mushroom dropped on a 2×4 brick sits on the brick', abs(mushroom['y'] - (brick['y'] + 0.6 + 0.6)) < 0.01)
     check('…and a brick dropped on the mushroom lands on top of it', abs(stack_on(mushroom)['y'] - (mushroom['y'] + 1.2)) < 0.01)
@@ -426,7 +433,8 @@ def seed_worlds(page, worlds):
 def grid_world(parts):
     """300 pieces on a 20 × 15 grid over the plate, cycling through `parts`, each resting on the plate
     (a part longer than its 3 × 4 cell overlaps its neighbour; only the drawing cost matters here)."""
-    heights = {'rock': 1, 'mushroom': 1.2, 'log_2x4': 1.2, 'crate_2x2': 1.2, 'barrel': 1.2, 'fence_post': 4.8,
+    heights = {'pillar_1x1x3': 3.6, 'slope_30_1x2': 0.8, 'slope_curved_2x2': 0.8, 'slope_curved_1x2': 0.8,
+               'rock': 1, 'mushroom': 1.2, 'log_2x4': 1.2, 'crate_2x2': 1.2, 'barrel': 1.2, 'fence_post': 4.8,
                'railing_1x2': 1.2, 'window_1x2': 2.4, 'wheel_large': 1.6, 'slope_1x1': 0.8}
     plates = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2')
     out = []
