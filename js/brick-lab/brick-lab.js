@@ -741,6 +741,47 @@ function makeRailingPiece(part, colorHex, kit) {
   }), colorHex, kit);
 }
 
+/* Grille tile 1×2 (parts-survey slice 01): a thin base with five bars along
+   its length on top, so four shallow grooves run lengthwise; no studs. */
+function makeGrillePiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const hw = part.width / 2 - SEAM;
+    const hd = part.depth / 2 - SEAM;
+    const hh = part.height / 2;
+    const base = 0.24;
+    const bars = 5;
+    const gap = 0.06;
+    const bar = (hw * 2 - gap * (bars - 1)) / bars;
+    const list = [boxAt(hw * 2, base, hd * 2, 0, -hh + base / 2, 0)];
+    for (let i = 0; i < bars; i += 1) {
+      list.push(boxAt(bar, part.height - base, hd * 2, -hw + bar / 2 + i * (bar + gap), hh - (part.height - base) / 2, 0));
+    }
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Quarter tile 1×1 (parts-survey slice 01): a quarter disc of radius one
+   stud, its square corner on the footprint's back-left corner. */
+function makeQuarterTilePiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const bevel = 0.02;
+    const c = part.width / 2 - SEAM - bevel;
+    const r = c * 2;
+    /* Shape y becomes world −z after rotateX(−π/2) below. */
+    const shape = new THREE.Shape();
+    shape.moveTo(-c, c);
+    shape.lineTo(-c + r, c);
+    shape.absarc(-c, c, r, 0, -Math.PI / 2, true);
+    shape.lineTo(-c, c);
+    const g = new THREE.ExtrudeGeometry(shape, {
+      depth: part.height - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 16,
+    });
+    g.translate(0, 0, -(part.height - bevel * 2) / 2);
+    g.rotateX(-Math.PI / 2);
+    return mergeGeometries([g]);
+  }), colorHex, kit);
+}
+
 /* Round plate 2×2 (more-parts slice 01): a disc with chamfered rims and a
    2×2 grid of studs. */
 function makeRoundPlatePiece(part, colorHex, kit) {
@@ -981,6 +1022,8 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "peak") return makePeakPiece(part, colorHex, kit);
   if (part.shape === "axle") return makeAxlePiece(part, colorHex, kit);
   if (part.shape === "roundPlate") return makeRoundPlatePiece(part, colorHex, kit);
+  if (part.shape === "grille") return makeGrillePiece(part, colorHex, kit);
+  if (part.shape === "quarterTile") return makeQuarterTilePiece(part, colorHex, kit);
   if (part.shape === "slopeCorner") return makeSlopeCornerPiece(part, colorHex, kit);
   if (part.shape === "slopeInv") return makeSlopeInvPiece(part, colorHex, kit);
   if (part.shape === "frame") return makeFramePiece(part, colorHex, kit);

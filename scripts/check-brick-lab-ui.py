@@ -204,7 +204,7 @@ def lab_slices_09_11(page, snap, check, out):
     check('Search finds parts by their 中文 name', sorted(snap()['tray']['parts']) == sorted(
           ['rail_straight', 'rail_curve_90', 'rail_junction_t', 'rail_cross']))
     search.fill('2x4')
-    check('Search reads 2x4 as 2×4', set(snap()['tray']['parts']) == {'brick_2x4', 'plate_2x4', 'frame_2x4', 'log_2x4'})
+    check('Search reads 2x4 as 2×4', set(snap()['tray']['parts']) == {'brick_2x4', 'plate_2x4', 'tile_2x4', 'frame_2x4', 'log_2x4'})
     search.fill('')
     page.locator('.sqbl-size').select_option('2×2')
     parts = set(snap()['tray']['parts'])
@@ -239,14 +239,17 @@ def lab_slices_09_11(page, snap, check, out):
 # More-parts plan (docs/plans/2026-10-05-brick-lab-more-parts/), by slice.
 MORE_PARTS = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2', 'slope_1x1', 'slope_1x2', 'peak_1x2', 'wheel_large',
               'slope_corner_2x2', 'slope_inv_2x2', 'frame_2x4', 'brace_1x2', 'window_1x2',
-              'rock', 'mushroom', 'log_2x4', 'crate_2x2', 'barrel', 'fence_post', 'railing_1x2')
-MORE_COUNTS = {'plates': 9, 'slopes': 7, 'wheels': 3, 'structure': 4, 'nature': 4, 'scenery': 5}
+              'rock', 'mushroom', 'log_2x4', 'crate_2x2', 'barrel', 'fence_post', 'railing_1x2',
+              # Parts-survey plan (docs/plans/2026-10-05-brick-lab-parts-survey/) slice 01: tiles.
+              'tile_1x1', 'tile_1x2', 'tile_1x3', 'tile_1x4', 'tile_1x6', 'tile_1x8', 'tile_2x2', 'tile_2x3', 'tile_2x4',
+              'tile_grille_1x2', 'tile_round_1x1', 'tile_round_2x2', 'tile_quarter_1x1')
+MORE_COUNTS = {'plates': 9, 'tiles': 13, 'slopes': 7, 'wheels': 3, 'structure': 4, 'nature': 4, 'scenery': 5}
 FIXED_ICONS = ('rock', 'mushroom', 'log_2x4')
 ICON_SRC = "(id) => { const img = document.querySelector('.sqbl-part[data-part=\"' + id + '\"] .sqbl-part-preview img'); return img ? img.src : null; }"
 SEEN = {}
 # Parts a brick is dropped on, with half their height: it must land on top (D3, amended: anything stacks).
 STACK_ON = (('wheel_large', 0.8), ('plate_round_2x2', 0.2), ('frame_2x4', 0.6), ('brace_1x2', 0.6), ('window_1x2', 1.2),
-            ('fence_post', 2.4), ('railing_1x2', 0.6), ('rock', 0.5))
+            ('fence_post', 2.4), ('railing_1x2', 0.6), ('rock', 0.5), ('tile_2x4', 0.2), ('tile_round_2x2', 0.2))
 WINDOW_GLASS = '#9fd3ee'
 
 
@@ -261,7 +264,7 @@ def lab_more_parts(page, snap, check, out):
         page.wait_for_timeout(150)
 
     def arm(part):
-        for c in ('bricks', 'plates', 'slopes', 'wheels', 'structure', 'nature', 'scenery'):
+        for c in ('bricks', 'plates', 'tiles', 'slopes', 'wheels', 'structure', 'nature', 'scenery'):
             pick(page, c)
             if page.locator(f'.sqbl-part[data-part="{part}"]').count():
                 break
@@ -346,6 +349,16 @@ def lab_more_parts(page, snap, check, out):
             undo()
     page.locator('.sqbl-color[data-color="red"]').click()
 
+    # Parts-survey D4: an 8-long tile turned 90° still lands on the stud grid (8 wide: whole x, 1 deep: half z).
+    long = place('tile_1x8')
+    page.locator('.sqbl-app [data-action="rotate"]').click()
+    page.wait_for_timeout(200)
+    long = selected()
+    check(f'A 1×8 tile turned 90° sits on the stud grid {long["x"], long["z"], long["rotation"]}',
+          long['rotation'] in (90, 270) and long['x'] % 1 == 0 and long['z'] % 1 == 0.5)
+    undo()
+    undo()
+
     brick = place('brick_2x4')
     mushroom = drop_on('mushroom', brick)
     check('A mushroom dropped on a 2×4 brick sits on the brick', abs(mushroom['y'] - (brick['y'] + 0.6 + 0.6)) < 0.01)
@@ -385,14 +398,15 @@ def seed_worlds(page, worlds):
 
 
 def grid_world(parts):
-    """300 pieces on a 20 × 15 grid over the plate, cycling through `parts`, each resting on the plate."""
+    """300 pieces on a 20 × 15 grid over the plate, cycling through `parts`, each resting on the plate
+    (a part longer than its 3 × 4 cell overlaps its neighbour; only the drawing cost matters here)."""
     heights = {'rock': 1, 'mushroom': 1.2, 'log_2x4': 1.2, 'crate_2x2': 1.2, 'barrel': 1.2, 'fence_post': 4.8,
                'railing_1x2': 1.2, 'window_1x2': 2.4, 'wheel_large': 1.6, 'slope_1x1': 0.8}
     plates = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2')
     out = []
     for i in range(300):
         part = parts[i % len(parts)]
-        h = 0.4 if part in plates else heights.get(part, 1.2)
+        h = 0.4 if part in plates or part.startswith('tile_') else heights.get(part, 1.2)
         out.append({'id': f'g{i}', 'partId': part, 'colorId': 'red', 'x': -28.5 + (i % 20) * 3, 'y': h / 2,
                     'z': -28 + (i // 20) * 4, 'rotation': 0})
     return out
@@ -497,10 +511,10 @@ def parts_sheet(browser, base, args, report, check, out):
           plain_idle == 0 and mixed_idle == 0)
     if tier == 'standard':
         report['frameCost'] = {'plain': plain, 'mixed': mixed}
-        # One 2 s measuring window of slack: the step-down only decides once every 2 s.
-        sooner = mixed['steppedAfter'] is not None and (plain['steppedAfter'] is None or mixed['steppedAfter'] < plain['steppedAfter'] - 2.5)
-        check(f'300 new parts step the view down no sooner than 300 plain bricks {report["frameCost"]}', not sooner)
-        check(f'…and draw at least 80% as many frames while orbiting ({mixed["fps"]} vs {plain["fps"]} fps)', mixed['fps'] >= plain['fps'] * 0.8)
+        # Frames per second while orbiting is what the step-down reacts to. The time of the first
+        # step-down itself is only reported: under ~4 fps frames come more than 250 ms apart and the
+        # step-down's counter keeps restarting, so a slower world can step down later, not sooner.
+        check(f'300 new parts orbit at least 80% as fast as 300 plain bricks {report["frameCost"]}', mixed['fps'] >= plain['fps'] * 0.8)
     page.evaluate('SQPlatform.triggerBack()')
     ctx.close()
 
@@ -754,7 +768,7 @@ def run(args):
                 # Slice 08 / 12: neither switching category nor switching rail view resizes the 3D view (flash).
                 sizes = {(round(b['width']), round(b['height']))}
                 rail = page.locator('.sqbl-left-rail').bounding_box()['width']
-                for cat in ('plates', 'slopes', 'wheels', 'connectors', 'rails', 'structure', 'nature', 'scenery', 'bricks'):
+                for cat in ('plates', 'tiles', 'slopes', 'wheels', 'connectors', 'rails', 'structure', 'nature', 'scenery', 'bricks'):
                     pick(page, cat)
                     b = page.locator('.sqbl-stage canvas').bounding_box()
                     sizes.add((round(b['width']), round(b['height'])))
@@ -1105,7 +1119,7 @@ def run(args):
                 tp.wait_for_timeout(200)
                 check('A finger scrolls the category list without picking a category',
                       tp.evaluate(SNAP)['tray']['view'] == 'categories' and lst.evaluate('e => e.scrollTop') > 0)
-                for cat in ('rails', 'structure', 'nature', 'scenery', 'bricks'):
+                for cat in ('tiles', 'rails', 'structure', 'nature', 'scenery', 'bricks'):
                     pick(tp, cat)
                     if tp.evaluate(SNAP)['tray']['category'] != cat:
                         break
@@ -1115,7 +1129,7 @@ def run(args):
                 tp.locator('.sqbl-rail-back').click()
                 tp.wait_for_timeout(200)
                 fit = lst.evaluate('e => [e.scrollHeight, e.clientHeight]')
-                check(f'At 1024×600 all nine categories fit above the colours {fit}',
+                check(f'At 1024×600 all ten categories fit above the colours {fit}',
                       fit[0] <= fit[1] and 'has-more' not in lst.get_attribute('class'))
                 tp.screenshot(path=str(out / 'categories-1024x600.png'))
                 tp.evaluate('SQPlatform.triggerBack()')

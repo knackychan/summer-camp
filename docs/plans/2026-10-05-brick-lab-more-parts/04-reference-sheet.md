@@ -20,3 +20,4 @@
 - Full `check-brick-lab-ui.py`: 158/158.
 - Found on the way, not changed: entering a world right after an orbit fling keeps the camera gliding while OrbitControls' damping runs out. At SwiftShader's ~10 fps that takes several seconds; on a tablet at 60 fps it is a fraction of a second. The cost check measures idle frames before any orbit for that reason.
 - **Still open for DONE WHEN:** Papa reviews `parts-sheet.png` (and the blue sheet), and Papa builds something with the new parts on a real tablet.
+- *Later the same day (parts-survey slice 01):* the "steps down no sooner" comparison was replaced by a frames-per-second comparison (new parts must orbit at ≥ 80 % of plain bricks' fps). A rerun showed plain bricks stepping down after 11.4 s and new parts after 2.1 s while the new parts drew twice the frames: the first-step time is noise under software rendering, not a cost signal.

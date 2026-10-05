@@ -39,7 +39,7 @@ export const COLOR_NAMES = Object.freeze({
   brown: ["Brown", "咖啡色"],
 });
 
-const rect = (id, label, size, w, d, h = BRICK_HEIGHT, category = "bricks") => ({
+const rect = (id, label, size, w, d, h = BRICK_HEIGHT, category = "bricks", studs = true) => ({
   id,
   label,
   size,
@@ -48,8 +48,12 @@ const rect = (id, label, size, w, d, h = BRICK_HEIGHT, category = "bricks") => (
   width: w,
   depth: d,
   height: h,
-  studs: true,
+  studs,
 });
+
+/* A tile: a plate with a smooth top (parts-survey slice 01). Bricks still
+   stack on it (anything stacks on anything, more-parts D3 amended). */
+const tile = (id, label, size, w, d) => rect(id, label, size, w, d, PLATE_HEIGHT, "tiles", false);
 
 /* Rail track layout (slice 09, D17): centre-line segments the geometry is
    built from, and the connectors other rails snap to. A connector is a point
@@ -85,6 +89,20 @@ export const PARTS = Object.freeze([
   rect("plate_2x6", ["Plate 2×6", "薄板 2×6"], "2×6", 2, 6, PLATE_HEIGHT, "plates"),
   rect("plate_4x4", ["Plate 4×4", "薄板 4×4"], "4×4", 4, 4, PLATE_HEIGHT, "plates"),
   { id: "plate_round_2x2", label: ["Round Plate 2×2", "圓薄板 2×2"], size: "", category: "plates", shape: "roundPlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: true },
+  /* Tiles (docs/plans/2026-10-05-brick-lab-parts-survey/ slice 01). */
+  tile("tile_1x1", ["Tile 1×1", "光面板 1×1"], "1×1", 1, 1),
+  tile("tile_1x2", ["Tile 1×2", "光面板 1×2"], "1×2", 1, 2),
+  tile("tile_1x3", ["Tile 1×3", "光面板 1×3"], "1×3", 1, 3),
+  tile("tile_1x4", ["Tile 1×4", "光面板 1×4"], "1×4", 1, 4),
+  tile("tile_1x6", ["Tile 1×6", "光面板 1×6"], "1×6", 1, 6),
+  tile("tile_1x8", ["Tile 1×8", "光面板 1×8"], "1×8", 1, 8),
+  tile("tile_2x2", ["Tile 2×2", "光面板 2×2"], "2×2", 2, 2),
+  tile("tile_2x3", ["Tile 2×3", "光面板 2×3"], "2×3", 2, 3),
+  tile("tile_2x4", ["Tile 2×4", "光面板 2×4"], "2×4", 2, 4),
+  { id: "tile_grille_1x2", label: ["Grille", "格柵板"], size: "", category: "tiles", shape: "grille", width: 1, depth: 2, height: PLATE_HEIGHT, studs: false },
+  { id: "tile_round_1x1", label: ["Round Tile 1×1", "圓光面板 1×1"], size: "", category: "tiles", shape: "roundPlate", width: 1, depth: 1, height: PLATE_HEIGHT, studs: false },
+  { id: "tile_round_2x2", label: ["Round Tile 2×2", "圓光面板 2×2"], size: "", category: "tiles", shape: "roundPlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: false },
+  { id: "tile_quarter_1x1", label: ["Quarter Tile", "扇形光面板"], size: "", category: "tiles", shape: "quarterTile", width: 1, depth: 1, height: PLATE_HEIGHT, studs: false },
   { id: "slope_2x2", label: ["Slope 2×2", "斜坡 2×2"], size: "", category: "slopes", shape: "slope", width: 2, depth: 2, height: BRICK_HEIGHT, studs: true },
   /* Two 45° faces meeting at a ridge: the top of a roof (slice 09). */
   /* Small slopes (more-parts slice 01): the 1×1 "cheese" slope is studless. */
@@ -135,6 +153,7 @@ export const FIXED_COLOR_SHAPES = Object.freeze(["rail", "tree", "rock", "mushro
 export const CATEGORIES = Object.freeze([
   { id: "bricks", label: ["Bricks", "積木"], icon: "🧱" },
   { id: "plates", label: ["Plates", "薄板"], icon: "▤" },
+  { id: "tiles", label: ["Tiles", "光面板"], icon: "▭" },
   { id: "slopes", label: ["Slopes", "斜坡"], icon: "◩" },
   { id: "wheels", label: ["Wheels", "輪子"], icon: "🛞" },
   { id: "connectors", label: ["Connectors", "連接件"], icon: "🔩" },

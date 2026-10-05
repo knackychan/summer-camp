@@ -152,6 +152,13 @@
 .sqbl-part-preview[data-shape=fencePost]{width:12px;height:40px;border-radius:2px}
 .sqbl-part-preview[data-shape=railing]{width:44px;height:26px;-webkit-mask:linear-gradient(#000 0 0) top/100% 7px no-repeat,linear-gradient(#000 0 0) left/6px 100% no-repeat,linear-gradient(#000 0 0) right/6px 100% no-repeat,linear-gradient(#000 0 0) 0 70%/100% 4px no-repeat;mask:linear-gradient(#000 0 0) top/100% 7px no-repeat,linear-gradient(#000 0 0) left/6px 100% no-repeat,linear-gradient(#000 0 0) right/6px 100% no-repeat,linear-gradient(#000 0 0) 0 70%/100% 4px no-repeat;box-shadow:none}
 .sqbl-part-preview[data-shape=rock]:before,.sqbl-part-preview[data-shape=mushroom]:before,.sqbl-part-preview[data-shape=log]:before,.sqbl-part-preview[data-shape=crate]:before,.sqbl-part-preview[data-shape=barrel]:before{display:none!important}
+/* Tray previews for the parts-survey slice 01 tiles: smooth tops, no studs. */
+.sqbl-part-preview[data-preview^=tile_]:before{display:none!important}
+.sqbl-part-preview[data-preview=tile_1x1],.sqbl-part-preview[data-preview=tile_round_1x1],.sqbl-part-preview[data-preview=tile_quarter_1x1]{width:24px;height:18px}
+.sqbl-part-preview[data-preview=tile_1x6],.sqbl-part-preview[data-preview=tile_1x8]{width:48px;height:16px}
+.sqbl-part-preview[data-preview^=tile_round_]{border-radius:50%;height:24px}
+.sqbl-part-preview[data-shape=quarterTile]{border-radius:0 100% 0 0}
+.sqbl-part-preview[data-shape=grille]{background:repeating-linear-gradient(90deg,var(--sqbl-piece,#c91a09) 0 5px,rgba(0,0,0,.35) 5px 7px)!important}
 .sqbl-part-preview[data-preview=rail_curve_90]{width:38px;height:38px;border-radius:0;background:radial-gradient(circle at 0 100%,transparent 0 11px,#575d65 11px 14px,#8a5c3b 14px 24px,#575d65 24px 27px,transparent 27px)}
 .sqbl-part-preview[data-preview=rail_cross]{width:38px;height:38px;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%);background:#8a5c3b;border-radius:0}
 .sqbl-part-preview[data-preview=rail_junction_t]{width:38px;height:38px;clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%);background:#8a5c3b;border-radius:0}

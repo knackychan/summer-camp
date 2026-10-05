@@ -1095,7 +1095,8 @@ try {
 
 // Brick Lab catalog (docs/plans/2026-10-03-brick-lab/ slices 09–11): unique part ids, every
 // part and category bilingual, no empty or unknown category, rail ends on whole studs.
-// Size limits (2026-10-05-brick-lab-more-parts D5): footprint whole studs, at most 6 a side;
+// Size limits (2026-10-05-brick-lab-more-parts D5, raised by 2026-10-05-brick-lab-parts-survey D4):
+// footprint whole studs, at most 8 a side;
 // height above 0 and at most 8 units. Every fixed-colour shape is one some part uses.
 try {
   var brickMod = await import(new URL("js/brick-lab/brick-catalog.js", root));
@@ -1109,7 +1110,7 @@ try {
     if (!/[\u3400-\u9fff]/.test(part.label[1])) fail("bricklab", part.id + " label needs 中文");
     if (!brickCats.has(part.category)) fail("bricklab", part.id + " has unknown category " + part.category);
     [part.width, part.depth].forEach(function (side) {
-      if (!Number.isInteger(side) || side < 1 || side > 6) fail("bricklab", part.id + " footprint must be 1–6 whole studs a side");
+      if (!Number.isInteger(side) || side < 1 || side > 8) fail("bricklab", part.id + " footprint must be 1–8 whole studs a side");
     });
     if (!(part.height > 0 && part.height <= 8)) fail("bricklab", part.id + " height must be above 0 and at most 8");
     if (part.shape === "rail") {
