@@ -47,7 +47,7 @@ test("slerp walks from one rotation to another", () => {
   close(project(0, 45, view).z, 1, 1e-6, "halfway faces 45°");
 });
 
-test("drawGlobe paints the disc and its rim only, leaving the rest transparent", () => {
+test("drawGlobe paints the disc and its dark outline only; the glow is CSS (readability slice 05)", () => {
   const map = buildPlanetMap(7), clouds = buildCloudMap(7);
   const width = 160, height = 120, R = 40, cx = 80, cy = 60;
   const target = { data: new Uint32Array(width * height).fill(123), width, height };
@@ -56,7 +56,7 @@ test("drawGlobe paints the disc and its rim only, leaving the rest transparent",
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     const v = target.data[y * width + x];
     const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
-    if (d > R + 2.6) assert.equal(v, 0, `pixel ${x},${y} outside the rim was painted`);
+    if (d > R + 1.6) assert.equal(v, 0, `pixel ${x},${y} outside the outline was painted`);
     if (d < R - 1) { assert.notEqual(v, 0, `disc pixel ${x},${y} empty`); painted++; }
   }
   assert.ok(painted > Math.PI * (R - 1) * (R - 1) * 0.95);
@@ -107,4 +107,18 @@ test("tapping finds the same cloud cell that drawGlobe paints, including drift",
     }
   }
   assert.equal(cloudAtPoint(new Uint8Array(256 * 128).fill(1), 0, 0, view, 0), false, "outside the disc never hits");
+});
+
+test("cloud cells on a cloud's edge are marked so clouds draw solid with an outline", () => {
+  const clouds = buildCloudMap(7), W = 256, H = clouds.length / 256;
+  let edge = 0, inner = 0;
+  for (let row = 0; row < H; row++) for (let col = 0; col < W; col++) {
+    const v = clouds[row * W + col];
+    if (!v) continue;
+    const near = [[row, col - 1], [row, col + 1], [row - 1, col], [row + 1, col]]
+      .map(([r, c]) => (r < 0 || r >= H) ? 1 : clouds[r * W + ((c + W) % W)]);
+    assert.equal(v, near.every(Boolean) ? 1 : 2, `cell ${row},${col}`);
+    if (v === 2) edge++; else inner++;
+  }
+  assert.ok(edge > 0 && inner > 0);
 });

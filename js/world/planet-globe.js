@@ -95,8 +95,8 @@ export function drawGlobe(target, map, clouds, view, cloudOffset){
       var nx = (px + 0.5 - cx)/R, d2 = nx*nx + ny*ny, at = py*w + px;
       if (d2 > 1) {
         var dist = Math.sqrt(d2)*R;
+        /* The atmosphere glow is CSS behind the canvas (readability slice 05). */
         if (dist <= R + 1) data[at] = RGBA[C.outline];
-        else if (dist <= R + 2.5 && (nx*L[0] + ny*L[1] > -0.1 || ((px + py) & 1) === 0)) data[at] = RGBA[C.cyan];
         continue;
       }
       var nz = Math.sqrt(1 - d2);
@@ -104,13 +104,15 @@ export function drawGlobe(target, map, clouds, view, cloudOffset){
       var lon = Math.atan2(lx, lz), lat = Math.asin(ly > 1 ? 1 : ly < -1 ? -1 : ly);
       var row = mapRow(lat), col = ((lon + Math.PI)/TWO_PI*MAP_W) | 0;
       if (col >= MAP_W) col = MAP_W - 1;
-      var c = colors[row*MAP_W + col];
+      var c = colors[row*MAP_W + col], cloud = 0;
       if (clouds) {
         var cc = cloudColumn(lon, shift);
-        if (clouds[row*MAP_W + cc]) c = C.white;
+        cloud = clouds[row*MAP_W + cc];
+        if (cloud) c = cloud === 2 ? C.snowShade : C.white;
         else if (row > 0 && clouds[(row - 1)*MAP_W + (cc + MAP_W - 1) % MAP_W]) c = DARK[c];
       }
-      var lam = nx*L[0] + ny*L[1] + nz*L[2], v = lam + (BAYER[(py & 3)*4 + (px & 3)]/16 - 0.47)*0.18;
+      /* Clouds are lit in solid bands, not dithered. */
+      var lam = nx*L[0] + ny*L[1] + nz*L[2], v = cloud ? lam : lam + (BAYER[(py & 3)*4 + (px & 3)]/16 - 0.47)*0.18;
       if (v > 0.75 || (d2 > 0.93 && lam > 0.3)) c = LIGHT[c];
       else if (v <= 0.15) c = v > -0.2 ? DARK[c] : DARK[DARK[c]];
       data[at] = RGBA[c];

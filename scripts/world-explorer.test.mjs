@@ -156,7 +156,8 @@ test("a mini-game hides the planet's ambient sparks: they stay under the dim ove
     log, HEX: [], C: { space: 0 }, bw: 10, bh: 10, moon: { z: 0 }, surface: [], globeCanvas: {}, dim: 1, focus: { item: {} },
     drawFocus: () => log.push("focus"),
     minigame: { draw: () => log.push("game") },
-    ctx: { set fillStyle(v) {}, set globalAlpha(v) {}, drawImage: () => log.push("globe"), fillRect: () => log.push("fill") },
+    ctx: { set fillStyle(v) {}, set globalAlpha(v) {}, drawImage: () => log.push("globe"), fillRect: () => log.push("fill"), clearRect: () => log.push("clear") },
+    atmosphere: () => {}, shown: () => true,
     drawStars: () => log.push("stars"), drawItem: () => {}, drawParticles: () => log.push("sparks"), drawConfetti: () => log.push("confetti")
   };
   vm.createContext(context);

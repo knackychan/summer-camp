@@ -117,6 +117,8 @@ function createWorld(options){
   }
   function haptic(kind){if(options.haptic)options.haptic(kind);}
   function radius(){return Math.max(8,Math.round(Math.min(bw,bh)*0.45*zoom));}
+  /* Toys stay off the planet's darkening edge; landmarks show sooner (readability slice 05). */
+  function shown(item){return item.z>(item.kind==="toy"?0.25:0.08);}
   function view(){return {rotation:rotation,radius:radius(),cx:cx,cy:cy};}
 
   /* ---------- selection card ---------- */
@@ -393,7 +395,7 @@ function createWorld(options){
     var reach=Math.max(6,(coarse?26:16)/scale);
     for(var r=0;r<places.length;r++){var rim=places[r].rim;if(rim&&Math.abs(p.x-rim.x)<=reach&&Math.abs(p.y-rim.y)<=reach)return {kind:"rim",mark:places[r]};}
     if(moon.z>0&&inRect(moon,p.x,p.y))return moon;
-    var front=surface.filter(function(item){return item.z>0.15;}).sort(function(a,b){return b.z-a.z;});
+    var front=surface.filter(function(item){return item.z>0.15&&shown(item);}).sort(function(a,b){return b.z-a.z;});
     for(var i=0;i<front.length;i++)if(inRect(front[i],p.x,p.y))return front[i];
     if(moon.z<=0&&!onDisc&&inRect(moon,p.x,p.y))return moon;
     return onDisc?{kind:"surface",x:p.x,y:p.y}:{kind:"space",x:p.x,y:p.y};
@@ -629,12 +631,24 @@ function createWorld(options){
       if(kind)spawn(kind,mark.x+(asleep?4:0),mark.top+1,1);
     });
   }
+  /* Space and the atmosphere glow are the canvas's CSS background, sized from the planet
+     radius; the canvas itself is transparent around the planet (readability slice 05). */
+  var glowKey="";
+  function atmosphere(){
+    var R=radius(),key=cx+","+cy+","+R+","+scale;
+    if(key===glowKey)return;
+    glowKey=key;
+    var r=R*scale,reach=Math.max(14,R*0.16)*scale,px=function(n){return n.toFixed(1)+"px";};
+    canvas.style.background="radial-gradient(circle at "+px(cx*scale)+" "+px(cy*scale)+", rgba(57,208,200,0.5) 0, rgba(57,208,200,0.5) "+px(r+scale)+
+      ", rgba(77,120,224,0.18) "+px(r+reach/2)+", rgba(23,21,59,0) "+px(r+reach)+"), "+HEX[C.space];
+  }
   function composite(){
-    ctx.fillStyle=HEX[C.space];ctx.fillRect(0,0,bw,bh);
+    atmosphere();
+    ctx.clearRect(0,0,bw,bh);
     drawStars();
     if(moon.z<=0)drawItem(moon);
     ctx.drawImage(globeCanvas,0,0);
-    surface.filter(function(item){return item.z>0.08;}).sort(function(a,b){return a.z-b.z;}).forEach(drawItem);
+    surface.filter(shown).sort(function(a,b){return a.z-b.z;}).forEach(drawItem);
     if(moon.z>0)drawItem(moon);
     drawParticles();
     if(!minigame)drawAttention();
@@ -709,7 +723,7 @@ function createWorld(options){
     var rect=canvas.getBoundingClientRect(),distance=BASE_DISTANCE/zoom;
     layout();
     function point(item){
-      if(item.z<=0.15)return null;
+      if(item.z<=0.15||!shown(item))return null;
       var x=rect.left+(item.left+item.w/2)*scale,y=rect.top+(item.top+(item.h-2)/2)*scale;
       if(x<rect.left||y<rect.top||x>rect.right||y>rect.bottom)return null;
       return hitAt(x,y)===item?{x:x,y:y}:null;

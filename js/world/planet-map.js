@@ -185,5 +185,15 @@ export function buildCloudMap(seed){
       out[row*MAP_W + col] = fbm([v[0], v[1]*3, v[2]], 4.2, seed+11) > 0.72 ? 1 : 0;
     }
   }
+  /* 2 marks a cloud's edge cell, drawn as its outline (readability slice 05). Still truthy for taps. */
+  for (row = 0; row < MAP_H; row++) {
+    for (col = 0; col < MAP_W; col++) {
+      var i = row*MAP_W + col;
+      if (!out[i]) continue;
+      var left = out[row*MAP_W + (col + MAP_W - 1) % MAP_W], right = out[row*MAP_W + (col + 1) % MAP_W];
+      var up = row > 0 ? out[i - MAP_W] : 1, down = row < MAP_H - 1 ? out[i + MAP_W] : 1;
+      if (!left || !right || !up || !down) out[i] = 2;
+    }
+  }
   return out;
 }
