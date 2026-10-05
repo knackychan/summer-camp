@@ -8,6 +8,7 @@ import {
   BRICK_HEIGHT, CATEGORIES, COLORS, COLOR_FINISH, COLOR_NAMES, FINISHES, PARTS, PLATE_HEIGHT, getColorHex, getPart, isFixedColor, partDims,
 } from "./brick-catalog.js";
 import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, worldConnectors } from "./brick-rails.js";
+import { createKidCamera } from "./brick-camera.js";
 import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
@@ -16,7 +17,6 @@ import { createLanSession } from "../game-services/lan-session.js";
 import { BrickTogether } from "./brick-together.js";
 
 let THREE = null;
-let OrbitControls = null;
 
 /* "EN · 中文" for sentences, "EN 中文" for short labels. */
 const say = (pair) => `${pair[0]} · ${pair[1]}`;
@@ -32,7 +32,7 @@ const HINTS = {
   moved: ["Moved! Tap a piece or pick another.", "移好了！點一塊或再選一塊。"],
   removed: ["Piece removed.", "積木拿掉了。"],
   undone: ["Undone.", "復原了。"],
-  explore: ["Explore freely. Tap something to edit it.", "自由探索。點任何東西就能修改。"],
+  explore: ["Slide to look around. Tap something to edit it.", "滑動來看看四周。點任何東西就能修改。"],
   backInBuild: ["Back in Build — edit the piece you tapped.", "回到建造——修改你點的積木。"],
   saved: ["Saved on this tablet", "已儲存在這台平板"],
   railSelected: ["Glowing dots are rail ends — turn or drag to join them.", "發光的點是軌道接頭，轉一轉或拖過去接起來。"],
@@ -93,6 +93,15 @@ const MENU = {
   removed: ["World deleted.", "世界刪除了。"],
 };
 
+/* Turn and zoom buttons over the view (kid-camera plan K3). */
+const CAM_ARC = "M7 13a9 9 0 1 0 3-6.7";
+const CAMERA_BUTTONS = [
+  { id: "left", icon: `<path d="${CAM_ARC}"/><path d="M10 2v5H5"/>`, label: ["Turn left", "向左轉"] },
+  { id: "right", icon: `<g transform="matrix(-1 0 0 1 32 0)"><path d="${CAM_ARC}"/><path d="M10 2v5H5"/></g>`, label: ["Turn right", "向右轉"] },
+  { id: "out", icon: '<path d="M7 16h18"/>', label: ["Zoom out", "縮小"] },
+  { id: "in", icon: '<path d="M7 16h18M16 7v18"/>', label: ["Zoom in", "放大"] },
+];
+
 const SNAP_GUIDES = {
   studs: ["Snaps onto the studs. Stack it on other bricks.", "會卡在凸點上，可以疊在別的積木上。"],
   rail: ["Snaps to a nearby rail end. Turn it until the ends face each other.", "靠近軌道接頭就會自動接上。轉一轉，讓接頭對好。"],
@@ -126,9 +135,11 @@ const RENDER_HOLD = 500;
 const SLOW_FRAME_MS = 28;
 const INPUT_EVENTS = ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "keydown", "input", "change", "click"];
 const SEA_BLUE = 0x2b5d93;
-const HOME_TARGET = [5, -8, 7];
-const HOME_CAMERA = [54, 62, 70];
+/* Home (kid-camera plan K4): the whole island from the front right, ~47° down. */
+const HOME_VIEW = Object.freeze({ x: 6, z: 9, yaw: 38 * Math.PI / 180, distance: 100 });
 const BUILD_MAX_DISTANCE = 128;
+/* The view's centre stays this close to the plate (slice 07, D13). */
+const VIEW_REACH = 36;
 /* Saves without this grid version predate D10/D11 and are re-settled on load. */
 const GRID_VERSION = 2;
 /* Pointer travel (CSS px) that turns a press into a drag. */
@@ -1448,7 +1459,6 @@ export class BrickLabRuntime {
     this.pointerDown = null;
     this.saveTimer = null;
     this.destroyed = false;
-    this.cameraTween = null;
     this.baseplateStuds = 0;
     this.bubble = { shown: false, x: NaN, y: NaN, width: 0, height: 0 };
     /* Slice 11: tray search, size filter, favourites, recents, info card. */
@@ -1473,11 +1483,11 @@ export class BrickLabRuntime {
   }
 
   async mount() {
-    const runtime = await loadThree(document.createElement("canvas"), true);
+    /* No OrbitControls: brick-camera.js drives the view (kid-camera plan K7). */
+    const runtime = await loadThree(document.createElement("canvas"), false);
     if (this.destroyed) { releaseContext(runtime); return this; }
     this.runtime = runtime;
     THREE = runtime.THREE;
-    OrbitControls = runtime.OrbitControls;
     this.kit = makeKit(this.runtime.reduced);
     this.reducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     this.renderShell();
@@ -1556,6 +1566,9 @@ export class BrickLabRuntime {
               </div>
             </div>
             <div class="sqbl-stage-hint" data-stage-hint aria-live="polite"></div>
+            <div class="sqbl-cam" role="toolbar" aria-label="Camera 鏡頭">${CAMERA_BUTTONS.map((b) => `
+              <button type="button" class="sqbl-cam-btn" data-cam="${b.id}" aria-label="${escapeHtml(label(b.label))}"><svg viewBox="0 0 32 32" aria-hidden="true">${b.icon}</svg></button>`).join("")}
+            </div>
             <div class="sqbl-info" data-info role="dialog" aria-modal="false" hidden></div>
             <div class="sqbl-explore-badge">🌍 ${pre ? "" : "Explore 探索"}</div>
             <div class="sqbl-crew" data-crew aria-live="polite" hidden></div>
@@ -1609,7 +1622,6 @@ export class BrickLabRuntime {
     this.scene.fog = new THREE.Fog(SEA_BLUE, 180, 440);
     /* A narrower lens flattens perspective: reads as a tabletop diorama. */
     this.camera = new THREE.PerspectiveCamera(34, 1, 0.1, 640);
-    this.camera.position.set(...HOME_CAMERA);
 
     this.renderer = createRenderer(this.runtime, 2);
     this.renderer.shadowMap.enabled = !this.renderer.sqReducedQuality;
@@ -1625,20 +1637,13 @@ export class BrickLabRuntime {
     this.renderer.domElement.setAttribute("aria-label", "Brick Lab 3D builder 積木實驗室 3D 建造");
     this.stage.appendChild(this.renderer.domElement);
 
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.08;
-    this.controls.minDistance = 4;
-    this.controls.maxDistance = BUILD_MAX_DISTANCE;
-    this.controls.minPolarAngle = 0.32;
-    this.controls.maxPolarAngle = Math.PI / 2.08;
-    this.controls.target.set(...HOME_TARGET);
-    /* Pan in both modes (slice 07): two fingers on a tablet (they also pinch
-       to zoom), right button on a mouse. It slides along the ground, not the
-       screen, and the loop keeps the view's centre over the island. */
-    this.controls.enablePan = true;
-    this.controls.screenSpacePanning = false;
-    this.controls.panSpeed = 1.2;
+    /* Kid camera (docs/plans/2026-10-05-brick-lab-kid-camera/): one finger
+       slides the island like a map, two fingers pinch / twist, the tilt
+       follows the zoom; the view's centre stays over the island (D13). */
+    this.cam = createKidCamera({
+      camera: this.camera, element: this.renderer.domElement, view: HOME_VIEW, reducedMotion: this.reducedMotion,
+      limits: { reach: VIEW_REACH, minDistance: 4, maxDistance: BUILD_MAX_DISTANCE },
+    });
 
     /* Lo-fi lighting (slice 08): cool sky, warm bounce from the ground, a low
        warm late-afternoon sun with long soft shadows, a faint cool rim. */
@@ -1940,6 +1945,13 @@ export class BrickLabRuntime {
     this.root.querySelector("[data-action=save]").addEventListener("pointerdown", () => this.saveNow(true));
     this.root.querySelector("[data-action=undo]").addEventListener("pointerdown", () => this.undo());
     this.root.querySelector("[data-action=home-view]").addEventListener("pointerdown", () => this.homeView());
+    /* K3: ↺ turns the island anticlockwise on screen, ↻ clockwise; one zoom step each. */
+    const camActions = { left: () => this.cam.turn(-45), right: () => this.cam.turn(45), in: () => this.cam.zoom(0.7), out: () => this.cam.zoom(1 / 0.7) };
+    this.root.querySelectorAll("[data-cam]").forEach((button) => button.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      camActions[button.dataset.cam]();
+      this.haptic("tap");
+    }));
     this.root.querySelector("[data-action=rotate]").addEventListener("pointerdown", () => this.rotateSelected());
     this.root.querySelector("[data-action=duplicate]").addEventListener("pointerdown", () => this.duplicateSelected());
     this.root.querySelector("[data-action=delete]").addEventListener("pointerdown", () => this.deleteSelected());
@@ -2016,8 +2028,8 @@ export class BrickLabRuntime {
     INPUT_EVENTS.forEach((type) => this.root.addEventListener(type, this.onInput, { capture: true, passive: true }));
     this.renderer.domElement.addEventListener("webglcontextrestored", this.onInput);
 
-    /* Capture phase on the stage runs before OrbitControls' own listener on
-       the canvas, so a press on the selected piece can suspend orbiting. */
+    /* Capture phase on the stage runs before the camera's own listener on
+       the canvas, so a press on the selected piece can suspend the camera. */
     this.stage.addEventListener("pointerdown", (event) => this.onDragStart(event), true);
 
     const canvas = this.renderer.domElement;
@@ -2028,6 +2040,7 @@ export class BrickLabRuntime {
     canvas.addEventListener("pointerup", (event) => {
       if (this.onDragEnd(event, false)) { this.pointerDown = null; return; }
       if (this.drag) return; /* a second finger during a drag is not a tap */
+      if (this.cam.moved()) { this.pointerDown = null; return; } /* a slide or a pinch is not a tap */
       if (!this.pointerDown) return;
       const dx = event.clientX - this.pointerDown.x;
       const dy = event.clientY - this.pointerDown.y;
@@ -2604,7 +2617,7 @@ export class BrickLabRuntime {
     this.moveId = null;
     this.placementArmed = false;
     this.ghost.visible = false;
-    if (this.drag) { this.drag = null; this.controls.enabled = true; }
+    if (this.drag) { this.drag = null; this.cam.enabled = true; }
     this.showLost(hostKid);
   }
 
@@ -3113,7 +3126,7 @@ export class BrickLabRuntime {
     }
   }
 
-  /* Press on the selected piece: orbit is suspended until the finger lifts.
+  /* Press on the selected piece: the camera is suspended until the finger lifts.
      Lifting without travel is a tap (turn); travelling drags the piece (D8). */
   onDragStart(event) {
     if (this.mode !== "build" || !this.selectedId || this.moveId || this.placementArmed || this.drag) return;
@@ -3135,8 +3148,8 @@ export class BrickLabRuntime {
       offsetZ: grab ? grab.z - instance.z : 0,
       pos: null,
     };
-    this.controls.enabled = false;
-    /* Capture so the lift is seen even off the canvas: orbit must come back. */
+    this.cam.enabled = false;
+    /* Capture so the lift is seen even off the canvas: the camera must come back. */
     try { this.renderer.domElement.setPointerCapture(event.pointerId); } catch {}
   }
 
@@ -3152,7 +3165,7 @@ export class BrickLabRuntime {
     const point = this.raycaster.ray.intersectPlane(this.dragPlane, this.dragPoint);
     if (!point) return;
     const instance = this.pieces.get(drag.id);
-    if (!instance) { this.drag = null; this.controls.enabled = true; return; }
+    if (!instance) { this.drag = null; this.cam.enabled = true; return; }
     const land = this.landing({ x: point.x - drag.offsetX, z: point.z - drag.offsetZ },
       getPart(instance.partId), instance.rotation, drag.id);
     const pos = land.pos;
@@ -3170,7 +3183,7 @@ export class BrickLabRuntime {
     const drag = this.drag;
     if (!drag || event.pointerId !== drag.pointerId) return false;
     this.drag = null;
-    this.controls.enabled = true;
+    this.cam.enabled = true;
     if (!drag.active) return false;
     const instance = this.pieces.get(drag.id);
     const object = this.sceneObjects.get(drag.id);
@@ -3357,7 +3370,7 @@ export class BrickLabRuntime {
     }
     if (done.pending) return;
     this.selectPiece(id);
-    this.focusPiece(id, 5.5);
+    this.focusPiece(id, 14);
     this.syncRails(id, true);
   }
 
@@ -3398,10 +3411,10 @@ export class BrickLabRuntime {
     this.ghost.visible = false;
     if (mode === "explore") {
       this.selectPiece(null);
-      this.controls.maxDistance = BUILD_MAX_DISTANCE + 32;
+      this.cam.setLimits({ maxDistance: BUILD_MAX_DISTANCE + 32 });
       this.setHint("🌍", HINTS.explore);
     } else {
-      this.controls.maxDistance = BUILD_MAX_DISTANCE;
+      this.cam.setLimits({ maxDistance: BUILD_MAX_DISTANCE });
       this.placementArmed = false;
       this.ghost.visible = false;
       this.setHint("🧱", HINTS.choose);
@@ -3419,38 +3432,16 @@ export class BrickLabRuntime {
     });
   }
 
-  focusPiece(id, distance = 6.5) {
-    const object = this.sceneObjects.get(id);
-    if (!object) return;
-    const target = new THREE.Box3().setFromObject(object).getCenter(new THREE.Vector3());
-    const currentDirection = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize();
-    const endCamera = target.clone().add(currentDirection.multiplyScalar(distance));
-    this.animateCamera(target, endCamera, 520);
+  /* Glide to a piece, keeping the turn; close enough to see its sides (K4). */
+  focusPiece(id, distance = 16) {
+    const piece = this.pieces.get(id);
+    if (!piece) return;
+    this.cam.animateTo({ x: piece.x, z: piece.z, distance }, 520);
   }
 
   homeView(animated = true) {
-    const target = new THREE.Vector3(...HOME_TARGET);
-    const camera = new THREE.Vector3(...HOME_CAMERA);
-    if (animated) this.animateCamera(target, camera, 520);
-    else {
-      this.controls.target.copy(target);
-      this.camera.position.copy(camera);
-      this.controls.update();
-    }
-  }
-
-  animateCamera(target, position, duration = 450) {
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      this.controls.target.copy(target);
-      this.camera.position.copy(position);
-      this.controls.update();
-      return;
-    }
-    this.cameraTween = {
-      start: performance.now(), duration,
-      fromTarget: this.controls.target.clone(), toTarget: target.clone(),
-      fromCamera: this.camera.position.clone(), toCamera: position.clone(),
-    };
+    if (animated) this.cam.animateTo(HOME_VIEW, 520);
+    else this.cam.jumpTo(HOME_VIEW);
   }
 
   recordHistory() {
@@ -3514,18 +3505,6 @@ export class BrickLabRuntime {
     try { if (this.options.onTap) this.options.onTap(); } catch {}
   }
 
-  /* Panning may wander, but never so far that the island leaves the view:
-     the centre stays above the plate (plus a little sea), camera and all. */
-  keepViewOnIsland() {
-    const target = this.controls.target;
-    const limit = BASE_HALF + 4;
-    const dx = clamp(target.x, -limit, limit) - target.x;
-    const dz = clamp(target.z, -limit, limit) - target.z;
-    if (!dx && !dz) return;
-    target.x += dx; target.z += dz;
-    this.camera.position.x += dx; this.camera.position.z += dz;
-  }
-
   invalidate(ms = RENDER_HOLD) {
     this.renderUntil = Math.max(this.renderUntil || 0, performance.now() + ms);
   }
@@ -3550,15 +3529,8 @@ export class BrickLabRuntime {
     const loop = (time) => {
       if (this.destroyed) return;
       this.raf = requestAnimationFrame(loop);
-      if (this.cameraTween) {
-        const t = clamp((time - this.cameraTween.start) / this.cameraTween.duration, 0, 1);
-        const eased = 1 - Math.pow(1 - t, 3);
-        this.controls.target.lerpVectors(this.cameraTween.fromTarget, this.cameraTween.toTarget, eased);
-        this.camera.position.lerpVectors(this.cameraTween.fromCamera, this.cameraTween.toCamera, eased);
-        if (t >= 1) this.cameraTween = null;
-      }
-      this.controls.update();
-      this.keepViewOnIsland();
+      /* Slides, glides and button turns move the camera here (K1–K5). */
+      this.cam.update(time);
       /* Circuit rails breathe softly (still with reduced motion). */
       const glowing = this.rails.circuit.size && !this.reducedMotion;
       if (glowing) {
@@ -3567,7 +3539,7 @@ export class BrickLabRuntime {
       const moved = this.cameraMoved();
       /* Part icons draw into the canvas corner; the scene then covers it. */
       const icons = this.thumbs ? this.thumbs.pump() : 0;
-      if (!icons && !moved && !glowing && !this.cameraTween && performance.now() > this.renderUntil) return;
+      if (!icons && !moved && !glowing && performance.now() > this.renderUntil) return;
       if (this.selectedId && this.selectionHelper.visible) {
         const object = this.sceneObjects.get(this.selectedId);
         if (object) this.selectionBox.setFromObject(object);
@@ -3625,7 +3597,9 @@ export class BrickLabRuntime {
         level: this.perf.level, pixelRatio: this.renderer.getPixelRatio(), shadows: !!(this.renderer.shadowMap.enabled && this.sun.castShadow) } : null,
       canvas: rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
       camera: this.camera ? { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, aspect: this.camera.aspect } : null,
-      target: this.controls ? { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z } : null,
+      /* The ground point the view looks at, and the kid camera's view (K7). */
+      target: this.cam ? { x: this.cam.view().x, y: 0, z: this.cam.view().z } : null,
+      view: this.cam ? this.cam.view() : null,
       rails: {
         links: this.rails.edges.length, circuit: Array.from(this.rails.circuit),
         markers: this.markerCount || 0, guide: !!(this.guideLine && this.guideLine.visible),
@@ -3643,7 +3617,7 @@ export class BrickLabRuntime {
   }
 
   /* Save, then release everything this runtime allocated: loop, timers,
-     observer, controls, every geometry/material (cached ones too), and the
+     observer, camera input, every geometry/material (cached ones too), and the
      GL context. */
   destroy() {
     if (this.destroyed) return;
@@ -3661,7 +3635,7 @@ export class BrickLabRuntime {
     if (this.onPause) window.removeEventListener("summerquest:native-pause", this.onPause);
     if (this.onResume) window.removeEventListener("summerquest:native-resume", this.onResume);
     if (this.onInput) INPUT_EVENTS.forEach((type) => this.root.removeEventListener(type, this.onInput, { capture: true }));
-    if (this.controls) this.controls.dispose();
+    if (this.cam) this.cam.dispose();
     if (this.scene) disposeTree(this.scene, true);
     if (this.kit) this.kit.dispose();
     if (this.renderer) this.renderer.dispose();

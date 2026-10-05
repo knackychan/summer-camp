@@ -248,3 +248,11 @@
 .sqbl-color[data-color^=trans]{background:linear-gradient(135deg,rgba(255,255,255,.85) 0 22%,transparent 22% 48%,rgba(255,255,255,.55) 48% 58%,transparent 58%),repeating-conic-gradient(rgba(30,50,70,.14) 0 25%,transparent 0 50%) 0 0/10px 10px,var(--sqbl-swatch);opacity:.9}
 .sqbl-color[data-color=gold],.sqbl-color[data-color=silver]{background:linear-gradient(135deg,rgba(255,255,255,.65),transparent 45%,rgba(0,0,0,.22)),var(--sqbl-swatch)}
 @media(max-width:520px){.sqbl-colors,.sqbl-app.is-pre-reader .sqbl-colors{grid-template-columns:none;grid-auto-columns:calc((100% - 12px) / 3)}}
+
+/* Kid camera (docs/plans/2026-10-05-brick-lab-kid-camera/ K3): turn and zoom
+   buttons over the bottom-right of the view, clear of the hint pill below. */
+.sqbl-cam{position:absolute;right:12px;bottom:64px;z-index:3;display:grid;grid-template-columns:repeat(2,56px);gap:8px}
+.sqbl-cam-btn{width:56px;height:56px;border-radius:50%;border:1px solid var(--sqbl-line);background:rgba(255,255,255,.92);box-shadow:0 6px 16px rgba(42,60,74,.18);color:var(--sqbl-ink);padding:0;display:grid;place-items:center;touch-action:manipulation}
+.sqbl-cam-btn svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.sqbl-cam-btn:active{transform:scale(.94);background:#eef6ff}
+.sqbl-app.is-pre-reader .sqbl-cam{grid-template-columns:repeat(2,60px)}.sqbl-app.is-pre-reader .sqbl-cam-btn{width:60px;height:60px}
