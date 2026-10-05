@@ -46,5 +46,7 @@ export default {
   stop: stop,
   /* Host Back goes to the world menu first (multiplayer plan slice 01). */
   back: function () { return !!(lab && !lab.destroyed && lab.back()); },
-  snapshot: function () { return lab && !lab.destroyed ? lab.snapshot() : null; }
+  snapshot: function () { return lab && !lab.destroyed ? lab.snapshot() : null; },
+  /* Pose a piece by id (moving-parts slice 01): the harness, then slice 02's editor. */
+  pose: function (id, pose) { return !!(lab && !lab.destroyed && lab.setPose(id, pose)); }
 };

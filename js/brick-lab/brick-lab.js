@@ -13,6 +13,7 @@ import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
 import { createSequencer } from "./brick-share.js";
+import { cleanPose, isSitting, jointAngles, poseShape, samePose, sitOffset, sitShift } from "./brick-pose.js";
 import { createLanSession } from "../game-services/lan-session.js";
 import { BrickTogether } from "./brick-together.js";
 
@@ -1334,6 +1335,50 @@ function makeModelPiece(part, colorHex, kit) {
   return group;
 }
 
+/* A posed model part (moving-parts M1, M2): the body plus one pivot group per
+   joint, each holding its own merged geometry per colour slot, cached per
+   (part, joint, slot). Joint geometry is built around its pivot so the group
+   turns it in place. A sitting figure sits lower and back in its box (M12). */
+function makeJointedPiece(part, colorHex, kit, pose) {
+  const root = new THREE.Group();
+  const inner = new THREE.Group();
+  root.add(inner);
+  if (isSitting(part, pose)) {
+    const off = sitOffset();
+    inner.position.set(0, off.y, off.z);
+  }
+  const angles = jointAngles(part, pose);
+  const half = part.height / 2;
+  ["", ...Object.keys(part.joints)].forEach((joint) => {
+    let holder = inner;
+    let pivot = [0, half, 0];
+    if (joint) {
+      const def = part.joints[joint];
+      pivot = def.at;
+      holder = new THREE.Group();
+      holder.position.set(def.at[0], def.at[1] - half, def.at[2]);
+      holder.rotation[def.axis] = angles[joint] * DEG;
+      holder.userData.sqblJoint = joint;
+      inner.add(holder);
+    }
+    modelSlots(part).forEach((slot) => {
+      const prims = part.model.filter((p) => (p.c || "main") === slot && (p.j || "") === joint);
+      if (!prims.length) return;
+      const geometry = kit.geo(`${part.id}:${joint || "body"}:${slot}`, () => {
+        const merged = mergeGeometries(prims.map((p) => primitiveGeometry(p, kit)));
+        merged.translate(-pivot[0], -pivot[1], -pivot[2]);
+        merged.computeBoundingBox();
+        merged.computeBoundingSphere();
+        return merged;
+      });
+      const finish = slot === "main" ? null : FINISHES[slot];
+      const see = finish && (finish.opacity || finish.emissive);
+      holder.add(mesh(geometry, slot === "main" ? kit.mat(colorHex) : kit.finish(slot), !see));
+    });
+  });
+  return root;
+}
+
 function makePieceMesh(part, colorHex, kit) {
   if (part.model) return makeModelPiece(part, colorHex, kit);
   if (part.shape === "wheel") return makeWheelPiece(part, colorHex, kit);
@@ -1395,6 +1440,11 @@ function pieceBounds(instance, part) {
     minY: instance.y - part.height / 2,
     maxY: instance.y + part.height / 2,
   };
+}
+
+/* The box an existing piece fills: its part, or a sitting minifigure's lower 2x2 (moving-parts M12). */
+function shapeOf(piece) {
+  return poseShape(getPart(piece.partId), piece.pose);
 }
 
 function overlap2D(a, b, pad = 0.04) {
@@ -2748,7 +2798,8 @@ export class BrickLabRuntime {
       const part = getPart(raw.partId);
       const rotation = normalRotation(raw.rotation);
       const piece = { ...raw, id: String(raw.id || uid()), partId: part.id, rotation };
-      Object.assign(piece, this.placementFor({ x: Number(raw.x) || 0, z: Number(raw.z) || 0 }, part, rotation, null, settled));
+      const shape = poseShape(part, cleanPose(part, raw.pose));
+      Object.assign(piece, this.placementFor({ x: Number(raw.x) || 0, z: Number(raw.z) || 0 }, shape, rotation, null, settled));
       settled.set(piece.id, piece);
       return piece;
     });
@@ -2766,6 +2817,8 @@ export class BrickLabRuntime {
       rotation: normalRotation(instance.rotation),
     };
     if (typeof instance.by === "string") clean.by = instance.by;
+    const pose = cleanPose(getPart(clean.partId), instance.pose);
+    if (pose) clean.pose = pose;
     this.pieces.set(clean.id, clean);
     this.addObject(clean);
     if (persist) this.scheduleSave();
@@ -2774,7 +2827,9 @@ export class BrickLabRuntime {
 
   /* The 3D object for a piece already in `pieces`. */
   addObject(piece) {
-    const object = makePieceMesh(getPart(piece.partId), getColorHex(piece.colorId), this.kit);
+    const part = getPart(piece.partId);
+    const object = part.joints && piece.pose ? makeJointedPiece(part, getColorHex(piece.colorId), this.kit, piece.pose)
+      : makePieceMesh(part, getColorHex(piece.colorId), this.kit);
     const paint = this.kit.mat(getColorHex(piece.colorId));
     object.traverse((node) => { if (node.material === paint) node.userData.sqblPaint = true; });
     object.position.set(piece.x, piece.y, piece.z);
@@ -2802,6 +2857,7 @@ export class BrickLabRuntime {
         const part = getPart(piece.partId);
         return isRail(part) && railClash(part, piece.x, piece.z, piece.rotation, this.railList(this.pieces, ignoreId), ignoreId);
       },
+      pose: (partId, pose) => pose === null || samePose(cleanPose(getPart(partId), pose), pose),
     };
   }
 
@@ -2855,6 +2911,15 @@ export class BrickLabRuntime {
       /* Swap the cached material on the colour parts only: no rebuild, no
          DOM. The wheel's tyre and the flower's centre keep their own colours. */
       this.paintObject(this.sceneObjects.get(op.id), this.pieces.get(op.id));
+    } else if (op.type === "pose") {
+      const old = this.sceneObjects.get(op.id);
+      if (old) {
+        this.scene.remove(old);
+        disposeTree(old);
+        this.sceneObjects.delete(op.id);
+      }
+      this.addObject(this.pieces.get(op.id));
+      if (this.selectedId === op.id) this.selectPiece(op.id);
     }
     this.scheduleSave();
   }
@@ -2960,7 +3025,7 @@ export class BrickLabRuntime {
     let under = null;
     for (const [id, instance] of pool) {
       if (id === ignoreId) continue;
-      const otherPart = getPart(instance.partId);
+      const otherPart = shapeOf(instance);
       const other = pieceBounds(instance, otherPart);
       const rest = otherPart.top == null ? other.maxY : other.minY + otherPart.top;
       if (overlap2D(probe, other) && rest > top) { top = rest; under = otherPart; }
@@ -3115,7 +3180,7 @@ export class BrickLabRuntime {
       return;
     }
     const instance = this.moveId && this.pieces.get(this.moveId);
-    const part = getPart(instance ? instance.partId : this.activePartId);
+    const part = instance ? shapeOf(instance) : getPart(this.activePartId);
     const land = this.landing(groundHit.point, part, instance ? instance.rotation : 0, this.moveId);
     this.ghost.position.set(land.pos.x, land.pos.y, land.pos.z);
     this.ghost.visible = true;
@@ -3167,7 +3232,7 @@ export class BrickLabRuntime {
     const instance = this.pieces.get(drag.id);
     if (!instance) { this.drag = null; this.cam.enabled = true; return; }
     const land = this.landing({ x: point.x - drag.offsetX, z: point.z - drag.offsetZ },
-      getPart(instance.partId), instance.rotation, drag.id);
+      shapeOf(instance), instance.rotation, drag.id);
     const pos = land.pos;
     this.sceneObjects.get(drag.id).position.set(pos.x, pos.y, pos.z);
     drag.pos = pos;
@@ -3222,7 +3287,7 @@ export class BrickLabRuntime {
       const targetHit = hits.find((hit) => isGround(hit) || this.getPieceIdFromIntersection(hit));
       if (!targetHit) return;
       const instance = this.pieces.get(this.moveId);
-      const land = this.landing(targetHit.point, getPart(instance.partId), instance.rotation, this.moveId);
+      const land = this.landing(targetHit.point, shapeOf(instance), instance.rotation, this.moveId);
       const pos = land.pos;
       if (land.blocked || !this.change({ type: "move", id: this.moveId, x: pos.x, y: pos.y, z: pos.z, rotation: instance.rotation })) {
         this.setHint("🛤️", HINTS.railBusy);
@@ -3333,7 +3398,7 @@ export class BrickLabRuntime {
     const id = this.selectedId;
     const instance = this.pieces.get(id);
     const rotation = (instance.rotation + 90) % 360;
-    const land = this.landing(instance, getPart(instance.partId), rotation, id);
+    const land = this.landing(instance, shapeOf(instance), rotation, id);
     /* A rail that would clip its neighbour once turned stays as it is. */
     if (land.blocked || !this.change({ type: "move", id, ...land.pos, rotation })) {
       this.setHint("🛤️", HINTS.railBusy);
@@ -3347,7 +3412,7 @@ export class BrickLabRuntime {
   duplicateSelected() {
     if (!this.selectedId) return;
     const original = this.pieces.get(this.selectedId);
-    const part = getPart(original.partId);
+    const part = shapeOf(original);
     let spot = { x: original.x + 2, z: original.z + 2, rotation: original.rotation };
     if (isRail(part)) {
       /* A copied rail continues the track from a free end (turned if it must:
@@ -3363,7 +3428,7 @@ export class BrickLabRuntime {
     }
     const pos = this.placementFor(spot, part, spot.rotation);
     const id = uid();
-    const done = this.change({ type: "add", piece: { id, partId: original.partId, colorId: original.colorId, ...pos, rotation: spot.rotation } });
+    const done = this.change({ type: "add", piece: { id, partId: original.partId, colorId: original.colorId, ...pos, rotation: spot.rotation, ...(original.pose ? { pose: original.pose } : {}) } });
     if (!done) {
       this.setHint("🛤️", HINTS.railBusy);
       return;
@@ -3400,6 +3465,28 @@ export class BrickLabRuntime {
     if (!this.selectedId) return;
     if (this.pieces.get(this.selectedId).colorId === colorId) return;
     this.change({ type: "recolor", id: this.selectedId, colorId });
+  }
+
+  /* Pose a piece (moving-parts M6, M9, M12). Sitting down or standing up moves
+     its centre half a stud and lands it again by the usual rules. Returns
+     whether the world now holds that pose. */
+  setPose(id, raw) {
+    const piece = this.pieces.get(id);
+    if (!piece) return false;
+    const part = getPart(piece.partId);
+    const pose = cleanPose(part, raw);
+    if (samePose(pose, piece.pose)) return true;
+    const was = isSitting(part, piece.pose);
+    const now = isSitting(part, pose);
+    let point = { x: piece.x, z: piece.z };
+    if (was !== now) {
+      const shift = sitShift(piece.rotation, now ? 1 : -1);
+      point = { x: piece.x + shift.dx, z: piece.z + shift.dz };
+    }
+    const pos = this.landing(point, poseShape(part, pose), piece.rotation, id).pos;
+    const done = this.change({ type: "pose", id, pose, x: pos.x, y: pos.y, z: pos.z });
+    this.invalidate();
+    return !!done;
   }
 
   setMode(mode, options = {}) {
@@ -3577,6 +3664,16 @@ export class BrickLabRuntime {
       preReader: this.preReader,
       selectedId: this.selectedId,
       /* The selected piece's material colours: a recolour must leave fixed parts (a window pane) alone. */
+      /* The selected piece's drawn joint angles in degrees (moving-parts checks). */
+      poseAngles: this.selectedId && this.sceneObjects.get(this.selectedId) ? (() => {
+        const out = {};
+        const joints = getPart(this.pieces.get(this.selectedId).partId).joints || {};
+        this.sceneObjects.get(this.selectedId).traverse((node) => {
+          const joint = node.userData.sqblJoint;
+          if (joint && joints[joint]) out[joint] = Math.round(node.rotation[joints[joint].axis] / DEG * 10) / 10;
+        });
+        return out;
+      })() : {},
       selectedColors: this.selectedId && this.sceneObjects.get(this.selectedId) ? (() => {
         const out = [];
         this.sceneObjects.get(this.selectedId).traverse((node) => {
