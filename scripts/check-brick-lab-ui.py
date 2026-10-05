@@ -1222,6 +1222,11 @@ def run(args):
 
                 def icons(suffix, wait=900):
                     page.wait_for_timeout(wait)
+                    # A busy machine draws icons more slowly: wait for them (up to 6 s) rather than a fixed pause.
+                    try:
+                        page.wait_for_function(f"{SNAP}.tray.icons.length >= ({on_screen})() && !{SNAP}.tray.iconsPending", timeout=6000)
+                    except Exception:
+                        pass
                     keys = snap()['tray']['icons']
                     return len(keys) >= page.evaluate(on_screen) and keys and all(suffix(k) for k in keys)
 

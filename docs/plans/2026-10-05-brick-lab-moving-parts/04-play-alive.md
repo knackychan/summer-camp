@@ -1,5 +1,7 @@
 # Slice 04 — ▶ Play: figures and animals come alive in place
 
+> **Superseded 2026-10-05 by [04-alive-on-tap.md](04-alive-on-tap.md).** Papa removed Play mode ("it is not necessary") and chose "Alive only when tapped". Play was built but never committed. This file is kept as the record of what was planned.
+
 **Design:** [design.md](design.md) M7, M10. **Depends on:** 03.
 
 The detailed task list is written when this slice starts.

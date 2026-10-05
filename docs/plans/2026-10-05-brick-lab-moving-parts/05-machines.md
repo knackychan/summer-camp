@@ -1,6 +1,13 @@
 # Slice 05 — Machines: posable, spinning, glowing, swinging
 
-**Design:** [design.md](design.md) M8 (and M5 for posing them in focus mode). **Depends on:** 04.
+**Design:** [design.md](design.md) M8 (and M5 for posing them in focus mode). **Depends on:** 04 ([04-alive-on-tap.md](04-alive-on-tap.md)).
+
+> **Amended 2026-10-05 (Play removed).** Wherever this file says "in Play", read "for 2 s when a tap selects the piece" (04-alive-on-tap T1–T3):
+> - A spinner spins for 2 s, then settles at its pose.
+> - A swing part swings open and back.
+> - A light shows its glow, flicker or cycle for 2 s.
+>
+> X5 (local swing state) and "leaving Play" no longer apply. The saved pose is the only state. The checks change to match.
 
 The detailed task list is written when this slice starts. Each machine part's moving shapes are read from its own primitives then.
 
