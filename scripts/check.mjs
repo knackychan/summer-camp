@@ -1159,6 +1159,35 @@ try {
     });
     if (!!part.fixed !== (mains === 0)) fail("bricklab", part.id + " fixed flag must match having no main slot");
   });
+  // Moving parts (docs/plans/2026-10-05-brick-lab-moving-parts/ M1, M11): every tagged primitive names a
+  // declared joint, every joint moves something, has a sane range with 0 as a stop, every preset angle
+  // is a stop, and every jointed part has a pose list with EN + 中文.
+  var poseMod = await import(new URL("js/brick-lab/brick-pose.js", root));
+  Object.keys(poseMod.POSES).forEach(function (body) {
+    poseMod.POSES[body].forEach(function (p) { assertPair(p.label, "bricklab.pose." + body + "." + p.id); });
+  });
+  brickMod.PARTS.forEach(function (part) {
+    var joints = part.joints || {};
+    (part.model || []).forEach(function (prim, i) {
+      if (prim.j != null && !joints[prim.j]) fail("bricklab", part.id + " primitive " + i + " names undeclared joint " + prim.j);
+    });
+    if (!part.joints) return;
+    if (!poseMod.POSES[part.body] || !poseMod.posesFor(part).length) fail("bricklab", part.id + " has joints but no pose list fits them");
+    Object.keys(joints).forEach(function (name) {
+      var d = joints[name];
+      if (!(Array.isArray(d.at) && d.at.length === 3 && finite(d.at)) || ["x", "y", "z"].indexOf(d.axis) < 0 || !(d.step > 0) || !(d.min <= 0 && d.max >= 0)) {
+        fail("bricklab", part.id + " joint " + name + " needs at[3], an axis x/y/z, step > 0 and min ≤ 0 ≤ max");
+        return;
+      }
+      if (!part.model.some(function (p) { return p.j === name; })) fail("bricklab", part.id + " joint " + name + " moves nothing");
+      if (!poseMod.stopsOf(d).some(function (a) { return Math.abs(a) < 1e-6; })) fail("bricklab", part.id + " joint " + name + ": 0° must be a stop");
+    });
+    poseMod.posesFor(part).forEach(function (p) {
+      Object.keys(p.angles).forEach(function (j) {
+        if (!poseMod.stopsOf(joints[j]).some(function (a) { return Math.abs(a - p.angles[j]) < 1e-6; })) fail("bricklab", part.id + " pose " + p.id + " puts " + j + " between stops");
+      });
+    });
+  });
   Object.keys(brickMod.COLOR_FINISH).forEach(function (id) { if (!(id in brickMod.COLORS)) fail("bricklab", "finish for unknown colour " + id); });
   Object.keys(brickMod.FINISHES).forEach(function (id) { if (!finite(brickMod.FINISHES[id].hex)) fail("bricklab", "finish " + id + " needs a hex"); });
   if (new Set(Object.values(brickMod.COLORS)).size !== Object.keys(brickMod.COLORS).length) fail("bricklab", "palette colours must have distinct hex values");
