@@ -26,7 +26,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 V07 = runpy.run_path(str(ROOT / 'scripts/check-kitchen-v07-ui.py'))
 RECOVERY = V07['RECOVERY']
 SNAPSHOT = "SQGames.get('kitchen').snapshot()"
-SIZES = [(1280, 800), (1280, 600)]
+SIZES = [(1280, 800), (1280, 600), (1024, 600), (1024, 800)]
 
 
 def run(args):
@@ -167,6 +167,24 @@ def run(args):
                 check(f'{tag}: every control is at least 44px', not metrics['small'])
                 check(f'{tag}: every control is on screen and unobstructed', not metrics['off'])
                 check(f'{tag}: the counter is the biggest area', metrics['counter']['w'] >= width * .45 and metrics['counter']['h'] >= height * .35)
+                # Both languages: food names fit their trays and customer names / dishes never split inside a word.
+                fit = '''() => ({
+                  clipped: [...document.querySelectorAll('.kq-tray')].filter(t => { const b = t.querySelector('b'); return b && b.getBoundingClientRect().right > t.getBoundingClientRect().right - 2; }).map(t => t.dataset.action),
+                  split: [...document.querySelectorAll('.kq-order-copy b, .kq-order-copy span')].filter(e => e.innerText.split(/\\s+/).filter(w => !/[\\u3400-\\u9fff]/.test(w)).some(w => {
+                    const c = document.createElement('span'); c.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:' + getComputedStyle(e).font; c.textContent = w;
+                    document.body.append(c); const wide = c.getBoundingClientRect().width > e.getBoundingClientRect().width + 1; c.remove(); return wide; })).map(e => e.innerText) })'''
+                for lang in ['en', 'zh']:
+                    if state()['lang'] != lang:
+                        tap('.kq-setbar [data-action="lang"]')
+                        page.wait_for_timeout(150)
+                    page.screenshot(path=str(out / f'counter-{tag}-{lang}.png'))
+                    words = page.evaluate(fit)
+                    report['layouts'][f'{tag}-{lang}-fit'] = words
+                    check(f'{tag} {lang}: every food name fits its tray', not words['clipped'])
+                    check(f'{tag} {lang}: customer names and dishes break between words', not words['split'])
+                    check(f'{tag} {lang}: no page scroll', page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1 && document.documentElement.scrollHeight <= innerHeight + 1'))
+                if state()['lang'] != 'en':
+                    tap('.kq-setbar [data-action="lang"]')
 
                 if (width, height) != SIZES[0]:
                     page.close(); context.close(); continue

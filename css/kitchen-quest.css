@@ -257,6 +257,15 @@ body.game-mode:has(.kq) .summer-companion{border:2px solid #0b0a1f;border-radius
   .kq-ticket li>*>b,.kq-ticket li em,.kq-ticket li .kq-check{display:none}
   .kq-ticket li span{overflow-wrap:anywhere}
 }
+/* 1024-wide landscape: smaller faces and food pictures so names and dishes break between words, never inside one. */
+@media (max-width:1100px) and (min-width:721px) and (orientation:landscape){
+  .kq-main{grid-template-columns:104px minmax(0,1fr) clamp(176px,18vw,200px)}
+  .kq .kq-order{grid-template-columns:32px minmax(0,1fr);gap:6px;padding:5px 4px 5px 8px}
+  .kq .kq-order--line{grid-template-columns:32px minmax(0,1fr)}
+  .kq .kq-order .kq-face{width:32px;height:32px}
+  .kq .kq-tray{gap:6px;padding:4px 6px}
+  .kq .kq-tray img{width:44px;height:44px}
+}
 /* Phones and narrow portrait: one column; the game page scrolls instead of squeezing. */
 @media (max-width:720px){
   .stage.arena.kq-stage{overflow-y:auto}
