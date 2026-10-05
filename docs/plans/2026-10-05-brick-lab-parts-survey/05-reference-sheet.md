@@ -12,3 +12,11 @@
 - The part search finds "tile", "光面板", "1x8" and "門".
 
 **DONE WHEN:** `node scripts/check.mjs` green; both UI runs pass; `check-android8-ui.py` passes with Chrome 138 (or recorded as *not yet run* in *As built*, as in multiplayer slice 08); Papa has reviewed `parts-sheet.png`; Papa has built something with the new parts on a real tablet.
+
+## As built (2026-10-05)
+- No app change. `check-brick-lab-ui.py --sheet` (more-parts slice 04) draws all 81 parts; its note now also names the leaves and the door knob as keeping their own colours.
+- WebGL2 / standard tier (Edge 141 headless, SwiftShader): 81/81 parts build with real-part icons in red and blue (`.tmp/brick-lab-ui/parts-sheet.png`, `parts-sheet-blue.png`); an idle lab draws 0 frames with 300 plain bricks or 300 new parts; orbiting, the new parts draw 8.4 fps vs plain bricks 5.7 (364 draw calls vs 307; 137k triangles vs 280k).
+- Forced WebGL1 (r162, reduced tier): 81/81 icons in red and blue (`webgl1-parts-sheet*.png`); idle 0 frames with either world.
+- `check-android8-ui.py` with Chrome 138 (`138.0.7204.183` headless shell, Android 8 identity, 2 GB): webgl2, webgl1, no-WebGL and offline-webgl1 all ok, Brick Lab included. Evidence refreshed in `test-results/android8/`.
+- Search: `check-brick-lab-ui.py` now checks that "tile", "光面板", "1x8" and "門" find `tile_1x8`, `tile_quarter_1x1`, `plate_1x8` and `door_1x4x6`. Full suite 188/188.
+- **Still open for DONE WHEN:** Papa reviews `parts-sheet.png` and builds something with the new parts on a real tablet.

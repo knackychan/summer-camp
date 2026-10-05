@@ -30,3 +30,4 @@
 - Tests: the 4 parts arm fast with real icons; Structure 7 / Nature 5; a brick lands on top of the arch, door, big window and leaves; recolouring the door green gives `['#237841', '#3d4246']` (knob kept) and the big window `['#237841', '#9fd3ee']` (pane kept); the leaves icon keeps its colour with blue picked. 187/187; `--sheet` 81/81 icons in red and blue; 300 new parts orbit at 8.3 fps vs plain bricks 5.5. The door (7.2) is within the height cap through `check.mjs`.
 - Screenshot for Papa: `.tmp/brick-lab-ui/survey-house.png` — a house with a red door and big windows, leaves on its roof, a tiled path through an arch on two pillars.
 - `sw.js` `CACHE_NAME` → `summer-quest-v176-brick-doors`.
+- Papa saw `survey-house.png` the same day: "ok cool". Slice done.

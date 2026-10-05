@@ -327,6 +327,15 @@ def lab_more_parts(page, snap, check, out):
         page.wait_for_timeout(900)
         page.screenshot(path=str(out / f'more-parts-{c}.png'), clip=page.locator('.sqbl-left-rail').bounding_box())
     check(f'More-parts: category counts {counts}', counts == MORE_COUNTS)
+    # Parts-survey slice 05: the new parts are found by name (EN + 中文) and by size.
+    page.locator('.sqbl-rail-find').click()
+    found = {}
+    for word, want in (('tile', 'tile_1x8'), ('光面板', 'tile_quarter_1x1'), ('1x8', 'plate_1x8'), ('門', 'door_1x4x6')):
+        page.locator('.sqbl-search input').fill(word)
+        page.wait_for_timeout(150)
+        found[word] = want in snap()['tray']['parts']
+    page.locator('.sqbl-rail-find').click()
+    check(f'Search finds the new parts: tile, 光面板, 1x8, 門 {found}', all(found.values()))
     page.locator('.sqbl-color[data-color="blue"]').click()
     pick(page, 'scenery')
     page.wait_for_timeout(900)
@@ -501,7 +510,7 @@ def parts_sheet(browser, base, args, report, check, out):
         missing = [k for k, v in icons.items() if not v]
         check(f'Every one of the {len(icons)} parts builds and has a real-part icon in {color} {missing}', not missing and len(icons) == len(catalog['parts']))
         note = (f'{len(icons)} parts · picked colour {color} · {graphics} / {tier} tier. '
-                'Rock, mushroom, log, rails and the tree keep their own colours; the window pane stays see-through blue.')
+                'Rock, mushroom, log, leaves, rails and the tree keep their own colours; window panes stay see-through blue and the door knob dark.')
         sheet = ctx.new_page()
         sheet.set_content(SHEET_PAGE.replace('TITLE', color).replace('NOTE', note).replace('BODY', body))
         sheet.wait_for_timeout(300)
