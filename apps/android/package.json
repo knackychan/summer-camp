@@ -23,6 +23,7 @@
     "build:release-bundle": "node scripts/build.mjs release-bundle",
     "device": "node scripts/device.mjs",
     "probe-3d": "node scripts/probe-3d.mjs",
-    "probe-lan": "node scripts/probe-lan.mjs"
+    "probe-lan": "node scripts/probe-lan.mjs",
+    "accept-lan": "node scripts/accept-lan.mjs"
   }
 }
