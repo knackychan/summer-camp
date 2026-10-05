@@ -36,3 +36,5 @@ Assemblies / My Blocks, booklets, curved rails and trains, animals, behaviours, 
 - `13-low-end-render.md` — D24–D25 (added 2026-10-04 at Papa's request): reduced tier paints the baseplate studs and lights with Lambert (179k → 31k triangles); every tier renders only on demand
 - `14-step-down.md` — D26 (added 2026-10-04 at Papa's request): a standard-tier tablet that can't keep up while the view moves steps down quietly — pixel ratio 1, painted studs, no shadows
 - `15-drag-from-rail.md` — D27 (added 2026-10-04 at Papa's request): slide a part sideways out of the rail and let go on the plate to place it; tap-to-place unchanged
+
+**Amended 2026-10-05:** D16's 26 parts grow to 46 (ids stable, a Scenery category, round-topped parts nothing stacks on, a catalog fingerprint in `hello`) — see `docs/plans/2026-10-05-brick-lab-more-parts/`.
