@@ -92,6 +92,8 @@ export const PARTS = Object.freeze([
   { id: "slope_1x2", label: ["Slope 1×2", "斜坡 1×2"], size: "", category: "slopes", shape: "slope", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
   { id: "slope_45", label: ["Roof Peak 45°", "屋脊 45°"], size: "", category: "slopes", shape: "peak", width: 2, depth: 2, height: BRICK_HEIGHT, studs: false },
   { id: "peak_1x2", label: ["Ridge Cap", "小屋脊"], size: "", category: "slopes", shape: "peak", width: 1, depth: 2, height: BRICK_HEIGHT, studs: false },
+  { id: "slope_corner_2x2", label: ["Corner Slope", "轉角斜坡"], size: "", category: "slopes", shape: "slopeCorner", width: 2, depth: 2, height: BRICK_HEIGHT, studs: true },
+  { id: "slope_inv_2x2", label: ["Eave", "屋簷"], size: "", category: "slopes", shape: "slopeInv", width: 2, depth: 2, height: BRICK_HEIGHT, studs: true },
   { id: "wheel_small", label: ["Wheel", "輪子"], size: "", category: "wheels", shape: "wheel", width: 1, depth: 1, height: 0.68, studs: false },
   { id: "wheel_med", label: ["Medium Wheel", "中輪子"], size: "", category: "wheels", shape: "wheel", width: 1, depth: 1, height: 1.2, studs: false, wheelScale: 1.35 },
   { id: "wheel_large", label: ["Large Wheel", "大輪子"], size: "", category: "wheels", shape: "wheel", width: 1, depth: 2, height: 1.6, studs: false, wheelScale: 1.7 },
@@ -111,6 +113,10 @@ export const PARTS = Object.freeze([
     [[0, 1, 0], [0, -1, 180], [1, 0, 90], [-1, 0, 270]]),
   { id: "axle", label: ["Axle", "車軸"], size: "", category: "connectors", shape: "axle", width: 1, depth: 2, height: PLATE_HEIGHT, studs: true },
   rect("platform_4x4", ["Platform 4×4", "平台 4×4"], "4×4", 4, 4, PLATE_HEIGHT * 2, "structure"),
+  /* More-parts slice 02. The window's pane keeps its own see-through colour. */
+  { id: "frame_2x4", label: ["Lattice Frame", "格子框架"], size: "", category: "structure", shape: "frame", width: 2, depth: 4, height: BRICK_HEIGHT, studs: true },
+  { id: "brace_1x2", label: ["Support Bracket", "支架"], size: "", category: "structure", shape: "brace", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
+  { id: "window_1x2", label: ["Window", "窗戶"], size: "", category: "structure", shape: "window", width: 1, depth: 2, height: BRICK_HEIGHT * 2, studs: true },
   { id: "tree_small", label: ["Small Tree", "小樹"], size: "", category: "nature", shape: "tree", width: 2, depth: 2, height: 4, studs: false },
   { id: "flower", label: ["Flower", "花"], size: "", category: "nature", shape: "flower", width: 1, depth: 1, height: 0.9, studs: false },
 ]);

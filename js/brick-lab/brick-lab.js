@@ -359,6 +359,190 @@ function makeSlopePiece(part, colorHex, kit) {
   return group;
 }
 
+/* A profile drawn in (−z, y) and extruded across the part's width, the way the
+   slope is built: rotateY(π/2) turns shape x into world −z, so the back (studs)
+   is at +shape x. */
+function extrudeProfile(width, shape, bevel = 0.03) {
+  const length = width - SEAM * 2 - bevel * 2;
+  const body = new THREE.ExtrudeGeometry(shape, {
+    depth: length, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2,
+  });
+  body.translate(0, 0, -length / 2);
+  body.rotateY(Math.PI / 2);
+  return body;
+}
+
+/* A flat-shaded solid from convex faces, each listed with the way it faces:
+   a fan is flipped where needed so every face points outwards. */
+function facetGeometry(faces) {
+  const out = [];
+  const n = new THREE.Vector3();
+  const e1 = new THREE.Vector3();
+  const e2 = new THREE.Vector3();
+  faces.forEach(({ points, facing }) => {
+    for (let i = 1; i < points.length - 1; i += 1) {
+      const a = points[0];
+      let b = points[i];
+      let c = points[i + 1];
+      e1.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+      e2.set(c[0] - a[0], c[1] - a[1], c[2] - a[2]);
+      n.crossVectors(e1, e2);
+      if (n.x * facing[0] + n.y * facing[1] + n.z * facing[2] < 0) [b, c] = [c, b];
+      out.push(...a, ...b, ...c);
+    }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(out, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+/* A box of the given size centred at (x, y, z). */
+function boxAt(w, h, d, x, y, z) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  g.translate(x, y, z);
+  return g;
+}
+
+function paintedGroup(geometry, colorHex, kit) {
+  const group = new THREE.Group();
+  group.add(mesh(geometry, kit.mat(colorHex)));
+  return group;
+}
+
+/* Outside-corner roof slope 2×2 (more-parts slice 02): one stud on the back
+   corner cell; two slanted faces fall from it to the front and the side and
+   meet on a hip line along the diagonal. */
+function makeSlopeCornerPiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const a = part.width / 2 - SEAM;
+    const y0 = -part.height / 2;
+    const yt = part.height / 2;
+    const yl = y0 + 0.16;
+    const body = facetGeometry([
+      { facing: [0, -1, 0], points: [[-a, y0, -a], [a, y0, -a], [a, y0, a], [-a, y0, a]] },
+      { facing: [0, 0, -1], points: [[-a, y0, -a], [a, y0, -a], [a, yl, -a], [0, yt, -a], [-a, yt, -a]] },
+      { facing: [-1, 0, 0], points: [[-a, y0, -a], [-a, y0, a], [-a, yl, a], [-a, yt, 0], [-a, yt, -a]] },
+      { facing: [0, 0, 1], points: [[-a, y0, a], [a, y0, a], [a, yl, a], [-a, yl, a]] },
+      { facing: [1, 0, 0], points: [[a, y0, -a], [a, y0, a], [a, yl, a], [a, yl, -a]] },
+      { facing: [0, 1, 0], points: [[-a, yt, -a], [0, yt, -a], [0, yt, 0], [-a, yt, 0]] },
+      { facing: [1, 1, 0], points: [[0, yt, -a], [a, yl, -a], [a, yl, a], [0, yt, 0]] },
+      { facing: [0, 1, 1], points: [[-a, yt, 0], [0, yt, 0], [a, yl, a], [-a, yl, a]] },
+    ]);
+    const list = [body];
+    addStuds(list, [-part.width / 2 + 0.5], [-part.depth / 2 + 0.5], yt);
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Inverted slope, the eave (more-parts slice 02): a studded flat top that
+   slants in underneath to a one-stud foot at the back, so it overhangs a wall. */
+function makeSlopeInvPiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const bevel = 0.03;
+    const hd = part.depth / 2 - SEAM - bevel;
+    const hh = part.height / 2 - bevel;
+    const shape = new THREE.Shape();
+    shape.moveTo(hd, -hh);
+    shape.lineTo(hd, hh);
+    shape.lineTo(-hd, hh);
+    shape.lineTo(-hd, hh - 0.16);
+    shape.lineTo(part.depth / 2 - 1, -hh);
+    shape.lineTo(hd, -hh);
+    const list = [extrudeProfile(part.width, shape, bevel)];
+    addStuds(list, studRow(part.width), studRow(part.depth), part.height / 2);
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Lattice frame (more-parts slice 02): corner posts, bottom rails, crossed
+   struts on both long sides (along z) and a studded top. */
+function makeFramePiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const hw = part.width / 2 - SEAM;
+    const hd = part.depth / 2 - SEAM;
+    const hh = part.height / 2;
+    const bar = 0.2;
+    const top = 0.24;
+    const list = [boxAt(hw * 2, top, hd * 2, 0, hh - top / 2, 0)];
+    [-1, 1].forEach((sx) => [-1, 1].forEach((sz) => {
+      list.push(boxAt(bar, part.height - top, bar, sx * (hw - bar / 2), -top / 2, sz * (hd - bar / 2)));
+    }));
+    [-1, 1].forEach((sx) => list.push(boxAt(bar, bar, hd * 2, sx * (hw - bar / 2), -hh + bar / 2, 0)));
+    [-1, 1].forEach((sz) => list.push(boxAt(hw * 2, bar, bar, 0, -hh + bar / 2, sz * (hd - bar / 2))));
+    const span = hd * 2 - bar * 2;
+    const rise = part.height - top - bar;
+    const tilt = Math.atan2(rise, span);
+    [-1, 1].forEach((sx) => [-1, 1].forEach((dir) => {
+      const g = new THREE.BoxGeometry(bar * 0.7, bar * 0.7, Math.hypot(span, rise));
+      g.rotateX(dir * tilt);
+      g.translate(sx * (hw - bar / 2), -hh + bar + rise / 2, 0);
+      list.push(g);
+    }));
+    addStuds(list, studRow(part.width), studRow(part.depth), hh);
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Support bracket (more-parts slice 02): a studded shelf on an upright back
+   plate, with a triangular web under the shelf from its front edge down to
+   the foot of the back plate. */
+function makeBracePiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const hw = part.width / 2 - SEAM;
+    const hd = part.depth / 2 - SEAM;
+    const hh = part.height / 2;
+    const shelf = 0.3;
+    const back = 0.26;
+    const list = [
+      boxAt(hw * 2, shelf, hd * 2, 0, hh - shelf / 2, 0),
+      boxAt(hw * 2, part.height - shelf, back, 0, -shelf / 2, -hd + back / 2),
+    ];
+    /* Shape x is world −z (extrudeProfile), so the back plate is at +x. */
+    const web = new THREE.Shape();
+    web.moveTo(hd - back, hh - shelf);
+    web.lineTo(-hd + 0.1, hh - shelf);
+    web.lineTo(hd - back, -hh + 0.1);
+    web.lineTo(hd - back, hh - shelf);
+    list.push(extrudeProfile(0.4, web, 0.02));
+    addStuds(list, studRow(part.width), studRow(part.depth), hh);
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Window (more-parts slice 02): a frame in the picked colour (sill, studded
+   head, two jambs, running along z) round one see-through pane in a fixed
+   light blue that recolouring never touches (D4). */
+const WINDOW_SILL = 0.22;
+const WINDOW_HEAD = 0.3;
+const WINDOW_JAMB = 0.2;
+const WINDOW_GLASS = 0x9fd3ee;
+
+function makeWindowPiece(part, colorHex, kit) {
+  const hw = part.width / 2 - SEAM;
+  const hd = part.depth / 2 - SEAM;
+  const hh = part.height / 2;
+  const frame = kit.geo(part.id, () => {
+    const list = [
+      boxAt(hw * 2, WINDOW_SILL, hd * 2, 0, -hh + WINDOW_SILL / 2, 0),
+      boxAt(hw * 2, WINDOW_HEAD, hd * 2, 0, hh - WINDOW_HEAD / 2, 0),
+    ];
+    [-1, 1].forEach((sz) => list.push(boxAt(hw * 1.4, part.height - WINDOW_SILL - WINDOW_HEAD, WINDOW_JAMB,
+      0, (WINDOW_SILL - WINDOW_HEAD) / 2, sz * (hd - WINDOW_JAMB / 2))));
+    addStuds(list, studRow(part.width), studRow(part.depth), hh);
+    return mergeGeometries(list);
+  });
+  const pane = kit.geo(`${part.id}:pane`, () => boxAt(0.06, part.height - WINDOW_SILL - WINDOW_HEAD + 0.04,
+    hd * 2 - WINDOW_JAMB * 2 + 0.04, 0, (WINDOW_SILL - WINDOW_HEAD) / 2, 0));
+  const glass = kit.custom("window:pane", () => litMaterial(kit.cheap, {
+    color: WINDOW_GLASS, roughness: 0.12, metalness: 0, transparent: true, opacity: 0.45, depthWrite: false,
+  }));
+  const group = new THREE.Group();
+  group.add(mesh(frame, kit.mat(colorHex)));
+  group.add(mesh(pane, glass, false));
+  return group;
+}
+
 /* Round plate 2×2 (more-parts slice 01): a disc with chamfered rims and a
    2×2 grid of studs. */
 function makeRoundPlatePiece(part, colorHex, kit) {
@@ -599,6 +783,11 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "peak") return makePeakPiece(part, colorHex, kit);
   if (part.shape === "axle") return makeAxlePiece(part, colorHex, kit);
   if (part.shape === "roundPlate") return makeRoundPlatePiece(part, colorHex, kit);
+  if (part.shape === "slopeCorner") return makeSlopeCornerPiece(part, colorHex, kit);
+  if (part.shape === "slopeInv") return makeSlopeInvPiece(part, colorHex, kit);
+  if (part.shape === "frame") return makeFramePiece(part, colorHex, kit);
+  if (part.shape === "brace") return makeBracePiece(part, colorHex, kit);
+  if (part.shape === "window") return makeWindowPiece(part, colorHex, kit);
   return makeRectPiece(part, colorHex, kit);
 }
 
@@ -2827,6 +3016,14 @@ export class BrickLabRuntime {
       mode: this.mode,
       preReader: this.preReader,
       selectedId: this.selectedId,
+      /* The selected piece's material colours: a recolour must leave fixed parts (a window pane) alone. */
+      selectedColors: this.selectedId && this.sceneObjects.get(this.selectedId) ? (() => {
+        const out = [];
+        this.sceneObjects.get(this.selectedId).traverse((node) => {
+          if (node.isMesh && node.material && node.material.color) out.push(`#${node.material.color.getHexString()}`);
+        });
+        return out;
+      })() : [],
       placementArmed: this.placementArmed,
       moving: !!this.moveId,
       dragging: !!(this.drag && this.drag.active),

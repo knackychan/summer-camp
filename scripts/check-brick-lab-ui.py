@@ -204,7 +204,7 @@ def lab_slices_09_11(page, snap, check, out):
     check('Search finds parts by their 中文 name', sorted(snap()['tray']['parts']) == sorted(
           ['rail_straight', 'rail_curve_90', 'rail_junction_t', 'rail_cross']))
     search.fill('2x4')
-    check('Search reads 2x4 as 2×4', set(snap()['tray']['parts']) == {'brick_2x4', 'plate_2x4'})
+    check('Search reads 2x4 as 2×4', set(snap()['tray']['parts']) == {'brick_2x4', 'plate_2x4', 'frame_2x4'})
     search.fill('')
     page.locator('.sqbl-size').select_option('2×2')
     parts = set(snap()['tray']['parts'])
@@ -236,18 +236,25 @@ def lab_slices_09_11(page, snap, check, out):
     page.screenshot(path=str(out / 'library.png'))
 
 
-MORE_PARTS_01 = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2', 'slope_1x1', 'slope_1x2', 'peak_1x2', 'wheel_large')
+# More-parts plan (docs/plans/2026-10-05-brick-lab-more-parts/), by slice.
+MORE_PARTS = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2', 'slope_1x1', 'slope_1x2', 'peak_1x2', 'wheel_large',
+              'slope_corner_2x2', 'slope_inv_2x2', 'frame_2x4', 'brace_1x2', 'window_1x2')
+MORE_COUNTS = {'plates': 9, 'slopes': 7, 'wheels': 3, 'structure': 4}
+# Parts a brick is dropped on, with half their height: it must land on top (D3, amended: anything stacks).
+STACK_ON = (('wheel_large', 0.8), ('plate_round_2x2', 0.2), ('frame_2x4', 0.6), ('brace_1x2', 0.6), ('window_1x2', 1.2))
+WINDOW_GLASS = '#9fd3ee'
 
 
-def lab_more_parts_01(page, snap, check, out):
-    """More-parts plan slice 01 (docs/plans/2026-10-05-brick-lab-more-parts/): eight parts, and
-    anything stacks on anything (D3, amended): a brick lands on top of a tree, a wheel, a round plate."""
+def lab_more_parts(page, snap, check, out):
+    """More-parts plan slices 01-02: the new parts arm fast with real-part icons, the categories hold
+    what they should, a brick lands on top of a tree and of each STACK_ON part, and recolouring a
+    window changes its frame but never its pane (D4)."""
     def tap(x, y):
         page.mouse.click(x, y)
         page.wait_for_timeout(150)
 
     def arm(part):
-        for c in ('bricks', 'plates', 'slopes', 'wheels'):
+        for c in ('bricks', 'plates', 'slopes', 'wheels', 'structure'):
             pick(page, c)
             if page.locator(f'.sqbl-part[data-part="{part}"]').count():
                 break
@@ -258,10 +265,20 @@ def lab_more_parts_01(page, snap, check, out):
         page.locator('.sqbl-app [data-action="undo"]').dispatch_event('pointerdown')
         page.wait_for_timeout(150)
 
+    def selected():
+        s = snap()
+        return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+
+    def stack_on(base):
+        """Arm a 1×1 brick and tap the base piece: the new brick (it is selected)."""
+        arm('brick_1x1')
+        tap(base['screen']['x'], base['screen']['y'])
+        return selected()
+
     pieces0 = len(snap()['pieces'])
     box = page.locator('.sqbl-stage canvas').bounding_box()
     slow, plain = [], []
-    for part in MORE_PARTS_01:
+    for part in MORE_PARTS:
         ms = arm(part)
         page.mouse.move(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.55)
         page.wait_for_timeout(900)
@@ -269,43 +286,41 @@ def lab_more_parts_01(page, snap, check, out):
             slow.append((part, round(ms, 1)))
         if not any(k.startswith(part + ':') for k in snap()['tray']['icons']):
             plain.append(part)
-    check(f'More-parts 01: each new part arms and builds in < 50 ms {slow}', not slow)
-    check(f'More-parts 01: each new part has a real-part icon {plain}', not plain)
+    check(f'More-parts: each new part arms and builds in < 50 ms {slow}', not slow)
+    check(f'More-parts: each new part has a real-part icon {plain}', not plain)
     counts = {}
-    for c in ('plates', 'slopes', 'wheels'):
+    for c in MORE_COUNTS:
         pick(page, c)
         counts[c] = snap()['tray']['count']
         page.wait_for_timeout(900)
         page.screenshot(path=str(out / f'more-parts-{c}.png'), clip=page.locator('.sqbl-left-rail').bounding_box())
-    check(f'More-parts 01: Plates 9, Slopes 5, Wheels 3 {counts}', counts == {'plates': 9, 'slopes': 5, 'wheels': 3})
+    check(f'More-parts: category counts {counts}', counts == MORE_COUNTS)
 
     page.locator('.sqbl-app [data-action="home-view"]').click()
     page.wait_for_timeout(900)
-
-    def stack_on(base):
-        """Arm a 1×1 brick and tap the base piece: the new brick's y (it is selected)."""
-        arm('brick_1x1')
-        tap(base['screen']['x'], base['screen']['y'])
-        s = snap()
-        return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
-
     s = snap()
     tree = next(p for p in s['pieces'] if p['partId'] == 'tree_small' and (p['x'], p['z']) == (-6, 4))
-    on_tree = stack_on(tree)
-    check('A brick dropped on a tree lands on top of it', abs(on_tree['y'] - (tree['y'] + 2 + 0.6)) < 0.01)
+    check('A brick dropped on a tree lands on top of it', abs(stack_on(tree)['y'] - (tree['y'] + 2 + 0.6)) < 0.01)
     undo()
 
-    for part, half in (('wheel_large', 0.8), ('plate_round_2x2', 0.2)):
+    for part, half in STACK_ON:
         arm(part)
         tap(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.62)
-        s = snap()
-        base = next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+        base = selected()
         check(f'{part} places on the plate', base['partId'] == part)
-        on_top = stack_on(base)
-        check(f'A brick dropped on {part} lands on top of it', abs(on_top['y'] - (base['y'] + half + 0.6)) < 0.01)
+        steps = 2
+        if part == 'window_1x2':
+            page.locator('.sqbl-color[data-color="green"]').click()
+            page.wait_for_timeout(200)
+            colors = snap()['selectedColors']
+            check(f'Recolouring a window to green changes its frame, not its pane {colors}',
+                  '#237841' in colors and WINDOW_GLASS in colors)
+            steps = 3
+        check(f'A brick dropped on {part} lands on top of it', abs(stack_on(base)['y'] - (base['y'] + half + 0.6)) < 0.01)
         page.screenshot(path=str(out / f'stack-{part}.png'))
-        undo()
-        undo()
+        for _ in range(steps):
+            undo()
+    page.locator('.sqbl-color[data-color="red"]').click()
     check('Undo leaves the world as it was', len(snap()['pieces']) == pieces0)
 
 
@@ -766,7 +781,7 @@ def run(args):
                 enter_world(page)
                 check('The world comes back as it was left', len(snap()['pieces']) == STARTER + 1)
                 lab_slices_09_11(page, snap, check, out)
-                lab_more_parts_01(page, snap, check, out)
+                lab_more_parts(page, snap, check, out)
                 leave_lab(page)
 
                 # Same door as Paint: through the Games category lock, stopped only by a Papa app pause.
