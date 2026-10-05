@@ -345,15 +345,74 @@ function drawPreview(ctx, path) {
   px(ctx, Q.outline, tip.x - 2, tip.y - 2, 5, 5); px(ctx, Q.cyan, tip.x - 1, tip.y - 1, 3, 3);
 }
 
+/* ---------- facing (facing-and-rune D1, D2) ---------- */
+const TURN_ANGLE = { E: 0, S: Math.PI / 2, W: Math.PI, N: Math.PI * 1.5 };
+const fxRunning = (fx, now, kind, target) => !!(fx && fx.kind === kind && (!target || fx.target === target) && Number.isFinite(fx.start)
+  && now >= fx.start && now - fx.start <= (Number(fx.duration) || 320));
+/** Where the hero's facing chevron goes (logical px), or null while it is hidden:
+    mid-move, mid-turn, or once the room is won. `dim` when the tile ahead is a wall or off the room. */
+export function facingMarker(snapshot, options = {}) {
+  const hero = snapshot && snapshot.hero, step = hero && DIR_STEP[hero.dir];
+  if (!step || snapshot.phase === 'won' || !(hero.hp > 0)) return null;
+  const now = Number(options.now) || 0, m = options.heroMotion;
+  if (m && m.from && m.to && Number.isFinite(m.start) && now - m.start < (Number(m.duration) || 300)) return null;
+  if (fxRunning(options.fx, now, 'turn', 'hero')) return null;
+  const ax = hero.x + step[0], ay = hero.y + step[1];
+  const off = ax < 0 || ay < 0 || ax >= snapshot.width || ay >= snapshot.height;
+  const walls = options.walls || new Set(snapshot.walls || []);
+  // Facing up, the hero's head covers the lower part of the tile ahead: sit near its top.
+  return { x: ax * TILE + TILE / 2, y: ay * TILE + (hero.dir === 'N' ? 3 : TILE / 2), dir: hero.dir, dim: off || walls.has(key(ax, ay)) };
+}
+/* A solid pixel arrowhead with a one-pixel outline: tip row j = 0 is 1 wide, row 4 is 9 wide. */
+function arrowCells(x, y, dir) {
+  const cells = [];
+  for (let j = 0; j < 5; j++) for (let i = -j; i <= j; i++) {
+    if (dir === 'N') cells.push([x + i, y - 2 + j]);
+    else if (dir === 'S') cells.push([x + i, y + 1 - j]);
+    else if (dir === 'W') cells.push([x - 2 + j, y + i]);
+    else cells.push([x + 1 - j, y + i]);
+  }
+  return cells;
+}
+function drawFacing(ctx, marker) {
+  if (!marker) return;
+  const cells = arrowCells(Math.round(marker.x), Math.round(marker.y), marker.dir);
+  alpha(ctx, marker.dim ? .45 : 1, () => {
+    for (const [x, y] of cells) { px(ctx, Q.outline, x - 1, y, 3, 1); px(ctx, Q.outline, x, y - 1, 1, 3); }
+    for (const [x, y] of cells) px(ctx, Q.cyan, x, y);
+    px(ctx, Q.white, cells[0][0], cells[0][1]);
+  });
+}
+/* Turn beat: a quarter arc from the old facing to the new one, ending at the hero's own hand
+   on the side it turned to (Left always ends at the hero's left hand). */
+function drawTurn(ctx, fx, a, t, reducedMotion) {
+  const from = TURN_ANGLE[fx.from], to = TURN_ANGLE[fx.to];
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+  let delta = to - from;
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  if (delta < -Math.PI) delta += Math.PI * 2;
+  const steps = 8, shown = reducedMotion ? steps : Math.min(steps, Math.ceil(t * 2 * steps));
+  const rx = 13, ry = 10, point = (angle, k = 1) => ({ x: a.x + Math.cos(angle) * rx * k, y: a.y + Math.sin(angle) * ry * k });
+  for (let i = 0; i <= shown; i++) {
+    const p = point(from + delta * i / steps);
+    px(ctx, Q.outline, p.x - 2, p.y - 2, 4, 4); px(ctx, i === shown ? Q.white : Q.cyan, p.x - 1, p.y - 1, 2, 2);
+  }
+  if (shown < steps) return;
+  const h = point(to, 1.25);
+  px(ctx, Q.outline, h.x - 3, h.y - 3, 6, 6); px(ctx, Q.skin, h.x - 2, h.y - 2, 4, 4); px(ctx, Q.skinShade, h.x - 2, h.y + 1, 4, 1);
+  px(ctx, Q.outline, h.x + 2, h.y - 4, 2, 3); px(ctx, Q.skin, h.x + 2, h.y - 3, 1, 1);
+}
+
 /* ---------- FX ---------- */
-function drawFx(ctx, fx, anchors, now) {
+function drawFx(ctx, fx, anchors, now, reducedMotion) {
   if (!fx || !Number.isFinite(fx.start)) return;
   const t = (now - fx.start) / Math.max(1, Number(fx.duration) || 320);
   if (t < 0 || t > 1) return;
   const a = anchors.get(fx.target) || anchors.get('hero');
   if (!a) return;
   const phase = Math.floor(t * 4);
-  if (fx.kind === 'signal') {
+  if (fx.kind === 'turn') drawTurn(ctx, fx, a, t, reducedMotion);
+  else if (fx.kind === 'signal') {
     const from = anchors.get(fx.actor) || anchors.get('hero');
     const to = anchors.get(fx.target) || anchors.get(fx.to) || (fx.actor === 'hero' ? anchors.get('companion') : anchors.get('hero'));
     if (!from || !to) return;
@@ -483,7 +542,8 @@ export function drawRoom(canvas, snapshot, options = {}) {
   for (const list of ['doors', 'traps', 'cycleTraps', 'keys', 'levers', 'plates', 'runeGates', 'crates', 'pushBlocks', 'questTokens', 'orbs', 'movingPlatforms', 'npcs']) {
     for (const v of snapshot[list] || []) if (v && v.id && !anchors.has(v.id)) anchors.set(v.id, anchorOf(v.x, v.y));
   }
-  drawFx(ctx, fx, anchors, now);
+  drawFacing(ctx, facingMarker(snapshot, { now, fx, heroMotion: options.heroMotion, walls }));
+  drawFx(ctx, fx, anchors, now, reducedMotion);
 
   if (options.paused || options.dim) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);

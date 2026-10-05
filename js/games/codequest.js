@@ -10,7 +10,7 @@ import { previewPath } from './codequest/preview.js';
 import { drawRoom, MAX_ZOOM, ROOM_VIEW } from './codequest/room-view.js';
 import { placeBubbleRect } from './codequest/bubble.js';
 import { IF_TESTS, repeatCounts, ifTests, insertAfter, canUnwrap, unwrap, setRepeatCount, nextRepeatCount, setCondition, extendSelection } from './codequest/strip-edit.js';
-import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, pairHTML, setLanguage, language, t } from './codequest/strings.js';
+import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, pairHTML, setLanguage, language, t } from './codequest/strings.js';
 import { mountLab } from './codequest/lab/lab-screen.js';
 
 let S = null;
@@ -887,6 +887,19 @@ function eventNotice(event) {
   }
 }
 
+/* Turn beat (facing-and-rune D2, D3): the arc runs from the old facing to the new one. */
+const FACINGS = ['N', 'E', 'S', 'W'];
+const TURNS = { turnLeft: ['hero', 'left'], turnRight: ['hero', 'right'], companionTurnLeft: ['companion', 'left'], companionTurnRight: ['companion', 'right'] };
+function turnFx(event, now) {
+  const turn = TURNS[event.op];
+  if (!turn || (turn[0] === 'companion' && event.result !== 'companion-turned')) return null;
+  const actor = turn[0] === 'hero' ? event.after : S.model.snapshot().companion;
+  const to = actor && actor.dir, i = FACINGS.indexOf(to);
+  if (i < 0) return null;
+  const from = FACINGS[(i + (turn[1] === 'left' ? 1 : 3)) % 4];
+  return { kind: 'turn', target: turn[0], from, to, side: turn[1], start: now, duration: 560 };
+}
+
 function executeOne(auto) {
   if (!S || S.paused || S.dialog || !beginIfNeeded()) return;
   S.autoRun = !!auto;
@@ -902,7 +915,9 @@ function executeOne(auto) {
     if ((event.op === 'move' || event.op === 'push') && event.before && event.after && (event.before.x !== event.after.x || event.before.y !== event.after.y)) {
       S.heroMotion = { from: event.before, to: event.after, start: now, duration: 300 };
     } else S.heroMotion = null;
-    if (event.op === 'attack' || event.op === 'heavyAttack') S.fx = { kind: 'attack', target: event.target || 'hero', start: now, duration: event.op === 'heavyAttack' ? 420 : 300 };
+    const turn = turnFx(event, now);
+    if (turn) S.fx = turn;
+    else if (event.op === 'attack' || event.op === 'heavyAttack') S.fx = { kind: 'attack', target: event.target || 'hero', start: now, duration: event.op === 'heavyAttack' ? 420 : 300 };
     else if (event.op === 'cast') S.fx = { kind: event.detail && event.detail.element === 'frost' ? 'frost' : 'fire', target: event.target || 'hero', start: now, duration: 420 };
     else if (event.op === 'guard') S.fx = { kind: 'guard', target: 'hero', start: now, duration: 340 };
     else if (event.result === 'cured') S.fx = { kind: 'poison', target: 'hero', start: now, duration: 280 };
@@ -911,7 +926,7 @@ function executeOne(auto) {
     else if (event.result === 'trap-hit') S.fx = { kind: 'trap', target: event.target || 'hero', start: now, duration: 340 };
     else S.fx = null;
     if (event.result === 'opened' || event.result === 'door-opened' || event.result === 'key-collected' || event.result === 'taken' || event.result === 'thrown-to-plate' || event.result === 'quest-token-collected' || event.result === 'disarmed' || event.result === 'lever-activated' || event.result === 'lever-deactivated' || event.result === 'plate-activated' || event.result === 'push-plate' || event.result === 'npc-helped' || event.result === 'quest-completed' || event.result === 'crate-broken') S.ctx.sfx && S.ctx.sfx.good && S.ctx.sfx.good();
-    else if (event.op === 'attack' || event.op === 'heavyAttack' || event.op === 'cast' || event.op === 'smash' || event.op === 'push' || event.op === 'throw' || event.op === 'companionAssist' || event.op === 'companionPush' || event.op === 'companionThrow') S.ctx.sfx && S.ctx.sfx.pop && S.ctx.sfx.pop();
+    else if (turn || event.op === 'attack' || event.op === 'heavyAttack' || event.op === 'cast' || event.op === 'smash' || event.op === 'push' || event.op === 'throw' || event.op === 'companionAssist' || event.op === 'companionPush' || event.op === 'companionThrow') S.ctx.sfx && S.ctx.sfx.pop && S.ctx.sfx.pop();
   } else if (event.type === 'state') {
     S.fx = { kind:'state', target:event.actor==='companion'?'companion':'hero', start:now, duration:360 };
   } else if (event.type === 'signal') {
@@ -935,7 +950,13 @@ function executeOne(auto) {
       S.heroState = 'hurt'; S.heroStateUntil = now + 320; S.fx = { kind: 'trap', target: 'hero', start: now, duration: 280 };
     }
   }
-  eventNotice(event); render();
+  eventNotice(event);
+  if (event.type === 'action' && S.fx && S.fx.kind === 'turn' && S.fx.target === 'hero') {
+    // Step shows the hand rule in the bubble; a fast Run only tells the screen reader.
+    if (!auto) notify(S.fx.side === 'left' ? MESSAGES.turnLeftStep : MESSAGES.turnRightStep);
+    else announce(FACING[S.fx.to]);
+  }
+  render();
   if (S.model.phase === 'won') { completeQuest(); return; }
   if (S.model.phase === 'resting' || S.model.phase === 'programming') {
     S.autoRun = false; render();

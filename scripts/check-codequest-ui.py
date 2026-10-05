@@ -281,6 +281,25 @@ def run(args):
                 def library_has(action):
                     return page.evaluate(f"!!document.querySelector('.cq-library [data-action=\"{action}\"]')")
 
+                # Slice 02: every turn shows the beat and, in Step, the hand rule.
+                act('map')
+                page.wait_for_selector('[data-action="level:1"]', state='attached')
+                act('level:1')
+                page.wait_for_function(SNAPSHOT + ".level === 'q02' && !" + SNAPSHOT + ".dialog")
+                for _ in range(4):
+                    act('add:turnRight')
+                facings, beats = [], []
+                for i in range(4):
+                    act('step')
+                    s = state()
+                    facings.append(s['model']['hero']['dir'])
+                    beats.append(page.evaluate("(() => { const n = SQGames.get('codequest').snapshot().notice; return n && n[0]; })()"))
+                    page.wait_for_timeout(420)
+                    page.screenshot(path=str(out / f'facing-{tag}-{i + 1}.png'))
+                check(f'{tag}: Right ×4 by Step faces S, W, N, E', facings == ['S', 'W', 'N', 'E'], facings)
+                check(f'{tag}: each Step turn says the hand rule', all(b and 'right hand' in b for b in beats), beats)
+                act('reset')
+
                 q10 = level_ids.index('q10')
                 act('map')
                 page.wait_for_selector(f'[data-action="level:{q10}"]', state='attached')

@@ -1,6 +1,7 @@
 # Slice 02: Facing chevron, turn beat, turn words
 
 **Status:** Approved by Papa 2026-10-05 (`design.md` D1–D3).
+**Implemented:** 2026-10-05. The chevron grew to a 9-wide arrowhead after a screenshot review (7 wide read too small at 3×). The beat runs 560 ms: the arc is drawn in the first half and the hand holds for the second, because at 320 ms the hand was on screen for only ~120 ms. In Run the next step cuts it short, which is fine. check.mjs and check-codequest-ui.py green.
 **Goal:** A kid can always see which way the hero faces, can see each turn happen, and learns that Left means the hero's own left hand.
 **Depends on:** none
 **Files:** `js/games/codequest/room-view.js`, `js/games/codequest.js`, `js/games/codequest/strings.js`, `scripts/codequest-renderer.test.mjs`, `scripts/check-codequest-ui.py`.
@@ -15,6 +16,7 @@
   - `drawFacing(ctx, marker)` draws a 7×4 chevron (cyan core, outline) after the upright sprites and before FX.
 - **`turn` FX in `drawFx`**
   - `fx = { kind: 'turn', target, from, to, side }`.
+  - Duration: 560 ms (see Implemented).
   - Draw a quarter arc of 2×2 pixels at radius ~13 around the target anchor, from the `from` point to the `to` point, revealed by `t`. With reduced motion, `state.reducedMotion` shows it all at once.
   - Draw a 4×4 skin mitten with outline at the `to` end.
   - `drawRoom` passes `reducedMotion` and `phase` through to these helpers.

@@ -114,6 +114,7 @@ export const MESSAGES = Object.freeze({
   cured: ['Antidote cleared the poison.', '解毒藥水清除了毒素。'], noAntidote: ['No antidote is available.', '沒有可用的解毒藥水。'], notPoisoned: ['The hero is not poisoned.', '英雄目前沒有中毒。'],
   warded: ['Ward active. Incoming damage will be reduced.', '守護效果啟動，接下來的傷害會降低。'], noWard: ['No ward tonic is available.', '沒有可用的守護藥水。'],
   incoming: ['The archer is signaling a shot. Your next turn can react to it.', '弓手正在預告射擊；下一個回合可以對它做出反應。'], poisoned: ['Poison is active. It will tick after the dungeon turn.', '毒素正在作用，地下城回合結束時會造成傷害。'],
+  turnLeftStep: ['Left turn — toward the hero’s left hand.', '左轉——往英雄的左手邊。'], turnRightStep: ['Right turn — toward the hero’s right hand.', '右轉——往英雄的右手邊。'],
   worldTurn: ['Now the dungeon takes its turn.', '現在輪到地下城行動。'], resting: ['The hero needs a quick rest. Change the plan and reset the room.', '英雄需要休息一下。調整計畫，再重設房間。'],
   won: ['Quest clear! Your program worked.', '闖關成功！你的程式成功了。'], firstReward: ['New loot added to your camp.', '新戰利品已放進營地。'], improved: ['New smallest program for this quest!', '這一關有新的最短程式紀錄！'],
   selected: ['Selected. Choose Repeat or IF to wrap the selected cards.', '已選取。可以用「重複」或「如果」包住這些卡。'], selectContiguous: ['Select cards next to each other before wrapping them.', '要包起來的卡片必須彼此相鄰。'], wrapEmpty: ['Add an action first, then wrap it.', '先加入動作，再把它包起來。'],
@@ -125,6 +126,11 @@ export const MESSAGES = Object.freeze({
   codeApplied: ['Code applied. Your cards now match the code.', '程式碼已套用，程式卡和程式碼一致了。'],
   codeReset: ['Code reset from your blocks.', '已從積木重設程式碼。'],
   equipped: ['Loadout changed.', '裝備配置已更換。'], lockedLevel: ['Clear the previous quest to unlock this one.', '先完成上一關，就能解鎖這一關。'], towerLocked: ['Clear eight quests to unlock the Infinite Tower.', '完成八個關卡，就能解鎖無限高塔。'], paused: ['Paused.', '已暫停。']
+});
+
+/* Which way the hero faces, in screen words (facing-and-rune D3; screen reader only). */
+export const FACING = Object.freeze({
+  N: ['Facing up', '面向上方'], S: ['Facing down', '面向下方'], W: ['Facing left', '面向左邊'], E: ['Facing right', '面向右邊']
 });
 
 /* Laboratory of Curiosity screen (lab design D1, D8, D12; slice 04). The owl's lines are

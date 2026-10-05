@@ -289,3 +289,40 @@ console.log('Code Quest UX polish: bubble placement verified.');
   assert.equal(zoomed.camera.zoom, 1); assert.ok(zoomed.anchors.has('hero'));
 }
 console.log('Code Quest UX polish: zoom, pan clamp and x-ray verified.');
+
+// ---- Facing + Rune plan slice 02: facing chevron and turn beat ----
+{
+  const { facingMarker } = await import('../js/games/codequest/room-view.js');
+  const q02 = new CodeQuestModel(LEVELS.find(l => l.id === 'q02'));
+  const base = q02.snapshot(), hero = base.hero;
+  const at = dir => facingMarker({ ...base, hero: { ...hero, dir } }, { now: 1000 });
+  const steps = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] };
+  for (const dir of ['N', 'E', 'S', 'W']) {
+    const m = at(dir), ax = hero.x + steps[dir][0], ay = hero.y + steps[dir][1];
+    assert.ok(m && m.dir === dir, 'marker for ' + dir);
+    assert.equal(Math.floor(m.x / TILE), ax, dir + ' marker sits on the tile ahead (x)');
+    assert.equal(Math.floor(m.y / TILE), ay, dir + ' marker sits on the tile ahead (y)');
+    const walls = new Set(base.walls);
+    assert.equal(m.dim, ax < 0 || ay < 0 || ax >= base.width || ay >= base.height || walls.has(ax + ',' + ay), dir + ' dim only against a wall');
+  }
+  assert.ok([...'NESW'].some(dir => at(dir).dim) && [...'NESW'].some(dir => !at(dir).dim), 'q02 start has both an open and a walled side');
+  const motion = { from: { x: hero.x - 1, y: hero.y }, to: { x: hero.x, y: hero.y }, start: 900, duration: 300 };
+  assert.equal(facingMarker(base, { now: 1000, heroMotion: motion }), null, 'hidden mid-move');
+  assert.ok(facingMarker(base, { now: 1300, heroMotion: motion }), 'back once the move ends');
+  const turn = { kind: 'turn', target: 'hero', from: 'E', to: 'S', side: 'right', start: 900, duration: 320 };
+  assert.equal(facingMarker(base, { now: 1000, fx: turn }), null, 'hidden mid-turn');
+  assert.ok(facingMarker(base, { now: 1000, fx: { ...turn, target: 'companion' } }), 'a companion turn keeps the hero marker');
+  assert.equal(facingMarker({ ...base, phase: 'won' }, { now: 1000 }), null, 'hidden once won');
+  for (const [dpr, now, reducedMotion] of [[1, 1000, false], [2, 1100, false], [2.625, 1000, true]]) {
+    for (const fx of [turn, { ...turn, from: 'S', to: 'E', side: 'left' }, { ...turn, from: 'N', to: 'W', side: 'left' }]) {
+      const rc = new RoomCanvas();
+      drawRoom(rc, base, { time: now / 1000, now, cssWidth: 900, cssHeight: 420, dpr, reducedMotion, fx });
+      assert.ok(rc.ctx.ops > 200, 'turn beat draws at dpr ' + dpr);
+    }
+  }
+  const plain = new RoomCanvas(), marked = new RoomCanvas();
+  drawRoom(plain, { ...base, phase: 'won' }, { time: 1, now: 1000, cssWidth: 900, cssHeight: 420, dpr: 1 });
+  drawRoom(marked, base, { time: 1, now: 1000, cssWidth: 900, cssHeight: 420, dpr: 1 });
+  assert.ok(marked.ctx.ops > plain.ctx.ops + 16, 'the facing chevron paints');
+}
+console.log('Code Quest facing: chevron placement, hiding and turn beat verified.');
