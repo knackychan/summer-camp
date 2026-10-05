@@ -20,3 +20,13 @@
 - Screenshot for Papa: a house with a door, big windows, an arch over a path and leaves on the roof (`.tmp/brick-lab-ui/survey-house.png`).
 
 **DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; 81 parts (Structure 7, Nature 5); Papa has seen the house screenshot.
+
+## As built (2026-10-05)
+- Shipped as planned: 81 parts, Structure 7, Nature 5.
+- `makeArchPiece`: the brick profile with a half-ellipse cut from underneath, as wide as the two middle cells and 0.68 of the brick tall, extruded across the width; four studs.
+- `makeDoorPiece`: two 0.3 jambs and a 0.4 studded head (no sill), a 0.16 door with two raised panels on each face — all one recolourable geometry — and a dark knob on each face in a fixed material (`#3d4246`, the barrel hoops' iron).
+- `window_1x4x3` reuses `makeWindowPiece` at 1×4×3 (same shared see-through pane).
+- `makeLeavesPiece`: a small green round base and three flattened leaves fanned out and up; fixed colours; `leaves` joins `FIXED_COLOR_SHAPES`. The leaves reach a little past the 1×1 cell, like the real part.
+- Tests: the 4 parts arm fast with real icons; Structure 7 / Nature 5; a brick lands on top of the arch, door, big window and leaves; recolouring the door green gives `['#237841', '#3d4246']` (knob kept) and the big window `['#237841', '#9fd3ee']` (pane kept); the leaves icon keeps its colour with blue picked. 187/187; `--sheet` 81/81 icons in red and blue; 300 new parts orbit at 8.3 fps vs plain bricks 5.5. The door (7.2) is within the height cap through `check.mjs`.
+- Screenshot for Papa: `.tmp/brick-lab-ui/survey-house.png` — a house with a red door and big windows, leaves on its roof, a tiled path through an arch on two pillars.
+- `sw.js` `CACHE_NAME` → `summer-quest-v176-brick-doors`.

@@ -248,16 +248,20 @@ MORE_PARTS = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2', 'slope_1
               'plate_corner_2x2', 'plate_wedge_2x2',
               # Parts-survey slice 03: bricks and slopes.
               'brick_1x6', 'pillar_1x1x3', 'brick_round_1x1', 'brick_round_2x2', 'cone_1x1',
-              'slope_30_1x2', 'slope_inv_1x2', 'slope_curved_2x2', 'slope_curved_1x2')
-MORE_COUNTS = {'bricks': 14, 'plates': 18, 'tiles': 13, 'slopes': 11, 'wheels': 3, 'structure': 4, 'nature': 4, 'scenery': 5}
-FIXED_ICONS = ('rock', 'mushroom', 'log_2x4')
+              'slope_30_1x2', 'slope_inv_1x2', 'slope_curved_2x2', 'slope_curved_1x2',
+              # Parts-survey slice 04: arch, door, big window, leaves.
+              'arch_1x4', 'door_1x4x6', 'window_1x4x3', 'leaves')
+MORE_COUNTS = {'bricks': 14, 'plates': 18, 'tiles': 13, 'slopes': 11, 'wheels': 3, 'structure': 7, 'nature': 5, 'scenery': 5}
+FIXED_ICONS = ('rock', 'mushroom', 'log_2x4', 'leaves')
+DOOR_KNOB = '#3d4246'
 ICON_SRC = "(id) => { const img = document.querySelector('.sqbl-part[data-part=\"' + id + '\"] .sqbl-part-preview img'); return img ? img.src : null; }"
 SEEN = {}
 # Parts a brick is dropped on, with half their height: it must land on top (D3, amended: anything stacks).
 STACK_ON = (('wheel_large', 0.8), ('plate_round_2x2', 0.2), ('frame_2x4', 0.6), ('brace_1x2', 0.6), ('window_1x2', 1.2),
             ('fence_post', 2.4), ('railing_1x2', 0.6), ('rock', 0.5), ('tile_2x4', 0.2), ('tile_round_2x2', 0.2),
             ('plate_rounded_1x2', 0.2), ('plate_corner_2x2', 0.2), ('plate_wedge_2x2', 0.2),
-            ('cone_1x1', 0.6), ('slope_curved_2x2', 0.4), ('brick_round_2x2', 0.6))
+            ('cone_1x1', 0.6), ('slope_curved_2x2', 0.4), ('brick_round_2x2', 0.6),
+            ('arch_1x4', 0.6), ('door_1x4x6', 3.6), ('window_1x4x3', 1.8), ('leaves', 0.4))
 WINDOW_GLASS = '#9fd3ee'
 
 
@@ -346,12 +350,13 @@ def lab_more_parts(page, snap, check, out):
         base = place(part)
         check(f'{part} places on the plate', base['partId'] == part)
         steps = 2
-        if part == 'window_1x2':
+        if part in ('window_1x2', 'window_1x4x3', 'door_1x4x6'):
             page.locator('.sqbl-color[data-color="green"]').click()
             page.wait_for_timeout(200)
             colors = snap()['selectedColors']
-            check(f'Recolouring a window to green changes its frame, not its pane {colors}',
-                  '#237841' in colors and WINDOW_GLASS in colors)
+            kept = DOOR_KNOB if part.startswith('door') else WINDOW_GLASS
+            check(f'Recolouring {part} to green changes its frame, not its {"knob" if part.startswith("door") else "pane"} {colors}',
+                  '#237841' in colors and kept in colors)
             steps = 3
         check(f'A brick dropped on {part} lands on top of it', abs(stack_on(base)['y'] - (base['y'] + half + 0.6)) < 0.01)
         page.screenshot(path=str(out / f'stack-{part}.png'))
@@ -433,7 +438,7 @@ def seed_worlds(page, worlds):
 def grid_world(parts):
     """300 pieces on a 20 × 15 grid over the plate, cycling through `parts`, each resting on the plate
     (a part longer than its 3 × 4 cell overlaps its neighbour; only the drawing cost matters here)."""
-    heights = {'pillar_1x1x3': 3.6, 'slope_30_1x2': 0.8, 'slope_curved_2x2': 0.8, 'slope_curved_1x2': 0.8,
+    heights = {'door_1x4x6': 7.2, 'window_1x4x3': 3.6, 'leaves': 0.8, 'pillar_1x1x3': 3.6, 'slope_30_1x2': 0.8, 'slope_curved_2x2': 0.8, 'slope_curved_1x2': 0.8,
                'rock': 1, 'mushroom': 1.2, 'log_2x4': 1.2, 'crate_2x2': 1.2, 'barrel': 1.2, 'fence_post': 4.8,
                'railing_1x2': 1.2, 'window_1x2': 2.4, 'wheel_large': 1.6, 'slope_1x1': 0.8}
     plates = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2')

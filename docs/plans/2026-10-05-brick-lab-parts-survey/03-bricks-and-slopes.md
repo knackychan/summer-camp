@@ -28,3 +28,4 @@
 - Tests: the 9 parts arm fast with real icons; Bricks 14 / Slopes 11; a brick lands on top of the cone, the curved 2×2 slope and the round 2×2 brick; a pillar dropped on a 2×4 brick stands three bricks tall on it. 177/177; `--sheet` 77/77 icons in red and blue; 300 new parts orbit at 8.2 fps vs plain bricks 5.5.
 - Screenshot for Papa: `.tmp/brick-lab-ui/survey-curves.png` — a red car whose bonnet and boot are curved slopes with a tiled roof, a round-brick tower with cones on top, and a pillar, low slope, small eave, 1×6 brick, curved 1×2 and round 1×1 beside it.
 - `sw.js` `CACHE_NAME` → `summer-quest-v175-brick-curves`.
+- Papa saw `survey-curves.png` the same day: "yes its cool". Slice done.

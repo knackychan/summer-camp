@@ -833,6 +833,87 @@ function makeSlopeCurvedPiece(part, colorHex, kit) {
   }), colorHex, kit);
 }
 
+/* Arch 1×4 (parts-survey slice 04): a brick with a half-round opening cut
+   from underneath between its end cells, four studs on top. The opening
+   still counts as taken (D5). */
+function makeArchPiece(part, colorHex, kit) {
+  return paintedGroup(kit.geo(part.id, () => {
+    const bevel = 0.03;
+    const hd = part.depth / 2 - SEAM - bevel;
+    const hh = part.height / 2 - bevel;
+    const span = part.depth / 2 - 1;
+    const shape = new THREE.Shape();
+    shape.moveTo(hd, -hh);
+    shape.lineTo(hd, hh);
+    shape.lineTo(-hd, hh);
+    shape.lineTo(-hd, -hh);
+    shape.lineTo(-span, -hh);
+    shape.absellipse(0, -hh, span, part.height * 0.68, Math.PI, 0, true);
+    shape.lineTo(hd, -hh);
+    const list = [extrudeProfile(part.width, shape, bevel)];
+    addStuds(list, studRow(part.width), studRow(part.depth), part.height / 2);
+    return mergeGeometries(list);
+  }), colorHex, kit);
+}
+
+/* Door (parts-survey slice 04): a frame — two jambs and a studded head, no
+   sill — round a closed door with raised panels, all in the picked colour,
+   and a small dark knob on each face that recolouring leaves alone (D7). The
+   frame runs along z; the door doesn't open (D6). */
+function makeDoorPiece(part, colorHex, kit) {
+  const hw = part.width / 2 - SEAM;
+  const hd = part.depth / 2 - SEAM;
+  const hh = part.height / 2;
+  const jamb = 0.3;
+  const head = 0.4;
+  const frame = kit.geo(part.id, () => {
+    const list = [boxAt(hw * 2, head, hd * 2, 0, hh - head / 2, 0)];
+    [-1, 1].forEach((sz) => list.push(boxAt(hw * 2, part.height - head, jamb, 0, -head / 2, sz * (hd - jamb / 2))));
+    const door = part.height - head;
+    const width = hd * 2 - jamb * 2;
+    list.push(boxAt(0.16, door, width, 0, -head / 2, 0));
+    /* Two raised panels on each face. */
+    [-1, 1].forEach((sx) => [0.28, 0.72].forEach((at) => {
+      list.push(boxAt(0.04, door * 0.36, width * 0.7, sx * 0.1, -hh + door * at, 0));
+    }));
+    addStuds(list, studRow(part.width), studRow(part.depth), hh);
+    return mergeGeometries(list);
+  });
+  const knobs = kit.geo(`${part.id}:knob`, () => mergeGeometries([-1, 1].map((sx) => {
+    const g = new THREE.SphereGeometry(0.07, 10, 8);
+    g.translate(sx * 0.13, -hh + (part.height - head) * 0.48, hd - jamb - 0.22);
+    return g;
+  })));
+  const group = new THREE.Group();
+  group.add(mesh(frame, kit.mat(colorHex)));
+  group.add(mesh(knobs, kit.mat(0x3d4246, 0.4, 0.3), false));
+  return group;
+}
+
+/* Leaves (parts-survey slice 04): a small round plate with three flattened
+   leaves fanned out and up from it; fixed green. */
+function makeLeavesPiece(part, kit) {
+  const hh = part.height / 2;
+  const base = kit.geo("leaves:base", () => {
+    const g = new THREE.CylinderGeometry(0.3, 0.32, 0.2, 14);
+    g.translate(0, -hh + 0.1, 0);
+    return g;
+  });
+  const leaves = kit.geo("leaves:leaves", () => mergeGeometries([0, 1, 2].map((i) => {
+    const g = new THREE.SphereGeometry(0.5, 12, 6);
+    g.scale(0.36, 0.08, 1);
+    g.translate(0, 0, 0.42);
+    g.rotateX(-0.5);
+    g.rotateY(i * TAU / 3 + 0.4);
+    g.translate(0, -hh + 0.24, 0);
+    return g;
+  })));
+  const group = new THREE.Group();
+  group.add(mesh(base, kit.mat(0x2f7d32, 0.6)));
+  group.add(mesh(leaves, kit.mat(0x43a047, 0.55)));
+  return group;
+}
+
 /* Grille tile 1×2 (parts-survey slice 01): a thin base with five bars along
    its length on top, so four shallow grooves run lengthwise; no studs. */
 function makeGrillePiece(part, colorHex, kit) {
@@ -1115,6 +1196,9 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "axle") return makeAxlePiece(part, colorHex, kit);
   if (part.shape === "roundPlate") return makeRoundPlatePiece(part, colorHex, kit);
   if (part.shape === "grille") return makeGrillePiece(part, colorHex, kit);
+  if (part.shape === "arch") return makeArchPiece(part, colorHex, kit);
+  if (part.shape === "door") return makeDoorPiece(part, colorHex, kit);
+  if (part.shape === "leaves") return makeLeavesPiece(part, kit);
   if (part.shape === "cone") return makeConePiece(part, colorHex, kit);
   if (part.shape === "slopeCurved") return makeSlopeCurvedPiece(part, colorHex, kit);
   if (part.shape === "roundedPlate") return makeRoundedPlatePiece(part, colorHex, kit);

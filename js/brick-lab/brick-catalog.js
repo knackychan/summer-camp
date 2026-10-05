@@ -157,11 +157,17 @@ export const PARTS = Object.freeze([
   { id: "frame_2x4", label: ["Lattice Frame", "格子框架"], size: "", category: "structure", shape: "frame", width: 2, depth: 4, height: BRICK_HEIGHT, studs: true },
   { id: "brace_1x2", label: ["Support Bracket", "支架"], size: "", category: "structure", shape: "brace", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
   { id: "window_1x2", label: ["Window", "窗戶"], size: "", category: "structure", shape: "window", width: 1, depth: 2, height: BRICK_HEIGHT * 2, studs: true },
+  /* Parts-survey slice 04. The space under the arch and the doorway count as
+     taken (parts-survey D5); the door doesn't open (D6). */
+  { id: "arch_1x4", label: ["Arch 1×4", "拱形積木 1×4"], size: "", category: "structure", shape: "arch", width: 1, depth: 4, height: BRICK_HEIGHT, studs: true },
+  { id: "door_1x4x6", label: ["Door", "門"], size: "", category: "structure", shape: "door", width: 1, depth: 4, height: BRICK_HEIGHT * 6, studs: true },
+  { id: "window_1x4x3", label: ["Big Window", "大窗戶"], size: "", category: "structure", shape: "window", width: 1, depth: 4, height: BRICK_HEIGHT * 3, studs: true },
   { id: "tree_small", label: ["Small Tree", "小樹"], size: "", category: "nature", shape: "tree", width: 2, depth: 2, height: 4, studs: false },
   { id: "flower", label: ["Flower", "花"], size: "", category: "nature", shape: "flower", width: 1, depth: 1, height: 0.9, studs: false },
   /* More-parts slice 03: rock, mushroom and log keep their own colours. */
   { id: "rock", label: ["Rock", "石頭"], size: "", category: "nature", shape: "rock", width: 2, depth: 2, height: 1, studs: false },
   { id: "mushroom", label: ["Mushroom", "蘑菇"], size: "", category: "nature", shape: "mushroom", width: 1, depth: 1, height: BRICK_HEIGHT, studs: false },
+  { id: "leaves", label: ["Leaves", "葉子"], size: "", category: "nature", shape: "leaves", width: 1, depth: 1, height: 0.8, studs: false },
   { id: "log_2x4", label: ["Log", "木頭"], size: "", category: "scenery", shape: "log", width: 2, depth: 4, height: BRICK_HEIGHT, studs: false },
   { id: "crate_2x2", label: ["Crate", "木箱"], size: "", category: "scenery", shape: "crate", width: 2, depth: 2, height: BRICK_HEIGHT, studs: false },
   { id: "barrel", label: ["Barrel", "木桶"], size: "", category: "scenery", shape: "barrel", width: 1, depth: 1, height: BRICK_HEIGHT, studs: false },
@@ -170,7 +176,7 @@ export const PARTS = Object.freeze([
 ]);
 
 /* Parts drawn in their own fixed colours: the palette does not recolour them. */
-export const FIXED_COLOR_SHAPES = Object.freeze(["rail", "tree", "rock", "mushroom", "log"]);
+export const FIXED_COLOR_SHAPES = Object.freeze(["rail", "tree", "rock", "mushroom", "log", "leaves"]);
 
 export const CATEGORIES = Object.freeze([
   { id: "bricks", label: ["Bricks", "積木"], icon: "🧱" },
