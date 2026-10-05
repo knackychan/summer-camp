@@ -20,3 +20,4 @@
 - `check-android8-ui.py` with Chrome 138 (`138.0.7204.183` headless shell, Android 8 identity, 2 GB): webgl2, webgl1, no-WebGL and offline-webgl1 all ok, Brick Lab included. Evidence refreshed in `test-results/android8/`.
 - Search: `check-brick-lab-ui.py` now checks that "tile", "光面板", "1x8" and "門" find `tile_1x8`, `tile_quarter_1x1`, `plate_1x8` and `door_1x4x6`. Full suite 188/188.
 - **Still open for DONE WHEN:** Papa reviews `parts-sheet.png` and builds something with the new parts on a real tablet.
+- Papa reviewed the 81-part `parts-sheet.png` on 2026-10-05: "ok cool for part sheet". Left for DONE WHEN: Papa builds something with the new parts on a real tablet.
