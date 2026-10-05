@@ -1,6 +1,7 @@
 # Slice 01: Rune can't call itself
 
 **Status:** Approved by Papa 2026-10-05 (`design.md` D9).
+**Implemented:** 2026-10-05. check.mjs and check-codequest-ui.py green.
 **Goal:** While a kid edits Rune, nothing they can tap puts a Rune call inside Rune.
 **Depends on:** none
 **Files:** `js/games/codequest.js`, `js/games/codequest/strings.js`, `scripts/check-codequest-ui.py`.

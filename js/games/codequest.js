@@ -362,7 +362,7 @@ function menuAction(actionId) {
 function libraryHTML() {
   const level = S.level;
   const actions = level.available.actions.map(op => button('add:' + op, actionIcon(op) + '<b>' + label(SHORT[op] || COMMANDS[op]) + '</b>', 'class="cq-cmd cat-' + opCategory(op) + '" aria-label="' + esc(t(COMMANDS[op])) + '"')).join('');
-  const logic = level.available.logic.map(id => {
+  const logic = level.available.logic.filter(id => !(id === 'callRune' && S.editor === 'rune')).map(id => {
     const n = Number(id.replace('repeat', '')) || 2;
     const words = id.startsWith('repeat') ? ['×' + n, '×' + n] : id === 'callRune' ? SHORT.call : LOGIC[id];
     return button('logic:' + id, logicIcon(id) + '<b>' + label(words) + '</b>', 'class="cq-cmd cat-' + logicCategory(id) + '" aria-label="' + esc(t(LOGIC[id])) + '"');
@@ -700,6 +700,8 @@ function wrap(kind, value) {
 function logic(id) {
   if (!S.level.available.logic.includes(id)) return;
   if (id === 'callRune') {
+    // A Rune can't hold a call to itself (it would only fail at Run).
+    if (S.editor === 'rune') { notify(MESSAGES.noSelfCall); return; }
     if (!S.runeProgram.length) { S.editor = 'rune'; notify(MESSAGES.missingFunction); render(); return; }
     pushUndo(); setCurrentProgram(currentProgram().concat(call('rune', uid('c')))); notify(['Rune call added.', '已加入符文呼叫。']); render(); return;
   }

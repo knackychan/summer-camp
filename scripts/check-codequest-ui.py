@@ -277,6 +277,28 @@ def run(args):
                 page.wait_for_function('!' + SNAPSHOT + '.dialog')
                 check(f'{tag}: the next room starts back at Home', camera()['zoom'] == 0)
 
+                # ---- Facing + Rune plan (2026-10-05). q10 Function Forge. ----
+                def library_has(action):
+                    return page.evaluate(f"!!document.querySelector('.cq-library [data-action=\"{action}\"]')")
+
+                q10 = level_ids.index('q10')
+                act('map')
+                page.wait_for_selector(f'[data-action="level:{q10}"]', state='attached')
+                act(f'level:{q10}')
+                page.wait_for_function(SNAPSHOT + ".level === 'q10' && !" + SNAPSHOT + ".dialog")
+                # Slice 01: Rune can't call itself.
+                check(f'{tag}: q10 library offers the Rune card on Main', library_has('logic:callRune'))
+                act('strip:rune')
+                act('add:move')
+                check(f'{tag}: editing Rune hides the Rune card', state()['editor'] == 'rune' and not library_has('logic:callRune'))
+                rune_before = state()['runeProgram']
+                page.evaluate("""() => { const b = document.createElement('button'); b.dataset.action = 'logic:callRune'; b.hidden = true;
+                  document.querySelector('.cq-library').appendChild(b); b.dispatchEvent(new MouseEvent('click', {bubbles:true, detail:0})); }""")
+                page.wait_for_timeout(60)
+                check(f'{tag}: a Rune call can never land inside Rune', state()['runeProgram'] == rune_before)
+                act('strip:main')
+                check(f'{tag}: back on Main the Rune card returns', state()['editor'] == 'main' and library_has('logic:callRune'))
+
                 problems, sides = [], {}
 
                 def assert_bubble(where):

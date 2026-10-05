@@ -90,7 +90,7 @@ export const MESSAGES = Object.freeze({
   empty: ['Add at least one action card first.', '先加入至少一張動作卡。'],
   tooMany: ['That program is a little too big for this quest. Try a loop or function.', '這關的程式有點太長，試試迴圈或函式。'],
   needRepeat: ['This quest asks you to use Repeat.', '這一關要使用「重複」。'], needIf: ['This quest asks you to use IF.', '這一關要使用「如果」。'], needCall: ['This quest asks you to Call Rune.', '這一關要呼叫「符文」。'],
-  missingFunction: ['Rune is empty. Build the Rune function first.', '符文是空的，先建立「符文」函式。'], recursion: ['Rune tried to call itself forever. Try a smaller reusable routine.', '符文一直呼叫自己了。試著做一個較小的可重複步驟。'],
+  missingFunction: ['Your Rune is empty. Put some cards in it first.', '你的符文是空的，先放幾張卡片進去。'], noSelfCall: ["A Rune can't use itself. Use it from Main.", '符文不能呼叫自己，請從主程式使用它。'], recursion: ['Rune tried to call itself forever. Try a smaller reusable routine.', '符文一直呼叫自己了。試著做一個較小的可重複步驟。'],
   blocked: ['Bump! Something blocks the corridor. Inspect the room and adjust the program.', '碰！走廊被擋住了。看看房間，再調整程式。'], noTarget: ['No valid enemy target is selected.', '目前沒有可用的敵人目標。'],
   targeted: ['Target locked. The next ranged action can use it.', '目標已鎖定，下一個遠距動作可以使用它。'],
   outOfRange: ['That target is outside the weapon range.', '那個目標超出武器射程。'],
