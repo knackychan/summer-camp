@@ -5,6 +5,7 @@
 - F2: **yes** to an additive call-frame `uid` in `interpreter.js` and to the strip flipping to Rune while Rune runs (→ D4, D5).
 - F4: **yes** to keeping the name "Rune" with a new icon and renaming q01 (→ D7, D8).
 
+**Implemented:** slices 01–05 shipped 2026-10-05 (see each slice's Implemented line). Pending: Papa's look on a real tablet.
 **Game id:** `codequest`.
 **Builds on:** `2026-10-03-code-quest-redesign/` (design.md, design-ux-polish.md). Everything there stays in force except:
 - Redesign slice 04's single Main ⇄ Rune toggle, which D6 replaces with two visible tabs.

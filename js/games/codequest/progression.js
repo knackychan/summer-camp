@@ -120,6 +120,8 @@ export function normalizeProfile(raw, legacyBest = 0) {
     // Legacy mirrors are kept so old host/debug surfaces can still inspect the migrated behavior.
     behaviorSource: companionBehaviorSource, behaviorEnabled: companionBehaviorEnabled,
     lab: normalizeLab(own(source, 'lab')),
+    // One-time coach cards already seen (facing-and-rune D10); additive in v12.
+    coach: Object.freeze(ids(own(source, 'coach'), /^(rune)$/)),
     legacyBest: count(legacyBest)
   });
 }
@@ -175,6 +177,11 @@ export function saveBehaviorSource(raw, owner, source, enabled=true) {
   const profile=normalizeProfile(raw), code=codeText(source,16000); if(!code.trim()) return {ok:false,profile,reason:'empty',code};
   const key=owner==='hero'?'heroBehaviorSource':'companionBehaviorSource', enabledKey=owner==='hero'?'heroBehaviorEnabled':'companionBehaviorEnabled';
   return {ok:true,profile:normalizeProfile({...profile,[key]:code,[enabledKey]:!!enabled}),code,owner};
+}
+/** Remember that a one-time coach card was seen. Idempotent. */
+export function markCoachSeen(raw, id) {
+  const profile = normalizeProfile(raw);
+  return profile.coach.includes(id) ? profile : normalizeProfile({ ...profile, coach: profile.coach.concat(id) });
 }
 export function setBehaviorEnabled(raw, owner, enabled) {
   // Backward-compatible v0.13 signature: setBehaviorEnabled(profile, enabled).

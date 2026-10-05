@@ -1041,3 +1041,16 @@ console.log('Code Quest UX polish: card-menu strip edits verified.');
   assert.equal(runner.step(env).type, 'done');
   assert.deepEqual(runner.activeCalls(), []);
 }
+
+// Facing + Rune plan slice 05: the coach list is additive in v12, bounded and idempotent.
+{
+  const { markCoachSeen } = await import('../js/games/codequest/progression.js');
+  assert.deepEqual(normalizeProfile({ version: 12, completed: [] }).coach, []);
+  assert.deepEqual(normalizeProfile({ version: 11 }).coach, []);
+  assert.deepEqual(normalizeProfile({ version: 12, coach: ['rune', 'rune', 'nope', 7, null] }).coach, ['rune']);
+  const seen = markCoachSeen(normalizeProfile({ version: 12, completed: ['q01'] }), 'rune');
+  assert.deepEqual(seen.coach, ['rune']);
+  assert.deepEqual(seen.completed, ['q01']);
+  assert.deepEqual(markCoachSeen(seen, 'rune').coach, ['rune']);
+  assert.deepEqual(normalizeProfile(JSON.parse(JSON.stringify(seen))).coach, ['rune']);
+}

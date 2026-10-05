@@ -298,6 +298,7 @@ def run(args):
                     page.screenshot(path=str(out / f'facing-{tag}-{i + 1}.png'))
                 check(f'{tag}: Right ×4 by Step faces S, W, N, E', facings == ['S', 'W', 'N', 'E'], facings)
                 check(f'{tag}: each Step turn says the hand rule', all(b and 'right hand' in b for b in beats), beats)
+                check(f'{tag}: a room without the Rune shows no coach', page.evaluate("document.querySelector('.cq-coach').hidden"))
                 act('reset')
 
                 q10 = level_ids.index('q10')
@@ -305,6 +306,36 @@ def run(args):
                 page.wait_for_selector(f'[data-action="level:{q10}"]', state='attached')
                 act(f'level:{q10}')
                 page.wait_for_function(SNAPSHOT + ".level === 'q10' && !" + SNAPSHOT + ".dialog")
+                # Slice 05: the Rune coach, once per kid.
+                def coach():
+                    return page.evaluate("""() => { const c = document.querySelector('.cq-coach');
+                      if (!c || c.hidden) return null;
+                      const r = c.getBoundingClientRect(), b = c.querySelector('button'), q = b.getBoundingClientRect();
+                      return {text: c.querySelector('p').textContent, bottom: r.bottom, left: r.left, right: r.right, top: r.top,
+                        tail: r.left + parseFloat(c.style.getPropertyValue('--tail')), action: b.dataset.action, w: q.width, h: q.height,
+                        hit: b.contains(document.elementFromPoint(q.x + q.width / 2, q.y + q.height / 2)), vw: innerWidth, vh: innerHeight}; }""")
+
+                def coach_ok(c, target):
+                    t = page.locator(target).first.bounding_box()
+                    return (c and c['w'] >= 47.5 and c['h'] >= 47.5 and c['hit'] and c['top'] >= 0 and c['left'] >= 0 and c['right'] <= c['vw'] + 1
+                            and c['bottom'] <= t['y'] + 1 and t['x'] - 2 <= c['tail'] <= t['x'] + t['width'] + 2)
+
+                steps = []
+                for i, (target, editor) in enumerate([('.cq-strip-tabs [data-action="strip:rune"]', 'main'), ('.cq-strip', 'rune'),
+                                                      ('.cq-library [data-action="logic:callRune"]', 'main')]):
+                    c = coach()
+                    steps.append(bool(coach_ok(c, target)) and state()['editor'] == editor)
+                    page.screenshot(path=str(out / f'coach-{tag}-{i + 1}.png'))
+                    if c:
+                        act(c['action'])
+                check(f'{tag}: Rune coach walks tab → Rune strip → Rune card, each card above its target with a ≥ 48 px button', steps == [True] * 3, steps)
+                check(f'{tag}: Got it hides the coach and saves it on the profile', coach() is None and 'rune' in state()['profile'].get('coach', []))
+                act('map')
+                page.wait_for_selector(f'[data-action="level:{q10}"]', state='attached')
+                act(f'level:{q10}')
+                page.wait_for_function(SNAPSHOT + ".level === 'q10' && !" + SNAPSHOT + ".dialog")
+                check(f'{tag}: the coach does not come back', coach() is None)
+
                 # Slice 01: Rune can't call itself.
                 check(f'{tag}: q10 library offers the Rune card on Main', library_has('logic:callRune'))
                 act('strip:rune')

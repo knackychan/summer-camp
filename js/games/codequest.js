@@ -3,14 +3,14 @@ import { CodeQuestModel } from './codequest/model.js';
 import { LEVELS, generateEndless } from './codequest/levels.js';
 import { action, repeat, ifNode, call, combinedBlockCount, toJavaScript } from './codequest/ast.js';
 import { parseJavaScript, CODE_API } from './codequest/parser.js';
-import { normalizeProfile, recordLevelComplete, recordEndlessClear, modeFor, equipmentDescriptor, equipmentFor, weaponFor, combatStatsFor, equip, claimLoot, consumePotion, scoreForProfile, setActiveDungeonRun, finishDungeonRun, abandonDungeonRun, saveRuneLibrary, loadRuneLibrary, saveBehaviorSource, setBehaviorEnabled, behaviorFor, CODEQUEST_EQUIPMENT } from './codequest/progression.js';
+import { markCoachSeen, normalizeProfile, recordLevelComplete, recordEndlessClear, modeFor, equipmentDescriptor, equipmentFor, weaponFor, combatStatsFor, equip, claimLoot, consumePotion, scoreForProfile, setActiveDungeonRun, finishDungeonRun, abandonDungeonRun, saveRuneLibrary, loadRuneLibrary, saveBehaviorSource, setBehaviorEnabled, behaviorFor, CODEQUEST_EQUIPMENT } from './codequest/progression.js';
 import { createDungeonRun, normalizeDungeonRun, roomMeta, roomGraph, nextRooms, enterDungeonRoom, resolveRunChoice, completeCombatRoom, failDungeonRun, expeditionLevel, dungeonRunSummary, hazardInfo, sigilsRequired, saveRunLoadout, activateRunLoadout } from './codequest/run.js';
 import { spriteURL } from './codequest/pixel-art.js';
 import { previewPath } from './codequest/preview.js';
 import { drawRoom, MAX_ZOOM, ROOM_VIEW } from './codequest/room-view.js';
 import { placeBubbleRect } from './codequest/bubble.js';
 import { IF_TESTS, repeatCounts, ifTests, insertAfter, canUnwrap, unwrap, setRepeatCount, nextRepeatCount, setCondition, extendSelection } from './codequest/strip-edit.js';
-import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, pairHTML, setLanguage, language, t } from './codequest/strings.js';
+import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, COACH, pairHTML, setLanguage, language, t } from './codequest/strings.js';
 import { mountLab } from './codequest/lab/lab-screen.js';
 
 let S = null;
@@ -348,6 +348,56 @@ function placeMenu() {
   menu.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
   menu.style.setProperty('--tail', Math.round(Math.max(18, Math.min(w - 18, cx - x))) + 'px');
 }
+/* Rune coach (facing-and-rune D10): three short cards, once per kid, the first time a room
+   offers the Rune. Not modal: the room stays playable while it shows. */
+const COACH_STEPS = [
+  { text: COACH.rune1, target: '.cq-strip-tabs [data-action="strip:rune"]', editor: null },
+  { text: COACH.rune2, target: '.cq-strip', editor: 'rune' },
+  { text: COACH.rune3, target: '.cq-library [data-action="logic:callRune"]', editor: 'main' }
+];
+function runeCoachDue(level) {
+  return !!(level && level.available.logic.includes('callRune') && !level.expedition && !level.endless && level.codingView !== 'code'
+    && !(S.profile.coach || []).includes('rune'));
+}
+function coachVisible() {
+  return S.coach >= 0 && S.coach < COACH_STEPS.length && !S.dialog && !S.paused && !S.lab && S.model.phase !== 'executing';
+}
+function renderCoach() {
+  const card = S.root.querySelector('.cq-coach');
+  if (!card) return;
+  const show = coachVisible();
+  card.hidden = !show;
+  if (!show) return;
+  const step = COACH_STEPS[S.coach], last = S.coach === COACH_STEPS.length - 1;
+  card.setAttribute('aria-label', t(COACH.title));
+  card.innerHTML = '<p>' + label(step.text) + '</p><div class="cq-coach-row"><i>' + (S.coach + 1) + ' / ' + COACH_STEPS.length + '</i>' +
+    button(last ? 'coach:done' : 'coach:next', '<b>' + label(last ? COACH.done : COACH.next) + '</b>', 'class="cq-coach-btn"') + '</div>';
+  placeCoach();
+}
+/** Sit the coach card above its target, clamped to the play area, its tail on the target. */
+function placeCoach() {
+  const card = S.root.querySelector('.cq-coach'), play = S.root.querySelector('.cq-play');
+  if (!card || card.hidden || !play) return;
+  const target = S.root.querySelector(COACH_STEPS[S.coach].target);
+  if (!target) return;
+  const r = target.getBoundingClientRect(), box = play.getBoundingClientRect();
+  const w = card.offsetWidth, h = card.offsetHeight, cx = r.left + Math.min(r.width, 160) / 2 - box.left;
+  const x = Math.max(4, Math.min(box.width - w - 4, cx - w / 2)), y = Math.max(4, r.top - box.top - h - 14);
+  card.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+  card.style.setProperty('--tail', Math.round(Math.max(18, Math.min(w - 18, cx - x))) + 'px');
+}
+function coachAction(actionId) {
+  if (S.coach < 0) return;
+  if (actionId === 'coach:done') {
+    S.coach = -1; S.profile = markCoachSeen(S.profile, 'rune'); saveProfile();
+  } else {
+    S.coach = Math.min(COACH_STEPS.length - 1, S.coach + 1);
+    const editor = COACH_STEPS[S.coach].editor;
+    if (editor && editor !== S.editor) { S.editor = editor; currentSelection().clear(); closeMenu(); }
+  }
+  render();
+}
+
 function closeMenu() {
   if (!S || !S.menuOpen) return;
   S.menuOpen = false; S.menuWrap = false;
@@ -543,6 +593,7 @@ function render() {
   renderMenu();
   renderZoom();
   html('.cq-library', libraryHTML());
+  renderCoach();
   root.querySelector('.cq-strip').setAttribute('aria-label', t(S.editor === 'rune' ? UI.rune : UI.program));
   html('.cq-runbox', button('run', glyph('play') + '<b>' + label(['Run', '執行']) + '</b>', 'class="cq-run"') +
     '<div>' + button('step', glyph('step') + '<b>' + label(UI.step) + '</b>', 'class="cq-small"') + button('reset', glyph('reset') + '<b>' + label(['Reset', '重設']) + '</b>', 'class="cq-small"') + '</div>');
@@ -581,6 +632,7 @@ function draw(time = performance.now()) {
     if (S.camera.zoom) { S.camera.cx = view.camera.cx; S.camera.cy = view.camera.cy; }
   }
   placeBubble(time, box);
+  if (S.coach >= 0) placeCoach();
 }
 /* Zoom + pan (UX polish slice 09, U6): the whole-room fit is Home; ＋ adds whole device
    pixels (up to +2), a one-finger drag pans while zoomed, and a run follows the hero.
@@ -663,7 +715,7 @@ function placeBubble(time, box) {
   if (bubble.hidden === visible) bubble.hidden = !visible;
   if (!visible || !S.view) return;
   const root = S.root;
-  const hard = ['.cq-goal', '.cq-vitals', '.cq-goal-pop', '.cq-debug-toggle', '.cq-debug', '.cq-zoom'].map(sel => sceneRect(root.querySelector(sel), box)).filter(Boolean);
+  const hard = ['.cq-goal', '.cq-vitals', '.cq-goal-pop', '.cq-debug-toggle', '.cq-debug', '.cq-zoom', '.cq-coach'].map(sel => sceneRect(root.querySelector(sel), box)).filter(Boolean);
   const spot = placeBubbleRect({
     box: { w: box.width, h: box.height }, size: { w: bubble.offsetWidth, h: bubble.offsetHeight },
     hero: S.view.heroBox ? { box: S.view.heroBox } : null, hard, soft: S.view.focus || [], previous: S.bubbleSide
@@ -1059,7 +1111,7 @@ function startLevel(level, options = {}) {
   S.level = level; S.model = createModel(level);
   if (!preserveProgram) { S.program = []; S.runeProgram = []; S.extraFunctions = {}; S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
   else { S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
-  S.editor = 'main'; S.editorBeforeRun = null; S.activeCalls = []; S.goalOpen = false; S.debugOpen = false; S.menuOpen = false; S.menuWrap = false; S.camera = HOME();
+  S.editor = 'main'; S.editorBeforeRun = null; S.activeCalls = []; S.coach = runeCoachDue(level) ? 0 : -1; S.goalOpen = false; S.debugOpen = false; S.menuOpen = false; S.menuWrap = false; S.camera = HOME();
   S.representation = level.codingView === 'hybrid' && allowedRepresentations().includes('hybrid') ? 'hybrid' : defaultRepresentation();
   S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false;
   const activeBehaviors=behaviorAllowedForLevel(level)&&['hero','companion'].some(owner=>{const saved=behaviorFor(S.profile,owner);return saved.enabled&&saved.source.trim();});
@@ -1284,6 +1336,7 @@ function perform(actionId) {
   if (actionId === 'strip:main' || actionId === 'strip:rune') { S.editor = actionId === 'strip:rune' ? 'rune' : 'main'; currentSelection().clear(); if (S.editor === 'rune' && !S.runeProgram.length) notify(UI.functionHint); render(); return; }
   if (actionId.startsWith('nudge:')) { const selected = [...currentSelection()]; if (selected.length === 1) moveIndex(selected[0], Number(actionId.slice(6))); return; }
   if (actionId === 'delete') { const selected = [...currentSelection()].sort((a, b) => b - a); if (!selected.length) return; pushUndo(); let list = currentProgram().slice(); for (const i of selected) list.splice(i, 1); setCurrentProgram(list); currentSelection().clear(); render(); return; }
+  if (actionId === 'coach:next' || actionId === 'coach:done') { coachAction(actionId); return; }
   if (actionId === 'goal') { S.goalOpen = !S.goalOpen; render(); return; }
   if (actionId === 'debug') { S.debugOpen = !S.debugOpen; render(); return; }
   if (actionId === 'code') { if (!S.codeDraft) syncCodeFromAst(); openDialog('code', codeSheetHTML()); return; }
@@ -1390,7 +1443,7 @@ function init(ctx) {
     '<div class="cq-zoom" role="group"></div><div class="cq-bubble" hidden></div></section>' +
     '<section class="cq-dock"><div class="cq-program"><div class="cq-strip-tabs-slot"></div><div class="cq-strip cq-scroll" role="group"></div><div class="cq-tools"></div></div>' +
     '<div class="cq-library cq-scroll" role="group" aria-label="Command cards 指令卡"></div>' +
-    '<div class="cq-runbox"></div></section><div class="cq-card-menu" role="toolbar" hidden></div></main>' +
+    '<div class="cq-runbox"></div></section><div class="cq-card-menu" role="toolbar" hidden></div><div class="cq-coach" role="group" hidden></div></main>' +
     '<p class="cq-notice cq-sr" role="status" aria-live="polite"></p><dialog class="cq-dialog"></dialog>';
 
   const saved = ctx.settings.codequest && ctx.settings.codequest.profiles && ctx.settings.codequest.profiles[ctx.kid];
@@ -1407,7 +1460,7 @@ function init(ctx) {
     canvas: root.querySelector('canvas'), bubble: root.querySelector('.cq-bubble'), best: Number(ctx.best) || 0, notice: MESSAGES.intro, heroState: 'idle', heroStateUntil: 0, heroMotion: null, enemyMotions: {}, fx: null, activeUid: null,
     lab: null, campNotice: null, completing: false, lastDraw: 0, run: normalizeDungeonRun(profile.activeRun)
   };
-  S.model = createModel(initial); syncCodeFromAst();
+  S.model = createModel(initial); syncCodeFromAst(); S.coach = runeCoachDue(initial) ? 0 : -1;
   settingsRoot(ctx)[ctx.kid] = profile; ctx.saveSettings();
   ctx.mount.classList.add('cq-stage'); ctx.mount.appendChild(root); ctx.hud([]);
 

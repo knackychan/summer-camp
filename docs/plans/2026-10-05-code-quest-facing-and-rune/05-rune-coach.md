@@ -1,6 +1,7 @@
 # Slice 05: Rune coach
 
 **Status:** Approved by Papa 2026-10-05 (`design.md` D10).
+**Implemented:** 2026-10-05. The tail is gold with a dark drop shadow (a dark tail vanished against the dock). The speech bubble treats the coach card as a hard rect. check.mjs and check-codequest-ui.py green; screenshots of all three steps were reviewed at both sizes.
 **Goal:** The first time a kid meets the Rune, three short steps explain it: your own card, build it once, use it again and again.
 **Depends on:** 04
 **Files:** `js/games/codequest.js`, `js/games/codequest/progression.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `scripts/codequest.test.mjs`, `scripts/check-codequest-ui.py`.

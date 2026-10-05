@@ -129,6 +129,14 @@ export const MESSAGES = Object.freeze({
   equipped: ['Loadout changed.', '裝備配置已更換。'], lockedLevel: ['Clear the previous quest to unlock this one.', '先完成上一關，就能解鎖這一關。'], towerLocked: ['Clear eight quests to unlock the Infinite Tower.', '完成八個關卡，就能解鎖無限高塔。'], paused: ['Paused.', '已暫停。']
 });
 
+/* Rune coach, shown once per kid (facing-and-rune D10). */
+export const COACH = Object.freeze({
+  rune1: ['This is your Rune — your own card. The cards inside it run together.', '這是你的符文——你自己的卡片。放在裡面的卡片會一起執行。'],
+  rune2: ['Build it once here.', '先在這裡做一次。'],
+  rune3: ['Then use it again and again from Main.', '然後在主程式裡一用再用。'],
+  next: ['Next ›', '下一步 ›'], done: ['Got it', '知道了'], title: ['Rune tips', '符文小提示']
+});
+
 /* Which way the hero faces, in screen words (facing-and-rune D3; screen reader only). */
 export const FACING = Object.freeze({
   N: ['Facing up', '面向上方'], S: ['Facing down', '面向下方'], W: ['Facing left', '面向左邊'], E: ['Facing right', '面向右邊']

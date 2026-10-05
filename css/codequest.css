@@ -95,6 +95,13 @@
 .cq-mini-bracket.executing{outline:3px solid #fff}
 /* Floating card menu (UX polish slice 08): sits above the tapped card(s), tail pointing down. */
 .cq-card-menu{position:absolute;left:0;top:0;z-index:7;display:flex;flex-direction:column;gap:6px;max-width:min(640px,calc(100% - 8px));padding:6px;border:3px solid var(--cq-out);border-radius:8px;background:linear-gradient(#34335a,var(--cq-panel));box-shadow:inset 0 2px 0 var(--cq-edge),0 4px 0 var(--cq-out),0 8px 18px #0b0a1f99}
+/* Rune coach card (facing-and-rune D10): the speech-bubble paper, pointing down at its target. */
+.cq-coach{position:absolute;left:0;top:0;z-index:8;display:flex;flex-direction:column;gap:8px;width:min(340px,calc(100% - 8px));padding:10px 12px;border:3px solid var(--cq-out);border-radius:8px;background:#fff8e0;color:#2a1a10;font:800 16px/1.3 'Nunito',system-ui,sans-serif;box-shadow:0 4px 0 var(--cq-out),0 8px 18px #0b0a1f99}
+.cq-coach::after{content:"";position:absolute;left:calc(var(--tail,40px) - 10px);bottom:-14px;border:10px solid transparent;border-top:12px solid #ffd23f;border-bottom:0;filter:drop-shadow(0 2px 0 var(--cq-out))}
+.cq-coach p{margin:0}
+.cq-coach-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cq-coach-row i{font:900 13px ui-monospace,monospace;font-style:normal;color:#7a5a3a}
+.cq .cq-coach-btn{min-width:96px;min-height:48px;padding:6px 14px;font-size:15px;color:#fff;background:#232174;box-shadow:inset 0 2px 0 #4d78e0,0 3px 0 var(--cq-out)}
 .cq-card-menu::after{content:"";position:absolute;left:calc(var(--tail,40px) - 9px);bottom:-12px;border:9px solid transparent;border-top:10px solid var(--cq-out);border-bottom:0}
 .cq-menu-row{display:flex;gap:6px;align-items:stretch}
 .cq-menu-choices{flex-wrap:wrap;padding-top:6px;border-top:2px solid var(--cq-out)}
