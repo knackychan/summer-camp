@@ -363,6 +363,148 @@ def lab_more_parts(page, snap, check, out):
     check('Undo leaves the world as it was', len(snap()['pieces']) == pieces0)
 
 
+# More-parts plan slice 04: one picture of every part, and the cost of the new parts.
+WEBGL1_ONLY = """(() => { const get = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (kind, options) { return kind === 'webgl2' ? null : get.call(this, kind, options); }; })()"""
+SHEET_PAGE = """<!doctype html><meta charset="utf-8"><style>
+body{margin:0;padding:24px;font:13px/1.25 system-ui,'Microsoft JhengHei',sans-serif;background:#f6f8fb;color:#1d2b3a;width:1180px}
+h1{font-size:20px;margin:0 0 4px}p{margin:0 0 16px;color:#5b6b7b}h2{font-size:15px;margin:18px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+.cell{background:#fff;border:1px solid #dde4ec;border-radius:12px;padding:8px 6px;text-align:center}
+.cell img{width:96px;height:96px;object-fit:contain;display:block;margin:0 auto 4px}.cell small{display:block;color:#6b7a89}
+.cell.none{background:#fde8e8}</style><h1>Brick Lab parts · 積木零件 (TITLE)</h1><p>NOTE</p>BODY"""
+
+
+def seed_worlds(page, worlds):
+    """Write worlds straight to this kid's storage before Brick Lab opens (grid 2: no re-settling)."""
+    page.evaluate("""async (worlds) => {
+      const { BrickWorlds } = await import('/js/brick-lab/brick-worlds.js');
+      const store = new BrickWorlds(localStorage.getItem('sq:kid'));
+      worlds.forEach((w) => store.create(w.name, { grid: 2, pieces: w.pieces }));
+      return true; }""", worlds)
+
+
+def grid_world(parts):
+    """300 pieces on a 20 × 15 grid over the plate, cycling through `parts`, each resting on the plate."""
+    heights = {'rock': 1, 'mushroom': 1.2, 'log_2x4': 1.2, 'crate_2x2': 1.2, 'barrel': 1.2, 'fence_post': 4.8,
+               'railing_1x2': 1.2, 'window_1x2': 2.4, 'wheel_large': 1.6, 'slope_1x1': 0.8}
+    plates = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2')
+    out = []
+    for i in range(300):
+        part = parts[i % len(parts)]
+        h = 0.4 if part in plates else heights.get(part, 1.2)
+        out.append({'id': f'g{i}', 'partId': part, 'colorId': 'red', 'x': -28.5 + (i % 20) * 3, 'y': h / 2,
+                    'z': -28 + (i // 20) * 4, 'rotation': 0})
+    return out
+
+
+def parts_sheet(browser, base, args, report, check, out):
+    """--sheet: every part's real-part icon (multiplayer slice 08) in red, then blue, in one picture per
+    colour, grouped by category with EN + 中文 labels; every part must build and have an icon. On the
+    standard tier it also checks that ~300 new parts keep an idle lab at 0 frames and don't step the
+    view down any sooner than 300 plain 2×4 bricks."""
+    ctx = RECOVERY['context_for'](browser, seed=RECOVERY['saved_fixture']('hub'))
+    if args.graphics == 'webgl1':
+        ctx.add_init_script(WEBGL1_ONLY)
+    page = ctx.new_page()
+    page.set_default_timeout(20000)
+    page.set_viewport_size({'width': 1280, 'height': 800})
+    page.on('pageerror', lambda error: report['pageErrors'].append(str(error)))
+    snap = lambda: page.evaluate(SNAP)
+    page.goto(base + '/index.html', wait_until='domcontentloaded')
+    RECOVERY['ready'](page)
+    RECOVERY['wait_screen'](page, 'hub')
+    catalog = page.evaluate("""async () => { const c = await import('/js/brick-lab/brick-catalog.js');
+      return { parts: c.PARTS.map((p) => ({ id: p.id, label: p.label, category: p.category })),
+               categories: c.CATEGORIES.map((k) => ({ id: k.id, label: k.label })) }; }""")
+    seed_worlds(page, [{'name': 'Plain bricks', 'pieces': grid_world(['brick_2x4'])},
+                       {'name': 'New parts', 'pieces': grid_world(list(MORE_PARTS))}])
+    page.evaluate("SummerQuest.openGame('bricklab')")
+    enter_world(page, 0)
+    tier = snap()['render']['quality']
+    graphics = snap()['graphics']
+    check(f'Sheet run on {graphics}, {tier} tier', graphics == ('webgl1' if args.graphics == 'webgl1' else 'webgl2')
+          and tier == ('reduced' if args.graphics == 'webgl1' else 'standard'))
+
+    for color in ('red', 'blue'):
+        page.locator(f'.sqbl-color[data-color="{color}"]').click()
+        icons, body = {}, ''
+        for cat in catalog['categories']:
+            pick(page, cat['id'])
+            cells = ''
+            for part in [p for p in catalog['parts'] if p['category'] == cat['id']]:
+                slot = page.locator(f'.sqbl-parts .sqbl-part[data-part="{part["id"]}"]').last
+                slot.scroll_into_view_if_needed()
+                try:
+                    page.wait_for_function("(id) => [...document.querySelectorAll('.sqbl-parts .sqbl-part')].some((e) => e.dataset.part === id && e.querySelector('.sqbl-part-preview img'))",
+                                           arg=part['id'], timeout=8000)
+                    src = slot.locator('.sqbl-part-preview img').get_attribute('src')
+                except Exception:
+                    src = None
+                icons[part['id']] = src
+                cells += (f'<div class="cell{"" if src else " none"}">' + (f'<img src="{src}">' if src else '<b>?</b>')
+                          + f'{part["label"][0]}<small>{part["label"][1]}</small></div>')
+            body += f'<h2>{cat["label"][0]} · {cat["label"][1]}</h2><div class="grid">{cells}</div>'
+        missing = [k for k, v in icons.items() if not v]
+        check(f'Every one of the {len(icons)} parts builds and has a real-part icon in {color} {missing}', not missing and len(icons) == len(catalog['parts']))
+        note = (f'{len(icons)} parts · picked colour {color} · {graphics} / {tier} tier. '
+                'Rock, mushroom, log, rails and the tree keep their own colours; the window pane stays see-through blue.')
+        sheet = ctx.new_page()
+        sheet.set_content(SHEET_PAGE.replace('TITLE', color).replace('NOTE', note).replace('BODY', body))
+        sheet.wait_for_timeout(300)
+        suffix = '' if color == 'red' else '-blue'
+        prefix = 'webgl1-' if args.graphics == 'webgl1' else ''
+        sheet.screenshot(path=str(out / f'{prefix}parts-sheet{suffix}.png'), full_page=True)
+        sheet.close()
+
+    def orbit_until_step(seconds=16):
+        """Orbit in Explore (a drag never moves a piece there) and time the first step-down."""
+        page.locator('[data-mode-button="explore"]').dispatch_event('pointerdown')
+        sb = page.locator('.sqbl-stage canvas').bounding_box()
+        page.mouse.move(sb['x'] + 300, sb['y'] + 420)
+        page.mouse.down()
+        start = page.evaluate('performance.now()')
+        f0 = snap()['render']['frames']
+        stepped, step = None, 0
+        while page.evaluate('performance.now()') - start < seconds * 1000:
+            page.mouse.move(sb['x'] + 300 + (step % 120) * 3, sb['y'] + 420)
+            step += 1
+            if stepped is None and snap()['render']['level'] > 0:
+                stepped = round((page.evaluate('performance.now()') - start) / 1000, 2)
+        page.mouse.up()
+        r = snap()['render']
+        fps = round((r['frames'] - f0) / ((page.evaluate('performance.now()') - start) / 1000), 1)
+        return {'steppedAfter': stepped, 'level': r['level'], 'fps': fps, 'calls': r['calls'], 'triangles': r['triangles']}
+
+    def visit(name):
+        """A fresh Brick Lab visit (the step-down level resets) on the named world, then idle and orbit."""
+        leave_lab(page)
+        page.evaluate("SummerQuest.openGame('bricklab')")
+        page.wait_for_function(f"window.SQGames && SQGames.get('bricklab') && {SNAP} && {SNAP}.menu")
+        page.locator('.sqbl-world', has_text=name).locator('.sqbl-world-open').click()
+        page.wait_for_function(f"{SNAP} && !{SNAP}.menu && {SNAP}.world")
+        page.wait_for_timeout(2500)
+        f0 = snap()['render']['frames']
+        page.wait_for_timeout(1500)
+        idle = snap()['render']['frames'] - f0
+        cost = orbit_until_step() if tier == 'standard' else None
+        page.screenshot(path=str(out / f"{'webgl1-' if args.graphics == 'webgl1' else ''}grid-300-{name.split()[0].lower()}.png"))
+        return idle, cost
+
+    plain_idle, plain = visit('Plain bricks')
+    mixed_idle, mixed = visit('New parts')
+    check(f'An idle lab draws no frames with 300 plain bricks ({plain_idle}) or 300 new parts ({mixed_idle})',
+          plain_idle == 0 and mixed_idle == 0)
+    if tier == 'standard':
+        report['frameCost'] = {'plain': plain, 'mixed': mixed}
+        # One 2 s measuring window of slack: the step-down only decides once every 2 s.
+        sooner = mixed['steppedAfter'] is not None and (plain['steppedAfter'] is None or mixed['steppedAfter'] < plain['steppedAfter'] - 2.5)
+        check(f'300 new parts step the view down no sooner than 300 plain bricks {report["frameCost"]}', not sooner)
+        check(f'…and draw at least 80% as many frames while orbiting ({mixed["fps"]} vs {plain["fps"]} fps)', mixed['fps'] >= plain['fps'] * 0.8)
+    page.evaluate('SQPlatform.triggerBack()')
+    ctx.close()
+
+
 def lab_together(browser, base, report, console, check, out):
     ctx = RECOVERY['context_for'](browser, seed=RECOVERY['saved_fixture']('hub'))
     pg = ctx.new_page()
@@ -557,6 +699,9 @@ def run(args):
 
             try:
                 base = f'http://127.0.0.1:{server.server_port}'
+                if args.sheet:
+                    parts_sheet(browser, base, args, report, check, out)
+                    raise StopIteration
                 page.goto(base + '/index.html', wait_until='domcontentloaded')
                 RECOVERY['ready'](page)
                 RECOVERY['wait_screen'](page, 'hub')
@@ -975,6 +1120,8 @@ def run(args):
                 tp.screenshot(path=str(out / 'categories-1024x600.png'))
                 tp.evaluate('SQPlatform.triggerBack()')
                 touch.close()
+            except StopIteration:
+                pass
             except Exception as error:
                 report['failure'] = str(error)
                 report['traceback'] = traceback.format_exc()
@@ -988,7 +1135,7 @@ def run(args):
         worker.join(timeout=2)
     report['ok'] = bool(report['checks']) and all(c['ok'] for c in report['checks']) and not (
         report.get('failure') or report['pageErrors'] or report['consoleErrors'])
-    (out / 'report.json').write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding='utf-8')
+    (out / ('sheet-' + args.graphics + '-report.json' if args.sheet else 'report.json')).write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding='utf-8')
     print(f"{sum(c['ok'] for c in report['checks'])}/{len(report['checks'])} browser checks passed", flush=True)
     for key in ('failure', 'note'):
         if report.get(key):
@@ -1003,4 +1150,6 @@ if __name__ == '__main__':
     parser.add_argument('--browser', default='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe')
     parser.add_argument('--target', choices=['source', 'web'], default='source')
     parser.add_argument('--out', type=Path, default=ROOT / '.tmp/brick-lab-ui')
+    parser.add_argument('--sheet', action='store_true', help='only draw the parts sheet and check part cost (more-parts slice 04)')
+    parser.add_argument('--graphics', choices=['auto', 'webgl1'], default='auto', help='webgl1: hide WebGL2 (r162 fallback, reduced tier)')
     raise SystemExit(0 if run(parser.parse_args()) else 1)
