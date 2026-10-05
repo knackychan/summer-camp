@@ -24,6 +24,9 @@ let BAR = null;
 let LANG = "en";
 const TRAYS = ["patty", "cheese", "tomato", "lettuce", "pickles", "sauce", "lasagna"];
 const VIEWS = ["plate", "grill", "board", "oven", "plan"];
+// Where each made-in-the-kitchen food comes from (pantry food is not listed).
+const STATION_OF = { patty: "grill", tomato: "board", lettuce: "board", lasagna: "oven" };
+const STATION_NAME = { grill: ["the grill", "煎鍋"], board: ["the cutting board", "砧板"], oven: ["the oven", "烤箱"] };
 const zh = () => LANG === "zh";
 const t = p => p[zh() ? 1 : 0];
 const pair = (en, zhText) => '<span lang="' + (zh() ? "zh-Hant" : "en") + '">' + (zh() ? zhText : en) + '</span>';
@@ -83,7 +86,7 @@ function preparation(k) {
   const rows = prepPlan(S.model.stations, k);
   return '<h3>' + pair("Prep for both customers", "一起準備兩位客人的食材") + '</h3>' +
     (rows.length ? '<div class="kq-prep-table"><table><thead><tr><th>' + pair("Food", "食材") + '</th><th>' + pair("Need", "還需要") + '</th><th>' + pair("Ready", "備好了") + '</th><th>' + pair("Cooking", "準備中") + '</th><th></th></tr></thead><tbody>' + rows.map(row => {
-      const station = row.ingredient === "patty" ? "grill" : row.ingredient === "lasagna" ? "oven" : "board";
+      const station = STATION_OF[row.ingredient] || "board";
       return '<tr data-ingredient="' + row.ingredient + '" data-shortage="' + row.missing + '" data-preparing="' + row.cooking + '"><th>' + icon(row.ingredient) + label(FOOD[row.ingredient]) + '</th><td>' + row.needed + '</td><td>' + row.ready + '</td><td>' + row.cooking + '</td><td>' + button("view:" + station, row.missing ? pair("Make " + row.missing, "去準備 " + row.missing) : pair("Look", "看看")) + '</td></tr>' +
         (row.reserved || row.retry ? '<tr class="kq-reserved"><td colspan="5">' + (row.retry ? pair(row.retry + " patties need a retry at the grill.", row.retry + " 份肉排需要回煎鍋重做。") : pair(row.reserved + " patties already saved for these plates.", "已預留 " + row.reserved + " 份肉排。")) + '</td></tr>' : "");
     }).join("") + '</tbody></table></div>' : '<p class="kq-prep-clear">' + pair("All prepped. Finish the recipes, then serve!", "備料完成，照食譜做好再上菜！") + '</p>');
@@ -174,7 +177,10 @@ function ticket(k) {
     const detail = heat ? PATTY[heat] : status === "wrong" ? ["Wrong food", "放錯了"] : null;
     const mark = status === "matched" ? "✓" : status === "wrong" ? "✗" : "";
     const body = '<b>' + (i + 1) + '</b>' + icon(id) + '<span>' + label(FOOD[id]) + (detail ? '<em>' + t(detail) + '</em>' : "") + '</span><i class="kq-check">' + mark + '</i>';
-    return '<li class="' + status + (mark ? "" : " nomark") + (i === report.firstMismatch ? " next" : "") + '"' + (heat ? ' data-heat="' + heat + '"' : "") + '>' + (layer ? button("remove:" + layer.id, body, remove(layer)) : '<div>' + body + '</div>') + '</li>';
+    // A food still to make opens its station when its row is tapped; pantry food has no station, so its row stays plain.
+    const station = !layer && STATION_OF[id];
+    const go = station ? button("goto:" + id, body, 'class="kq-go" aria-label="' + t([FOOD[id][0] + ": go to " + STATION_NAME[station][0], FOOD[id][1] + "：去" + STATION_NAME[station][1]]) + '"') : '<div>' + body + '</div>';
+    return '<li class="' + status + (mark ? "" : " nomark") + (i === report.firstMismatch ? " next" : "") + '"' + (heat ? ' data-heat="' + heat + '"' : "") + '>' + (layer ? button("remove:" + layer.id, body, remove(layer)) : go) + '</li>';
   }).join("");
   const extras = layers.slice(m.order.recipe.sequence.length).map(layer => '<li class="extra">' + button("remove:" + layer.id, '<b>+</b>' + icon(layer.ingredient) + '<span>' + label(FOOD[layer.ingredient]) + '<em>' + t(["Extra", "多放了"]) + '</em></span><i class="kq-check">✗</i>', remove(layer)) + '</li>').join("");
   const who = S.cast.of(m.order.id);
@@ -485,6 +491,13 @@ function perform(action, target) {
   } else if (action.indexOf("view:") === 0) {
     const view = action.slice(5);
     if (VIEWS.includes(view)) { S.view = view; S.audio.press(); const st = S.root.querySelector(".kq-station"); st.scrollTop = 0; }
+  } else if (action.indexOf("goto:") === 0) {
+    // A recipe row opens the station that makes its food; the board picks that vegetable if it is free.
+    const id = action.slice(5), view = STATION_OF[id];
+    if (view) {
+      S.view = view; S.audio.press(); S.root.querySelector(".kq-station").scrollTop = 0;
+      if (view === "board" && m.kitchen.snapshot().board.cuts === 0) m.kitchenAction("board:" + id, "k" + ++S.serial, m.session);
+    }
   } else if (action === "tray") {
     S.view = "oven";
   } else if (action.indexOf("order:") === 0) {

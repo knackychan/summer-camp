@@ -167,6 +167,17 @@ def run(args):
                 check(f'{tag}: every control is at least 44px', not metrics['small'])
                 check(f'{tag}: every control is on screen and unobstructed', not metrics['off'])
                 check(f'{tag}: the counter is the biggest area', metrics['counter']['w'] >= width * .45 and metrics['counter']['h'] >= height * .35)
+                rail = "({w: document.querySelector('.kq-ticket').getBoundingClientRect().width, dish: getComputedStyle(document.querySelector('.kq-dish-small')).display})"
+                slim = page.evaluate(rail)
+                check(f'{tag}: the recipe is a slim left rail with the dish picture', slim['w'] <= 110 and slim['dish'] != 'none')
+                if (width, height) == SIZES[0]:
+                    # Wider than 1280 keeps the full ticket column.
+                    page.set_viewport_size({'width': 1366, 'height': 768})
+                    page.wait_for_timeout(200)
+                    wide = page.evaluate(rail)
+                    check('1366x768: the full recipe ticket is back, no rail picture', wide['w'] >= 180 and wide['dish'] == 'none')
+                    page.set_viewport_size({'width': width, 'height': height})
+                    page.wait_for_timeout(200)
                 # Both languages: food names fit their trays and customer names / dishes never split inside a word.
                 fit = '''() => ({
                   clipped: [...document.querySelectorAll('.kq-tray')].filter(t => { const b = t.querySelector('b'); return b && b.getBoundingClientRect().right > t.getBoundingClientRect().right - 2; }).map(t => t.dataset.action),
@@ -205,6 +216,11 @@ def run(args):
                 queue = page.evaluate("[...document.querySelectorAll('.kq-queue .kq-order:not(.kq-toast-out)')].map(e => ({line: e.classList.contains('kq-order--line'), name: e.querySelector('b').innerText}))")
                 check('Customer queue lists the two at the counter, then the two in line, by name', [q['line'] for q in queue] == [False, False, True, True] and len({q['name'] for q in queue}) == 4)
                 page.screenshot(path=str(out / 'customer-queue.png'))
+                # A recipe row still to make opens its station; pantry food has no station, so its row stays plain.
+                check('Pantry rows are not station buttons', page.locator('.kq-ticket [data-action="goto:cheese"]').count() == 0)
+                tap('.kq-ticket [data-action="goto:patty"]')
+                check('Tapping the patty row on the recipe opens the grill', state()['view'] == 'grill')
+                tap('.kq-strip [data-action="view:plate"]')
                 # Raw patty: reserved layer, grill opens, flip, collect.
                 tap('.kq-tray[data-action="cookPatty"]')
                 s = state()
@@ -253,6 +269,8 @@ def run(args):
                 tap('.kq-tray[data-action="add:cheese"]')
                 page.wait_for_timeout(250)
                 check('Recipe is complete', state()['evaluation']['correct'])
+                check('On the slim rail, done rows keep their tick, not colour alone',
+                      page.evaluate("[...document.querySelectorAll('.kq-ticket li.matched .kq-check')].every(c => getComputedStyle(c).display !== 'none' && c.innerText === '✓' && c.getClientRects().length)"))
                 check('A big SERVE IT prompt appears over the counter', page.evaluate("(() => { const p = document.querySelector('.kq-prompt'); return !p.hidden && p.dataset.action; })()") == 'serve')
                 page.screenshot(path=str(out / 'serve-prompt.png'))
                 tap('.kq-serve')

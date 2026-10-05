@@ -59,7 +59,7 @@ body.game-mode:has(.kq) .summer-companion{border:2px solid #0b0a1f;border-radius
 .kq-ticket ol{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px}
 .kq-ticket li>button,.kq-ticket li>div{width:100%;display:grid;grid-template-columns:26px 44px minmax(0,1fr) 20px;align-items:center;gap:8px;padding:5px 8px;
   min-height:56px;text-align:left;background:#f6e2a4;border:2px solid #e3b770;box-shadow:none;font-size:16px}
-.kq-ticket li>div{opacity:.6}
+.kq-ticket li>div,.kq-ticket li>.kq-go{opacity:.6}
 .kq-ticket li>*>b{display:grid;place-items:center;width:26px;height:26px;background:#2a2560;color:#fff;font:900 14px ui-monospace,Menlo,monospace}
 .kq-ticket li img{width:44px;height:44px}
 .kq-ticket li em{display:block;font-style:normal;font-size:12px;color:#b5309a;margin-top:1px}
@@ -67,7 +67,7 @@ body.game-mode:has(.kq) .summer-companion{border:2px solid #0b0a1f;border-radius
 /* A row with no tick or cross gives that column back to its words, so "On the grill" fits on two lines, not four. */
 .kq-ticket li.nomark>button,.kq-ticket li.nomark>div{grid-template-columns:26px 44px minmax(0,1fr)}
 .kq-ticket li.nomark .kq-check{display:none}
-.kq-ticket li.next>div{opacity:1;border-color:#0b0a1f;background:#ffffff;animation:kq-next 1.2s steps(2,end) infinite}
+.kq-ticket li.next>div,.kq-ticket li.next>.kq-go{opacity:1;border-color:#0b0a1f;background:#ffffff;animation:kq-next 1.2s steps(2,end) infinite}
 @keyframes kq-next{50%{border-color:#ff7a1f}}
 .kq-ticket li.matched>button{background:#c9ef6a;border-color:#2f9a4c}
 .kq-ticket li.pending>button{background:#ffd23f;border-color:#a8743f}
@@ -254,7 +254,10 @@ body.game-mode:has(.kq) .summer-companion{border:2px solid #0b0a1f;border-radius
   .kq-ticket ol{gap:3px}
   .kq-ticket li>button,.kq-ticket li>div,.kq-ticket li.nomark>button,.kq-ticket li.nomark>div{grid-template-columns:28px minmax(0,1fr);gap:4px;min-height:44px;padding:2px 3px;font-size:11px;line-height:1.1}
   .kq-ticket li img{width:28px;height:28px}
-  .kq-ticket li>*>b,.kq-ticket li em,.kq-ticket li .kq-check{display:none}
+  .kq-ticket li>*>b,.kq-ticket li em{display:none}
+  /* The tick or cross stays, as a corner mark, so a row's state is not told by colour alone. */
+  .kq-ticket li>*{position:relative}
+  .kq-ticket li .kq-check{position:absolute;top:-5px;right:-3px;width:16px;height:16px;display:grid;place-items:center;border:2px solid currentColor;border-radius:50%;background:#fff;font-size:10px;line-height:1}
   .kq-ticket li span{overflow-wrap:anywhere}
 }
 /* 1024-wide landscape: smaller faces and food pictures so names and dishes break between words, never inside one. */
