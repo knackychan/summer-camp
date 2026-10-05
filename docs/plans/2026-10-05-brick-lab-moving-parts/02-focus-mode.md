@@ -2,7 +2,20 @@
 
 **Design:** [design.md](design.md) M5 (Papa's review: "zoom into the model and be able to move the part easier like a character edition mode"). **Depends on:** 01 (`setPose`, `cleanPose`, `posesFor`, `jointAngles`, the jointed mesh, `snapshot().poseAngles`).
 
-The detailed task list (tests first, exact code) is written when this slice starts, against the code slice 01 leaves. Below are its decisions, its parts and how it is checked.
+**Implemented 2026-10-05.** Built inline, test first for the camera and the pose data. As built, against the text below:
+- **Framing:** about **half** the stage high (not 60%). The camera looks a little below the piece's middle (`y − 0.35 × height`), so the figure sits above the pose dock at 1024×600 too.
+- **Hidden pieces:** pieces between the lens and the focused piece hide while the camera turns, and come back on leaving. Without it, a neighbour filled the lens at 1024×600 after one turn.
+- **The hint** sits beside ✓ Done, left-aligned, so it never covers the figure's head.
+- **Thin arms:** an arm facing the camera sits over the body, so a tap often finds the body. Legs and the head are easy to tap on the model; the chips are the sure way to pick an arm. The harness checks a leg tap and the arm chip.
+- **Unposed pieces in focus:** a piece in focus is drawn jointed even when unposed, so its limbs can be tapped. It goes back to one mesh on leaving (M2).
+- **A CSS fix:** a `hidden` bubble tool stays hidden (`.sqbl-bubble button[hidden]`).
+
+Verified:
+- `check.mjs` green: camera tests 9, pose tests 11.
+- `check-brick-lab-ui.py` 229/229, no page or console errors, including 14 focus checks at 1280×800 and 1024×600.
+- Screenshots `focus-figure.png`, `focus-arm-picked.png` and `focus-1024x600.png` looked at.
+
+Pending: Papa's look on a real tablet.
 
 ## What the kid does
 1. Tap a minifigure. Its tools bubble shows **Pose 🤸 姿勢** next to Move · Turn · Copy · Remove.

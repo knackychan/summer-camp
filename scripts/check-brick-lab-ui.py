@@ -620,6 +620,112 @@ def pose_checks(page, snap, check, out):
     check('A pose is saved with the world', saved is not None and saved.get('pose') == {'p': 'sit'})
 
 
+def focus_checks(page, snap, check, out):
+    """Moving parts slice 02 (docs/plans/2026-10-05-brick-lab-moving-parts/): focus mode, the character
+    editor. Pose shows on a figure only; focus frames the figure big and folds the rail; tapping a leg on
+    the model picks it, a chip picks the arm; a turn is one step and Undo takes it back; a pose card sets both arms; one finger
+    turns around the figure; Done gives the exact view back; Back leaves focus, not the world."""
+    def tap(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(150)
+
+    def selected():
+        s = snap()
+        return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+
+    def pose_tool():
+        return page.locator('.sqbl-app [data-action="pose"]')
+
+    def press(selector):
+        page.locator(selector).first.click()
+        page.wait_for_timeout(200)
+
+    def stage():
+        return page.locator('.sqbl-stage canvas').bounding_box()
+
+    box = stage()
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+    pick(page, 'bricks')
+    page.locator('.sqbl-part[data-part="brick_2x2"]').first.click()
+    page.locator('.sqbl-tray-title').click()
+    tap(box['x'] + box['width'] * 0.25, box['y'] + box['height'] * 0.6)
+    check('A brick has no Pose tool', selected()['partId'] == 'brick_2x2' and not pose_tool().is_visible())
+    pick(page, 'figures')
+    page.locator('.sqbl-part[data-part="fig_boy"]').first.click()
+    page.locator('.sqbl-tray-title').click()
+    tap(box['x'] + box['width'] * 0.42, box['y'] + box['height'] * 0.6)
+    fig = selected()
+    check('A minifigure shows the Pose tool', fig['partId'] == 'fig_boy' and pose_tool().is_visible())
+    before = snap()['view']
+    pose_tool().dispatch_event('pointerdown')
+    page.wait_for_timeout(700)
+    s = snap()
+    box = stage()
+    rect = s['focus'] and s['focus']['rect']
+    dock_top = page.locator('.sqbl-focus-dock').bounding_box()['y']
+    check(f'Focus frames the figure big, above the pose dock, and folds the rail {rect}', s['focus'] and s['focus']['id'] == fig['id']
+          and rect['bottom'] - rect['top'] >= box['height'] * 0.35 and rect['bottom'] <= dock_top + 4
+          and not page.locator('.sqbl-left-rail').is_visible() and not s['toolsShown'])
+    page.screenshot(path=str(out / 'focus-figure.png'))
+    leg = s['focus']['joints']['legL']['screen']
+    tap(leg['x'], leg['y'])
+    check('Tapping a leg on the model picks it', snap()['focus']['joint'] == 'legL')
+    press('.sqbl-focus [data-focus-joint="armR"]')
+    check('The right-arm chip picks the arm (thin limbs are easier from the chips)', snap()['focus']['joint'] == 'armR')
+    page.screenshot(path=str(out / 'focus-arm-picked.png'))
+    press('.sqbl-focus [data-focus-act="cw"]')
+    check('Turn moves the arm one step (45 degrees)', snap()['poseAngles'].get('armR') == 45)
+    page.locator('.sqbl-app [data-action="undo"]').dispatch_event('pointerdown')
+    page.wait_for_timeout(250)
+    check('Undo takes that one step back, still in focus', snap()['poseAngles'].get('armR') == 0 and snap()['focus'] is not None)
+    press('.sqbl-focus [data-focus-pose="cheer"]')
+    a = snap()['poseAngles']
+    check('The Cheer card raises both arms', a.get('armL') == -180 and a.get('armR') == -180)
+    press('.sqbl-focus [data-focus-joint="head"]')
+    check('A joint chip picks the head', snap()['focus']['joint'] == 'head')
+    yaw = snap()['view']['yaw']
+    cx, cy = box['x'] + box['width'] * 0.2, box['y'] + box['height'] * 0.4
+    page.mouse.move(cx, cy)
+    page.mouse.down()
+    for i in range(1, 11):
+        page.mouse.move(cx + 22 * i, cy)
+        page.wait_for_timeout(16)
+    page.mouse.up()
+    page.wait_for_timeout(300)
+    s = snap()
+    r = s['focus']['rect']
+    check(f'One finger turns the camera around the figure, which stays in frame {r}', abs(s['view']['yaw'] - yaw) > 0.5
+          and r['left'] >= box['x'] and r['right'] <= box['x'] + box['width'] and s['focus']['joint'] == 'head')
+    # Every focus control is big enough and not covered, at 1280x800 and 1024x600.
+    controls = """() => Array.from(document.querySelectorAll('.sqbl-focus button, .sqbl-cam-btn')).filter((b) => b.getClientRects().length).map((b) => {
+      const r = b.getBoundingClientRect(); const x = Math.min(r.right - 2, Math.max(r.left + 2, r.left + r.width / 2)); const y = r.top + r.height / 2;
+      const top = document.elementFromPoint(x, y);
+      return { w: r.width, h: r.height, hit: !!top && (b === top || b.contains(top)), on: x >= 0 && x <= innerWidth && y >= 0 && y <= innerHeight, name: b.textContent.trim().slice(0, 12) }; })"""
+    for size in ((1280, 800), (1024, 600)):
+        page.set_viewport_size({'width': size[0], 'height': size[1]})
+        page.wait_for_timeout(500)
+        found = page.evaluate(controls)
+        bad = [c for c in found if c['on'] and (min(c['w'], c['h']) < 48 or not c['hit'])]
+        check(f'{size[0]}x{size[1]}: every focus control is at least 48 px and unobstructed {bad}', found and not bad)
+        if size == (1024, 600):
+            page.screenshot(path=str(out / 'focus-1024x600.png'))
+    page.set_viewport_size({'width': 1280, 'height': 800})
+    page.wait_for_timeout(500)
+    press('.sqbl-focus [data-focus-act="done"]')
+    page.wait_for_timeout(700)
+    s = snap()
+    after = s['view']
+    check('Done gives the exact view back and unfolds the rail', s['focus'] is None and page.locator('.sqbl-left-rail').is_visible()
+          and all(abs(after[k] - before[k]) < 1e-3 for k in ('x', 'z', 'yaw', 'distance')) and not after.get('lift'))
+    pose_tool().dispatch_event('pointerdown')
+    page.wait_for_timeout(500)
+    page.evaluate('SQPlatform.triggerBack()')
+    page.wait_for_timeout(600)
+    s = snap()
+    check('Back leaves focus, not the world', s['focus'] is None and s['world'] and not s['menu'])
+
+
 def seed_worlds(page, worlds):
     """Write worlds straight to this kid's storage before Brick Lab opens (grid 2: no re-settling)."""
     page.evaluate("""async (worlds) => {
@@ -1243,6 +1349,7 @@ def run(args):
                 lab_more_parts(page, snap, check, out)
                 catalog_checks(page, snap, check, out)
                 pose_checks(page, snap, check, out)
+                focus_checks(page, snap, check, out)
                 leave_lab(page)
 
                 # Same door as Paint: through the Games category lock, stopped only by a Papa app pause.

@@ -13,7 +13,7 @@ import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
 import { createSequencer } from "./brick-share.js";
-import { cleanPose, isSitting, jointAngles, poseShape, samePose, sitOffset, sitShift } from "./brick-pose.js";
+import { JOINT_LABELS, cleanPose, isSitting, jointAngles, posesFor, poseShape, samePose, sitOffset, sitShift, stopsOf } from "./brick-pose.js";
 import { createLanSession } from "../game-services/lan-session.js";
 import { BrickTogether } from "./brick-together.js";
 
@@ -27,6 +27,8 @@ const HINTS = {
   choose: ["Choose a piece on the left, or tap a piece to edit it.", "從左邊選一塊積木，或點一塊來修改。"],
   place: ["Tap the baseplate to put the piece down.", "點底板，把積木放上去。"],
   dragDrop: ["Let go where the piece should go.", "拖到想放的地方再放手。"],
+  focus: ["Tap an arm, a leg or the head.", "點一下手、腳或頭。"],
+  joint: (name) => [`${name[0]}: turn it with ↺ ↻.`, `${name[1]}：用 ↺ ↻ 轉動。`],
   placed: ["Placed! Pick another piece, or edit this one.", "放好了！再選一塊，或修改這一塊。"],
   selected: ["Tap it again to turn it, or drag it to move it.", "再點一下可以旋轉，拖著它可以移動。"],
   moveTo: ["Tap the new spot for this piece.", "點一個新位置放這塊積木。"],
@@ -1612,10 +1614,23 @@ export class BrickLabRuntime {
                 ${tool("move", "✥", ["Move", "移動"])}
                 ${tool("rotate", "↻", ["Turn", "旋轉"])}
                 ${tool("duplicate", "⧉", ["Copy", "複製"])}
+                ${tool("pose", "🤸", ["Pose", "姿勢"], " hidden")}
                 ${tool("delete", "🗑", ["Remove", "拿掉"], ' class="is-danger"')}
               </div>
             </div>
             <div class="sqbl-stage-hint" data-stage-hint aria-live="polite"></div>
+            <div class="sqbl-focus" data-focus hidden>
+              <div class="sqbl-focus-vignette" aria-hidden="true"></div>
+              <button type="button" class="sqbl-focus-done" data-focus-act="done" aria-label="Done 完成">✓ <span>Done 完成</span></button>
+              <div class="sqbl-focus-turn" role="group" aria-label="Turn 轉動">
+                <button type="button" data-focus-act="ccw" aria-label="Turn back 往回轉">↺</button>
+                <button type="button" data-focus-act="cw" aria-label="Turn 轉動">↻</button>
+              </div>
+              <div class="sqbl-focus-dock">
+                <div class="sqbl-focus-joints" data-focus-joints role="group" aria-label="Parts 部位"></div>
+                <div class="sqbl-focus-poses" data-focus-poses role="group" aria-label="Poses 姿勢"></div>
+              </div>
+            </div>
             <div class="sqbl-cam" role="toolbar" aria-label="Camera 鏡頭">${CAMERA_BUTTONS.map((b) => `
               <button type="button" class="sqbl-cam-btn" data-cam="${b.id}" aria-label="${escapeHtml(label(b.label))}"><svg viewBox="0 0 32 32" aria-hidden="true">${b.icon}</svg></button>`).join("")}
             </div>
@@ -1654,6 +1669,12 @@ export class BrickLabRuntime {
     this.hintEl = this.root.querySelector("[data-stage-hint]");
     this.toastEl = this.root.querySelector("[data-toast]");
     this.bubbleEl = this.root.querySelector("[data-bubble]");
+    this.poseToolEl = this.root.querySelector("[data-action=pose]");
+    this.focusEl = this.root.querySelector("[data-focus]");
+    this.focusJointsEl = this.root.querySelector("[data-focus-joints]");
+    this.focusPosesEl = this.root.querySelector("[data-focus-poses]");
+    this.focus = null;
+    this.focusHidden = new Set();
     this.leftRail = this.root.querySelector(".sqbl-left-rail");
     this.infoEl = this.root.querySelector("[data-info]");
     this.searchEl = this.root.querySelector("[data-search]");
@@ -1740,6 +1761,12 @@ export class BrickLabRuntime {
     this.selectionHelper.visible = false;
     this.selectionHelper.raycast = () => {};
     this.scene.add(this.selectionHelper);
+    /* Focus mode (moving-parts F4): the picked joint, outlined in gold. */
+    this.jointBox = new THREE.Box3();
+    this.jointHelper = new THREE.Box3Helper(this.jointBox, 0xf5b301);
+    this.jointHelper.visible = false;
+    this.jointHelper.raycast = () => {};
+    this.scene.add(this.jointHelper);
 
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
@@ -2006,6 +2033,17 @@ export class BrickLabRuntime {
     this.root.querySelector("[data-action=duplicate]").addEventListener("pointerdown", () => this.duplicateSelected());
     this.root.querySelector("[data-action=delete]").addEventListener("pointerdown", () => this.deleteSelected());
     this.root.querySelector("[data-action=move]").addEventListener("pointerdown", () => this.beginMoveSelected());
+    this.poseToolEl.addEventListener("pointerdown", () => this.enterFocus(this.selectedId));
+    this.focusEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-focus-act],[data-focus-pose],[data-focus-joint]");
+      if (!button || !this.focus) return;
+      if (button.dataset.focusPose) this.setPose(this.focus.id, { p: button.dataset.focusPose });
+      else if (button.dataset.focusJoint) this.pickJoint(button.dataset.focusJoint);
+      else if (button.dataset.focusAct === "done") this.leaveFocus();
+      else if (button.dataset.focusAct === "cw") this.turnJoint(1);
+      else if (button.dataset.focusAct === "ccw") this.turnJoint(-1);
+      this.haptic("tap");
+    });
     this.root.querySelector("[data-action=toggle-left]").addEventListener("pointerdown", () => this.leftRail.classList.toggle("is-collapsed"));
     this.root.querySelector("[data-action=parts-back]").addEventListener("pointerdown", () => {
       this.setFilters("", "");
@@ -2111,7 +2149,7 @@ export class BrickLabRuntime {
   setupThumbs() {
     this.thumbs = createThumbs({ THREE, renderer: this.renderer, cheap: this.kit.cheap, perFrame: this.kit.cheap ? 1 : 3 });
     this.thumbs.onReady((key, url) => {
-      this.root.querySelectorAll(".sqbl-part-preview[data-thumb-want]").forEach((el) => {
+      this.root.querySelectorAll(".sqbl-part-preview[data-thumb-want], .sqbl-pose-pic[data-thumb-want]").forEach((el) => {
         if (el.dataset.thumbWant === key) this.setThumb(el, key, url);
       });
     });
@@ -2522,6 +2560,7 @@ export class BrickLabRuntime {
      on the menu itself Back belongs to the host. */
   back() {
     if (this.destroyed || !this.menuEl) return false;
+    if (this.focus) return this.leaveFocus();
     if (!this.menuEl.hidden) {
       if (!this.menuEdit) return false;
       this.menuEdit = null;
@@ -2566,6 +2605,7 @@ export class BrickLabRuntime {
   }
 
   leaveWorld() {
+    this.leaveFocus();
     if (this.together.role === "guest") {
       this.together.leave();
       this.endShared();
@@ -2744,6 +2784,7 @@ export class BrickLabRuntime {
 
   /* After a change that came from (or went through) the host. */
   afterRemoteOp() {
+    if (this.focus && !this.pieces.has(this.focus.id)) this.leaveFocus();
     this.syncRails();
     if (this.selectedId && !this.pieces.has(this.selectedId)) this.selectPiece(null);
     else if (this.selectedId) {
@@ -2828,7 +2869,8 @@ export class BrickLabRuntime {
   /* The 3D object for a piece already in `pieces`. */
   addObject(piece) {
     const part = getPart(piece.partId);
-    const object = part.joints && piece.pose ? makeJointedPiece(part, getColorHex(piece.colorId), this.kit, piece.pose)
+    const jointed = part.joints && (piece.pose || (this.focus && this.focus.id === piece.id));
+    const object = jointed ? makeJointedPiece(part, getColorHex(piece.colorId), this.kit, piece.pose)
       : makePieceMesh(part, getColorHex(piece.colorId), this.kit);
     const paint = this.kit.mat(getColorHex(piece.colorId));
     object.traverse((node) => { if (node.material === paint) node.userData.sqblPaint = true; });
@@ -2920,6 +2962,7 @@ export class BrickLabRuntime {
       }
       this.addObject(this.pieces.get(op.id));
       if (this.selectedId === op.id) this.selectPiece(op.id);
+      if (this.focus && this.focus.id === op.id) this.renderFocus();
     }
     this.scheduleSave();
   }
@@ -3194,12 +3237,12 @@ export class BrickLabRuntime {
   /* Press on the selected piece: the camera is suspended until the finger lifts.
      Lifting without travel is a tap (turn); travelling drags the piece (D8). */
   onDragStart(event) {
-    if (this.mode !== "build" || !this.selectedId || this.moveId || this.placementArmed || this.drag) return;
+    if (this.mode !== "build" || !this.selectedId || this.moveId || this.placementArmed || this.drag || this.focus) return;
     if (event.isPrimary === false || event.button > 0) return;
     const pieceHit = this.pointFromEvent(event).find((hit) => this.getPieceIdFromIntersection(hit));
     if (!pieceHit || this.getPieceIdFromIntersection(pieceHit) !== this.selectedId) return;
     const instance = this.pieces.get(this.selectedId);
-    const part = getPart(instance.partId);
+    const part = shapeOf(instance);
     /* Drag on the plane of the piece's base, keeping where the finger grabbed it. */
     this.dragPlane.constant = -(instance.y - part.height / 2);
     const grab = this.raycaster.ray.intersectPlane(this.dragPlane, this.dragPoint);
@@ -3273,6 +3316,15 @@ export class BrickLabRuntime {
     const pieceHit = hits.find((hit) => this.getPieceIdFromIntersection(hit));
     const pieceId = pieceHit ? this.getPieceIdFromIntersection(pieceHit) : null;
 
+    /* Focus mode (F4): a tap on the model picks the limb under the finger. */
+    if (this.focus) {
+      const hit = hits.find((h) => this.getPieceIdFromIntersection(h) === this.focus.id);
+      let node = hit ? hit.object : null;
+      while (node && !node.userData.sqblJoint && !node.userData.sqblPieceRoot) node = node.parent;
+      if (node && node.userData.sqblJoint) this.pickJoint(node.userData.sqblJoint);
+      return;
+    }
+
     if (this.mode === "explore") {
       if (pieceId) {
         this.setMode("build", { quiet: true });
@@ -3339,7 +3391,7 @@ export class BrickLabRuntime {
     if (id && !this.pieces.has(id)) id = null;
     const changed = id !== this.selectedId;
     this.selectedId = id;
-    this.selectionHelper.visible = !!id;
+    this.selectionHelper.visible = !!id && !this.focus;
     if (id) {
       this.selectionBox.setFromObject(this.sceneObjects.get(id));
       this.setActiveColor(this.pieces.get(id).colorId);
@@ -3352,7 +3404,12 @@ export class BrickLabRuntime {
   }
 
   updateSelectionUI() {
-    const shown = !!this.selectedId && !this.moveId && !(this.drag && this.drag.active) && this.mode === "build";
+    const shown = !!this.selectedId && !this.moveId && !(this.drag && this.drag.active) && this.mode === "build" && !this.focus;
+    const posable = !!(this.selectedId && getPart(this.pieces.get(this.selectedId).partId).joints);
+    if (this.poseToolEl.hidden === posable) {
+      this.poseToolEl.hidden = !posable;
+      this.bubble.width = 0; /* one more or one fewer tool: measure again */
+    }
     if (shown !== this.bubble.shown) {
       this.bubble.shown = shown;
       this.bubbleEl.classList.toggle("is-visible", shown);
@@ -3489,9 +3546,152 @@ export class BrickLabRuntime {
     return !!done;
   }
 
+  /* Rebuild a piece's 3D object in place (jointed in focus mode, M2). */
+  refreshObject(id) {
+    const old = this.sceneObjects.get(id);
+    if (!old || !this.pieces.has(id)) return;
+    this.scene.remove(old);
+    disposeTree(old);
+    this.sceneObjects.delete(id);
+    this.addObject(this.pieces.get(id));
+    if (this.selectedId === id) this.selectPiece(id);
+    this.invalidate();
+  }
+
+  /* Focus mode, the character editor (moving-parts slice 02, M5): the camera
+     glides in on the piece, the rail folds away, and its limbs can be picked
+     and turned. */
+  enterFocus(id) {
+    const piece = id && this.pieces.get(id);
+    if (!piece || this.focus || this.mode !== "build" || !getPart(piece.partId).joints) return;
+    this.hideInfo();
+    this.placementArmed = false;
+    this.moveId = null;
+    this.ghost.visible = false;
+    this.focus = { id, joint: null };
+    this.app.classList.add("is-focus");
+    this.focusEl.hidden = false;
+    this.refreshObject(id);
+    this.selectionHelper.visible = false;
+    this.renderFocus();
+    const shape = shapeOf(piece);
+    const size = Math.max(shape.height, shape.width, shape.depth);
+    /* About half the stage high, looking a little below its middle so the
+       piece sits above the pose dock at the foot of the stage. */
+    const fit = size / (0.5 * 2 * Math.tan(this.camera.fov * Math.PI / 360));
+    this.cam.focusOn({ x: piece.x, y: piece.y - shape.height * 0.35, z: piece.z, distance: fit, minDistance: Math.max(2.5, fit * 0.45), maxDistance: fit * 1.5 }, 400);
+    this.updateSelectionUI();
+    this.setHint("👆", HINTS.focus);
+    return true;
+  }
+
+  leaveFocus() {
+    if (!this.focus) return false;
+    const id = this.focus.id;
+    this.focus = null;
+    this.app.classList.remove("is-focus");
+    this.focusEl.hidden = true;
+    this.jointHelper.visible = false;
+    this.showOccluders();
+    this.refreshObject(id);
+    this.cam.unfocus(400);
+    if (this.selectedId) this.selectPiece(this.selectedId);
+    this.updateSelectionUI();
+    this.invalidate();
+    return true;
+  }
+
+  pickJoint(joint) {
+    if (!this.focus) return;
+    const part = getPart(this.pieces.get(this.focus.id).partId);
+    if (!part.joints[joint]) return;
+    this.focus.joint = joint;
+    this.renderFocus();
+    this.setHint("↻", HINTS.joint(JOINT_LABELS[joint] || [joint, joint]));
+    this.invalidate();
+  }
+
+  /* ↺ / ↻: one step of the picked joint, wrapped within its stops (F5). */
+  turnJoint(dir) {
+    const focus = this.focus;
+    if (!focus || !focus.joint) return;
+    const piece = this.pieces.get(focus.id);
+    const part = getPart(piece.partId);
+    const pose = { p: piece.pose ? piece.pose.p : posesFor(part)[0].id, t: { ...((piece.pose && piece.pose.t) || {}) } };
+    const count = stopsOf(part.joints[focus.joint]).length;
+    const steps = ((((pose.t[focus.joint] || 0) + dir) % count) + count) % count;
+    if (steps) pose.t[focus.joint] = steps;
+    else delete pose.t[focus.joint];
+    this.setPose(focus.id, pose);
+  }
+
+  /* Focus mode: pieces between the lens and the focused piece hide while the
+     camera turns around it, so nothing blocks the model (slice 02, As built). */
+  hideOccluders() {
+    const target = this.sceneObjects.get(this.focus.id);
+    if (!target) return;
+    const eye = this.camera.position;
+    const far = eye.distanceTo(target.position);
+    this.sceneObjects.forEach((object, id) => {
+      const near = id !== this.focus.id && object.position.distanceTo(eye) < far * 0.75;
+      object.visible = !near;
+      if (near) this.focusHidden.add(id);
+      else this.focusHidden.delete(id);
+    });
+  }
+
+  showOccluders() {
+    this.focusHidden.forEach((id) => {
+      const object = this.sceneObjects.get(id);
+      if (object) object.visible = true;
+    });
+    this.focusHidden.clear();
+  }
+
+  /* The joint group of the focused piece, for the gold outline and the harness. */
+  focusHolder(joint) {
+    const object = this.focus && this.sceneObjects.get(this.focus.id);
+    let found = null;
+    if (object) object.traverse((node) => { if (node.userData.sqblJoint === joint) found = node; });
+    return found;
+  }
+
+  renderFocus() {
+    const focus = this.focus;
+    if (!focus) return;
+    const piece = this.pieces.get(focus.id);
+    const part = getPart(piece.partId);
+    const presets = posesFor(part);
+    const current = piece.pose ? piece.pose.p : presets[0].id;
+    this.focusPosesEl.innerHTML = presets.map((p) => `
+      <button type="button" class="sqbl-pose-card${p.id === current ? " is-active" : ""}" data-focus-pose="${p.id}" aria-label="${escapeHtml(label(p.label))}" aria-pressed="${p.id === current}">
+        <span class="sqbl-pose-pic" data-pose-pic="${p.id}" aria-hidden="true">${p.icon}</span>
+        <span class="sqbl-pose-name">${escapeHtml(p.label[0])}<br><span lang="zh-TW">${escapeHtml(p.label[1])}</span></span>
+      </button>`).join("");
+    this.focusJointsEl.innerHTML = Object.keys(part.joints).map((j) => {
+      const name = JOINT_LABELS[j] || [j, j];
+      return `<button type="button" class="sqbl-joint-chip${j === focus.joint ? " is-active" : ""}" data-focus-joint="${j}" aria-pressed="${j === focus.joint}">${escapeHtml(name[0])} <span lang="zh-TW">${escapeHtml(name[1])}</span></button>`;
+    }).join("");
+    this.focusEl.querySelectorAll("[data-focus-act=cw],[data-focus-act=ccw]").forEach((b) => { b.disabled = !focus.joint; });
+    this.hideOccluders(); /* a rebuilt scene (Undo) starts with everything shown */
+    /* Pose cards show the piece itself in each pose (F3), drawn like the rail icons. */
+    if (this.thumbs) {
+      const colorHex = getColorHex(piece.colorId);
+      this.focusPosesEl.querySelectorAll("[data-pose-pic]").forEach((el) => {
+        const pose = cleanPose(part, { p: el.dataset.posePic });
+        const key = `${part.id}:${piece.colorId}:pose:${el.dataset.posePic}`;
+        const url = this.thumbs.get(key);
+        if (url) { this.setThumb(el, key, url); return; }
+        el.dataset.thumbWant = key;
+        this.thumbs.want(key, () => (pose ? makeJointedPiece(part, colorHex, this.kit, pose) : makePieceMesh(part, colorHex, this.kit)), (object) => disposeTree(object));
+      });
+    }
+  }
+
   setMode(mode, options = {}) {
     mode = mode === "explore" ? "explore" : "build";
     if (this.mode === mode) return;
+    this.leaveFocus();
     this.mode = mode;
     this.moveId = null;
     this.snap = null;
@@ -3556,6 +3756,9 @@ export class BrickLabRuntime {
     this.placementArmed = false;
     for (const id of Array.from(this.pieces.keys())) this.removePiece(id, false);
     snapshot.forEach((piece) => this.addPiece(piece, false));
+    if (this.focus) {
+      if (this.pieces.has(this.focus.id)) { this.selectPiece(this.focus.id); this.renderFocus(); } else this.leaveFocus();
+    }
     this.syncRails();
     this.updateUndoUI();
     this.scheduleSave();
@@ -3624,6 +3827,7 @@ export class BrickLabRuntime {
         this.glowMaterial().emissiveIntensity = 0.35 + 0.2 * (1 + Math.sin(time / 420));
       }
       const moved = this.cameraMoved();
+      if (this.focus && moved) this.hideOccluders();
       /* Part icons draw into the canvas corner; the scene then covers it. */
       const icons = this.thumbs ? this.thumbs.pump() : 0;
       if (!icons && !moved && !glowing && performance.now() > this.renderUntil) return;
@@ -3632,6 +3836,9 @@ export class BrickLabRuntime {
         if (object) this.selectionBox.setFromObject(object);
         this.placeBubble();
       }
+      const holder = this.focus && this.focus.joint ? this.focusHolder(this.focus.joint) : null;
+      this.jointHelper.visible = !!holder;
+      if (holder) this.jointBox.setFromObject(holder);
       this.renderer.render(this.scene, this.camera);
       this.frames = (this.frames || 0) + 1;
       this.measureFrame(time);
@@ -3664,6 +3871,31 @@ export class BrickLabRuntime {
       preReader: this.preReader,
       selectedId: this.selectedId,
       /* The selected piece's material colours: a recolour must leave fixed parts (a window pane) alone. */
+      /* Focus mode (slice 02): the piece, the picked joint and where each joint is on screen. */
+      focus: this.focus ? (() => {
+        const joints = {};
+        const object = this.sceneObjects.get(this.focus.id);
+        const at = new THREE.Vector3();
+        if (object) object.traverse((node) => {
+          if (!node.userData.sqblJoint) return;
+          /* Aim at the limb's middle, not its pin: the pin sits on the body's edge. */
+          new THREE.Box3().setFromObject(node).getCenter(at);
+          joints[node.userData.sqblJoint] = { screen: toScreen(at.x, at.y, at.z) };
+        });
+        /* The piece's on-screen box: is it framed big, and above the dock? */
+        const box = object ? new THREE.Box3().setFromObject(object) : null;
+        let rect = null;
+        if (box) {
+          rect = { top: Infinity, bottom: -Infinity, left: Infinity, right: -Infinity };
+          for (let i = 0; i < 8; i += 1) {
+            const p = toScreen(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z);
+            if (!p) continue;
+            rect.top = Math.min(rect.top, p.y); rect.bottom = Math.max(rect.bottom, p.y);
+            rect.left = Math.min(rect.left, p.x); rect.right = Math.max(rect.right, p.x);
+          }
+        }
+        return { id: this.focus.id, joint: this.focus.joint, joints, rect, hidden: this.focusHidden.size };
+      })() : null,
       /* The selected piece's drawn joint angles in degrees (moving-parts checks). */
       poseAngles: this.selectedId && this.sceneObjects.get(this.selectedId) ? (() => {
         const out = {};

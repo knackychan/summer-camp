@@ -256,3 +256,25 @@
 .sqbl-cam-btn svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
 .sqbl-cam-btn:active{transform:scale(.94);background:#eef6ff}
 .sqbl-app.is-pre-reader .sqbl-cam{grid-template-columns:repeat(2,60px)}.sqbl-app.is-pre-reader .sqbl-cam-btn{width:60px;height:60px}
+/* Focus mode, the character editor (docs/plans/2026-10-05-brick-lab-moving-parts/ slice 02). */
+.sqbl-app.is-focus .sqbl-left-rail{display:none}.sqbl-app.is-focus .sqbl-main{grid-template-columns:minmax(0,1fr)}.sqbl-app.is-focus .sqbl-stage-wrap{grid-column:1}
+.sqbl-app.is-focus .sqbl-stage-hint{top:16px;bottom:auto;left:166px;transform:none;max-width:min(30%,300px);text-align:left;border-radius:16px}
+.sqbl-focus{position:absolute;inset:0;z-index:4;pointer-events:none}.sqbl-focus[hidden]{display:none}
+.sqbl-focus-vignette{position:absolute;inset:0;background:radial-gradient(ellipse 48% 54% at 50% 42%,transparent 55%,rgba(10,22,40,.5) 100%)}
+.sqbl-focus button{pointer-events:auto;touch-action:manipulation;font:inherit;color:var(--sqbl-ink)}
+.sqbl-focus .sqbl-focus-done{position:absolute;top:12px;left:12px;min-height:52px;padding:0 18px;border-radius:16px;border:0;background:#2e9d5b;color:#fff;font-weight:800;font-size:16px;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.sqbl-focus-turn{position:absolute;right:12px;top:42%;transform:translateY(-50%);display:grid;gap:10px}
+.sqbl-focus-turn button{width:64px;height:64px;border-radius:50%;border:3px solid #f5b301;background:#fff;font-size:30px;font-weight:900;line-height:1;padding:0;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.sqbl-focus-turn button:disabled{opacity:.45;border-color:var(--sqbl-line)}
+.sqbl-focus-dock{position:absolute;left:12px;right:148px;bottom:12px;display:grid;gap:8px}
+.sqbl-focus-joints,.sqbl-focus-poses{display:flex;gap:8px;overflow-x:auto;overscroll-behavior:contain;scrollbar-width:none;pointer-events:auto;touch-action:pan-x;padding:2px}
+.sqbl-focus-joints::-webkit-scrollbar,.sqbl-focus-poses::-webkit-scrollbar{display:none}
+.sqbl-joint-chip{flex:0 0 auto;min-height:48px;padding:0 14px;border-radius:999px;border:3px solid transparent;background:rgba(255,255,255,.93);font-weight:800;font-size:14px;box-shadow:0 3px 10px rgba(0,0,0,.15)}
+.sqbl-joint-chip.is-active{border-color:#f5b301;background:#fff6d6}
+.sqbl-pose-card{flex:0 0 auto;width:84px;min-height:92px;border-radius:16px;border:3px solid transparent;background:rgba(255,255,255,.94);display:grid;grid-template-rows:50px auto;place-items:center;gap:2px;padding:4px;box-shadow:0 3px 10px rgba(0,0,0,.15)}
+.sqbl-pose-card.is-active{border-color:var(--sqbl-blue);background:#eef6ff}
+.sqbl-pose-pic{display:grid;place-items:center;width:72px;height:50px;font-size:30px;line-height:1}.sqbl-pose-pic.has-pic{font-size:0}.sqbl-pose-pic img{width:100%;height:100%;object-fit:contain}
+.sqbl-pose-name{font-size:11px;font-weight:800;line-height:1.15;text-align:center}
+.sqbl-app.is-pre-reader .sqbl-pose-name{display:none}.sqbl-app.is-pre-reader .sqbl-pose-card{min-height:64px;grid-template-rows:56px}
+@media(max-height:640px){.sqbl-pose-card{width:76px;min-height:80px;grid-template-rows:42px auto}.sqbl-pose-pic{height:42px;width:64px}}
+.sqbl-bubble button[hidden]{display:none}
