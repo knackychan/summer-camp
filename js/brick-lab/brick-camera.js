@@ -7,7 +7,11 @@
 
    One finger slides the map, the ground under it staying under it (K1); two
    fingers pinch, twist and slide around their midpoint (K2); a mouse slides
-   with the left button, turns with the right and zooms with the wheel (K6). */
+   with the left button, turns with the right and zooms with the wheel (K6).
+
+   Focus mode (moving-parts slice 02, F1): the view may look at a point
+   `lift` above the ground; one finger then turns around it, pinch and wheel
+   zoom without sliding, and unfocus() gives the exact earlier view back. */
 
 const DEG = Math.PI / 180;
 
@@ -19,11 +23,12 @@ export function pitchFor(distance) {
   return TILT.low + (TILT.high - TILT.low) * Math.max(0, Math.min(1, t));
 }
 
-/* Camera position for a view: up `pitch` from the ground point, out along yaw. */
+/* Camera position for a view: up `pitch` from the point it looks at (on the
+   ground, or `lift` above it), out along yaw. */
 export function cameraPosition(view) {
   const pitch = pitchFor(view.distance);
   const flat = Math.cos(pitch) * view.distance;
-  return { x: view.x + Math.sin(view.yaw) * flat, y: Math.sin(pitch) * view.distance, z: view.z + Math.cos(view.yaw) * flat };
+  return { x: view.x + Math.sin(view.yaw) * flat, y: Math.sin(pitch) * view.distance + (view.lift || 0), z: view.z + Math.cos(view.yaw) * flat };
 }
 
 /* The ground point (y = 0) under a screen point, in normalised device
@@ -33,7 +38,7 @@ export function cameraPosition(view) {
 export function groundAt(view, ndcX, ndcY, fov, aspect) {
   const eye = cameraPosition(view);
   let fx = view.x - eye.x;
-  let fy = -eye.y;
+  let fy = (view.lift || 0) - eye.y;
   let fz = view.z - eye.z;
   const fl = Math.hypot(fx, fy, fz);
   fx /= fl; fy /= fl; fz /= fl;
@@ -60,12 +65,14 @@ export function groundAt(view, ndcX, ndcY, fov, aspect) {
 /* K5: the view's point stays over the island, the distance within limits. */
 export function clampView(view, limits) {
   const r = limits.reach;
-  return {
+  const out = {
     x: Math.max(-r, Math.min(r, view.x)),
     z: Math.max(-r, Math.min(r, view.z)),
     yaw: view.yaw,
     distance: Math.max(limits.minDistance, Math.min(limits.maxDistance, view.distance)),
   };
+  if (view.lift) out.lift = view.lift; /* focus mode only (F1) */
+  return out;
 }
 
 /* Move the view's point so `anchor` (a ground point) sits under the screen
@@ -95,10 +102,11 @@ export function createKidCamera({ camera, element, limits, view, reducedMotion =
   let gesture = null;
   let moved = false; /* this touch sequence slid, pinched or turned: not a tap */
   let samples = [];
+  let saved = null; /* focus mode: the view and limits to give back */
 
   const set = (next) => {
     const clamped = clampView(next, bounds);
-    if (clamped.x !== state.x || clamped.z !== state.z || clamped.yaw !== state.yaw || clamped.distance !== state.distance) dirty = true;
+    if (clamped.x !== state.x || clamped.z !== state.z || clamped.yaw !== state.yaw || clamped.distance !== state.distance || clamped.lift !== state.lift) dirty = true;
     state = clamped;
   };
   const ndc = (x, y) => {
@@ -121,13 +129,13 @@ export function createKidCamera({ camera, element, limits, view, reducedMotion =
     samples = [];
     if (list.length === 1) {
       const p = list[0];
-      gesture = { kind: p.button === 2 ? "turn" : "slide", x0: p.x, y0: p.y, active: false, anchor: ground(p.x, p.y), lastX: p.x, yaw0: state.yaw };
+      gesture = { kind: p.button === 2 || saved ? "turn" : "slide", x0: p.x, y0: p.y, active: false, anchor: ground(p.x, p.y), lastX: p.x, yaw0: state.yaw };
     } else if (list.length >= 2) {
       const [a, b] = list;
       const mx = (a.x + b.x) / 2;
       const my = (a.y + b.y) / 2;
       gesture = {
-        kind: "pair", anchor: ground(mx, my),
+        kind: "pair", anchor: saved ? null : ground(mx, my),
         span: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)), angle: Math.atan2(b.y - a.y, b.x - a.x),
         distance: state.distance, yaw: state.yaw, pinch: false, twist: false, ids: [a.id, b.id],
       };
@@ -188,6 +196,21 @@ export function createKidCamera({ camera, element, limits, view, reducedMotion =
     gesturing: () => pointers.size > 0 && moved,
 
     view: () => ({ ...state, pitch: pitchFor(state.distance) }),
+    focused: () => !!saved,
+    /* F1: look at a point in the air (a piece's middle) from `distance`, with
+       focus limits; one finger now turns around it. */
+    focusOn({ x, y, z, distance, minDistance, maxDistance }, ms = 400) {
+      if (!saved) saved = { view: { ...(tween ? tween.to : state) }, bounds: { ...bounds } };
+      bounds = { ...bounds, minDistance, maxDistance, reach: Math.max(bounds.reach, Math.abs(x), Math.abs(z)) };
+      api.animateTo({ x, z, lift: y, distance }, ms);
+    },
+    unfocus(ms = 400) {
+      if (!saved) return;
+      const back = saved;
+      saved = null;
+      bounds = back.bounds;
+      api.animateTo({ ...back.view, lift: 0 }, ms);
+    },
     setLimits(next) { bounds = { ...bounds, ...next }; set(state); },
     jumpTo(next) { stopMotion(); set({ ...state, ...next }); },
     animateTo(next, ms = 450) {
@@ -213,7 +236,8 @@ export function createKidCamera({ camera, element, limits, view, reducedMotion =
         const k = ease(t);
         const f = tween.from;
         const g = tween.to;
-        set({ x: f.x + (g.x - f.x) * k, z: f.z + (g.z - f.z) * k, yaw: f.yaw + (g.yaw - f.yaw) * k, distance: f.distance + (g.distance - f.distance) * k });
+        set({ x: f.x + (g.x - f.x) * k, z: f.z + (g.z - f.z) * k, yaw: f.yaw + (g.yaw - f.yaw) * k, distance: f.distance + (g.distance - f.distance) * k,
+          lift: (f.lift || 0) + ((g.lift || 0) - (f.lift || 0)) * k });
         if (t >= 1) tween = null;
       } else if (glide) {
         const dt = Math.min(50, time - glide.last);
@@ -229,7 +253,7 @@ export function createKidCamera({ camera, element, limits, view, reducedMotion =
       const eye = cameraPosition(state);
       camera.position.set(eye.x, eye.y, eye.z);
       camera.up.set(0, 1, 0);
-      camera.lookAt(state.x, 0, state.z);
+      camera.lookAt(state.x, state.lift || 0, state.z);
       camera.updateMatrixWorld();
       return true;
     },
@@ -288,7 +312,7 @@ export function createKidCamera({ camera, element, limits, view, reducedMotion =
     if (!api.enabled) return;
     event.preventDefault();
     stopMotion();
-    const anchor = ground(event.clientX, event.clientY);
+    const anchor = saved ? null : ground(event.clientX, event.clientY);
     set({ ...state, distance: state.distance * Math.exp(event.deltaY * 0.0012) });
     if (anchor) anchorTo(anchor, event.clientX, event.clientY);
   }

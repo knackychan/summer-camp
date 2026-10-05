@@ -60,3 +60,47 @@ test("the view stays over the island and within the distance limits (K5)", () =>
   assert.deepEqual(clampView({ x: 80, z: -90, yaw: 7, distance: 900 }, limits), { x: 36, z: -36, yaw: 7, distance: 128 });
   assert.equal(clampView({ x: 0, z: 0, yaw: 0, distance: 1 }, limits).distance, 4);
 });
+
+/* Moving parts slice 02 (F1): focus mode looks at a height, turns around it and
+   gives the exact view back. */
+import { createKidCamera } from "../js/brick-lab/brick-camera.js";
+
+function stubCamera() {
+  const element = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 500 }), addEventListener() {}, removeEventListener() {}, setPointerCapture() {}, style: {} };
+  const camera = { fov: FOV, position: { set(x, y, z) { this.at = [x, y, z]; } }, up: { set() {} }, lookAt(x, y, z) { this.look = [x, y, z]; }, updateMatrixWorld() {} };
+  return { element, camera };
+}
+
+test("a lifted view raises the eye and looks at that height", () => {
+  const base = cameraPosition(view);
+  const lifted = cameraPosition({ ...view, lift: 2 });
+  assert.ok(near(lifted.y, base.y + 2) && near(lifted.x, base.x) && near(lifted.z, base.z));
+  assert.equal(clampView({ ...view, lift: 2 }, { reach: 40, minDistance: 3, maxDistance: 300 }).lift, 2);
+  assert.equal(clampView(view, { reach: 40, minDistance: 3, maxDistance: 300 }).lift || 0, 0);
+  const g = groundAt({ ...view, lift: 2 }, 0, 0, FOV, ASPECT);
+  const eye = cameraPosition({ ...view, lift: 2 });
+  assert.ok(Math.hypot(g.x - eye.x, g.z - eye.z) > Math.hypot(view.x - eye.x, view.z - eye.z), "the centre ray passes over the lifted point");
+});
+
+test("focusOn frames a point in the air with its own limits; unfocus gives the exact view back", () => {
+  const { element, camera } = stubCamera();
+  const start = { x: 6, z: 9, yaw: 38 * DEG, distance: 100 };
+  const cam = createKidCamera({ camera: camera, element, limits: { reach: 40, minDistance: 5, maxDistance: 220 }, view: start, reducedMotion: true });
+  assert.equal(cam.focused(), false);
+  cam.focusOn({ x: 3, y: 2, z: -1, distance: 8, minDistance: 3, maxDistance: 12 });
+  cam.update();
+  const v = cam.view();
+  assert.equal(cam.focused(), true);
+  assert.deepEqual([v.x, v.z, v.lift, v.distance], [3, -1, 2, 8]);
+  assert.deepEqual(camera.look, [3, 2, -1]);
+  cam.zoom(0.1);
+  assert.equal(cam.view().distance, 3);
+  cam.turn(90);
+  cam.unfocus();
+  cam.update();
+  const back = cam.view();
+  assert.equal(cam.focused(), false);
+  assert.deepEqual([back.x, back.z, back.yaw, back.distance, back.lift || 0], [start.x, start.z, start.yaw, start.distance, 0]);
+  cam.zoom(0.01);
+  assert.equal(cam.view().distance, 5, "the old limits are back");
+});
