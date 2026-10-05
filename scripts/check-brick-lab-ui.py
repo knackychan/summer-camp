@@ -726,6 +726,102 @@ def focus_checks(page, snap, check, out):
     check('Back leaves focus, not the world', s['focus'] is None and s['world'] and not s['menu'])
 
 
+def animal_checks(page, snap, check, out):
+    """Moving parts slice 03 (docs/plans/2026-10-05-brick-lab-moving-parts/): animals pose by body type.
+    A dog takes each of its pose cards in focus mode; a rider stays on the saddle of a posed horse; the
+    crocodile opens its mouth; then every animal's pose cards, side by side, in animal-poses.png."""
+    def tap(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(150)
+
+    def selected():
+        s = snap()
+        return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+
+    def place(part, x, y):
+        page.locator(f'.sqbl-part[data-part="{part}"]').first.click()
+        page.locator('.sqbl-tray-title').click()
+        tap(x, y)
+        return selected()
+
+    def pose(pid, value):
+        return page.evaluate("([id, pose]) => SQGames.get('bricklab').pose(id, pose)", [pid, value])
+
+    def focus_in():
+        page.locator('.sqbl-app [data-action="pose"]').dispatch_event('pointerdown')
+        page.wait_for_timeout(600)
+
+    def focus_out():
+        page.locator('.sqbl-focus [data-focus-act="done"]').click()
+        page.wait_for_timeout(600)
+
+    box = page.locator('.sqbl-stage canvas').bounding_box()
+    spot = (box['x'] + box['width'] * 0.62, box['y'] + box['height'] * 0.7)
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+    pick(page, 'animals')
+    dog = place('dog', *spot)
+    check('A dog places and shows the Pose tool', dog['partId'] == 'dog' and page.locator('.sqbl-app [data-action="pose"]').is_visible())
+    focus_in()
+    cards = page.evaluate("Array.from(document.querySelectorAll('.sqbl-focus [data-focus-pose]'), (b) => b.dataset.focusPose)")
+    chips = page.evaluate("Array.from(document.querySelectorAll('.sqbl-focus [data-focus-joint]'), (b) => b.dataset.focusJoint)")
+    check(f'The dog gets the four-legged poses and chips {cards} {chips}', cards == ['stand', 'lookL', 'lookR', 'headUp', 'sniff', 'wag']
+          and chips == ['head', 'head.nod', 'tail', 'legsF', 'legsB'])
+    want = {'lookL': ('head', 45), 'lookR': ('head', -45), 'headUp': ('head.nod', -22.5), 'sniff': ('head.nod', 22.5), 'wag': ('tail', 45)}
+    took = []
+    for card in cards[1:] + ['stand']:
+        page.locator(f'.sqbl-focus [data-focus-pose="{card}"]').click()
+        page.wait_for_timeout(150)
+        angles = snap()['poseAngles']
+        joint, angle = want.get(card, ('head', 0))
+        took.append(angles.get(joint) == angle and (card != 'stand' or 'pose' not in selected()))
+    check(f'Each card poses the dog {took}', all(took))
+    page.locator('.sqbl-focus [data-focus-pose="headUp"]').click()
+    page.wait_for_timeout(300)
+    page.screenshot(path=str(out / 'animal-dog-focus.png'))
+    focus_out()
+
+    horse = place('horse', box['x'] + box['width'] * 0.38, box['y'] + box['height'] * 0.7)
+    pick(page, 'figures')
+    rider = place('fig_sitting', horse['screen']['x'], horse['screen']['y'])
+    pose(horse['id'], {'p': 'headUp'})
+    s = snap()
+    h2 = next(p for p in s['pieces'] if p['id'] == horse['id'])
+    r2 = next(p for p in s['pieces'] if p['id'] == rider['id'])
+    check('A rider stays on the saddle of a horse with its head up', h2.get('pose') == {'p': 'headUp'}
+          and abs(h2['y'] - horse['y']) < 1e-6 and abs(r2['y'] - rider['y']) < 1e-6)
+    pick(page, 'animals')
+    croc = place('crocodile', *spot)
+    pose(croc['id'], {'p': 'mouthOpen'})
+    check('The crocodile opens its mouth', snap()['poseAngles'].get('jaw') == -30)
+
+    # The sheet: every animal's pose cards (the animal itself in each pose), one row each.
+    ids = page.evaluate("import('/js/brick-lab/brick-catalog.js').then((c) => c.PARTS.filter((p) => p.category === 'animals').map((p) => p.id))")
+    rows = []
+    for part in ids:
+        placed = place(part, *spot)
+        focus_in()
+        try:
+            page.wait_for_function("Array.from(document.querySelectorAll('.sqbl-focus .sqbl-pose-pic')).every((e) => e.querySelector('img'))", timeout=8000)
+        except Exception:
+            pass
+        rows.append({'part': part, 'cards': page.evaluate("""Array.from(document.querySelectorAll('.sqbl-focus [data-focus-pose]'), (b) => ({
+          name: b.getAttribute('aria-label'), src: (b.querySelector('img') || {}).src || '' }))""")})
+        focus_out()
+        page.locator('.sqbl-app [data-action="delete"]').dispatch_event('pointerdown')
+        page.wait_for_timeout(150)
+    check(f'Every animal has pose pictures ({len(rows)} animals)', len(rows) == 20 and all(len(r['cards']) >= 2 and all(c['src'] for c in r['cards']) for r in rows))
+    html = '<body style="margin:12px;font:13px sans-serif;background:#fff"><table>' + ''.join(
+        '<tr><th style="text-align:left;padding:6px 10px">' + r['part'] + '</th>' + ''.join(
+            f'<td style="text-align:center;padding:4px 8px"><img src="{c["src"]}" style="width:168px;height:108px;object-fit:contain"><br>{c["name"]}</td>'
+            for c in r['cards']) + '</tr>' for r in rows) + '</table></body>'
+    sheet = page.context.new_page()
+    sheet.set_content(html)
+    sheet.wait_for_timeout(300)
+    sheet.screenshot(path=str(out / 'animal-poses.png'), full_page=True)
+    sheet.close()
+
+
 def seed_worlds(page, worlds):
     """Write worlds straight to this kid's storage before Brick Lab opens (grid 2: no re-settling)."""
     page.evaluate("""async (worlds) => {
@@ -1350,6 +1446,7 @@ def run(args):
                 catalog_checks(page, snap, check, out)
                 pose_checks(page, snap, check, out)
                 focus_checks(page, snap, check, out)
+                animal_checks(page, snap, check, out)
                 leave_lab(page)
 
                 # Same door as Paint: through the Games category lock, stopped only by a Papa app pause.

@@ -13,7 +13,7 @@ import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
 import { createSequencer } from "./brick-share.js";
-import { JOINT_LABELS, cleanPose, isSitting, jointAngles, posesFor, poseShape, samePose, sitOffset, sitShift, stopsOf } from "./brick-pose.js";
+import { JOINT_LABELS, cleanPose, isSitting, jointAngles, jointDef, jointKeys, posesFor, poseShape, samePose, sitOffset, sitShift, stopsOf } from "./brick-pose.js";
 import { createLanSession } from "../game-services/lan-session.js";
 import { BrickTogether } from "./brick-together.js";
 
@@ -27,7 +27,7 @@ const HINTS = {
   choose: ["Choose a piece on the left, or tap a piece to edit it.", "從左邊選一塊積木，或點一塊來修改。"],
   place: ["Tap the baseplate to put the piece down.", "點底板，把積木放上去。"],
   dragDrop: ["Let go where the piece should go.", "拖到想放的地方再放手。"],
-  focus: ["Tap an arm, a leg or the head.", "點一下手、腳或頭。"],
+  focus: ["Tap a part to move it, or pick one below.", "點一下要動的部位，或在下面選一個。"],
   joint: (name) => [`${name[0]}: turn it with ↺ ↻.`, `${name[1]}：用 ↺ ↻ 轉動。`],
   placed: ["Placed! Pick another piece, or edit this one.", "放好了！再選一塊，或修改這一塊。"],
   selected: ["Tap it again to turn it, or drag it to move it.", "再點一下可以旋轉，拖著它可以移動。"],
@@ -1351,22 +1351,36 @@ function makeJointedPiece(part, colorHex, kit, pose) {
   }
   const angles = jointAngles(part, pose);
   const half = part.height / 2;
-  ["", ...Object.keys(part.joints)].forEach((joint) => {
+  /* One holder per joint; a mirrored joint (a pair of wings, slice 03) gets a
+     second holder for its −x shapes, at the mirrored pin, turning the
+     mirrored way (y and z turns flip sign across x = 0; x turns don't). */
+  const sides = [{ joint: "", side: "" }];
+  Object.keys(part.joints).forEach((joint) => {
+    sides.push({ joint, side: "" });
+    if (part.joints[joint].mirror) sides.push({ joint, side: "~" });
+  });
+  sides.forEach(({ joint, side }) => {
     let holder = inner;
     let pivot = [0, half, 0];
     if (joint) {
       const def = part.joints[joint];
-      pivot = def.at;
+      const flip = side ? -1 : 1;
+      pivot = [def.at[0] * flip, def.at[1], def.at[2]];
       holder = new THREE.Group();
-      holder.position.set(def.at[0], def.at[1] - half, def.at[2]);
-      holder.rotation[def.axis] = angles[joint] * DEG;
+      holder.position.set(pivot[0], pivot[1] - half, pivot[2]);
+      /* A head turns, then nods within that turn. */
+      holder.rotation.order = "YXZ";
+      holder.rotation[def.axis] = angles[joint] * DEG * (side && def.axis !== "x" ? -1 : 1);
+      if (def.nod) holder.rotation[def.nod.axis] = angles[`${joint}.nod`] * DEG * (side && def.nod.axis !== "x" ? -1 : 1);
       holder.userData.sqblJoint = joint;
       inner.add(holder);
     }
+    const mirrored = joint && part.joints[joint].mirror;
     modelSlots(part).forEach((slot) => {
-      const prims = part.model.filter((p) => (p.c || "main") === slot && (p.j || "") === joint);
+      const prims = part.model.filter((p) => (p.c || "main") === slot && (p.j || "") === joint
+        && (!mirrored || ((p.at && p.at[0] < 0) ? side === "~" : side === "")));
       if (!prims.length) return;
-      const geometry = kit.geo(`${part.id}:${joint || "body"}:${slot}`, () => {
+      const geometry = kit.geo(`${part.id}:${joint || "body"}${side}:${slot}`, () => {
         const merged = mergeGeometries(prims.map((p) => primitiveGeometry(p, kit)));
         merged.translate(-pivot[0], -pivot[1], -pivot[2]);
         merged.computeBoundingBox();
@@ -3535,12 +3549,15 @@ export class BrickLabRuntime {
     if (samePose(pose, piece.pose)) return true;
     const was = isSitting(part, piece.pose);
     const now = isSitting(part, pose);
-    let point = { x: piece.x, z: piece.z };
+    /* Only sitting down or standing up moves a piece (M6, M12). It lands on
+       what is under it: a rider on its back must not lift it. */
+    let pos = { x: piece.x, y: piece.y, z: piece.z };
     if (was !== now) {
       const shift = sitShift(piece.rotation, now ? 1 : -1);
-      point = { x: piece.x + shift.dx, z: piece.z + shift.dz };
+      const floor = piece.y - shapeOf(piece).height / 2 + 0.01;
+      const under = new Map(Array.from(this.pieces).filter(([other, p]) => other !== id && p.y - shapeOf(p).height / 2 < floor));
+      pos = this.landing({ x: piece.x + shift.dx, z: piece.z + shift.dz }, poseShape(part, pose), piece.rotation, id, under).pos;
     }
-    const pos = this.landing(point, poseShape(part, pose), piece.rotation, id).pos;
     const done = this.change({ type: "pose", id, pose, x: pos.x, y: pos.y, z: pos.z });
     this.invalidate();
     return !!done;
@@ -3604,7 +3621,7 @@ export class BrickLabRuntime {
   pickJoint(joint) {
     if (!this.focus) return;
     const part = getPart(this.pieces.get(this.focus.id).partId);
-    if (!part.joints[joint]) return;
+    if (!jointDef(part, joint)) return;
     this.focus.joint = joint;
     this.renderFocus();
     this.setHint("↻", HINTS.joint(JOINT_LABELS[joint] || [joint, joint]));
@@ -3618,7 +3635,7 @@ export class BrickLabRuntime {
     const piece = this.pieces.get(focus.id);
     const part = getPart(piece.partId);
     const pose = { p: piece.pose ? piece.pose.p : posesFor(part)[0].id, t: { ...((piece.pose && piece.pose.t) || {}) } };
-    const count = stopsOf(part.joints[focus.joint]).length;
+    const count = stopsOf(jointDef(part, focus.joint)).length;
     const steps = ((((pose.t[focus.joint] || 0) + dir) % count) + count) % count;
     if (steps) pose.t[focus.joint] = steps;
     else delete pose.t[focus.joint];
@@ -3648,11 +3665,13 @@ export class BrickLabRuntime {
     this.focusHidden.clear();
   }
 
-  /* The joint group of the focused piece, for the gold outline and the harness. */
-  focusHolder(joint) {
+  /* The joint groups of the focused piece for a key ("head.nod" is the head;
+     a pair of wings is two groups), for the gold outline. */
+  focusHolders(key) {
     const object = this.focus && this.sceneObjects.get(this.focus.id);
-    let found = null;
-    if (object) object.traverse((node) => { if (node.userData.sqblJoint === joint) found = node; });
+    const joint = key.split(".")[0];
+    const found = [];
+    if (object) object.traverse((node) => { if (node.userData.sqblJoint === joint) found.push(node); });
     return found;
   }
 
@@ -3668,7 +3687,7 @@ export class BrickLabRuntime {
         <span class="sqbl-pose-pic" data-pose-pic="${p.id}" aria-hidden="true">${p.icon}</span>
         <span class="sqbl-pose-name">${escapeHtml(p.label[0])}<br><span lang="zh-TW">${escapeHtml(p.label[1])}</span></span>
       </button>`).join("");
-    this.focusJointsEl.innerHTML = Object.keys(part.joints).map((j) => {
+    this.focusJointsEl.innerHTML = jointKeys(part).map((j) => {
       const name = JOINT_LABELS[j] || [j, j];
       return `<button type="button" class="sqbl-joint-chip${j === focus.joint ? " is-active" : ""}" data-focus-joint="${j}" aria-pressed="${j === focus.joint}">${escapeHtml(name[0])} <span lang="zh-TW">${escapeHtml(name[1])}</span></button>`;
     }).join("");
@@ -3836,9 +3855,12 @@ export class BrickLabRuntime {
         if (object) this.selectionBox.setFromObject(object);
         this.placeBubble();
       }
-      const holder = this.focus && this.focus.joint ? this.focusHolder(this.focus.joint) : null;
-      this.jointHelper.visible = !!holder;
-      if (holder) this.jointBox.setFromObject(holder);
+      const holders = this.focus && this.focus.joint ? this.focusHolders(this.focus.joint) : [];
+      this.jointHelper.visible = holders.length > 0;
+      if (holders.length) {
+        this.jointBox.makeEmpty();
+        holders.forEach((node) => this.jointBox.expandByObject(node));
+      }
       this.renderer.render(this.scene, this.camera);
       this.frames = (this.frames || 0) + 1;
       this.measureFrame(time);
@@ -3902,7 +3924,9 @@ export class BrickLabRuntime {
         const joints = getPart(this.pieces.get(this.selectedId).partId).joints || {};
         this.sceneObjects.get(this.selectedId).traverse((node) => {
           const joint = node.userData.sqblJoint;
-          if (joint && joints[joint]) out[joint] = Math.round(node.rotation[joints[joint].axis] / DEG * 10) / 10;
+          if (!joint || !joints[joint] || joint in out) return;
+          out[joint] = Math.round(node.rotation[joints[joint].axis] / DEG * 10) / 10;
+          if (joints[joint].nod) out[`${joint}.nod`] = Math.round(node.rotation[joints[joint].nod.axis] / DEG * 10) / 10;
         });
         return out;
       })() : {},

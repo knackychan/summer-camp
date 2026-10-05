@@ -2,7 +2,29 @@
 
 **Design:** [design.md](design.md) M4, M5 (focus mode), M6. **Depends on:** 02.
 
-The detailed task list is written when this slice starts. Each animal is hand-drawn in `brick-parts.js`, so its joint tags and pivots are read from its own primitives then.
+**Implemented 2026-10-05**, inline, tests first for the pose data. As built, against the text below:
+- **Body types:** the turtle joins `quad` (no `turtle` body). Lists: `quad`, `dragon`, `bird`, `jaw`, `fish`, `frog`.
+- **Head up and Sniff:** a joint may carry `nod` (a second turn on the same pin), keyed `"head.nod"` with its own chip, Nod 點頭. The holder turns `YXZ`, so the head turns first and nods within that turn.
+- **"Tail up" became "Wag tail 搖尾巴"** (the tail turns sideways, 45°). A hanging tail (cow, horse) swings on z; a raised one (dog, cat) on y.
+- **Animals keep only the joints they really have:**
+  - The pig's face is drawn on its body: no head, so Stand and Wag tail only.
+  - The chicken and owl have no wings, so the owl turns its whole face, as owls do.
+  - The shark has no jaw; the monkey's arms stay put.
+  - Every animal still has at least two poses.
+- **Wings** are `mirror: true`: the −x shapes get a second holder at the mirrored pin, turning the mirrored way.
+- **A bug found here and fixed:** posing re-landed the piece, so a horse with a rider jumped on top of its rider. A pose now never moves a piece. Sitting down or standing up lands it on what is under it only.
+- **The focus hint** is now general: "Tap a part to move it, or pick one below. 點一下要動的部位，或在下面選一個。"
+
+Verified:
+- `check.mjs` green: pose tests 14, plus the A3 gate (no animal without joints).
+- `check-brick-lab-ui.py` 235/235, including six animal checks:
+  - each dog card turns the right joint
+  - a rider stays on a posed horse
+  - the crocodile's mouth opens
+  - all 20 animals have pose pictures
+- `animal-poses.png` (every animal in each of its poses) and `animal-dog-focus.png` looked at: nothing comes loose.
+
+Pending: Papa's look.
 
 ## What changes
 All 20 animals get joints and a `body`, so they pose in focus mode exactly like a minifigure. Their pose cards and joint chips come from their body type.
