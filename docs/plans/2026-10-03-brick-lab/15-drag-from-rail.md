@@ -17,4 +17,6 @@
 
 **DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; `check-android8-ui.py` with Chrome 138 passes; tried with a finger on a real tablet (touch scroll vs. drag).
 
-**Verified 2026-10-04:** `check.mjs` green; `check-brick-lab-ui.py` 82/82 (Edge headless, SwiftShader, mouse pointer), no page or console errors. Not yet run: `check-android8-ui.py` with Chrome 138, and real touch.
+**Verified 2026-10-04:** `check.mjs` green; `check-brick-lab-ui.py` 82/82 (Edge headless, SwiftShader, mouse pointer), no page or console errors. Not yet: real touch on a tablet.
+
+**Android 8 check 2026-10-05:** `check-android8-ui.py` with Chrome for Testing 138.0.7204.183 passes in all four modes (WebGL2, WebGL1, no GL then retry, offline WebGL1); Brick Lab draws in each with no GL or page errors.

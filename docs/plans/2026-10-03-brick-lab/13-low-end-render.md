@@ -32,4 +32,6 @@ The 4,096 instanced baseplate studs were ~147k of the reduced tier's 179k triang
 
 **DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; `check-android8-ui.py` with Chrome 138 passes; a frame-rate reading on a real Android 8 tablet.
 
-**Verified 2026-10-04:** `check.mjs` green; `check-brick-lab-ui.py` 75/75 (Edge headless, SwiftShader), no page or console errors. Not yet run: `check-android8-ui.py` with Chrome 138, and the real-tablet reading.
+**Verified 2026-10-04:** `check.mjs` green; `check-brick-lab-ui.py` 75/75 (Edge headless, SwiftShader), no page or console errors. Not yet: the real-tablet frame-rate reading.
+
+**Android 8 check 2026-10-05:** `check-android8-ui.py` with Chrome for Testing 138.0.7204.183 passes in all four modes (WebGL2, WebGL1, no GL then retry, offline WebGL1); Brick Lab draws in each with no GL or page errors.

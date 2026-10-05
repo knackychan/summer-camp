@@ -19,4 +19,6 @@ The reduced tier (slice 13) is chosen once, from Android version, memory and Web
 
 **DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; `check-android8-ui.py` with Chrome 138 passes.
 
-**Verified 2026-10-04:** `check.mjs` green; `check-brick-lab-ui.py` 78/78 (Edge headless, SwiftShader), no page or console errors. Not yet run: `check-android8-ui.py` with Chrome 138.
+**Verified 2026-10-04:** `check.mjs` green; `check-brick-lab-ui.py` 78/78 (Edge headless, SwiftShader), no page or console errors. Nothing left from DONE WHEN.
+
+**Android 8 check 2026-10-05:** `check-android8-ui.py` with Chrome for Testing 138.0.7204.183 passes in all four modes (WebGL2, WebGL1, no GL then retry, offline WebGL1); Brick Lab draws in each with no GL or page errors.

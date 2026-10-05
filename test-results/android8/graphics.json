@@ -20,7 +20,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl2",
-          "draws": 147,
+          "draws": 108,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -30,7 +30,7 @@
         {
           "id": "bricklab",
           "kind": "webgl2",
-          "draws": 35,
+          "draws": 42,
           "width": 820,
           "cssWidth": 820,
           "antialias": false,
@@ -65,7 +65,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 154,
+          "draws": 102,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -75,7 +75,7 @@
         {
           "id": "bricklab",
           "kind": "webgl",
-          "draws": 25,
+          "draws": 30,
           "width": 820,
           "cssWidth": 820,
           "antialias": false,
@@ -110,7 +110,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 105,
+          "draws": 91,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -145,7 +145,7 @@
         {
           "id": "solar",
           "kind": "webgl",
-          "draws": 312,
+          "draws": 390,
           "width": 1004,
           "cssWidth": 1004,
           "antialias": false,
@@ -155,7 +155,7 @@
         {
           "id": "monster-truck",
           "kind": "webgl",
-          "draws": 128,
+          "draws": 151,
           "width": 1000,
           "cssWidth": 1000,
           "antialias": false,
@@ -165,7 +165,7 @@
         {
           "id": "bricklab",
           "kind": "webgl",
-          "draws": 25,
+          "draws": 30,
           "width": 820,
           "cssWidth": 820,
           "antialias": false,
