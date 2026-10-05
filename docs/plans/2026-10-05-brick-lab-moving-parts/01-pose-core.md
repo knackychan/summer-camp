@@ -10,6 +10,17 @@
 
 **Design:** [design.md](design.md) M1–M3, M6, M9, M12 and the M11 gates. **Depends on:** nothing.
 
+**Implemented 2026-10-05** (commits `fdff736` … this one). As built, two changes from the steps below:
+- The harness picks rail tiles with `.first`, because a part also shows in the Recent row.
+- The harness shoots `pose-wave.png` and `pose-sit-chair.png` as close-ups: three wheel steps on the piece, then back to the home view.
+
+Verified:
+- `check.mjs` green, including `brick-pose.test.mjs` (10) and `brick-share.test.mjs` (14).
+- `check-brick-lab-ui.py` 215/215, no page or console errors.
+- Close-ups looked at: the right arm is raised for Wave; the seated figure sits on the chair seat, legs over the front, neither sunk nor floating.
+
+Pending: Papa's look, which comes with slice 02, since there is no button yet.
+
 ## Files
 - Create: `js/brick-lab/brick-pose.js`. Pure: presets, `cleanPose`, `jointAngles`, `isSitting`, `poseShape`, `sitShift`, `sitOffset`, `samePose`, `stopsOf`, `posesFor`.
 - Create: `scripts/brick-pose.test.mjs`
@@ -818,7 +829,7 @@ def pose_checks(page, snap, check, out):
     page.locator('.sqbl-app [data-action="home-view"]').click()
     page.wait_for_timeout(900)
     pick(page, 'figures')
-    page.locator('.sqbl-part[data-part="fig_boy"]').click()
+    page.locator('.sqbl-part[data-part="fig_boy"]').first.click()
     page.locator('.sqbl-tray-title').click()
     tap(box['x'] + box['width'] * 0.35, box['y'] + box['height'] * 0.62)
     boy = selected()
@@ -832,12 +843,12 @@ def pose_checks(page, snap, check, out):
     check('Undo takes the pose back', 'pose' not in next(p for p in snap()['pieces'] if p['id'] == boy['id']))
 
     pick(page, 'home')
-    page.locator('.sqbl-part[data-part="chair"]').click()
+    page.locator('.sqbl-part[data-part="chair"]').first.click()
     page.locator('.sqbl-tray-title').click()
     tap(box['x'] + box['width'] * 0.6, box['y'] + box['height'] * 0.62)
     chair = selected()
     pick(page, 'figures')
-    page.locator('.sqbl-part[data-part="fig_boy"]').click()
+    page.locator('.sqbl-part[data-part="fig_boy"]').first.click()
     page.locator('.sqbl-tray-title').click()
     tap(chair['screen']['x'], chair['screen']['y'])
     sitter = selected()

@@ -555,6 +555,71 @@ class SheetDone(Exception):
     """--sheet ran its own checks: skip the main suite."""
 
 
+def pose_checks(page, snap, check, out):
+    """Moving parts slice 01 (docs/plans/2026-10-05-brick-lab-moving-parts/): a posed minifig keeps its
+    spot and turns its arm; Sit lands on a chair's seat and standing up returns to the 2×1 spot; Undo
+    takes a pose back; a pose is saved with the world."""
+    def tap(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(150)
+
+    def selected():
+        s = snap()
+        return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+
+    def pose(pid, value):
+        return page.evaluate("([id, pose]) => SQGames.get('bricklab').pose(id, pose)", [pid, value])
+
+    def close_up(name):
+        # Zoom in on the selected piece (the wheel keeps the point under the cursor), shoot, then back home.
+        p = selected()['screen']
+        page.mouse.move(p['x'], p['y'])
+        for _ in range(3):
+            page.mouse.wheel(0, -380)
+            page.wait_for_timeout(60)
+        page.wait_for_timeout(300)
+        page.screenshot(path=str(out / name))
+        page.locator('.sqbl-app [data-action="home-view"]').click()
+        page.wait_for_timeout(900)
+
+    box = page.locator('.sqbl-stage canvas').bounding_box()
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+    pick(page, 'figures')
+    page.locator('.sqbl-part[data-part="fig_boy"]').first.click()
+    page.locator('.sqbl-tray-title').click()
+    tap(box['x'] + box['width'] * 0.35, box['y'] + box['height'] * 0.62)
+    boy = selected()
+    check('A minifig places', boy['partId'] == 'fig_boy')
+    check('Wave turns the right arm up and keeps the spot', pose(boy['id'], {'p': 'wave'})
+          and selected()['pose'] == {'p': 'wave'} and snap()['poseAngles'].get('armR') == -135
+          and (selected()['x'], selected()['y'], selected()['z']) == (boy['x'], boy['y'], boy['z']))
+    close_up('pose-wave.png')
+    page.locator('.sqbl-app [data-action="undo"]').dispatch_event('pointerdown')
+    page.wait_for_timeout(200)
+    check('Undo takes the pose back', 'pose' not in next(p for p in snap()['pieces'] if p['id'] == boy['id']))
+
+    pick(page, 'home')
+    page.locator('.sqbl-part[data-part="chair"]').first.click()
+    page.locator('.sqbl-tray-title').click()
+    tap(box['x'] + box['width'] * 0.6, box['y'] + box['height'] * 0.62)
+    chair = selected()
+    pick(page, 'figures')
+    page.locator('.sqbl-part[data-part="fig_boy"]').first.click()
+    page.locator('.sqbl-tray-title').click()
+    tap(chair['screen']['x'], chair['screen']['y'])
+    sitter = selected()
+    check('Sit lands the seat on the chair\'s top', pose(sitter['id'], {'p': 'sit'}) and abs(
+          selected()['y'] - (chair['y'] - 1.1 + 1.0 + 1.6)) < 0.02 and snap()['poseAngles'].get('legL') == -90)
+    close_up('pose-sit-chair.png')
+    check('Standing up returns to the 2×1 spot', pose(sitter['id'], None)
+          and abs(selected()['z'] - sitter['z']) < 1e-6 and abs(selected()['x'] - sitter['x']) < 1e-6)
+    pose(sitter['id'], {'p': 'sit'})
+    page.wait_for_timeout(400)  # the save runs 180 ms after a change
+    saved = next((p for p in world_build(page, 'luis', 'pieces') if p['id'] == sitter['id']), None)
+    check('A pose is saved with the world', saved is not None and saved.get('pose') == {'p': 'sit'})
+
+
 def seed_worlds(page, worlds):
     """Write worlds straight to this kid's storage before Brick Lab opens (grid 2: no re-settling)."""
     page.evaluate("""async (worlds) => {
@@ -1177,6 +1242,7 @@ def run(args):
                 lab_slices_09_11(page, snap, check, out)
                 lab_more_parts(page, snap, check, out)
                 catalog_checks(page, snap, check, out)
+                pose_checks(page, snap, check, out)
                 leave_lab(page)
 
                 # Same door as Paint: through the Games category lock, stopped only by a Papa app pause.
