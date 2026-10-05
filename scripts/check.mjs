@@ -1095,6 +1095,8 @@ try {
 
 // Brick Lab catalog (docs/plans/2026-10-03-brick-lab/ slices 09–11): unique part ids, every
 // part and category bilingual, no empty or unknown category, rail ends on whole studs.
+// Size limits (2026-10-05-brick-lab-more-parts D5): footprint whole studs, at most 6 a side;
+// height above 0 and at most 8 units. Every fixed-colour shape is one some part uses.
 try {
   var brickMod = await import(new URL("js/brick-lab/brick-catalog.js", root));
   var seenParts = new Set();
@@ -1106,6 +1108,10 @@ try {
     assertPair(part.label, "bricklab.part." + part.id);
     if (!/[\u3400-\u9fff]/.test(part.label[1])) fail("bricklab", part.id + " label needs 中文");
     if (!brickCats.has(part.category)) fail("bricklab", part.id + " has unknown category " + part.category);
+    [part.width, part.depth].forEach(function (side) {
+      if (!Number.isInteger(side) || side < 1 || side > 6) fail("bricklab", part.id + " footprint must be 1–6 whole studs a side");
+    });
+    if (!(part.height > 0 && part.height <= 8)) fail("bricklab", part.id + " height must be above 0 and at most 8");
     if (part.shape === "rail") {
       (part.connectors || []).forEach(function (c) {
         if (!Number.isInteger(c.x) || !Number.isInteger(c.z) || [0, 90, 180, 270].indexOf(c.dir) < 0) {
@@ -1119,6 +1125,9 @@ try {
     if (!brickMod.PARTS.some(function (p) { return p.category === id; })) fail("bricklab", "category " + id + " has no parts");
   });
   Object.keys(brickMod.COLORS).forEach(function (id) { assertPair(brickMod.COLOR_NAMES[id], "bricklab.color." + id); });
+  brickMod.FIXED_COLOR_SHAPES.forEach(function (shape) {
+    if (!brickMod.PARTS.some(function (p) { return p.shape === shape; })) fail("bricklab", "fixed-colour shape " + shape + " is used by no part");
+  });
 } catch (error) {
   fail("bricklab catalog load", error.message);
 }

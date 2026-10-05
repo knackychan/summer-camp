@@ -26,4 +26,13 @@
 - `scripts/brick-share.test.mjs` / `brick-together.test.mjs` — a guest with another `cat` is refused with `proto`; the same `cat` joins.
 - `scripts/check-brick-lab-ui.py` — `NEW_PARTS` gains the 8 ids: each arms and builds in < 50 ms and has a real-part icon; a brick dropped on a wheel lands on top of the wheel, and one dropped on a tree lands on top of the tree (D3, amended); a brick dropped on `plate_round_2x2` stacks on it; old build from before this slice loads with the same piece count and positions.
 
-**DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; the share/together tests pass; 34 parts in the rail, Plates shows 9, Slopes 7, Wheels 3.
+**DONE WHEN:** `node scripts/check.mjs` green; `check-brick-lab-ui.py` passes; the share/together tests pass; 34 parts in the rail, Plates shows 9, Slopes 5, Wheels 3. *(Was "Slopes 7": a miscount — the corner slope and eave come in slice 02.)*
+
+## As built (2026-10-05)
+- Shipped as planned. `CATALOG_ID` is FNV-1a over `part ids, colour ids` joined by commas, 8 hex digits; `PROTO` 3; a hello with another `cat` gets the existing `refuse {why: "proto"}`.
+- `landing()` lost its wheel / tree / flower skip; nothing else in placement changed. Trees and flowers still plant at ground level.
+- The slope builder draws a studless slope as one slant from the front lip to the back edge (the 1×1 cheese slope); `slope_2x2` is unchanged. New `makeRoundPlatePiece` (lathe disc, 32 sides, 2×2 studs).
+- `wheel_large`: `wheelScale` 1.7 (1.56 across, inside its 1×2 footprint and 1.6 height). `peak_1x2` needed no builder change.
+- `check.mjs` gate: footprint 1–6 whole studs, height (0, 8], every `FIXED_COLOR_SHAPES` entry used by a part.
+- Tests: `brick-together.test.mjs` refuses a hello with the same `PROTO` and another `cat`, and the family that joined with this catalog is all in the roster; `check-brick-lab-ui.py` `lab_more_parts_01`: the 8 parts arm in < 50 ms with real-part icons, Plates 9 / Slopes 5 / Wheels 3, a 1×1 brick dropped on a starter tree, on `wheel_large` and on `plate_round_2x2` lands on top of each, Undo restores the world. 139/139 browser checks; rail shots in `.tmp/brick-lab-ui/more-parts-*.png`, stacking shots `stack-*.png`.
+- `sw.js` `CACHE_NAME` → `summer-quest-v170-brick-parts`; `dist/android-web` rebuilt so the payload check matches.

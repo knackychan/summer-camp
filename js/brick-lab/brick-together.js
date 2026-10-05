@@ -9,12 +9,13 @@
    the host's numbered change comes back. Nobody confirms anything.
 
    Messages (one JSON object per line):
-     guest → host  hello {proto, kid} · req {id, op} · resync · bye
+     guest → host  hello {proto, cat, kid} · req {id, op} · resync · bye
      host → guest  welcome {world, seq, roster, name, host, more} · world {pieces} · refuse {why}
                    apply {seq, by, req, op} · reject {req, why} · peers {roster} · bye
    A line is at most 64 KB, so a big world comes as a welcome plus `more`
    world lines, sent back to back; the guest loads it once they are all in. */
 import { PROTO, createClient, createUndo } from "./brick-share.js";
+import { CATALOG_ID } from "./brick-catalog.js";
 import { LINE_MAX } from "../game-services/lan-session.js";
 
 export const GAME = "bricklab";
@@ -103,7 +104,8 @@ export class BrickTogether {
   }
 
   hostHello(peer, message) {
-    if (Number(message.proto) !== PROTO) {
+    /* Another app version, or the same protocol with other parts (more-parts D6). */
+    if (Number(message.proto) !== PROTO || message.cat !== CATALOG_ID) {
       this.lan.send(peer, { t: "refuse", why: "proto" });
       setTimeout(() => this.lan.close(peer), 200);
       this.lab.versionRefused();
@@ -215,7 +217,7 @@ export class BrickTogether {
     this.hostInfo = { kid: service.kid, world: service.world, name: service.world, peer };
     this.pending.clear();
     this.undo.clear();
-    this.lan.send(peer, { t: "hello", proto: PROTO, kid: this.kid });
+    this.lan.send(peer, { t: "hello", proto: PROTO, cat: CATALOG_ID, kid: this.kid });
     return true;
   }
 
@@ -259,7 +261,7 @@ export class BrickTogether {
     this.lost = null;
     this.hostInfo.peer = peer;
     /* The welcome brings a fresh copy; own undo stays (its checks still hold). */
-    this.lan.send(peer, { t: "hello", proto: PROTO, kid: this.kid });
+    this.lan.send(peer, { t: "hello", proto: PROTO, cat: CATALOG_ID, kid: this.kid });
   }
 
   giveUp() {

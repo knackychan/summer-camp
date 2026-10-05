@@ -236,6 +236,79 @@ def lab_slices_09_11(page, snap, check, out):
     page.screenshot(path=str(out / 'library.png'))
 
 
+MORE_PARTS_01 = ('plate_1x1', 'plate_1x3', 'plate_4x4', 'plate_round_2x2', 'slope_1x1', 'slope_1x2', 'peak_1x2', 'wheel_large')
+
+
+def lab_more_parts_01(page, snap, check, out):
+    """More-parts plan slice 01 (docs/plans/2026-10-05-brick-lab-more-parts/): eight parts, and
+    anything stacks on anything (D3, amended): a brick lands on top of a tree, a wheel, a round plate."""
+    def tap(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(150)
+
+    def arm(part):
+        for c in ('bricks', 'plates', 'slopes', 'wheels'):
+            pick(page, c)
+            if page.locator(f'.sqbl-part[data-part="{part}"]').count():
+                break
+        page.locator(f'.sqbl-part[data-part="{part}"]').first.scroll_into_view_if_needed()
+        return page.evaluate(f"(() => {{ const t = performance.now(); document.querySelector('.sqbl-part[data-part=\"{part}\"]').click(); return performance.now() - t; }})()")
+
+    def undo():
+        page.locator('.sqbl-app [data-action="undo"]').dispatch_event('pointerdown')
+        page.wait_for_timeout(150)
+
+    pieces0 = len(snap()['pieces'])
+    box = page.locator('.sqbl-stage canvas').bounding_box()
+    slow, plain = [], []
+    for part in MORE_PARTS_01:
+        ms = arm(part)
+        page.mouse.move(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.55)
+        page.wait_for_timeout(900)
+        if ms >= 50:
+            slow.append((part, round(ms, 1)))
+        if not any(k.startswith(part + ':') for k in snap()['tray']['icons']):
+            plain.append(part)
+    check(f'More-parts 01: each new part arms and builds in < 50 ms {slow}', not slow)
+    check(f'More-parts 01: each new part has a real-part icon {plain}', not plain)
+    counts = {}
+    for c in ('plates', 'slopes', 'wheels'):
+        pick(page, c)
+        counts[c] = snap()['tray']['count']
+        page.wait_for_timeout(900)
+        page.screenshot(path=str(out / f'more-parts-{c}.png'), clip=page.locator('.sqbl-left-rail').bounding_box())
+    check(f'More-parts 01: Plates 9, Slopes 5, Wheels 3 {counts}', counts == {'plates': 9, 'slopes': 5, 'wheels': 3})
+
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+
+    def stack_on(base):
+        """Arm a 1×1 brick and tap the base piece: the new brick's y (it is selected)."""
+        arm('brick_1x1')
+        tap(base['screen']['x'], base['screen']['y'])
+        s = snap()
+        return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+
+    s = snap()
+    tree = next(p for p in s['pieces'] if p['partId'] == 'tree_small' and (p['x'], p['z']) == (-6, 4))
+    on_tree = stack_on(tree)
+    check('A brick dropped on a tree lands on top of it', abs(on_tree['y'] - (tree['y'] + 2 + 0.6)) < 0.01)
+    undo()
+
+    for part, half in (('wheel_large', 0.8), ('plate_round_2x2', 0.2)):
+        arm(part)
+        tap(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.62)
+        s = snap()
+        base = next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+        check(f'{part} places on the plate', base['partId'] == part)
+        on_top = stack_on(base)
+        check(f'A brick dropped on {part} lands on top of it', abs(on_top['y'] - (base['y'] + half + 0.6)) < 0.01)
+        page.screenshot(path=str(out / f'stack-{part}.png'))
+        undo()
+        undo()
+    check('Undo leaves the world as it was', len(snap()['pieces']) == pieces0)
+
+
 def lab_together(browser, base, report, console, check, out):
     ctx = RECOVERY['context_for'](browser, seed=RECOVERY['saved_fixture']('hub'))
     pg = ctx.new_page()
@@ -693,6 +766,7 @@ def run(args):
                 enter_world(page)
                 check('The world comes back as it was left', len(snap()['pieces']) == STARTER + 1)
                 lab_slices_09_11(page, snap, check, out)
+                lab_more_parts_01(page, snap, check, out)
                 leave_lab(page)
 
                 # Same door as Paint: through the Games category lock, stopped only by a Papa app pause.

@@ -76,16 +76,25 @@ export const PARTS = Object.freeze([
   rect("brick_2x4", ["Brick 2×4", "積木 2×4"], "2×4", 2, 4),
   rect("brick_2x5", ["Brick 2×5", "積木 2×5"], "2×5", 2, 5),
   rect("brick_2x6", ["Brick 2×6", "積木 2×6"], "2×6", 2, 6),
+  rect("plate_1x1", ["Plate 1×1", "薄板 1×1"], "1×1", 1, 1, PLATE_HEIGHT, "plates"),
   rect("plate_1x2", ["Plate 1×2", "薄板 1×2"], "1×2", 1, 2, PLATE_HEIGHT, "plates"),
+  rect("plate_1x3", ["Plate 1×3", "薄板 1×3"], "1×3", 1, 3, PLATE_HEIGHT, "plates"),
   rect("plate_1x4", ["Plate 1×4", "薄板 1×4"], "1×4", 1, 4, PLATE_HEIGHT, "plates"),
   rect("plate_2x2", ["Plate 2×2", "薄板 2×2"], "2×2", 2, 2, PLATE_HEIGHT, "plates"),
   rect("plate_2x4", ["Plate 2×4", "薄板 2×4"], "2×4", 2, 4, PLATE_HEIGHT, "plates"),
   rect("plate_2x6", ["Plate 2×6", "薄板 2×6"], "2×6", 2, 6, PLATE_HEIGHT, "plates"),
+  rect("plate_4x4", ["Plate 4×4", "薄板 4×4"], "4×4", 4, 4, PLATE_HEIGHT, "plates"),
+  { id: "plate_round_2x2", label: ["Round Plate 2×2", "圓薄板 2×2"], size: "", category: "plates", shape: "roundPlate", width: 2, depth: 2, height: PLATE_HEIGHT, studs: true },
   { id: "slope_2x2", label: ["Slope 2×2", "斜坡 2×2"], size: "", category: "slopes", shape: "slope", width: 2, depth: 2, height: BRICK_HEIGHT, studs: true },
   /* Two 45° faces meeting at a ridge: the top of a roof (slice 09). */
+  /* Small slopes (more-parts slice 01): the 1×1 "cheese" slope is studless. */
+  { id: "slope_1x1", label: ["Slope 1×1", "斜坡 1×1"], size: "", category: "slopes", shape: "slope", width: 1, depth: 1, height: 0.8, studs: false },
+  { id: "slope_1x2", label: ["Slope 1×2", "斜坡 1×2"], size: "", category: "slopes", shape: "slope", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
   { id: "slope_45", label: ["Roof Peak 45°", "屋脊 45°"], size: "", category: "slopes", shape: "peak", width: 2, depth: 2, height: BRICK_HEIGHT, studs: false },
+  { id: "peak_1x2", label: ["Ridge Cap", "小屋脊"], size: "", category: "slopes", shape: "peak", width: 1, depth: 2, height: BRICK_HEIGHT, studs: false },
   { id: "wheel_small", label: ["Wheel", "輪子"], size: "", category: "wheels", shape: "wheel", width: 1, depth: 1, height: 0.68, studs: false },
   { id: "wheel_med", label: ["Medium Wheel", "中輪子"], size: "", category: "wheels", shape: "wheel", width: 1, depth: 1, height: 1.2, studs: false, wheelScale: 1.35 },
+  { id: "wheel_large", label: ["Large Wheel", "大輪子"], size: "", category: "wheels", shape: "wheel", width: 1, depth: 2, height: 1.6, studs: false, wheelScale: 1.7 },
   rail("rail_straight", ["Straight Rail", "直軌道"], 2, 6,
     [{ type: "line", from: [0, -3], to: [0, 3] }],
     [[0, 3, 0], [0, -3, 180]]),
@@ -124,6 +133,19 @@ export const CATEGORIES = Object.freeze([
 export function partDims(part) {
   return `${part.width}×${part.depth}`;
 }
+
+/* A short fingerprint of the catalog (more-parts D6): every part id, then
+   every colour id, in order, FNV-1a hashed. Two tablets share a world only
+   when theirs match, so a new part never reaches an app that can't draw it. */
+export const CATALOG_ID = (() => {
+  let h = 0x811c9dc5;
+  const text = PARTS.map((part) => part.id).concat(Object.keys(COLORS)).join(",");
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+})();
 
 export function getPart(partId) {
   return PARTS.find((part) => part.id === partId) || PARTS[0];

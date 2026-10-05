@@ -15,7 +15,7 @@
    inverse op with `expect`; if the piece has changed since (a sibling moved
    it), the op is refused instead of undoing someone else's work. */
 
-export const PROTO = 2; /* 2: a big world comes in several lines */
+export const PROTO = 3; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint */
 const ID_MAX = 64;
 const Y_MAX = 200;
 const FIELDS = ["partId", "colorId", "x", "y", "z", "rotation"];

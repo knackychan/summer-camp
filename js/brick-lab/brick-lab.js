@@ -324,7 +324,8 @@ function makeRectPiece(part, colorHex, kit) {
 }
 
 /* Like the classic 2×2 45° slope: a flat back row with studs, a slanted face
-   down to a small front lip. */
+   down to a small front lip. A studless slope (the 1×1 "cheese") slants all
+   the way to its back edge. */
 function makeSlopePiece(part, colorHex, kit) {
   const geometry = kit.geo(part.id, () => {
     const bevel = 0.03;
@@ -336,8 +337,12 @@ function makeSlopePiece(part, colorHex, kit) {
     shape.moveTo(hd, -hh);
     shape.lineTo(-hd, -hh);
     shape.lineTo(-hd, -hh + lip);
-    shape.lineTo(0, hh);
-    shape.lineTo(hd, hh);
+    if (part.studs) {
+      shape.lineTo(part.depth / 2 - 1, hh);
+      shape.lineTo(hd, hh);
+    } else {
+      shape.lineTo(hd, hh);
+    }
     shape.lineTo(hd, -hh);
     const length = part.width - SEAM * 2 - bevel * 2;
     const body = new THREE.ExtrudeGeometry(shape, {
@@ -346,7 +351,27 @@ function makeSlopePiece(part, colorHex, kit) {
     body.translate(0, 0, -length / 2);
     body.rotateY(Math.PI / 2);
     const list = [body];
-    addStuds(list, studRow(part.width), [-part.depth / 2 + 0.5], part.height / 2);
+    if (part.studs) addStuds(list, studRow(part.width), [-part.depth / 2 + 0.5], part.height / 2);
+    return mergeGeometries(list);
+  });
+  const group = new THREE.Group();
+  group.add(mesh(geometry, kit.mat(colorHex)));
+  return group;
+}
+
+/* Round plate 2×2 (more-parts slice 01): a disc with chamfered rims and a
+   2×2 grid of studs. */
+function makeRoundPlatePiece(part, colorHex, kit) {
+  const geometry = kit.geo(part.id, () => {
+    const r = Math.min(part.width, part.depth) / 2 - SEAM;
+    const hh = part.height / 2;
+    const c = 0.025;
+    /* Lathe profiles run bottom → top so the faces point outwards. */
+    const disc = new THREE.LatheGeometry([
+      [0, -hh], [r - c, -hh], [r, -hh + c], [r, hh - c], [r - c, hh], [0, hh],
+    ].map(([x, y]) => new THREE.Vector2(x, y)), 32);
+    const list = [disc];
+    if (part.studs) addStuds(list, studRow(part.width), studRow(part.depth), hh);
     return mergeGeometries(list);
   });
   const group = new THREE.Group();
@@ -573,6 +598,7 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "slope") return makeSlopePiece(part, colorHex, kit);
   if (part.shape === "peak") return makePeakPiece(part, colorHex, kit);
   if (part.shape === "axle") return makeAxlePiece(part, colorHex, kit);
+  if (part.shape === "roundPlate") return makeRoundPlatePiece(part, colorHex, kit);
   return makeRectPiece(part, colorHex, kit);
 }
 
@@ -2142,11 +2168,12 @@ export class BrickLabRuntime {
     /* Trees and flowers plug in at ground level. */
     if (part.shape === "tree" || part.shape === "flower") return { pos: { x, y: part.height / 2, z }, join: null, blocked: false };
     const probe = pieceBounds({ x, y: 0, z, rotation }, part);
+    /* Anything stacks on anything, wheels, trees and flowers included
+       (more-parts D3, amended 2026-10-05). */
     let top = 0;
     for (const [id, instance] of pool) {
       if (id === ignoreId) continue;
       const otherPart = getPart(instance.partId);
-      if (otherPart.shape === "wheel" || otherPart.shape === "tree" || otherPart.shape === "flower") continue;
       const other = pieceBounds(instance, otherPart);
       if (overlap2D(probe, other)) top = Math.max(top, other.maxY);
     }

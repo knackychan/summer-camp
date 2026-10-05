@@ -192,6 +192,21 @@ test("a different app version is refused cleanly", async () => {
   assert.deepEqual(got, [{ t: "refuse", why: "proto" }]);
 });
 
+test("the same app version with other parts is refused (catalog fingerprint)", async () => {
+  const { wifi, host } = await family();
+  const other = createLanSession(wifi.device());
+  const got = [];
+  other.onMessage((_, m) => got.push(m));
+  const name = Array.from(wifi.services.keys())[0];
+  const peer = await other.join({ host: name, port: 1 });
+  other.send(peer, { t: "hello", proto: PROTO, cat: "00000000", kid: "lucien" });
+  await new Promise((done) => setTimeout(done, 300));
+  assert.deepEqual(got, [{ t: "refuse", why: "proto" }]);
+  assert.ok(!host.roster.includes("lucien"));
+  /* family() itself joined Leo and Lili with this catalog: the same fingerprint gets in. */
+  assert.deepEqual(host.roster.slice().sort(), ["leo", "lili", "maya"]);
+});
+
 test("the same kid on a second tablet replaces the first connection", async () => {
   const { wifi, host } = await family();
   const lab = fakeLab("leo");
