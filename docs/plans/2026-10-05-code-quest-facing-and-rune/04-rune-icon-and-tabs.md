@@ -1,6 +1,7 @@
 # Slice 04: Rune icon, two tabs, q01 title
 
 **Status:** Approved by Papa 2026-10-05 (`design.md` D6 tabs, D7, D8).
+**Implemented:** 2026-10-05. Tabs are 60×62 CSS px (54×52 at 1280×600). check.mjs and check-codequest-ui.py green; the 1280×800 and 1280×600 screenshots were reviewed.
 **Goal:** Both programs are always visible as tabs, the Rune has a picture a kid can read, and "Rune" no longer names the sequence lesson.
 **Depends on:** 03
 **Files:** `js/games/codequest.js`, `js/games/codequest/levels.js` (q01 title only), `css/codequest.css`, `scripts/check-codequest-ui.py`.

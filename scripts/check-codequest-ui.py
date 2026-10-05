@@ -325,6 +325,19 @@ def run(args):
                     act(a_id)
                 check(f'{tag}: q10 program built (Rune = Move ×2; Main = Rune, Right, Rune)',
                       [n['type'] for n in state()['program']] == ['call', 'action', 'call'] and len(state()['runeProgram']) == 2)
+                # Slice 04: two visible tabs, ≥ 48 px, clear of the first card and Run; dots count the Rune's cards.
+                tabs = page.evaluate("""() => {
+                  const run = document.querySelector('[data-action="run"]').getBoundingClientRect();
+                  const first = document.querySelector('.cq-strip [data-action="select:0"]').getBoundingClientRect();
+                  const over = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5;
+                  return [...document.querySelectorAll('.cq-strip-tab')].map(b => { const r = b.getBoundingClientRect();
+                    return {a: b.dataset.action, on: b.classList.contains('on'), w: r.width, h: r.height, hit: b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)),
+                      clear: !over(r, run) && !over(r, first), dots: b.querySelectorAll('.cq-tab-dots i:not(.hollow)').length}; });
+                }""")
+                check(f'{tag}: Main and Rune tabs both visible, ≥ 48 px, hittable, clear of the strip and Run',
+                      [t['a'] for t in tabs] == ['strip:main', 'strip:rune'] and all(t['w'] >= 47.5 and t['h'] >= 47.5 and t['hit'] and t['clear'] for t in tabs), tabs)
+                check(f'{tag}: the edited tab is filled and the Rune tab shows 2 dots', tabs[0]['on'] and not tabs[1]['on'] and tabs[1]['dots'] == 2, tabs)
+                page.screenshot(path=str(out / f'rune-tabs-{tag}.png'))
                 act('strip:rune')
                 trail = []
                 for _ in range(3):

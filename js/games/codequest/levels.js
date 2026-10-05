@@ -48,7 +48,7 @@ const LOGIC_WORLD = ['ifLever', 'ifBreakable', 'ifNpc', 'ifRuneGate', 'ifPushabl
 
 export const LEVELS = Object.freeze([
   freezeLevel({
-    id: 'q01', region: REGIONS.trail, title: ['First Rune', '第一個符文'], concept: ['Sequence', '順序'],
+    id: 'q01', region: REGIONS.trail, title: ['First Steps', '第一步'], concept: ['Sequence', '順序'],
     objectiveText: ['Reach the glowing exit.', '走到發光出口。'],
     map: ['#########', '#.#...#.#', '#.......#', '#.H..E..#', '#.......#', '#.#...#.#', '#########'], heroDir: 'E',
     objective: { reachExit: true }, available: { actions: BASIC, logic: [] }, requires: [], maxBlocks: 5, parBlocks: 3,

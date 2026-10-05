@@ -136,7 +136,8 @@ const GLYPHS = {
   wait: '<path d="M5 2 H19 V7 L14 12 L19 17 V22 H5 V17 L10 12 L5 7 Z M8 4.5 V6 L12 10 L16 6 V4.5 Z"/>',
   repeat: '<path d="M3 11 Q3 5 10 5 H15 V1.5 L21 7 L15 12.5 V9 H10 Q7 9 7 12 Z M21 13 Q21 19 14 19 H9 V22.5 L3 17 L9 11.5 V15 H14 Q17 15 17 12 Z"/>',
   if: '<path d="M7 8 Q7 2.5 12 2.5 Q17 2.5 17 7.5 Q17 11 13.5 12.5 V15 H10.5 V10.5 Q14 9.5 14 7.5 Q14 5.5 12 5.5 Q10 5.5 10 8 Z M10.5 17.5 H13.5 V21 H10.5 Z"/>',
-  call: '<path d="M15.5 2.5 Q11 2.5 10.5 7 L10.2 9 H7 V12 H9.8 L8.6 19 Q8.3 21 6.5 21 H5 V23.5 H7 Q11 23.5 11.6 19 L12.8 12 H16 V9 H13.2 L13.5 7.2 Q13.8 5.3 15.5 5.3 H18 V2.5 Z"/>',
+  // Rune: a stone tablet with a carved zigzag (facing-and-rune D7; was a maths ƒ).
+  call: '<path fill-rule="evenodd" d="M8 1.5 H16 Q20 1.5 20 5.5 V18.5 Q20 22.5 16 22.5 H8 Q4 22.5 4 18.5 V5.5 Q4 1.5 8 1.5 Z M13.6 4.5 L8.6 12.6 H11.6 L10 19.5 L15.6 10.6 H12.6 L14.6 4.5 Z"/>',
   target: '<path d="M11 1 H13 V7 H11 Z M11 17 H13 V23 H11 Z M1 11 H7 V13 H1 Z M17 11 H23 V13 H17 Z M12 8 A4 4 0 1 1 11.99 8 Z M12 10.5 A1.5 1.5 0 1 0 12.01 10.5 Z"/>',
   data: '<path d="M4 4 H10 V7 H7 V17 H10 V20 H4 Z M14 4 H20 V20 H14 V17 H17 V7 H14 Z"/>',
   play: '<path d="M6 3 L21 12 L6 21 Z"/>',
@@ -268,12 +269,17 @@ function stripHTML() {
   const slots = Array.from({ length: shown }, (_, i) => '<span class="cq-slot" aria-hidden="true">' + (i === 0 ? '+' : '') + '</span>').join('') + (free > shown ? '<span class="cq-slot more" aria-hidden="true">+' + (free - shown) + '</span>' : '');
   return nodes.map((node, i) => stripCard(node, i, selected.has(i))).join('') + slots;
 }
+/* Two visible tabs (facing-and-rune D6): both programs are always on screen; the one being
+   edited is filled. The Rune tab counts its cards with dots (a hollow dot when empty). */
 function stripTabsHTML() {
   if (!S.level.available.logic.includes('callRune')) return '';
-  // One 48 px toggle: it names the strip being edited; tapping it switches Main ⇄ Rune.
-  const rune = S.editor === 'rune';
-  return button(rune ? 'strip:main' : 'strip:rune', glyph(rune ? 'call' : 'play') + '<b>' + label(rune ? SHORT.call : ['Main', '主程式']) + '</b>',
-    'class="cq-strip-toggle' + (rune ? ' rune' : '') + '" aria-pressed="' + rune + '" aria-label="' + esc(t(rune ? ['Editing Rune. Tap for Main.', '正在編輯符文，點一下回主程式。'] : ['Editing Main. Tap for Rune.', '正在編輯主程式，點一下編輯符文。'])) + '"');
+  const n = S.runeProgram.length;
+  const dots = '<span class="cq-tab-dots" aria-hidden="true">' + (n ? '<i></i>'.repeat(Math.min(4, n)) : '<i class="hollow"></i>') + '</span>';
+  const tab = (id, icon, words, extra, aria) => button('strip:' + id, glyph(icon) + '<b>' + label(words) + '</b>' + extra,
+    'class="cq-strip-tab' + (S.editor === id ? ' on' : '') + '" aria-pressed="' + (S.editor === id) + '" aria-label="' + esc(t(aria)) + '"');
+  return '<div class="cq-strip-tabs" role="group">' +
+    tab('main', 'play', ['Main', '主程式'], '', ['Main program', '主程式']) +
+    tab('rune', 'call', SHORT.call, dots, ['Rune: ' + n + ' cards inside', '符文：裡面有 ' + n + ' 張卡片']) + '</div>';
 }
 /* Card tools live on the card menu (UX polish U3); the strip end keeps only program-level tools. */
 function toolsHTML() {
