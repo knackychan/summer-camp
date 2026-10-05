@@ -71,3 +71,33 @@ test("samePose compares cleaned poses", () => {
   assert.equal(samePose({ p: "wave" }, { p: "wave" }), true);
   assert.equal(samePose({ p: "wave" }, { p: "wave", t: { armR: 1 } }), false);
 });
+
+import { PARTS, getPart } from "../js/brick-lab/brick-catalog.js";
+
+test("all 16 minifigures are jointed; skirts have no legs; the seated one is minifigSeated", () => {
+  const figs = PARTS.filter((p) => p.category === "figures");
+  assert.equal(figs.length, 16);
+  figs.forEach((p) => {
+    assert.ok(p.joints && p.joints.head && p.joints.armL && p.joints.armR, p.id);
+    ["head", "armL", "armR"].forEach((j) => assert.ok(p.model.some((m) => m.j === j), `${p.id} ${j} moves nothing`));
+  });
+  assert.ok(getPart("fig_boy").joints.legL && getPart("fig_boy").joints.legR);
+  assert.ok(!getPart("fig_princess").joints.legL && !getPart("fig_wizard").joints.legL);
+  assert.ok(getPart("fig_pirate_captain").joints.legR, "peg leg swings");
+  assert.equal(getPart("fig_sitting").body, "minifigSeated");
+  assert.ok(!getPart("fig_sitting").joints.legL);
+  assert.equal(getPart("fig_boy").body, "minifig");
+});
+
+test("left is +x (a figure faces +z): mirror tags the −x copy R", () => {
+  const boy = getPart("fig_boy");
+  const arm = (j) => boy.model.find((m) => m.j === j && m.cyl);
+  assert.ok(arm("armL").at[0] > 0 && arm("armR").at[0] < 0);
+});
+
+test("hats and hair turn with the head; torso extras stay on the body", () => {
+  const knight = getPart("fig_knight");
+  assert.ok(knight.model.filter((m) => m.c === "silver" && m.lathe).every((m) => m.j === "head"));
+  const pirate = getPart("fig_pirate");
+  assert.ok(pirate.model.filter((m) => m.box && m.at[1] < 2.7 && m.c === "main").every((m) => !m.j), "stripes stay on the torso");
+});

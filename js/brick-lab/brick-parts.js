@@ -25,10 +25,12 @@ const range = (n, f) => Array.from({ length: n }, (_, i) => f(i));
    flatteners (the Android 8 syntax gate in check.mjs). */
 const flatten = (list) => list.reduce((out, item) => out.concat(Array.isArray(item) ? flatten(item) : [item]), []);
 
-/* The same primitive on both sides of x = 0. */
+/* The same primitive on both sides of x = 0. A joint tag ending in L (the
+   figure's left is +x: it faces +z) becomes R on the copy. */
 function mirror(p) {
   const other = { ...p, at: [-p.at[0], p.at[1], p.at[2]] };
   if (p.rot) other.rot = [p.rot[0], -p.rot[1], -p.rot[2]];
+  if (p.j) other.j = p.j.replace(/L$/, "R");
   return [p, other];
 }
 
@@ -71,6 +73,25 @@ const face = (y = HEAD, z = 0) => [
   { torus: [0.17, 0.035], arc: 180, rot: [0, 0, 180], at: [0, y + 0.32, z + 0.49], c: "black", seg: 10, segT: 5 },
 ];
 
+/* Tag every primitive in a (nested) list with a joint. */
+const tag = (list, j) => flatten(list).map((p) => ({ ...p, j }));
+
+/* A minifigure's pins (moving-parts M3): the neck turns, shoulders and hips swing. */
+function minifigJoints({ sit = false, lower = "legs" } = {}) {
+  const dy = sit ? -1.25 : 0;
+  const dz = sit ? -0.5 : 0;
+  const joints = {
+    head: { at: [0, 2.94 + dy, dz], axis: "y", step: 45, min: -90, max: 90 },
+    armL: { at: [0.9, 2.62 + dy, dz], axis: "x", step: 45, min: -180, max: 45 },
+    armR: { at: [-0.9, 2.62 + dy, dz], axis: "x", step: 45, min: -180, max: 45 },
+  };
+  if (!sit && lower !== "skirt") {
+    joints.legL = { at: [0.47, 1.25, 0], axis: "x", step: 22.5, min: -90, max: 45 };
+    joints.legR = { at: [-0.47, 1.25, 0], axis: "x", step: 22.5, min: -90, max: 45 };
+  }
+  return Object.freeze(joints);
+}
+
 function minifig({ legs = "main", torso = "main", arms, hands = "skin", skin = "skin", lower = "legs", sit = false, eyes = true, head = true } = {}) {
   const dy = sit ? -1.25 : 0;
   const dz = sit ? -0.5 : 0;
@@ -81,25 +102,25 @@ function minifig({ legs = "main", torso = "main", arms, hands = "skin", skin = "
     out.push(mirror({ box: [0.92, 0.42, 1.25], at: [0.47, 0.21, 0.4], c: legs }));
     out.push(mirror({ box: [0.92, 0.3, 0.2], at: [0.47, 0.42, 0.93], c: legs }));
   } else if (lower === "legs") {
-    out.push(mirror({ box: [0.92, 1.25, 0.8], at: [0.47, 0.625, 0], c: legs }));
+    out.push(mirror({ box: [0.92, 1.25, 0.8], at: [0.47, 0.625, 0], c: legs, j: "legL" }));
     out.push({ box: [1.9, 0.32, 0.8], at: [0, 1.41, 0], c: legs });
   } else if (lower === "skirt") {
     out.push({ lathe: [[0.01, 0], [0.98, 0], [0.98, 0.08], [0.68, 1.57], [0.01, 1.57]], at: [0, 0, 0], c: legs });
   } else if (lower === "peg") {
-    out.push({ box: [0.92, 1.25, 0.8], at: [0.47, 0.625, 0], c: legs });
-    out.push({ cyl: [0.16, 0.12, 1.25], at: [-0.47, 0.625, 0], c: "wood" });
+    out.push({ box: [0.92, 1.25, 0.8], at: [0.47, 0.625, 0], c: legs, j: "legL" });
+    out.push({ cyl: [0.16, 0.12, 1.25], at: [-0.47, 0.625, 0], c: "wood", j: "legR" });
     out.push({ box: [1.9, 0.32, 0.8], at: [0, 1.41, 0], c: legs });
   }
   const top = [
     { prism: [[-0.97, 1.57], [0.97, 1.57], [0.74, 2.88], [-0.74, 2.88]], len: 0.78, at: [0, 0, 0], c: torso },
-    mirror({ cyl: [0.2, 0.24, 1.05], at: [0.93, 2.3, 0.02], rot: [0, 0, 12], c: arms || torso }),
-    mirror({ ball: 0.17, at: [1.06, 1.72, 0.14], c: hands, seg: 10, segH: 8 }),
-    { cyl: [0.3, 0.12], at: [0, 2.94, 0], c: skin },
+    mirror({ cyl: [0.2, 0.24, 1.05], at: [0.93, 2.3, 0.02], rot: [0, 0, 12], c: arms || torso, j: "armL" }),
+    mirror({ ball: 0.17, at: [1.06, 1.72, 0.14], c: hands, seg: 10, segH: 8, j: "armL" }),
+    { cyl: [0.3, 0.12], at: [0, 2.94, 0], c: skin, j: "head" },
   ];
   if (head) {
-    top.push({ lathe: [[0.01, 0], [0.44, 0], [0.52, 0.08], [0.52, 0.78], [0.44, 0.86], [0.01, 0.86]], at: [0, HEAD, 0], c: skin });
-    top.push({ cyl: [0.3, 0.17], at: [0, HEAD + 0.94, 0], c: skin });
-    if (eyes) top.push(face());
+    top.push({ lathe: [[0.01, 0], [0.44, 0], [0.52, 0.08], [0.52, 0.78], [0.44, 0.86], [0.01, 0.86]], at: [0, HEAD, 0], c: skin, j: "head" });
+    top.push({ cyl: [0.3, 0.17], at: [0, HEAD + 0.94, 0], c: skin, j: "head" });
+    if (eyes) top.push(tag(face(), "head"));
   }
   out.push(flatten(top).map(up));
   return out;
@@ -112,11 +133,16 @@ const hairCap = (c = "brown", y = HEAD + 0.5) => [
   { box: [1.08, 0.7, 0.34], at: [0, y - 0.2, -0.36], c },
 ];
 
+/* Extras at head height (a hat, hair, a helmet, a beard) turn with the head;
+   lower ones (stripes, an apron, an air tank) stay on the body. An extra
+   that already names a joint keeps it. */
+const headExtras = (prims) => flatten(prims).map((p) => (p.j || !p.at || p.at[1] < HEAD - 0.1 ? p : { ...p, j: "head" }));
+
 function figure(id, label, opts, extras = [], extra = {}) {
   const sit = !!opts.sit;
   const height = (extra.height || (sit ? FIG_TOP - 1.25 : FIG_TOP) + 0.05);
-  return model(id, label, "figures", 2, sit ? 2 : 1, height, [minifig(opts), onHead(extras, sit)],
-    { head: true, top: sit ? FIG_TOP - 1.25 : FIG_TOP, ...extra, height });
+  return model(id, label, "figures", 2, sit ? 2 : 1, height, [minifig(opts), onHead(headExtras(extras), sit)],
+    { head: true, top: sit ? FIG_TOP - 1.25 : FIG_TOP, joints: minifigJoints(opts), body: sit ? "minifigSeated" : "minifig", ...extra, height });
 }
 
 /* ── Hats (C5): floor at the brim; `sink` drops them over a head. ── */
