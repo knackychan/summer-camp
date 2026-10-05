@@ -10,9 +10,12 @@
 
    Messages (one JSON object per line):
      guest → host  hello {proto, kid} · req {id, op} · resync · bye
-     host → guest  welcome {world, seq, roster, name, host} · refuse {why}
-                   apply {seq, by, req, op} · reject {req, why} · peers {roster} · bye */
+     host → guest  welcome {world, seq, roster, name, host, more} · world {pieces} · refuse {why}
+                   apply {seq, by, req, op} · reject {req, why} · peers {roster} · bye
+   A line is at most 64 KB, so a big world comes as a welcome plus `more`
+   world lines, sent back to back; the guest loads it once they are all in. */
 import { PROTO, createClient, createUndo } from "./brick-share.js";
+import { LINE_MAX } from "../game-services/lan-session.js";
 
 export const GAME = "bricklab";
 
@@ -30,6 +33,7 @@ export class BrickTogether {
     this.pending = new Map(); /* guest: request id → op */
     this.found = new Map(); /* worlds open nearby, by service id */
     this.client = null;
+    this.incoming = null; /* guest: { welcome, left } while a big world arrives */
     this.hostInfo = null; /* guest: { kid, world, name, peer } */
     this.lost = null; /* guest: { kid, world, timer } while looking for a lost host */
     this.retryMs = retryMs;
@@ -119,24 +123,57 @@ export class BrickTogether {
     const fresh = !Array.from(this.peers.values()).includes(kid);
     this.peers.set(peer, kid);
     /* The world first, then everyone hears the new roster. */
-    this.lan.send(peer, this.welcome(kid));
+    this.sendWelcome(peer, kid);
     this.updateRoster();
     if (fresh) this.lab.crewToast(kid, true);
     this.lan.keepAwake(true);
     this.lab.sharedChanged();
   }
 
+  /* The world in lines that each fit, the welcome first. */
   welcome(joining) {
     const roster = this.roster.slice();
     if (joining && !roster.includes(joining)) roster.push(joining);
-    return {
+    const budget = LINE_MAX - 4096; /* room for the welcome's other fields */
+    const chunks = [[]];
+    let size = 0;
+    for (const piece of this.lab.pieces.values()) {
+      const length = JSON.stringify(piece).length + 1;
+      if (size + length > budget && chunks[chunks.length - 1].length) { chunks.push([]); size = 0; }
+      chunks[chunks.length - 1].push(piece);
+      size += length;
+    }
+    const head = {
       t: "welcome",
-      world: Array.from(this.lab.pieces.values()),
+      world: chunks[0],
       seq: this.lab.sequencer.seq,
       roster,
       name: this.lab.currentWorldName(),
       host: this.kid,
+      more: chunks.length - 1,
     };
+    return [head, ...chunks.slice(1).map((pieces) => ({ t: "world", pieces }))];
+  }
+
+  sendWelcome(peer, kid) {
+    this.welcome(kid).forEach((message) => this.lan.send(peer, message));
+  }
+
+  /* Guest: a welcome, then its `more` world lines. */
+  guestWorld(message) {
+    if (message.t === "welcome") {
+      const more = Math.max(0, Math.floor(Number(message.more) || 0));
+      this.incoming = { welcome: { ...message, world: Array.isArray(message.world) ? message.world.slice() : [] }, left: more };
+    } else if (this.incoming && Array.isArray(message.pieces)) {
+      this.incoming.welcome.world.push(...message.pieces);
+      this.incoming.left -= 1;
+    } else {
+      return;
+    }
+    if (this.incoming.left > 0) return;
+    const { welcome } = this.incoming;
+    this.incoming = null;
+    this.guestWelcome(welcome);
   }
 
   updateRoster() {
@@ -195,6 +232,7 @@ export class BrickTogether {
   lostHost() {
     const info = this.hostInfo;
     this.client = null;
+    this.incoming = null;
     this.pending.clear();
     this.hostInfo = { ...info, peer: null };
     clearTimeout(this.lost && this.lost.timer);
@@ -237,6 +275,7 @@ export class BrickTogether {
     this.lost = null;
     this.role = null;
     this.client = null;
+    this.incoming = null;
     this.hostInfo = null;
     this.pending.clear();
     this.undo.clear();
@@ -323,12 +362,12 @@ export class BrickTogether {
     if (this.role === "host") {
       if (message.t === "hello") this.hostHello(peer, message);
       else if (message.t === "req") this.hostRequest(peer, message);
-      else if (message.t === "resync" && this.peers.has(peer)) this.lan.send(peer, this.welcome(this.peers.get(peer)));
+      else if (message.t === "resync" && this.peers.has(peer)) this.sendWelcome(peer, this.peers.get(peer));
       else if (message.t === "bye") this.lan.close(peer);
       return;
     }
     if (this.role !== "guest" || peer !== this.hostInfo.peer) return;
-    if (message.t === "welcome") this.guestWelcome(message);
+    if (message.t === "welcome" || message.t === "world") this.guestWorld(message);
     else if (message.t === "apply") this.guestApply(message);
     else if (message.t === "reject") this.guestReject(message);
     else if (message.t === "peers") {

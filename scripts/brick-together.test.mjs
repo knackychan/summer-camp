@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { COLORS, PARTS } from "../js/brick-lab/brick-catalog.js";
 import { createSequencer, PROTO } from "../js/brick-lab/brick-share.js";
 import { BrickTogether } from "../js/brick-lab/brick-together.js";
-import { createLanSession, createLoopback } from "../js/game-services/lan-session.js";
+import { createLanSession, createLoopback, LINE_MAX } from "../js/game-services/lan-session.js";
 
 const rules = { part: (id) => PARTS.find((p) => p.id === id) || null, color: (id) => id in COLORS, half: 32 };
 const brick = (id, x = 0.5, z = 0) => ({ id, partId: "brick_2x4", colorId: "red", x, y: 0.6, z, rotation: 0 });
@@ -215,5 +215,35 @@ test("a guest that missed a change asks for a fresh copy", async () => {
   leo.together.guestWelcome({ world: [], seq: 0, roster: ["maya", "leo"], host: "maya", name: "x" });
   hostChange(maya, host, { type: "add", piece: brick("c", 8.5, 4) });
   await flush(12);
+  assert.deepEqual(plain(leo.lab.pieces), plain(maya.pieces));
+});
+
+test("a world too big for one line still reaches a guest who joins, and one whose wifi blinks", async () => {
+  const { wifi, maya, host, leo } = await family();
+  /* About 1500 bricks: the whole world is several times one line's 64 KB. */
+  for (let i = 0; i < 1500; i += 1) hostChange(maya, host, { type: "add", piece: brick(`big-${i}`, (i % 60) - 29.5, Math.floor(i / 60) - 12) });
+  await flush(12);
+  assert.ok(JSON.stringify(Array.from(maya.pieces.values())).length > LINE_MAX * 2);
+  assert.deepEqual(plain(leo.lab.pieces), plain(maya.pieces), "built while joined: every change arrives");
+  /* Leo's link drops and he finds the world again: the fresh copy is the big one. */
+  const guestPeer = Array.from(host.peers.entries()).find(([, kid]) => kid === "leo")[0];
+  host.lan.close(guestPeer);
+  await flush(20);
+  assert.equal(leo.together.lost, null, "found it again");
+  assert.deepEqual(plain(leo.lab.pieces), plain(maya.pieces));
+  assert.equal(leo.lab.events.filter((e) => e[0] === "loaded").at(-1)[1], maya.pieces.size, "the plate is loaded once, whole");
+  /* A new guest joins the big world. */
+  const lab = fakeLab("tom");
+  const tom = new BrickTogether(lab, createLanSession(wifi.device()), "tom");
+  tom.startLooking();
+  await flush();
+  assert.ok(await tom.join(tom.joinable()[0]));
+  await flush(20);
+  assert.deepEqual(plain(lab.pieces), plain(maya.pieces));
+  assert.deepEqual(lab.events.filter((e) => e[0] === "loaded"), [["loaded", maya.pieces.size]]);
+  /* Building goes on normally afterwards. */
+  tom.request({ type: "add", piece: brick("after", 0.5, 20) });
+  await flush();
+  assert.equal(maya.pieces.get("after").by, "tom");
   assert.deepEqual(plain(leo.lab.pieces), plain(maya.pieces));
 });
