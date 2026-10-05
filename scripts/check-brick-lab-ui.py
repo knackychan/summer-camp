@@ -16,6 +16,8 @@ places pieces. Slice 14: a standard tablet that can't keep up steps down (painte
 without resizing the view. Slice 15: a part slid sideways out of the rail places where it is let go.
 Catalog plan (2026-10-05): twenty categories in build order, every part arms in < 50 ms and gets its
 real-part icon, a minifig rides a horse and wears a helmet, 21 colours slide sideways in three rows.
+Kid camera (2026-10-05): one finger slides the map with the ground staying under it, ↺ ↻ turn 45°, + −
+zoom with the tilt following, two fingers pinch and twist.
 Multiplayer plan slice 08: part icons are the real part, in the picked colour, drawn on the lab's own canvas.
 Multiplayer plan slice 02: every change goes through the op sequencer (placed pieces carry `by`).
 Multiplayer plan slice 05: on a pretend home wifi (in-page loopback), a sibling joins the open world, builds,
@@ -638,7 +640,7 @@ def parts_sheet(browser, base, args, report, check, out):
         sheet.close()
 
     def orbit_until_step(seconds=16):
-        """Orbit in Explore (a drag never moves a piece there) and time the first step-down."""
+        """Slide the view in Explore (a drag never moves a piece there; kid camera K1) and time the first step-down."""
         page.locator('[data-mode-button="explore"]').dispatch_event('pointerdown')
         sb = page.locator('.sqbl-stage canvas').bounding_box()
         page.mouse.move(sb['x'] + 300, sb['y'] + 420)
@@ -1035,29 +1037,57 @@ def run(args):
                 act('delete')
                 check('Remove deletes the selected piece', len(snap()['pieces']) == STARTER + 1 and snap()['selectedId'] is None)
 
-                # Slice 07: the view pans along the ground in Build too, and never leaves the island.
+                # Slice 07 / kid camera K1: one finger (the left button) slides the view along the ground in
+                # Build too, and never leaves the island.
                 act('home-view')
                 # The Home camera tween can finish late on a slow GPU; a fixed wait read it mid-flight.
-                page.wait_for_function(SNAP + '.target && Math.abs(' + SNAP + '.target.y + 8) < 1e-6 && Math.abs(' + SNAP + '.target.x - 5) < 1e-6')
+                page.wait_for_function(SNAP + '.view && ' + SNAP + '.view.x === 6 && ' + SNAP + '.view.z === 9 && ' + SNAP + '.view.distance === 100')
                 page.wait_for_timeout(300)
                 start = snap()['target']
                 page.mouse.move(box['x'] + box['width'] * 0.5, box['y'] + box['height'] * 0.5)
-                page.mouse.down(button='right')
+                page.mouse.down()
                 for step in range(1, 11):
                     page.mouse.move(box['x'] + box['width'] * 0.5 - step * 25, box['y'] + box['height'] * 0.5 - step * 10)
-                page.mouse.up(button='right')
+                page.mouse.up()
                 page.wait_for_timeout(700)
                 moved_to = snap()['target']
-                check('Build view pans along the ground', abs(moved_to['x'] - start['x']) + abs(moved_to['z'] - start['z']) > 3
-                      and abs(moved_to['y'] - start['y']) < 0.01)
+                check('Build view slides along the ground with one finger', abs(moved_to['x'] - start['x']) + abs(moved_to['z'] - start['z']) > 3
+                      and abs(moved_to['y'] - start['y']) < 0.01 and len(snap()['pieces']) == STARTER + 1)
                 page.mouse.move(box['x'] + 20, box['y'] + 20)
-                page.mouse.down(button='right')
+                page.mouse.down()
                 for step in range(1, 30):
                     page.mouse.move(box['x'] + 20 + step * 40, box['y'] + 20 + step * 25)
-                page.mouse.up(button='right')
+                page.mouse.up()
                 page.wait_for_timeout(900)
                 far = snap()['target']
-                check('Panning stops over the island', abs(far['x']) <= 36.01 and abs(far['z']) <= 36.01)
+                check('Sliding stops over the island', abs(far['x']) <= 36.01 and abs(far['z']) <= 36.01)
+                # Kid camera K3 / K4: ↺ ↻ turn 45°, + − zoom one step, the tilt follows the zoom; never resizes the view.
+                act('home-view')
+                page.wait_for_timeout(800)
+                v0 = snap()['view']
+                size0 = page.locator('.sqbl-stage canvas').bounding_box()
+                cam_buttons = [page.locator(f'.sqbl-cam [data-cam="{b}"]').bounding_box() for b in ('left', 'right', 'in', 'out')]
+                check('Turn and zoom buttons are tablet-sized', all(b and b['width'] >= 56 and b['height'] >= 56 for b in cam_buttons))
+                page.locator('.sqbl-cam [data-cam="right"]').dispatch_event('pointerdown')
+                page.wait_for_timeout(500)
+                v1 = snap()['view']
+                check(f'↻ turns the view 45° {v1["yaw"] - v0["yaw"]:.4f}', abs(v1['yaw'] - v0['yaw'] - 0.785398) < 1e-3)
+                page.locator('.sqbl-cam [data-cam="left"]').dispatch_event('pointerdown')
+                page.wait_for_timeout(500)
+                check('↺ turns it back', abs(snap()['view']['yaw'] - v0['yaw']) < 1e-3)
+                for _ in range(3):
+                    page.locator('.sqbl-cam [data-cam="in"]').dispatch_event('pointerdown')
+                    page.wait_for_timeout(350)
+                v2 = snap()['view']
+                check(f'+ zooms in and the view tilts lower {v2["distance"]:.1f} {v2["pitch"]:.3f}', v2['distance'] < v0['distance'] * 0.4
+                      and v2['pitch'] < v0['pitch'] - 0.1)
+                for _ in range(30):
+                    page.locator('.sqbl-cam [data-cam="out"]').dispatch_event('pointerdown')
+                page.wait_for_timeout(500)
+                v3 = snap()['view']
+                check(f'− zooms out no further than Build allows {v3["distance"]:.1f}', abs(v3['distance'] - 128) < 1e-6 and v3['pitch'] > v0['pitch'])
+                check('The buttons never resize the 3D view', page.locator('.sqbl-stage canvas').bounding_box() == size0)
+                page.screenshot(path=str(out / 'camera-far.png'))
                 act('home-view')
                 page.wait_for_timeout(900)
                 page.locator('.sqbl-mode-toggle [data-mode-button="explore"]').click()
@@ -1272,11 +1302,59 @@ def run(args):
                 RECOVERY['wait_screen'](tp, 'hub')
                 tp.evaluate("SummerQuest.openGame('bricklab')")
                 enter_world(tp)
+                # Kid camera K1 / K2 on a real touch screen: one finger slides with the ground staying under it,
+                # two fingers pinch to zoom and twist to turn.
+                cdp = touch.new_cdp_session(tp)
+                tp.wait_for_timeout(600)
+                cb = tp.locator('.sqbl-stage canvas').bounding_box()
+
+                def touches(points):
+                    return [{'x': x, 'y': y, 'id': i} for i, (x, y) in enumerate(points)]
+
+                def finger_path(paths, steps=10):
+                    cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': touches([p[0] for p in paths])})
+                    for i in range(1, steps + 1):
+                        pts = [(a[0] + (b[0] - a[0]) * i / steps, a[1] + (b[1] - a[1]) * i / steps) for a, b in paths]
+                        cdp.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': touches(pts)})
+                        tp.wait_for_timeout(16)
+                    cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+                    tp.wait_for_timeout(120)
+
+                ground_under = """async ([x, y]) => { const m = await import('/js/brick-lab/brick-camera.js');
+                    const s = SQGames.get('bricklab').snapshot(); const c = s.canvas;
+                    return m.groundAt(s.view, (x - c.x) / c.width * 2 - 1, -((y - c.y) / c.height * 2 - 1), 34, c.width / c.height); }"""
+                a0 = (cb['x'] + cb['width'] * 0.55, cb['y'] + cb['height'] * 0.6)
+                a1 = (cb['x'] + cb['width'] * 0.35, cb['y'] + cb['height'] * 0.45)
+                n_touch = len(tp.evaluate(SNAP)['pieces'])
+                grabbed = tp.evaluate(ground_under, list(a0))
+                cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': touches([a0])})
+                for i in range(1, 11):
+                    cdp.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': touches([(a0[0] + (a1[0] - a0[0]) * i / 10, a0[1] + (a1[1] - a0[1]) * i / 10)])})
+                    tp.wait_for_timeout(16)
+                tp.wait_for_timeout(150)  # touch moves are delivered with the next frame
+                held = tp.evaluate(ground_under, list(a1))
+                cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+                tp.wait_for_timeout(120)
+                check(f'One finger slides the map; the grabbed ground stays under it {grabbed} {held}',
+                      abs(grabbed['x'] - held['x']) < 0.05 and abs(grabbed['z'] - held['z']) < 0.05
+                      and len(tp.evaluate(SNAP)['pieces']) == n_touch)
+                tp.wait_for_timeout(600)
+                d0 = tp.evaluate(SNAP)['view']
+                mx, my = cb['x'] + cb['width'] * 0.55, cb['y'] + cb['height'] * 0.55
+                finger_path([((mx - 40, my), (mx - 140, my)), ((mx + 40, my), (mx + 140, my))])
+                d1 = tp.evaluate(SNAP)['view']
+                check(f'Two fingers spreading zoom in without turning {d0["distance"]:.1f} → {d1["distance"]:.1f}',
+                      d1['distance'] < d0['distance'] * 0.8 and abs(d1['yaw'] - d0['yaw']) < 1e-6)
+                finger_path([((mx - 90, my), (mx, my - 90)), ((mx + 90, my), (mx, my + 90))], steps=12)
+                d2 = tp.evaluate(SNAP)['view']
+                check(f'Two fingers twisting turn the view {d2["yaw"] - d1["yaw"]:.3f}', abs(d2['yaw'] - d1['yaw']) > 0.5)
+                check('Neither slide nor pinch placed or selected anything', len(tp.evaluate(SNAP)['pieces']) == n_touch)
+                tp.screenshot(path=str(out / 'camera-touch.png'))
+
                 lst = tp.locator('.sqbl-category-list')
                 lb = lst.bounding_box()
                 check('A short rail shows there is more to scroll', 'has-more' in lst.get_attribute('class')
                       and lb['y'] + lb['height'] <= tp.locator('.sqbl-colors').bounding_box()['y'])
-                cdp = touch.new_cdp_session(tp)
                 fx, fy = lb['x'] + lb['width'] / 2, lb['y'] + lb['height'] * 0.8
                 cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': fx, 'y': fy}]})
                 for i in range(1, 16):
