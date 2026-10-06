@@ -557,6 +557,45 @@ def run(args):
                     check(f'{w}x{h}: the mountain legend fits, nothing scrolls', fit['hostScroll'] <= 1 and fit['hostScrollX'] <= 1 and fit['docScroll'] <= 1
                           and all(b['inside'] for b in fit['boxes'].values()))
                 page.screenshot(path=str(out / 'mountain-legend.png'))
+                # Technique cards (slice 11): Penguin 5 is the first inside-reverse. The card shows once,
+                # with a running demo, while the fold waits; Got it starts the fold; the chip reopens it.
+                page.locator('.oa-root [data-action="screen-back"]').click()
+                page.locator('.oa-root [data-action="screen-back"]').click()
+                page.locator('.oa-root [data-model="penguin"]').click()
+                page.locator('.oa-root [data-action="start-lesson"]').click()
+                for _ in range(4):
+                    page.locator('.oa-root [data-action="next-step"]').click()
+                CARD = '.oa-root .oa-technique-card'
+                DEMO = "() => [...document.querySelectorAll('.oa-technique-demo path')].flatMap(p => p.getAnimations()).filter(a => a.playState === 'running').length"
+                card_text = page.locator(CARD).inner_text() if page.locator(CARD).count() else ''
+                check(f'Penguin 5: the inside-reverse card shows the first time, in 中文, with a running demo ({card_text!r})',
+                      page.locator(CARD).is_visible() and '新的摺法' in card_text and '內反摺' in card_text and page.evaluate(DEMO) > 0
+                      and page.evaluate(FLAP_T + ".playState") == 'paused')
+                for w, h in SIZES:
+                    page.set_viewport_size({'width': w, 'height': h})
+                    page.wait_for_timeout(150)
+                    r = page.locator(CARD).bounding_box()
+                    ok_btn = page.locator('.oa-root [data-action="technique-ok"]').bounding_box()
+                    check(f'{w}x{h}: the card and its button fit, nothing scrolls', r and r['y'] >= 0 and r['y'] + r['height'] <= h and r['x'] + r['width'] <= w
+                          and ok_btn['height'] >= 48 and page.evaluate(PAGE_SCROLL) <= 1)
+                page.screenshot(path=str(out / 'technique-card.png'))
+                page.locator('.oa-root [data-action="locale-en"]').click()
+                card_text = page.locator(CARD).inner_text()
+                check(f'The card stays open through a language switch, in English ({card_text!r})',
+                      'New fold!' in card_text and 'Inside reverse fold' in card_text and 'Got it' in card_text)
+                page.locator('.oa-root [data-action="technique-ok"]').click()
+                page.wait_for_timeout(200)
+                check('Got it closes the card and starts the fold', page.locator(CARD).count() == 0
+                      and page.evaluate(FLAP_T + ".playState") == 'running')
+                page.locator('.oa-root [data-action="prev-step"]').click()
+                page.locator('.oa-root [data-action="next-step"]').click()
+                check('The card does not come back once seen; the chip names the fold',
+                      page.locator(CARD).count() == 0 and 'Inside reverse fold' in page.locator('.oa-root [data-action="technique"]').inner_text())
+                page.locator('.oa-root [data-action="technique"]').click()
+                check('The chip opens the card again', page.locator(CARD).is_visible() and page.evaluate(DEMO) > 0)
+                before = page.locator('.oa-step-badge').inner_text()
+                page.locator('.oa-root [data-action="next-step"]').click()
+                check('Next works with the card open', page.locator('.oa-step-badge').inner_text() != before)
                 check('No page errors', not report['pageErrors'] and not report['consoleErrors'])
             except Exception:
                 page.screenshot(path=str(out / 'failure.png'))

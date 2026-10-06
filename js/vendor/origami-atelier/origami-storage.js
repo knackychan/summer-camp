@@ -13,6 +13,7 @@ function initialState() {
     lastStepIndex: 0,
     paperColorId: "sakura",
     slow: false,
+    techniquesSeen: {},
     updatedAt: null
   };
 }

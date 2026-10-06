@@ -2,6 +2,7 @@
 import { ORIGAMI_MODELS, ORIGAMI_CATEGORIES, ORIGAMI_DIFFICULTY, PAPER_COLORS, getOrigamiModel, textFor } from "./origami-data.js";
 import { OrigamiFoldEngine } from "./origami-engine.js";
 import { createOrigamiProgressStore } from "./origami-storage.js";
+import { drawTechniqueDemo, techniqueFor } from "./origami-techniques.js";
 
 const STYLE_ID = "sq-origami-atelier-style-v1";
 
@@ -43,6 +44,8 @@ export function mountOrigamiAtelier(root, options = {}) {
   let locale = config.locale;
   let engine = null;
   let destroyed = false;
+  /* Technique card (slice 11): which one is open, and whether the fold plays when it closes. */
+  let techniqueOpen = null, techniqueResume = false, techniqueAnims = [];
 
   root.innerHTML = `<div class="oa-root"><main class="oa-shell" data-oa-view></main><div class="oa-screen-reader" aria-live="polite" data-oa-live></div></div>`;
   const view = root.querySelector("[data-oa-view]");
@@ -59,6 +62,7 @@ export function mountOrigamiAtelier(root, options = {}) {
     screen = next;
     root.querySelector(".oa-root").classList.toggle("oa-lesson-mode", next==="lesson");
     if (next!=="lesson" && engine) { engine.destroy(); engine = null; }
+    if (next!=="lesson") closeTechnique();
   }
 
   function localeControls() {
@@ -158,6 +162,7 @@ export function mountOrigamiAtelier(root, options = {}) {
             <span class="oa-legend" data-legend="crease"><i class="oa-legend-crease" aria-hidden="true"></i>${t("Fold line","摺線")}</span>
             <span class="oa-legend" data-legend="arrow"><i class="oa-legend-arrow" aria-hidden="true">➜</i>${t("Fold this way","往這邊摺")}</span>
             <span class="oa-legend oa-legend-notation" data-legend="notation"><i class="oa-legend-sym" aria-hidden="true"></i><span class="oa-legend-text"></span></span>
+            <button type="button" class="oa-legend oa-legend-technique" data-action="technique" hidden><span aria-hidden="true">❓</span><span class="oa-legend-text"></span></button>
           </div>
           <h2 class="oa-instruction">${escapeHtml(textFor(step.instruction, locale))}</h2>
           ${config.preReader ? "" : `<p class="oa-hint">${escapeHtml(textFor(step.hint, locale))}</p>`}
@@ -165,6 +170,7 @@ export function mountOrigamiAtelier(root, options = {}) {
         <div class="oa-stage-wrap">
           <div class="oa-stage" data-fold-stage></div>
           <button type="button" class="oa-slow" data-action="slow" aria-pressed="${Boolean(progress.slow)}">🐢 ${t("Slow","慢慢看")}</button>
+          <div class="oa-technique" data-technique hidden></div>
           <div class="oa-companion"><span aria-hidden="true">🐈</span><p class="oa-companion-text"></p></div>
         </div>
         <div class="oa-controls">
@@ -193,6 +199,14 @@ export function mountOrigamiAtelier(root, options = {}) {
       notation.querySelector(".oa-legend-sym").innerHTML = NOTATION[kind].sym;
       notation.querySelector(".oa-legend-text").textContent = t(...NOTATION[kind].text);
     }
+    /* Technique cards (docs/plans/2026-10-05-origami-audit/ slice 11): the first visit to a step
+       with a new fold opens its card and the fold waits; the chip opens it again any time. */
+    const tech = techniqueFor(step);
+    const chip = view.querySelector('[data-action="technique"]');
+    chip.hidden = !tech;
+    if (tech) chip.querySelector(".oa-legend-text").textContent = `${textFor(tech.name, locale)} — ${textFor(tech.meaning, locale)}`;
+    if (tech && (techniqueOpen===tech.id || (!keep && !progress.techniquesSeen?.[tech.id]))) openTechnique(tech, paper);
+    else closeTechnique();
     bindScrub(view.querySelector("[data-fold-stage]"));
     syncPlayButton();
     announce(`${modelName(model)}. ${t("Step","步驟")} ${stepIndex+1}. ${textFor(step.instruction,locale)}`);
@@ -214,6 +228,32 @@ export function mountOrigamiAtelier(root, options = {}) {
     rotate:{ text:["Turn the paper around","把紙轉個方向"],
       sym:'<svg viewBox="0 0 44 22"><path d="M32 13 A9 9 0 1 1 23 3" fill="none" stroke="#3276b1" stroke-width="2.6" stroke-linecap="round"/><path d="M20 0 L28 3 L21 8 Z" fill="#3276b1"/></svg>' },
   };
+
+  function openTechnique(tech, paper) {
+    if (techniqueOpen!==tech.id) techniqueResume = engine.hasMotion && !engine.paused && !engine.reducedMotion;
+    techniqueOpen = tech.id;
+    engine.pause();
+    techniqueAnims.forEach(a => a.cancel());
+    const box = view.querySelector("[data-technique]");
+    const name = textFor(tech.name, locale);
+    box.hidden = false;
+    box.innerHTML = `<div class="oa-technique-card" role="dialog" aria-label="${escapeHtml(name)}">
+      <div class="oa-technique-kicker">✨ ${t("New fold!","新的摺法！")}</div>
+      <h3>${escapeHtml(name)}</h3>
+      <svg class="oa-technique-demo" viewBox="0 0 120 90" aria-hidden="true"></svg>
+      <p>${escapeHtml(textFor(tech.meaning, locale))}</p>
+      <button type="button" class="oa-primary oa-technique-ok" data-action="technique-ok">${t("Got it ▶","我懂了 ▶")}</button>
+    </div>`;
+    techniqueAnims = drawTechniqueDemo(box.querySelector("svg"), tech, { front:paper.front, back:paper.back, reducedMotion:engine.reducedMotion });
+  }
+
+  function closeTechnique() {
+    techniqueAnims.forEach(a => a.cancel());
+    techniqueAnims = [];
+    techniqueOpen = null;
+    const box = view.querySelector("[data-technique]");
+    if (box) { box.hidden = true; box.innerHTML = ""; }
+  }
 
   /* Drag to scrub (docs/plans/2026-10-05-origami-audit/ slice 10): a sideways drag on the picture
      pauses the fold and moves it; the whole width is one loop, from wherever it was. */
@@ -335,8 +375,24 @@ export function mountOrigamiAtelier(root, options = {}) {
       return renderLesson();
     }
     if (action==="start-lesson") { stepIndex=0; return renderLesson(); }
+    if (action==="technique") {
+      const tech = engine && techniqueFor(getOrigamiModel(selectedModelId)?.steps[stepIndex]);
+      if (tech) openTechnique(tech, PAPER_COLORS.find(c=>c.id===progress.paperColorId) || PAPER_COLORS[0]);
+      syncPlayButton();
+      return;
+    }
+    if (action==="technique-ok") {
+      const tech = techniqueFor(getOrigamiModel(selectedModelId)?.steps[stepIndex]);
+      if (tech) progress = store.patch({ techniquesSeen:{ ...(progress.techniquesSeen || {}), [tech.id]:true } });
+      const play = techniqueResume;
+      closeTechnique();
+      if (play) engine?.resume();
+      syncPlayButton();
+      return;
+    }
     if (action==="pause" || action==="resume" || action==="replay" || action==="watch-again") {
       if (!engine) return;
+      closeTechnique();
       if (action==="pause") engine.pause();
       else if (action==="resume") engine.resume();
       else engine.replay();
@@ -351,14 +407,14 @@ export function mountOrigamiAtelier(root, options = {}) {
       return;
     }
     if (action==="prev-step") {
-      if (stepIndex>0) { stepIndex--; renderLesson(); }
+      if (stepIndex>0) { stepIndex--; closeTechnique(); renderLesson(); }
       return;
     }
     if (action==="next-step") {
       const model=getOrigamiModel(selectedModelId);
       if (!model) return;
       if (stepIndex>=model.steps.length-1) return renderComplete();
-      stepIndex++; renderLesson();
+      stepIndex++; closeTechnique(); renderLesson();
     }
   }
 

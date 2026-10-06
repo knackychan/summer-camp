@@ -125,6 +125,20 @@
 .oa-slow{position:absolute;left:10px;top:10px;z-index:2;min-height:48px;min-width:48px;padding:0 12px;border:3px solid var(--oa-wood-dark);
   background:#fff8e9;color:var(--oa-ink);font:inherit;font-weight:900;font-size:15px;cursor:pointer;box-shadow:2px 2px 0 rgba(78,50,41,.18)}
 .oa-slow[aria-pressed="true"]{background:var(--oa-green);color:#fff}
+/* Technique cards (origami-audit slice 11): over the picture, never over the controls. */
+.oa-technique{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;padding:10px;background:rgba(245,223,197,.86)}
+.oa-technique[hidden]{display:none}
+.oa-technique-card{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;max-width:440px;max-height:100%;min-height:0;padding:12px 16px;
+  background:#fff8e9;border:3px solid var(--oa-wood-dark);box-shadow:4px 4px 0 rgba(78,50,41,.22);text-align:center}
+.oa-technique-kicker{font-weight:900;color:#b4566c;font-size:15px}
+.oa-technique-card h3{margin:0;font-size:22px;line-height:1.2}
+.oa-technique-demo{flex:1 1 auto;width:100%;min-height:60px;max-height:180px}
+.oa-technique-shape{stroke:#5f4236;stroke-width:1.2;stroke-linejoin:round}
+.oa-technique-card p{margin:0;font-size:15px;line-height:1.35}
+.oa-technique-ok{min-height:52px;padding:0 22px}
+.oa-legend-technique{flex:1 1 100%;min-width:0;min-height:48px;padding:0 10px;border:2px solid #b99068;background:#fff4dd;color:var(--oa-ink,#4a3328);
+  font:inherit;font-size:13px;font-weight:800;text-align:left;cursor:pointer}
+.oa-legend-technique .oa-legend-text{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .oa-controls{grid-area:controls;display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr));gap:10px;align-items:center}
 .oa-controls button{min-height:52px;padding:0 10px;font-size:16px;white-space:nowrap}
 .oa-controls button:disabled{opacity:.45;cursor:default}

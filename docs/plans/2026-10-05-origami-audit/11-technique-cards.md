@@ -25,3 +25,13 @@
 
 **DONE WHEN:** `node scripts/check.mjs` green; `python scripts/check-origami-ui.py` passes; a
 strip of the eight demos reviewed.
+
+**Shipped 2026-10-06.** `origami-techniques.js` (8 cards, demos as morphing shapes with a face turn
+at the edge-on keyframe, 4 s loop); the card over the picture and the chip in the legend row;
+`techniquesSeen` per kid. `scripts/origami-techniques.test.mjs` (4 tests). `check-origami-ui.py`
+96/96 (new: Penguin 5 card first time in 中文 with a running demo while the fold waits, fits at all
+three sizes, stays open through a language switch, Got it starts the fold, not shown again, the chip
+reopens it, Next works with it open). Demo strip: [technique-demos.png](technique-demos.png)
+(`technique-demos.py`), reviewed; blintz fixed so the corners leave the square. A play control
+(Pause / Resume / Replay) also closes the card, without marking it seen. Cache
+`v193-origami-techniques`.
