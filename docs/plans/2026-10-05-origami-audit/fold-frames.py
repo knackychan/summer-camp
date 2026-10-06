@@ -1,6 +1,6 @@
-"""Filmstrip of fold frames for the origami audit (audit.md). Usage: python fold-frames.py out.png
+"""Filmstrip of fold frames for the origami audit (audit.md). Usage: python fold-frames.py out.png ['[["model-id",[stepIndex,...]],...]']
 Six frames per step (start, 30%, 58%, 90% of the fold, hold, fade back), reduced to the SVG diagram."""
-import functools, http.server, threading, sys
+import functools, http.server, json, threading, sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 ROOT=str(Path(__file__).resolve().parents[3]); OUT=sys.argv[1]
@@ -8,7 +8,7 @@ class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a): pass
 srv=http.server.ThreadingHTTPServer(("127.0.0.1",0),functools.partial(Q, directory=ROOT)); port=srv.server_address[1]
 threading.Thread(target=srv.serve_forever,daemon=True).start()
-PICKS=[("little-fox",[0,1,6]),("classic-crane",[0,4,8,12,14]),("jumping-frog",[3,10]),("swimming-fish",[5]),("paper-boat",[0,7])]
+PICKS=json.loads(sys.argv[2]) if len(sys.argv)>2 else [("little-fox",[0,1,6]),("classic-crane",[0,4,8,12,14]),("jumping-frog",[3,10]),("swimming-fish",[5]),("paper-boat",[0,7])]
 JS="""async (picks) => {
  const D = await import('/js/vendor/origami-atelier/origami-data.js');
  const E = await import('/js/vendor/origami-atelier/origami-engine.js');

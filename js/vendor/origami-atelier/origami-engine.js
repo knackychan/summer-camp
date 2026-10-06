@@ -1,3 +1,5 @@
+import { area, centroid, clipByLine, foldArrow, hingeSamples, hingeTransform, reflect, sideOf, turnTransform } from "./origami-fold.js";
+
 const NS = "http://www.w3.org/2000/svg";
 
 function svgEl(name, attrs = {}) {
@@ -103,7 +105,7 @@ function diagramFor(name) {
   if (name === "square-base") return {...base, base:SHAPES.square, after:SHAPES.smallSquare, flap:[[75,30],[225,30],[150,105]], crease:[[75,105],[225,105]], arrow:[[85,105],[120,105],[150,105]], rotate:0,dx:35,dy:0};
   if (name === "waterbomb-base" || name === "collapse") return {...base, base:SHAPES.square, after:SHAPES.triangleDown, flap:[[75,30],[150,105],[75,180]], crease:[[75,30],[75,180]], arrow:[[82,105],[112,105],[148,105]], rotate:0,dx:34,dy:0};
 
-  if (name.startsWith("blintz")) return {...base, base:SHAPES.square, after:SHAPES.diamond, flap:[[75,30],[150,30],[150,105],[75,105]], crease:[[75,105],[150,30]], arrow:[[86,48],[112,72],[146,101]], rotate:28,dx:30,dy:28};
+  if (name.startsWith("blintz")) return {...base, base:SHAPES.square, after:SHAPES.diamond, flap:[[75,30],[150,30],[150,105],[75,105]], crease:[[75,105],[150,30]], arrow:[[86,48],[112,72],[146,101]], rotate:28,dx:30,dy:28, reach:1};
   if (name === "kite-both") return {...base, base:SHAPES.square, after:SHAPES.kite, flap:[[75,30],[150,30],[150,180],[75,180]], crease:[[150,30],[150,180]], arrow:[[92,105],[118,105],[148,105]], rotate:12,dx:30,dy:0};
 
   if (name.startsWith("inside-reverse")) {
@@ -172,19 +174,19 @@ function diagramFor(name) {
     return {...base, base:SHAPES.triangleDown, after:SHAPES.diamond, flap:[[75,180],[150,105],[225,180]], crease:[[75,180],[225,180]], arrow:up?[[150,170],[150,125],[150,72]]:[[88,105],[120,105],[150,105]], rotate:0,dx:0,dy:up?-50:0};
   }
 
-  if (name === "top-to-center" || name === "top-center") return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[150,25],[95,105],[205,105]], crease:[[95,105],[205,105]], arrow:[[150,42],[150,72],[150,104]], rotate:0,dx:0,dy:55};
-  if (name === "bottom-to-center" || name === "bottom-to-top") return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[150,185],[95,105],[205,105]], crease:[[95,105],[205,105]], arrow:[[150,168],[150,138],[150,104]], rotate:0,dx:0,dy:-55};
-  if (name === "left-to-center" || name === "left-to-bottom" || name === "left-across") return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[70,105],[150,25],[150,185]], crease:[[150,25],[150,185]], arrow:[[88,105],[120,105],[150,105]], rotate:20,dx:32,dy:0};
-  if (name === "right-to-center" || name === "right-to-bottom" || name === "right-across") return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[230,105],[150,25],[150,185]], crease:[[150,25],[150,185]], arrow:[[212,105],[180,105],[150,105]], rotate:-20,dx:-32,dy:0};
+  if (name === "top-to-center" || name === "top-center") return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[150,25],[95,105],[205,105]], crease:[[95,105],[205,105]], arrow:[[150,42],[150,72],[150,104]], rotate:0,dx:0,dy:55, reach:1};
+  if (name === "bottom-to-center" || name === "bottom-to-top") return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[150,185],[95,105],[205,105]], crease:[[95,105],[205,105]], arrow:[[150,168],[150,138],[150,104]], rotate:0,dx:0,dy:-55, reach:name==="bottom-to-center"?1:0};
+  if (name === "left-to-center" || name === "left-to-bottom" || name === "left-across") return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[70,105],[150,25],[150,185]], crease:[[150,25],[150,185]], arrow:[[88,105],[120,105],[150,105]], rotate:20,dx:32,dy:0, reach:name==="left-to-center"?1:0, to:name==="left-to-bottom"?[150,185]:null};
+  if (name === "right-to-center" || name === "right-to-bottom" || name === "right-across") return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[230,105],[150,25],[150,185]], crease:[[150,25],[150,185]], arrow:[[212,105],[180,105],[150,105]], rotate:-20,dx:-32,dy:0, reach:name==="right-to-center"?1:0, to:name==="right-to-bottom"?[150,185]:null};
 
-  if (name.includes("heart-left")) return {...base, base:SHAPES.triangleUp, after:SHAPES.kite, flap:[[75,180],[150,180],[150,105]], crease:[[75,180],[150,105]], arrow:[[95,155],[120,120],[145,80]], rotate:-28};
-  if (name.includes("heart-right")) return {...base, base:SHAPES.kite, after:SHAPES.diamond, flap:[[225,180],[150,180],[150,105]], crease:[[225,180],[150,105]], arrow:[[205,155],[180,120],[155,80]], rotate:28};
+  if (name.includes("heart-left")) return {...base, base:SHAPES.triangleUp, after:SHAPES.kite, flap:[[75,180],[150,180],[150,105]], crease:[[75,180],[150,105]], arrow:[[95,155],[120,120],[145,80]], rotate:-28, slide:true};
+  if (name.includes("heart-right")) return {...base, base:SHAPES.kite, after:SHAPES.diamond, flap:[[225,180],[150,180],[150,105]], crease:[[225,180],[150,105]], arrow:[[205,155],[180,120],[155,80]], rotate:28, slide:true};
   if (name.includes("tail-right") || name === "tail-up") return {...base, base:SHAPES.kite, after:[[95,105],[150,35],[205,105],[235,70],[225,135],[150,175]], flap:[[150,105],[205,105],[150,175]], crease:[[150,105],[150,175]], arrow:[[170,145],[195,130],[225,105]], rotate:28};
 
-  if (name.includes("left")) return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[70,105],[150,25],[150,185]], crease:[[150,25],[150,185]], arrow:[[90,105],[120,105],[148,105]], rotate:18, dx:30, dy:0};
-  if (name.includes("right")) return {...base, base:SHAPES.kite, after:SHAPES.diamond, flap:[[230,105],[150,25],[150,185]], crease:[[150,25],[150,185]], arrow:[[210,105],[180,105],[152,105]], rotate:-18, dx:-30, dy:0};
-  if (name.includes("top") || name.includes("front")) return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[150,25],[95,105],[205,105]], crease:[[95,105],[205,105]], arrow:[[150,45],[150,75],[150,112]], rotate:0, dx:0, dy:55};
-  if (name.includes("bottom") || name.includes("tip") || name.includes("nose")) return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[150,185],[95,105],[205,105]], crease:[[95,105],[205,105]], arrow:[[150,165],[150,135],[150,100]], rotate:0, dx:0, dy:-48};
+  if (name.includes("left")) return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[70,105],[150,25],[150,185]], crease:[[150,25],[150,185]], arrow:[[90,105],[120,105],[148,105]], rotate:18, dx:30, dy:0, reach:.75};
+  if (name.includes("right")) return {...base, base:SHAPES.kite, after:SHAPES.diamond, flap:[[230,105],[150,25],[150,185]], crease:[[150,25],[150,185]], arrow:[[210,105],[180,105],[152,105]], rotate:-18, dx:-30, dy:0, reach:.75};
+  if (name.includes("top") || name.includes("front")) return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[150,25],[95,105],[205,105]], crease:[[95,105],[205,105]], arrow:[[150,45],[150,75],[150,112]], rotate:0, dx:0, dy:55, reach:.75};
+  if (name.includes("bottom") || name.includes("tip") || name.includes("nose")) return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[150,185],[95,105],[205,105]], crease:[[95,105],[205,105]], arrow:[[150,165],[150,135],[150,100]], rotate:0, dx:0, dy:-48, reach:.75};
   if (name.includes("corner-back")) return {...base, base:SHAPES.diamond, after:SHAPES.kite, flap:[[150,25],[120,55],[180,55]], crease:[[120,55],[180,55]], arrow:[[150,38],[150,60],[150,78]], rotate:0, dy:25, dx:0};
 
   return null;
@@ -192,6 +194,68 @@ function diagramFor(name) {
 
 export function supportsOrigamiDiagram(name) {
   return Boolean(diagramFor(name));
+}
+
+/* A fold that turns over on its crease (docs/plans/2026-10-05-origami-audit/ slice 01, design O2):
+   the moving part is the paper on the template flap's side of the crease, cut from the sheet, not
+   the template's hand-drawn flap. Flip turns the whole sheet over, rotate turns it around. Every
+   other operation keeps the template slide until its model gets a paper model (design O3). */
+const HINGE_OPS = new Set(["valley-fold", "mountain-fold", "unfold", "blintz"]);
+
+function bounds(poly) {
+  const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
+  return { minX:Math.min(...xs), maxX:Math.max(...xs), minY:Math.min(...ys), maxY:Math.max(...ys) };
+}
+
+function foldPlan(step, d) {
+  const op = step.operation;
+  if (op === "flip" || op === "rotate") {
+    const sheet = d.base, box = bounds(sheet);
+    const cx = (box.minX + box.maxX) / 2, cy = (box.minY + box.maxY) / 2;
+    if (op === "rotate") return { kind:"turn", flap:sheet, stay:[], centre:[cx, cy], deg:d.rotate || 180 };
+    return { kind:"flip", flap:sheet, stay:[], a:[cx, box.minY], b:[cx, box.maxY] };
+  }
+  if (!HINGE_OPS.has(op) || !d.crease || !d.flap || d.slide) return null;
+  const sheet = op === "unfold" ? (d.after || d.base) : d.base;
+  const [a, b, tip] = d.reach || d.to ? reachLine(sheet, d.flap, d.reach, d.to) : d.crease;
+  let side = Math.sign(sideOf(tip || centroid(d.flap), a, b));
+  if (!side) return null;
+  /* A template whose drawn flap is the bigger side means the smaller side folds over it
+     ("fold the left lower edge toward the middle"). A crease on the paper's edge has nothing to
+     fold over: keep the template slide. */
+  if (!tip && area(clipByLine(sheet, a, b, side)) > 1.2 * area(clipByLine(sheet, a, b, -side))) side = -side;
+  const flap = clipByLine(sheet, a, b, side), stay = clipByLine(sheet, a, b, -side);
+  if (!flap.length || area(flap) < 40 || area(stay) < 0.15 * area(sheet)) return null;
+  const crease = tip ? chord(flap, a, b) : d.crease;
+  return { kind:op === "mountain-fold" ? "mountain" : "valley", flap, stay, a, b, crease, reverse:op === "unfold" };
+}
+
+/* Templates that bring a corner toward the middle ("…-to-center", and the generic left / right /
+   top / bottom ones) only say which corner moves; their drawn crease is the centre line, which
+   would fold the sheet in half. The crease that brings the corner `reach` of the way to the
+   middle is the perpendicular bisector of the corner and that point (or of the corner and the
+   template's `to`, e.g. "left corner to the bottom point"). Returns [a, b, corner]. */
+function reachLine(sheet, flap, reach, target = null) {
+  const mid = centroid(sheet), toward = centroid(flap);
+  let tip = sheet[0], best = -Infinity;
+  for (const p of sheet) {
+    const k = (p[0] - mid[0]) * (toward[0] - mid[0]) + (p[1] - mid[1]) * (toward[1] - mid[1]);
+    if (k > best) { best = k; tip = p; }
+  }
+  const to = target || [tip[0] + (mid[0] - tip[0]) * reach, tip[1] + (mid[1] - tip[1]) * reach];
+  const m = [(tip[0] + to[0]) / 2, (tip[1] + to[1]) / 2];
+  const vx = to[0] - tip[0], vy = to[1] - tip[1];
+  return [[m[0] + vy, m[1] - vx], [m[0] - vy, m[1] + vx], tip];
+}
+
+/* The crease as drawn: where the fold line crosses the moving part. */
+function chord(poly, a, b) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+  const on = poly.filter(p => Math.abs(sideOf(p, a, b)) / len < 1e-3);
+  if (on.length < 2) return [a, b];
+  const along = p => (p[0] - a[0]) * (b[0] - a[0]) + (p[1] - a[1]) * (b[1] - a[1]);
+  on.sort((p, q) => along(p) - along(q));
+  return [on[0], on[on.length - 1]];
 }
 
 /* One loop cycle: the unfolded start (arrow lights up), the fold, a hold on the folded
@@ -224,12 +288,15 @@ export class OrigamiFoldEngine {
     this.ghost = svgEl("polygon", {class:"oa-paper-ghost"});
     this.after = svgEl("polygon", {class:"oa-paper-after"});
     this.flap = svgEl("polygon", {class:"oa-paper-flap"});
+    this.flapBehind = svgEl("polygon", {class:"oa-paper-flap-behind"});
+    this.flapHome = svgEl("polygon", {class:"oa-paper-flap-home"});
+    this.landing = svgEl("polygon", {class:"oa-paper-landing"});
     this.crease = svgEl("line", {class:"oa-crease"});
     this.extraCrease = svgEl("line", {class:"oa-crease oa-crease-secondary"});
     this.arrowGlow = svgEl("path", {class:"oa-arrow-glow", fill:"none"});
     this.arrow = svgEl("path", {class:"oa-arrow", fill:"none"});
     this.arrowHead = svgEl("path", {class:"oa-arrow-head", fill:"none"});
-    this.svg.append(shadow,this.ghost,this.after,this.base,this.flap,this.crease,this.extraCrease,this.arrowGlow,this.arrow,this.arrowHead);
+    this.svg.append(shadow,this.ghost,this.after,this.flapBehind,this.base,this.landing,this.flapHome,this.flap,this.crease,this.extraCrease,this.arrowGlow,this.arrow,this.arrowHead);
     this.host.append(this.svg);
     this.setColors(this.front,this.back);
   }
@@ -247,17 +314,18 @@ export class OrigamiFoldEngine {
   show(step, { autoplay = true, time = null } = {}) {
     this.stop();
     const d = diagramFor(step.diagram) || baseDiagram();
-    this.parts = { crease:Boolean(d.crease), arrow:Boolean(d.arrow) };
-    this.base.setAttribute("points", points(d.flap ? d.base : (d.after || d.base)));
-    this.after.setAttribute("points", points(d.after || d.base));
-    this.ghost.setAttribute("points", points(d.after || d.base));
-    this.ghost.style.opacity = d.flap ? "0.18" : "0";
-    this.flap.style.display = d.flap ? "" : "none";
-    if (d.flap) this.flap.setAttribute("points", points(d.flap));
-    if (d.crease) {
+    const plan = foldPlan(step, d);
+    const arrowPts = plan && (plan.kind === "valley" || plan.kind === "mountain")
+      ? foldArrow(plan.reverse ? reflect(plan.flap, plan.a, plan.b) : plan.flap, plan.a, plan.b)
+      : d.arrow;
+    const crease = plan?.crease || d.crease;
+    this.parts = { crease:Boolean(crease), arrow:Boolean(arrowPts) };
+    if (plan) this.drawHinge(plan);
+    else this.drawSlide(d);
+    if (crease) {
       this.crease.style.display = "";
-      this.crease.setAttribute("x1",d.crease[0][0]); this.crease.setAttribute("y1",d.crease[0][1]);
-      this.crease.setAttribute("x2",d.crease[1][0]); this.crease.setAttribute("y2",d.crease[1][1]);
+      this.crease.setAttribute("x1",crease[0][0]); this.crease.setAttribute("y1",crease[0][1]);
+      this.crease.setAttribute("x2",crease[1][0]); this.crease.setAttribute("y2",crease[1][1]);
     } else this.crease.style.display = "none";
     if (d.extraCrease) {
       this.extraCrease.style.display = "";
@@ -265,8 +333,8 @@ export class OrigamiFoldEngine {
       this.extraCrease.setAttribute("x2",d.extraCrease[1][0]); this.extraCrease.setAttribute("y2",d.extraCrease[1][1]);
     } else this.extraCrease.style.display = "none";
     const arrowParts = [this.arrowGlow, this.arrow, this.arrowHead];
-    if (d.arrow) {
-      const [s,c,e]=d.arrow;
+    if (arrowPts) {
+      const [s,c,e]=arrowPts;
       arrowParts.forEach(el => { el.style.display = ""; });
       const curve = `M ${s[0]} ${s[1]} Q ${c[0]} ${c[1]} ${e[0]} ${e[1]}`;
       this.arrow.setAttribute("d",curve);
@@ -275,42 +343,23 @@ export class OrigamiFoldEngine {
       const px=-uy, py=ux, ax=e[0]-ux*12, ay=e[1]-uy*12;
       this.arrowHead.setAttribute("d",`M ${ax+px*7} ${ay+py*7} L ${e[0]} ${e[1]} L ${ax-px*7} ${ay-py*7}`);
     } else arrowParts.forEach(el => { el.style.display = "none"; });
-
-    this.flap.style.transform = "none";
-    this.flap.style.opacity = d.flap ? "0.82" : "0";
-    this.base.style.opacity = "1";
-    this.after.style.opacity = "0";
     this.arrowGlow.style.opacity = "0";
 
     const fold = Number(step.durationMs) || 1850;
     const total = LEAD_MS + fold + HOLD_MS + RESET_MS;
     const a = LEAD_MS / total, b = (LEAD_MS + fold) / total, c = (LEAD_MS + fold + HOLD_MS) / total;
-    const m = a + (b - a) * .58, settle = Math.min(c, b + .05);
+    const m = a + (b - a) * .58;
     const timing = { duration:total, iterations:Infinity };
-    const t0 = "translate(0px,0px) rotate(0deg)";
-    const tMid = `translate(${(d.dx||0)*.55}px,${(d.dy||0)*.55}px) rotate(${(d.rotate||0)*.55}deg)`;
-    const t1 = `translate(${d.dx||0}px,${d.dy||0}px) rotate(${d.rotate||0}deg)`;
     const canAnimate = typeof this.flap.animate === "function";
     const anims = [];
-    if (canAnimate && d.flap) {
-      anims.push(this.flap.animate([
-        { offset:0, transform:t0, opacity:0 },
-        { offset:a*.4, transform:t0, opacity:.82 },
-        { offset:a, transform:t0, opacity:.82, easing:"cubic-bezier(.3,.55,.45,1)" },
-        { offset:m, transform:tMid, opacity:.96, easing:"cubic-bezier(.2,.6,.3,1)" },
-        { offset:b, transform:t1, opacity:.18 },
-        { offset:settle, transform:t1, opacity:0 },
-        { offset:1, transform:t1, opacity:0 }
-      ], timing));
-      anims.push(this.base.animate([{offset:0,opacity:1},{offset:b,opacity:1},{offset:settle,opacity:0},{offset:c,opacity:0},{offset:1,opacity:1}], timing));
-      anims.push(this.after.animate([{offset:0,opacity:0},{offset:b,opacity:0},{offset:settle,opacity:1},{offset:c,opacity:1},{offset:1,opacity:0}], timing));
-    }
-    if (canAnimate && d.arrow) {
+    if (canAnimate && plan) anims.push(...this.animateHinge(plan, { a, b, c }, timing));
+    else if (canAnimate && d.flap) anims.push(...this.animateSlide(d, { a, b, c, m }, timing));
+    if (canAnimate && arrowPts) {
       const beam = [{offset:0,opacity:.35},{offset:a,opacity:1},{offset:m,opacity:1},{offset:b,opacity:.3},{offset:1,opacity:.3}];
       anims.push(this.arrow.animate(beam, timing), this.arrowHead.animate(beam, timing));
       anims.push(this.arrowGlow.animate([{offset:0,opacity:0},{offset:a,opacity:.85},{offset:(a+m)/2,opacity:.35},{offset:m,opacity:.85},{offset:b,opacity:0},{offset:1,opacity:0}], timing));
     }
-    if (canAnimate && d.crease && anims.length) {
+    if (canAnimate && crease && anims.length) {
       anims.push(this.crease.animate([{offset:0,opacity:.55},{offset:a,opacity:1},{offset:b,opacity:1},{offset:1,opacity:.55}], timing));
     }
     this.anims = anims;
@@ -323,6 +372,106 @@ export class OrigamiFoldEngine {
     anims.forEach(x => { x.currentTime = start; });
     if (autoplay && !this.reducedMotion) this.resume();
     else this.pause();
+  }
+
+  /* Template steps (design O3): the hand-drawn flap slides and spins around its own middle, then
+     the template's folded shape fades in. */
+  drawSlide(d) {
+    this.base.style.display = "";
+    this.base.setAttribute("points", points(d.flap ? d.base : (d.after || d.base)));
+    this.after.setAttribute("points", points(d.after || d.base));
+    this.ghost.setAttribute("points", points(d.after || d.base));
+    this.ghost.style.opacity = d.flap ? "0.18" : "0";
+    this.flap.style.display = d.flap ? "" : "none";
+    if (d.flap) this.flap.setAttribute("points", points(d.flap));
+    this.flap.style.transformBox = "fill-box";
+    this.flap.style.transformOrigin = "center";
+    this.flap.style.transform = "none";
+    this.flap.style.fill = this.back;
+    this.flap.style.opacity = d.flap ? "0.82" : "0";
+    [this.flapBehind, this.flapHome, this.landing].forEach(el => { el.style.display = "none"; });
+    this.base.style.opacity = "1";
+    this.after.style.opacity = "0";
+  }
+
+  animateSlide(d, { a, b, c, m }, timing) {
+    const settle = Math.min(c, b + .05);
+    const t0 = "translate(0px,0px) rotate(0deg)";
+    const tMid = `translate(${(d.dx||0)*.55}px,${(d.dy||0)*.55}px) rotate(${(d.rotate||0)*.55}deg)`;
+    const t1 = `translate(${d.dx||0}px,${d.dy||0}px) rotate(${d.rotate||0}deg)`;
+    return [
+      this.flap.animate([
+        { offset:0, transform:t0, opacity:0 },
+        { offset:a*.4, transform:t0, opacity:.82 },
+        { offset:a, transform:t0, opacity:.82, easing:"cubic-bezier(.3,.55,.45,1)" },
+        { offset:m, transform:tMid, opacity:.96, easing:"cubic-bezier(.2,.6,.3,1)" },
+        { offset:b, transform:t1, opacity:.18 },
+        { offset:settle, transform:t1, opacity:0 },
+        { offset:1, transform:t1, opacity:0 }
+      ], timing),
+      this.base.animate([{offset:0,opacity:1},{offset:b,opacity:1},{offset:settle,opacity:0},{offset:c,opacity:0},{offset:1,opacity:1}], timing),
+      this.after.animate([{offset:0,opacity:0},{offset:b,opacity:0},{offset:settle,opacity:1},{offset:c,opacity:1},{offset:1,opacity:0}], timing)
+    ];
+  }
+
+  /* Hinge steps (design O2): the staying part is still; the moving part turns over on the crease
+     (front colour until it is edge-on, back colour after) and stays on the result. A mountain fold
+     passes behind the paper. During the reset the moving part fades back in where it started. */
+  drawHinge(plan) {
+    const startPoly = plan.reverse ? reflect(plan.flap, plan.a, plan.b) : plan.flap;
+    this.base.style.display = plan.stay.length ? "" : "none";
+    if (plan.stay.length) this.base.setAttribute("points", points(plan.stay));
+    this.base.style.opacity = "1";
+    this.after.style.opacity = "0";
+    this.ghost.style.opacity = "0";
+    [this.flap, this.flapBehind].forEach(el => {
+      el.style.display = "";
+      el.setAttribute("points", points(plan.flap));
+      el.style.transformBox = "view-box";
+      el.style.transformOrigin = "0 0";
+    });
+    this.flap.style.opacity = "1";
+    this.flapBehind.style.display = plan.kind === "mountain" ? "" : "none";
+    this.flapBehind.style.opacity = "0";
+    this.flapHome.style.display = "";
+    this.flapHome.setAttribute("points", points(startPoly));
+    this.flapHome.style.fill = plan.reverse ? this.back : this.front;
+    this.flapHome.style.opacity = "0";
+    const lands = plan.kind === "valley" || plan.kind === "mountain";
+    this.landing.style.display = lands ? "" : "none";
+    if (lands) this.landing.setAttribute("points", points(plan.reverse ? plan.flap : reflect(plan.flap, plan.a, plan.b)));
+  }
+
+  animateHinge(plan, { a, b, c }, timing) {
+    const turn = plan.kind === "turn";
+    const tf = s => turn ? turnTransform(plan.centre, plan.deg * (1 - s) / 2) : hingeTransform(plan.a, plan.b, plan.reverse ? -s : s);
+    const c0 = plan.reverse ? this.back : this.front;
+    const c1 = turn ? c0 : (plan.reverse ? this.front : this.back);
+    const mountain = plan.kind === "mountain";
+    const front = [], behind = [];
+    const push = (offset, s, fill, before) => {
+      const shown = !mountain || before;
+      front.push({ offset, transform:tf(s), fill, opacity:shown ? 1 : 0 });
+      behind.push({ offset, transform:tf(s), fill, opacity:shown ? 0 : 1 });
+    };
+    push(0, 1, c0, true);
+    push(a, 1, c0, true);
+    for (const { u, s } of hingeSamples(16)) {
+      if (u === 0) continue;
+      const offset = a + (b - a) * u;
+      if (u === 0.5) { push(offset, s, c0, true); push(offset, s, c1, false); }
+      else push(offset, s, u < 0.5 ? c0 : c1, u < 0.5);
+    }
+    push(c, -1, c1, false);
+    front.push({ ...front[front.length - 1], offset:1, opacity:0 });
+    behind.push({ ...behind[behind.length - 1], offset:1, opacity:0 });
+    const anims = [this.flap.animate(front, timing)];
+    if (mountain) anims.push(this.flapBehind.animate(behind, timing));
+    anims.push(this.flapHome.animate([{offset:0,opacity:0},{offset:c,opacity:0},{offset:1,opacity:1}], timing));
+    if (this.landing.style.display !== "none") {
+      anims.push(this.landing.animate([{offset:0,opacity:0},{offset:a,opacity:.7},{offset:b,opacity:.7},{offset:Math.min(c, b + .04),opacity:0},{offset:1,opacity:0}], timing));
+    }
+    return anims;
   }
 
   get hasMotion() { return this.anims.length > 0; }

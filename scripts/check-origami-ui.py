@@ -43,6 +43,51 @@ FIT = """() => {
 }"""
 FLAP_T = "document.querySelector('.oa-paper-flap').getAnimations()[0]"
 
+# The live lesson on Little Fox step 1 (docs/plans/2026-10-05-origami-audit/ slice 01): seek every
+# animation to a point in the fold and read the flap. Fold window from the flap's own keyframes:
+# [0, lead, samples..., fold end, hold end, 1].
+HINGE = """async () => {
+  const D = await import('/js/vendor/origami-atelier/origami-data.js');
+  const ins = document.querySelector('.oa-instruction').textContent;
+  const model = D.ORIGAMI_MODELS.find(m => m.steps.some(s => Object.values(s.instruction).includes(ins)));
+  const flap = document.querySelector('.oa-paper-flap');
+  const anim = flap.getAnimations()[0];
+  const kf = anim.effect.getKeyframes();
+  const total = anim.effect.getTiming().duration;
+  const a = kf[1].offset, b = kf[kf.length - 3].offset, c = kf[kf.length - 2].offset;
+  const ok = kf.length > 10 && String(kf[a > 0 ? 2 : 1].transform).includes('scale(1');
+  const seek = (f) => { document.getAnimations().forEach(x => { x.pause(); x.currentTime = f * total; }); };
+  const box = (el) => el.getBoundingClientRect();
+  const read = () => getComputedStyle(flap).fill;
+  seek(a + (b - a) * .25); const early = read();
+  seek(a + (b - a) * .5);
+  const m = box(flap), room = [box(document.querySelector('.oa-paper-base')), box(document.querySelector('.oa-paper-flap-home')), box(document.querySelector('.oa-paper-landing'))];
+  const left = Math.min(...room.map(r => r.left)), right = Math.max(...room.map(r => r.right));
+  const top = Math.min(...room.map(r => r.top)), bottom = Math.max(...room.map(r => r.bottom));
+  const midInside = m.left >= left - 2 && m.right <= right + 2 && m.top >= top - 2 && m.bottom <= bottom + 2;
+  seek(a + (b - a) * .75); const late = read();
+  seek((b + c) / 2);
+  return { model: model && model.id, ok, early, late, front: getComputedStyle(document.querySelector('.oa-paper-flap-home')).fill,
+           heldFill: read(), heldOpacity: +getComputedStyle(flap).opacity, midInside,
+           mid: [m.left, m.right, m.top, m.bottom].map(Math.round) };
+}"""
+
+# Every step of every model through the engine, off-screen; returns the steps that threw.
+EVERY_STEP = """async () => {
+  const D = await import('/js/vendor/origami-atelier/origami-data.js');
+  const E = await import('/js/vendor/origami-atelier/origami-engine.js');
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-400px;top:0;width:300px;height:210px';
+  document.body.append(host);
+  const broken = [];
+  for (const m of D.ORIGAMI_MODELS) for (const [i, s] of m.steps.entries()) {
+    try { const e = new E.OrigamiFoldEngine(host, { reducedMotion: true }); e.show(s, { autoplay: false }); e.destroy(); }
+    catch (err) { broken.push(`${m.id} #${i + 1}: ${err.message}`); }
+  }
+  host.remove();
+  return broken;
+}"""
+
 
 def run(args):
     directory = ROOT if args.target == 'source' else ROOT / 'dist/android-web'
@@ -152,6 +197,15 @@ def run(args):
                 page.locator('.oa-root [data-action="prev-step"]').click()
                 check('Back goes to the previous step and autoplays',
                       page.locator('.oa-step-badge').inner_text() != before and page.locator('.oa-root [data-action="pause"]').count() == 1)
+                hinge = page.evaluate(HINGE)
+                check(f'Little Fox step 1 is a hinge fold ({hinge["model"]})', hinge['model'] == 'little-fox' and hinge['ok'])
+                check('The flap shows its front colour before it is edge-on, the back colour after',
+                      hinge['early'] == hinge['front'] and hinge['late'] != hinge['front'] and hinge['late'] == hinge['heldFill'])
+                check(f'Mid-fold the flap stays where real paper can be {hinge["mid"]}', hinge['midInside'])
+                check(f'The folded flap stays on the result ({hinge["heldOpacity"]})', hinge['heldOpacity'] > 0.9)
+                page.locator('.oa-root [data-action="replay"]').click()
+                broken = page.evaluate(EVERY_STEP)
+                check(f'Every step of all 28 models draws without an error {broken[:3]}', not broken)
                 page.emulate_media(reduced_motion='reduce')
                 page.locator('.oa-root [data-action="next-step"]').click()
                 page.wait_for_timeout(100)

@@ -46,3 +46,24 @@
 `python scripts/check-origami-ui.py` passes; `fold-frames.py` re-run shows Little Fox #1, Paper
 Boat #1 and Crane #5 turning over on the crease with the flap staying on the result — the strip is
 saved next to the old one as `fold-frames-01.png`.
+
+**Shipped 2026-10-06.** `origami-fold.js` + `scripts/origami-fold.test.mjs` (7 tests); the engine's
+hinge, flip and rotate paths; `check-origami-ui.py` gains 5 checks (hinge on Little Fox 1, colour
+before/after edge-on, mid-fold box, flap stays on the result, all 275 steps draw); 43/43 pass;
+`check.mjs` green after `npm run build:android-web`; `sw.js` cache `v182-origami-hinge`. Strip:
+[fold-frames-01.png](fold-frames-01.png); `fold-frames.py` now takes optional picks as JSON.
+
+Found while sweeping all 134 hinge, flip and rotate steps, and fixed in the templates (engine code,
+no data touched):
+- The "…-to-center" templates and the generic left / right / top / bottom ones draw the centre
+  line as their crease, so a hinge on it folded the sheet in half where the words say "to the
+  center" or "slightly". They now fold on the perpendicular bisector of the corner and its target:
+  the centre for "…-to-center" and blintz, ¾ of the way there for the generic ones, the bottom point
+  for Samurai Helmet's "left / right corner to the bottom point".
+- A template flap bigger than the other side means the smaller side folds; a crease on the paper's
+  edge (Water Bomb pair-up / pair-in) keeps the old slide; Paper Heart's heart-left / heart-right
+  creases fit neither side of their words, so they keep the old slide too (design O3).
+- The text and the picture still disagree on many template steps (Little Fox 2 "upward" folds
+  sideways). That is the paper-model work (slices 06–07 and the later rollout), not this slice.
+- Crane #5 (square base) is a `collapse`, so it keeps the slide under design O3; the DONE WHEN named
+  it by mistake. Little Fox #1 and Paper Boat #1 turn over on the crease in the strip.

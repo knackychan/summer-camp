@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v180-brick-walk-step-in";
+const CACHE_NAME = "summer-quest-v182-origami-hinge";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -258,6 +258,7 @@ const APP_SHELL = [
   "./js/vendor/origami-atelier/origami-atelier.css",
   "./js/vendor/origami-atelier/origami-data.js",
   "./js/vendor/origami-atelier/origami-engine.js",
+  "./js/vendor/origami-atelier/origami-fold.js",
   "./js/vendor/origami-atelier/origami-storage.js",
   "./assets/solar/sun.jpg",
   "./assets/solar/mercury.jpg",
