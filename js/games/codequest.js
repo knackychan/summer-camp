@@ -12,7 +12,7 @@ import { placeBubbleRect } from './codequest/bubble.js';
 import { repeatCounts, ifTests, insertAfter } from './codequest/strip-edit.js';
 import { cardView, withSticker, withoutStickers } from './codequest/stickers.js';
 import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, COACH, STICKER, PICKER, BRIEF, pairHTML, setLanguage, language, t } from './codequest/strings.js';
-import { skillsFor, difficultyFor, hintFor } from './codequest/hints.js';
+import { skillsFor, difficultyFor, hintFor, missingSkills, needsAll } from './codequest/hints.js';
 import { mountLab } from './codequest/lab/lab-screen.js';
 
 let S = null;
@@ -929,7 +929,8 @@ function beginIfNeeded() {
   if (result.ok) return true;
   if (result.reason === 'empty-program') notify(S.runeProgram.length ? MESSAGES.runeReady : MESSAGES.empty);
   else if (result.reason === 'too-many-blocks') notify(MESSAGES.tooMany);
-  else if (result.reason === 'missing-concept') notify(result.concept === 'repeat' ? MESSAGES.needRepeat : result.concept === 'if' ? MESSAGES.needIf : MESSAGES.needCall);
+  // Name the whole rule and everything still missing, not just the first gap (quest-clarity D3).
+  else if (result.reason === 'missing-concept') notify(needsAll(S.level, missingSkills(S.level, S.program, functions()), S.runeProgram.length > 0));
   else if (result.reason === 'missing-function') notify(MESSAGES.missingFunction);
   else notify(['Try adjusting the program.', '試著調整程式。']);
   render(); return false;

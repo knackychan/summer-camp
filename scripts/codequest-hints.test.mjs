@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { LEVELS } from '../js/games/codequest/levels.js';
-import { SKILLS, HINTS, skillsFor, difficultyFor, chipText, hintFor, hasHandHint, peekFor, missingSkills } from '../js/games/codequest/hints.js';
+import { SKILLS, HINTS, skillsFor, difficultyFor, chipText, hintFor, hasHandHint, peekFor, missingSkills, needsAll } from '../js/games/codequest/hints.js';
+import { action as A, repeat as R, call as CALL } from '../js/games/codequest/ast.js';
 
 const byId = Object.fromEntries(LEVELS.map(level => [level.id, level]));
 const ids = list => list.map(item => item.id);
@@ -64,5 +65,18 @@ assert.ok(golemPeek.rune && golemPeek.rune.length > 0, 'q12 peek carries the Run
 assert.deepEqual(ids(missingSkills(byId.q12, [], {})), ['call', 'repeat']);
 assert.deepEqual(missingSkills(byId.q12, byId.q12.reference.main, byId.q12.reference.functions), []);
 for (const level of LEVELS) assert.deepEqual(missingSkills(level, level.reference.main, level.reference.functions), [], level.id + ' reference has every skill');
+
+// A refused Run names the whole rule and what is still missing (D3).
+for (const level of LEVELS.filter(item => item.requires.length)) {
+  const [en, zh] = needsAll(level, missingSkills(level, [], {}));
+  for (const chip of skillsFor(level)) { assert.ok(en.includes(chip.name[0]), level.id + ' names ' + chip.name[0]); assert.ok(zh.includes(chip.name[1]), level.id + ' names ' + chip.name[1]); }
+  assert.ok(!en.includes('Still missing'), level.id + ' all missing: one sentence');
+}
+assert.ok(!needsAll(byId.q25, missingSkills(byId.q25, [], {}))[0].includes('Rune'), 'q25 (let) is never told to use a Rune');
+const runeOnly = missingSkills(byId.q12, [CALL('rune')], { rune: [A('attack')] });
+assert.deepEqual(ids(runeOnly), ['repeat']);
+assert.deepEqual(needsAll(byId.q12, runeOnly), ['This quest needs 🪨 Rune + 🔁 Repeat. Still missing: 🔁 Repeat.', '這一關需要 🪨 符文＋🔁 重複。還差：🔁 重複。']);
+const heroOnly = missingSkills(byId.q12, [R(2, [A('attack')])], { rune: [A('attack')] });
+assert.ok(needsAll(byId.q12, heroOnly, true)[0].endsWith('Put the 🪨 card in the Hero row.'), 'a built Rune only needs placing');
 
 console.log('codequest-hints: ok');

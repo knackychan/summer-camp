@@ -177,6 +177,13 @@ export const BRIEF = Object.freeze({
   easy: ['Easy', '簡單'], medium: ['Medium', '中等'], hard: ['Hard', '困難']
 });
 
+/* A refused Run names the whole rule and what is still missing (quest-clarity D3). */
+export const NEEDS = Object.freeze({
+  all: chips => ['This quest needs ' + chips[0] + '.', '這一關需要 ' + chips[1] + '。'],
+  missing: chips => [' Still missing: ' + chips[0] + '.', '還差：' + chips[1] + '。'],
+  heroRow: [' Put the 🪨 card in the Hero row.', '把 🪨 卡片放到英雄那一排。']
+});
+
 /* Which way the hero faces, in screen words (facing-and-rune D3; screen reader only). */
 export const FACING = Object.freeze({
   N: ['Facing up', '面向上方'], S: ['Facing down', '面向下方'], W: ['Facing left', '面向左邊'], E: ['Facing right', '面向右邊']

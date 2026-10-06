@@ -427,6 +427,14 @@ def run(args):
                 meta = page.evaluate("(() => { const m = document.querySelector('.cq-goal-pop .cq-goal-meta'); return m ? m.innerText : ''; })()")
                 check(f'{tag}: goal pop shows the chips and the difficulty', 'Rune' in meta and 'Repeat' in meta and 'Hard' in meta, meta)
                 act('goal')
+                # Slice 03: a refused Run names the whole rule and what is still missing.
+                act('picker:fight')
+                act('add:attack')
+                act('run')
+                bubble = page.evaluate("document.querySelector('.cq-bubble').innerText")
+                check(f'{tag}: q12 Hero row = Attack, Run names Rune and Repeat in one message',
+                      notice() == 'This quest needs 🪨 Rune + 🔁 Repeat.' and 'Rune' in bubble and 'Repeat' in bubble and state()['model']['phase'] == 'programming', bubble)
+                act('clear')
                 enter_level('q01')
                 b = brief()
                 check(f"{tag}: q01 says You'll practise + Sequence, Easy", b and "You'll practise" in b['text'] and b['chips'] and b['chips'][0].endswith('Sequence') and 'Easy' in b['pips'], b)

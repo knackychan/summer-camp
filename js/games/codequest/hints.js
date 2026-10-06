@@ -3,7 +3,8 @@
    list `model.begin()` enforces — so the chips can't disagree with what Run checks (D4).
    Words are the game's own (D1). Hints never state a number of hits: gear changes damage (D6).
    Pure: no DOM, no game state. */
-import { functionDescriptor, toJavaScript } from './ast.js';
+import { functionDescriptor, normalizeProgram, toJavaScript } from './ast.js';
+import { NEEDS } from './strings.js';
 import { requirementPresent } from './model.js';
 
 const skill = (id, icon, en, zh, whyEn, whyZh) => Object.freeze({ id, icon, name: Object.freeze([en, zh]), why: Object.freeze([whyEn, whyZh]) });
@@ -114,5 +115,16 @@ export function peekFor(level) {
 
 /** The skill entries a program still lacks for this quest (same folding as the chips). */
 export function missingSkills(level, program, functions) {
-  return foldTags(((level && level.requires) || []).filter(tag => !requirementPresent(program || [], functions || {}, tag)));
+  const safe = normalizeProgram(program || []);
+  return foldTags(((level && level.requires) || []).filter(tag => !requirementPresent(safe, functions || {}, tag)));
+}
+
+/** Refusal words (D3): the whole rule, then what is still missing.
+    `runeBuilt`: the Rune row has cards, so a missing 🪨 card only needs placing. */
+export function needsAll(level, missing, runeBuilt = false) {
+  const all = skillsFor(level).filter(item => !item.teach), lacking = missing || [];
+  const [en, zh] = NEEDS.all(chipText(all));
+  const more = lacking.length && lacking.length < all.length ? NEEDS.missing(chipText(lacking)) : ['', ''];
+  const place = runeBuilt && lacking.some(item => item.id === 'call') ? NEEDS.heroRow : ['', ''];
+  return [en + more[0] + place[0], zh + more[1] + place[1]];
 }

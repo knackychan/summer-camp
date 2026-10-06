@@ -1,6 +1,6 @@
 # Slice 03: A refused Run names every missing skill
 
-**Status:** Design approved by Papa 2026-10-06 (`design.md` D3). Not started.
+**Status:** Design approved by Papa 2026-10-06 (`design.md` D3). Built 2026-10-06; unit tests and `check-codequest-ui.py` green.
 **Goal:** When Run is refused for a missing skill, the kid hears the whole rule and exactly what is still missing — never the wrong skill.
 **Depends on:** 01.
 **Files:** `js/games/codequest.js`, `js/games/codequest/strings.js`, `scripts/codequest-hints.test.mjs`, `scripts/check-codequest-ui.py`.
