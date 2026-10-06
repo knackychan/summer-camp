@@ -40,3 +40,31 @@
 
 **DONE WHEN:** `node scripts/check.mjs` green (runs `origami-paper.test.mjs`, gate vacuous until
 slice 07 adds data); `python scripts/check-origami-ui.py` passes (template models unchanged).
+
+**Shipped 2026-10-06.** `origami-paper.js` + `scripts/origami-paper.test.mjs` (9 tests); the engine
+draws a model whose steps all carry `fold` from `replay()` (`show(step, { model })`, the Atelier
+passes the model); `check.mjs` paper gate (vacuous until slice 07); `check-origami-ui.py` 71/71 —
+`EVERY_STEP` now passes the model, and 9 new checks run the paper path on a synthetic 7-step model
+(valley, mountain, precrease, flip, rotate, keyframe, finish): facets not templates, each step starts
+on the outline the last one held (±1 px), Play on every step but the finish, notation per op, the
+moving part keeps its face until edge-on and lands face-swapped in reverse order (valley, mountain,
+flip), the keyframe morphs `d`, the finish shows both faces. Cache `v188-origami-paper`; Android
+payload rebuilt.
+
+As built, differing from the text above:
+- No `creases` list in the state: a precrease leaves the state unchanged and its thin crease mark
+  shows on its own step only. Carrying creases through later folds means folding them with the
+  layers; left for the rollout if a model's words lean on an earlier crease (crane).
+- `replay(model)` returns every step's `{ before, after, motion }` (memoised) instead of
+  `replay(model, upTo)`; the area is `stateArea(state)`; `bounds(state)` and `isPaperModel(model)`
+  are exported for the engine.
+- † `model.paper.startRotate` (degrees) turns the start sheet, e.g. 45 for a diamond, so Little Fox
+  01 "top corner to bottom corner" can be drawn as the words say (slice 07).
+- The engine draws three stacks: what folds behind (mountain), the paper that stays, what folds in
+  front (valley, flip, precrease). A mountain with `layers: "top"` therefore lands behind the whole
+  paper, not between layers — none of the six pilot models needs that.
+- Keyframe steps have no arrow; on the reset their shapes blink back to the start instead of
+  morphing backwards (which would look like an unfold).
+- For slice 07: the live-lesson checks (`FLAP_T`, `HINGE`, `NOTATION`) read `.oa-paper-flap` on
+  Little Fox 1 and Cat Face 6. Once those models are on the paper model the checks must read the
+  paper groups (`.oa-paper-model > g`) or move to a template model.

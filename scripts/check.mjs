@@ -587,6 +587,21 @@ try {
       fail("origami notation", `${m.id} ${st.id} says "${st.instruction.en}" but is tagged valley-fold`);
     }
   }
+  // Slice 06 (design O8, O9): a model on the paper model has a `fold` on every step, and replaying
+  // them keeps the sheet whole. apply() throws when a fold line misses the paper, a fold point is off
+  // it, or a keyframe names a facet that isn't there or has the wrong point count.
+  const paper = await import(new URL("js/vendor/origami-atelier/origami-paper.js", root));
+  for (const m of origami.ORIGAMI_MODELS) {
+    if (!m.steps.some((st) => st.fold)) continue;
+    const bare = m.steps.filter((st) => !st.fold).map((st) => st.id);
+    if (bare.length) { fail("origami paper", `${m.id}: steps without fold: ${bare.join(", ")}`); continue; }
+    let state = paper.start(m);
+    for (const st of m.steps) {
+      try { state = paper.apply(state, st.fold).state; } catch (err) { fail("origami paper", `${m.id} ${st.id}: ${err.message}`); break; }
+      const a = paper.stateArea(state);
+      if (Math.abs(a - 1) > 1e-6) { fail("origami paper", `${m.id} ${st.id}: the paper's area is ${a.toFixed(6)}, not 1`); break; }
+    }
+  }
 }
 
 // Brain gate (plan 2026-07-26-brain-gym slice 11): the daily three are the door to the games

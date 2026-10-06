@@ -85,7 +85,7 @@ EVERY_STEP = """async () => {
   for (const m of D.ORIGAMI_MODELS) for (const [i, s] of m.steps.entries()) {
     count++;
     try {
-      const e = new E.OrigamiFoldEngine(host, { reducedMotion: true }); e.show(s, { autoplay: false });
+      const e = new E.OrigamiFoldEngine(host, { reducedMotion: true }); e.show(s, { autoplay: false, model: m });
       if (!e.hasMotion && s.operation !== 'finish') still.push(`${m.id} #${i + 1}`);
       e.destroy();
     } catch (err) { broken.push(`${m.id} #${i + 1}: ${err.message}`); }
@@ -147,6 +147,85 @@ REOPEN = """async () => {
   }
   host.remove();
   return out;
+}"""
+
+# The paper-model path (slice 06) on a synthetic model, until slice 07 puts `fold` on real ones:
+# valley, mountain, precrease, flip, rotate, keyframe, finish. Each step must start on the outline the
+# step before held (+-1 px), the folded part must change face where it is edge-on, a mountain must
+# land behind the paper, the keyframe must morph its outline, and the finish shows both faces still.
+PAPER = """async () => {
+  const E = await import('/js/vendor/origami-atelier/origami-engine.js');
+  const P = await import('/js/vendor/origami-atelier/origami-paper.js');
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:210px';
+  document.body.append(host);
+  const model = { id: 'paper-check', paper: { startFace: 'front' }, steps: [
+    { id: 'v', operation: 'valley-fold', fold: { op: 'valley', line: [[0, 0], [1, 1]], move: [0, 1] } },
+    { id: 'm', operation: 'mountain-fold', fold: { op: 'mountain', line: [[0.5, 0], [0.5, 1]], move: [0.2, 0.1] } },
+    { id: 'p', operation: 'precrease', fold: { op: 'precrease', line: [[0, 0.25], [1, 0.25]], move: [0.8, 0.1] } },
+    { id: 'f', operation: 'flip', fold: { op: 'flip' } },
+    { id: 'r', operation: 'rotate', fold: { op: 'rotate', deg: 90 } },
+    { id: 'k', operation: 'spread', fold: { op: 'keyframe', to: {} } },
+    { id: 'end', operation: 'finish', fold: { op: 'finish' } },
+  ] };
+  /* The keyframe nudges the first facet's first corner toward its middle. */
+  const pre = { ...model, steps: model.steps.slice(0, 5) };
+  const last = P.replay(pre)[4].after.facets[0];
+  const mid = last.poly.reduce((s, p) => [s[0] + p[0] / last.poly.length, s[1] + p[1] / last.poly.length], [0, 0]);
+  model.steps[5].fold.to[last.id] = last.poly.map((p, i) => i ? p : [(p[0] + mid[0]) / 2, (p[1] + mid[1]) / 2]);
+  const colour = (c) => { const d = document.createElement('div'); d.style.color = c; document.body.append(d); const v = getComputedStyle(d).color; d.remove(); return v; };
+  const FRONT = '#ef8f9f', BACK = '#3a7bd5';
+  const front = colour(FRONT), back = colour(BACK);
+  const shown = (el) => { for (let n = el; n && n !== host; n = n.parentNode) { const cs = getComputedStyle(n); if (cs.display === 'none' || +cs.opacity < 0.5) return false; } return true; };
+  const outline = () => {
+    const r = [...host.querySelectorAll('.oa-paper-facet')].filter(shown).map(el => el.getBoundingClientRect());
+    return r.length ? [Math.min(...r.map(x => x.left)), Math.min(...r.map(x => x.top)), Math.max(...r.map(x => x.right)), Math.max(...r.map(x => x.bottom))].map(v => Math.round(v * 10) / 10) : null;
+  };
+  const out = [];
+  let held = null;
+  for (const [i, step] of model.steps.entries()) {
+    const e = new E.OrigamiFoldEngine(host, { reducedMotion: true, front: FRONT, back: BACK });
+    e.show(step, { autoplay: false, model });
+    const seek = (f) => e.anims.forEach(x => { x.currentTime = f * e.cycleMs; });
+    const groups = [...host.querySelectorAll('.oa-paper-model > g')];
+    const r = { id: step.id, paper: getComputedStyle(host.querySelector('.oa-paper-model')).display !== 'none',
+      template: getComputedStyle(host.querySelector('.oa-paper-base').parentNode).display === 'none',
+      play: e.hasMotion, notation: e.parts.notation, facets: host.querySelectorAll('.oa-paper-facet').length };
+    if (e.anims.length) seek(0);
+    const start = outline();
+    r.continues = i === 0 || (held && start && start.every((v, k) => Math.abs(v - held[k]) <= 1));
+    r.start = start; r.prevHeld = held;
+    if (e.anims.length) {
+      const kf = e.anims[0].effect.getKeyframes();
+      const a = kf[1].offset, c = kf[step.id === 'k' ? 3 : kf.length - 2].offset;
+      const b = step.id === 'p' ? null : kf[kf.length - 3].offset;
+      if (['v', 'm', 'f'].includes(step.id)) {
+        seek(a + (b - a) * .25);
+        r.early = [...groups[3].querySelectorAll('path')].filter(shown).length;
+        seek(a + (b - a) * .75);
+        const post = step.id === 'm' ? groups[0] : groups[4];
+        r.late = [...post.querySelectorAll('path')].filter(shown).length;
+        r.lateHidden = [...groups[3].querySelectorAll('path')].filter(shown).length;
+        /* post lists the moving facets in reverse layer order, each showing its other face. */
+        const fills = (g) => [...g.querySelectorAll('path')].map(el => getComputedStyle(el).fill);
+        const pf = fills(groups[3]), qf = fills(post);
+        r.swapped = qf.length === pf.length && qf.every((f, k) => f !== pf[pf.length - 1 - k]);
+      }
+      if (step.id === 'k') {
+        const el = e.anims[0].effect.target;
+        const d0 = getComputedStyle(el).d; seek(kf[2].offset); const d1 = getComputedStyle(el).d;
+        r.morphs = d0 !== d1;
+      }
+      seek(c - 0.001);
+    }
+    held = outline();
+    if (step.id === 'end') r.fills = [...new Set([...host.querySelectorAll('.oa-paper-facet')].map(el => getComputedStyle(el).fill))];
+    r.held = held;
+    out.push(r);
+    e.destroy();
+  }
+  host.remove();
+  return { steps: out, front, back };
 }"""
 
 
@@ -288,6 +367,22 @@ def run(args):
                 steps = page.evaluate(EVERY_STEP)
                 check(f'Every step of all 28 models draws without an error {steps["broken"][:3]}', steps['count'] == 275 and not steps['broken'])
                 check(f'Every step but the finish has something to play {steps["still"][:5]}', not steps['still'])
+                paper = page.evaluate(PAPER)
+                ps = {r['id']: r for r in paper['steps']}
+                check(f'Paper model: every step draws from facets, not templates {[(r["id"], r["facets"]) for r in paper["steps"]]}',
+                      all(r['paper'] and r['template'] and r['facets'] > 0 for r in paper['steps']))
+                check(f'Paper model: each step starts on the outline the last one held {[(r["id"], r["start"], r["prevHeld"]) for r in paper["steps"] if not r["continues"]]}',
+                      all(r['continues'] for r in paper['steps']))
+                check(f'Paper model: every step but the finish plays {[(r["id"], r["play"]) for r in paper["steps"]]}',
+                      all(r['play'] != (r['id'] == 'end') for r in paper['steps']))
+                check(f'Paper model: notation follows the op {[(r["id"], r["notation"]) for r in paper["steps"]]}',
+                      [ps[k]['notation'] for k in 'vmpfr'] == ['valley', 'mountain', 'precrease', 'flip', 'rotate'])
+                for k in 'vmf':
+                    r = ps[k]
+                    check(f'Paper model {k}: the moving part lies as it was before edge-on and lands face-swapped after {r}',
+                          r['early'] > 0 and r['late'] > 0 and r['lateHidden'] == 0 and r['swapped'])
+                check(f'Paper model: the keyframe step morphs its outline {ps["k"]}', ps['k']['morphs'])
+                check(f'Paper model: the finish shows both faces {ps["end"]["fills"]}', paper['front'] in ps['end']['fills'] and paper['back'] in ps['end']['fills'])
                 for r in page.evaluate(REOPEN):
                     check(f'Crane step {r["step"]} folds and reopens, leaving its crease {r}',
                           r['play'] and r['moved'] and r['shown'] and r['reopened'] and r['crease'] >= 0.9)

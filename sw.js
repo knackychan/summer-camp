@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v187-origami-notation";
+const CACHE_NAME = "summer-quest-v188-origami-paper";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -260,6 +260,7 @@ const APP_SHELL = [
   "./js/vendor/origami-atelier/origami-data.js",
   "./js/vendor/origami-atelier/origami-engine.js",
   "./js/vendor/origami-atelier/origami-fold.js",
+  "./js/vendor/origami-atelier/origami-paper.js",
   "./js/vendor/origami-atelier/origami-storage.js",
   "./assets/solar/sun.jpg",
   "./assets/solar/mercury.jpg",

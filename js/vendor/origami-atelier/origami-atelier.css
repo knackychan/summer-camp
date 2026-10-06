@@ -154,6 +154,9 @@
 /* Hinge folds transform in view-box units around 0 0 (origami-audit slice 01); the engine sets
    fill-box/center inline for template slides. */
 .oa-paper-flap,.oa-paper-flap-behind,.oa-paper-flap-second{transform-box:view-box;transform-origin:0 0}
+/* Paper-model facets (origami-audit slice 06): a thin darker edge; moving groups hinge like the flap. */
+.oa-paper-facet{stroke:#5f4236;stroke-width:1.4;stroke-linejoin:round}
+.oa-paper-move{transform-box:view-box;transform-origin:0 0}
 .oa-paper-landing{fill:none;stroke:#7a5647;stroke-width:1.6;stroke-dasharray:4 5;opacity:0}
 .oa-crease{stroke:#a84e63;stroke-width:2.6;stroke-dasharray:8 6}
 /* Book notation (origami-audit slice 05): mountain = dash-dot, a reopened crease = thin solid. */

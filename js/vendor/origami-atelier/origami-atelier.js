@@ -178,7 +178,7 @@ export function mountOrigamiAtelier(root, options = {}) {
     engine?.destroy();
     engine = new OrigamiFoldEngine(view.querySelector("[data-fold-stage]"), { front:paper.front, back:paper.back, label:t("Origami folding diagram","摺紙步驟圖") });
     if (keep) engine.played = keep.played;
-    engine.show(step, keep ? { autoplay:!keep.paused, time:keep.time } : {});
+    engine.show(step, keep ? { autoplay:!keep.paused, time:keep.time, model } : { model });
     /* Book notation (docs/plans/2026-10-05-origami-audit/ slice 05): a step with a valley,
        mountain, precrease, flip or rotate shows that one symbol and what it means; other steps
        keep the plain fold-line / arrow chips. */

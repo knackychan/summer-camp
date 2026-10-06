@@ -1,4 +1,5 @@
 import { area, centroid, clipByLine, foldArrow, hingeSamples, hingeTransform, reflect, sideOf, turnTransform } from "./origami-fold.js";
+import { bounds as paperBounds, isPaperModel, replay as replayPaper, start as paperStart } from "./origami-paper.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -261,6 +262,7 @@ function hingeOf(sheet, d, line, templateFlap) {
 function notationFor(step, plan) {
   const op = step.operation;
   if (plan?.reopen) return "precrease";
+  if (plan?.paper) return ["valley", "mountain", "flip", "rotate"].includes(plan.kind) ? plan.kind : null;
   if (op === "mountain-fold") return "mountain";
   if (op === "valley-fold" || op === "blintz" || op === "unfold") return "valley";
   if (op === "flip") return "flip";
@@ -295,6 +297,39 @@ function chord(poly, a, b) {
   on.sort((p, q) => along(p) - along(q));
   return [on[0], on[on.length - 1]];
 }
+
+/* Pictures that follow the paper (docs/plans/2026-10-05-origami-audit/ slice 06, design O8): a
+   model whose steps all carry `fold` is drawn from the flat-fold paper model, so each step starts
+   on the shape the last one ended on. Paper coordinates map to the view box once per model: the
+   start sheet fills the box and stays put, with no re-zoom between steps. */
+function paperView(model) {
+  const b = paperBounds(paperStart(model));
+  const k = 160 / Math.max(b.maxX - b.minX, b.maxY - b.minY);
+  const ox = 150 - k * (b.minX + b.maxX) / 2, oy = 105 - k * (b.minY + b.maxY) / 2;
+  return (p) => [ox + k * p[0], oy + k * p[1]];
+}
+
+function paperPlan(model, index) {
+  const { before, motion } = replayPaper(model)[index];
+  const view = paperView(model);
+  const facets = (list) => list.map(f => ({ ...f, poly: f.poly.map(view) }));
+  const plan = { paper:true, kind:motion.kind, before:facets(before.facets), reopen:motion.kind === "precrease" };
+  if (motion.moving) { plan.moving = facets(motion.moving); plan.stay = facets(motion.stay); }
+  if (motion.line) { plan.a = view(motion.line[0]); plan.b = view(motion.line[1]); }
+  if (motion.kind === "rotate") { plan.centre = view(motion.centre); plan.deg = motion.deg; }
+  if (motion.kind === "keyframe") plan.to = facets(motion.to);
+  if (motion.kind === "valley" || motion.kind === "mountain" || motion.kind === "precrease") {
+    plan.crease = chord(plan.moving.flatMap(f => f.poly), plan.a, plan.b);
+    /* The arrow starts on the moving piece that reaches furthest from the crease. */
+    const reach = (f) => Math.max(...f.poly.map(p => Math.abs(sideOf(p, plan.a, plan.b))));
+    plan.arrowFrom = plan.moving.reduce((best, f) => reach(f) > reach(best) ? f : best).poly;
+  }
+  return plan;
+}
+
+const otherFace = (face) => face === "front" ? "back" : "front";
+const byLayer = (list, desc = false) => [...list].sort((p, q) => desc ? q.layer - p.layer : p.layer - q.layer);
+const pathD = (poly) => `M ${poly.map(([x, y]) => `${x} ${y}`).join(" L ")} Z`;
 
 /* One loop cycle: the unfolded start (arrow lights up), the fold, a hold on the folded
    shape so kids can catch up, then a short fade back to the start. Pure WAAPI, so pause
@@ -371,7 +406,10 @@ export class OrigamiFoldEngine {
     this.extraMark = svgEl("line", {class:"oa-crease-mark"});
     this.symbol = svgEl("path", {class:"oa-fold-symbol", fill:"none"});
     this.symbolHead = svgEl("path", {class:"oa-fold-symbol-head"});
-    this.svg.append(shadow,this.ghost,this.after,this.flapBehind,this.base,this.base2,this.landing,this.flapHome,this.flap,this.flap2,this.crease,this.extraCrease,this.creaseMark,this.extraMark,this.arrowGlow,this.arrow,this.arrowHead,this.symbol,this.symbolHead);
+    this.templateLayer = svgEl("g");
+    this.templateLayer.append(this.ghost,this.after,this.flapBehind,this.base,this.base2,this.landing,this.flapHome,this.flap,this.flap2);
+    this.paperLayer = svgEl("g", {class:"oa-paper-model"});
+    this.svg.append(shadow,this.templateLayer,this.paperLayer,this.crease,this.extraCrease,this.creaseMark,this.extraMark,this.arrowGlow,this.arrow,this.arrowHead,this.symbol,this.symbolHead);
     this.host.append(this.svg);
     this.setColors(this.front,this.back);
   }
@@ -387,13 +425,14 @@ export class OrigamiFoldEngine {
 
   /* autoplay: start looping now. time: pick the cycle up at this point (language re-render).
      Reduced motion never autoplays; it rests on the start frame until Play is tapped. */
-  show(step, { autoplay = true, time = null } = {}) {
+  show(step, { autoplay = true, time = null, model = null } = {}) {
     this.stop();
-    const d = diagramFor(step.diagram) || baseDiagram();
-    const plan = foldPlan(step, d);
+    const paper = model && isPaperModel(model) ? paperPlan(model, model.steps.indexOf(step)) : null;
+    const d = paper ? {} : diagramFor(step.diagram) || baseDiagram();
+    const plan = paper || foldPlan(step, d);
     const folds = plan && (plan.kind === "valley" || plan.kind === "mountain");
-    const arrowPts = folds
-      ? foldArrow(plan.reverse ? reflect(plan.flap, plan.a, plan.b) : plan.flap, plan.a, plan.b)
+    const arrowPts = paper ? (plan.arrowFrom ? foldArrow(plan.arrowFrom, plan.a, plan.b) : null)
+      : folds ? foldArrow(plan.reverse ? reflect(plan.flap, plan.a, plan.b) : plan.flap, plan.a, plan.b)
       : d.arrow;
     const crease = plan?.crease || d.crease;
     const extra = plan?.second?.crease || d.extraCrease;
@@ -401,7 +440,11 @@ export class OrigamiFoldEngine {
     this.parts = { crease:Boolean(crease), arrow:Boolean(arrowPts), notation };
     [this.base2, this.flap2].forEach(el => { el.style.display = "none"; });
     this.base.style.transform = "none";
-    if (plan?.kind === "shape") this.drawShape(plan);
+    this.templateLayer.style.display = paper ? "none" : "";
+    this.paperLayer.style.display = paper ? "" : "none";
+    this.paperLayer.replaceChildren();
+    if (paper) this.drawPaper(plan);
+    else if (plan?.kind === "shape") this.drawShape(plan);
     else if (plan) this.drawHinge(plan);
     else this.drawSlide(d);
     const line = (el, seg) => {
@@ -443,7 +486,8 @@ export class OrigamiFoldEngine {
     const timing = { duration:total, iterations:LOOPS - 1 + c, fill:"forwards" };
     const canAnimate = typeof this.flap.animate === "function";
     const anims = [];
-    if (canAnimate && plan?.reopen) anims.push(...this.animateReopen(plan, t, timing));
+    if (canAnimate && paper) anims.push(...this.animatePaper(plan, t, timing));
+    else if (canAnimate && plan?.reopen) anims.push(...this.animateReopen(plan, t, timing));
     else if (canAnimate && plan?.kind === "shape") anims.push(this.animateShape(plan, t, timing));
     else if (canAnimate && plan) anims.push(...this.animateHinge(plan, t, timing));
     else if (canAnimate && d.flap) anims.push(...this.animateSlide(d, { a, b, c, m }, timing));
@@ -639,6 +683,105 @@ export class OrigamiFoldEngine {
     anims.push(this.flap.animate(firstFrames, timing), this.flap.animate(shownUntil(true), timing));
     anims.push(this.flap2.animate(secondFrames, timing), this.flap2.animate(shownUntil(false), timing));
     anims.push(this.base.animate(shownUntil(true), timing), this.base2.animate(shownUntil(false), timing));
+    return anims;
+  }
+
+  /* Paper-model steps (slice 06): one path per facet, lowest layer first, each in the colour of
+     the face it shows. The moving facets turn over on the fold line as in drawHinge: `pre` shows
+     them as they lie, `post` as they land (faces swapped, layer order reversed), in front of the
+     paper for a valley, flip or precrease and behind it for a mountain. `home` brings them back
+     during the reset. */
+  drawPaper(plan) {
+    const group = () => svgEl("g", {class:"oa-paper-move"});
+    const facet = (poly, face) => {
+      const el = svgEl("path", {class:"oa-paper-facet", d:pathD(poly)});
+      el.style.fill = face === "back" ? this.back : this.front;
+      return el;
+    };
+    const fill = (parent, list, flip = false) => { for (const f of list) parent.append(facet(f.poly, flip ? otherFace(f.face) : f.face)); return parent; };
+    const behind = group(), stay = group(), home = group(), pre = group(), front = group(), landing = group();
+    this.paperLayer.append(behind, stay, home, pre, front, landing);
+    this.paperParts = { pre, post:null, home, landing:null, shapes:[] };
+    const k = plan.kind;
+    if (k === "valley" || k === "mountain" || k === "precrease" || k === "flip") {
+      fill(stay, byLayer(plan.stay));
+      fill(pre, byLayer(plan.moving));
+      this.paperParts.post = fill(k === "mountain" ? behind : front, byLayer(plan.moving, true), true);
+      this.paperParts.post.style.opacity = "0";
+      if (k !== "precrease") fill(home, byLayer(plan.moving));
+      if (k === "valley" || k === "mountain") {
+        landing.classList.add("oa-paper-landing");
+        for (const f of plan.moving) landing.append(svgEl("path", {d:pathD(reflect(f.poly, plan.a, plan.b))}));
+        this.paperParts.landing = landing;
+      }
+    } else if (k === "rotate") {
+      fill(pre, byLayer(plan.before));
+      fill(home, byLayer(plan.before));
+    } else if (k === "keyframe") {
+      /* Hand-drawn targets (complex folds): each named facet's outline morphs through CSS `d`. */
+      const to = new Map(plan.to.map(f => [f.id, f.poly]));
+      for (const f of byLayer(plan.before)) {
+        const el = facet(f.poly, f.face);
+        stay.append(el);
+        const target = to.get(f.id);
+        if (target.some((p, i) => Math.hypot(p[0] - f.poly[i][0], p[1] - f.poly[i][1]) > 1e-6)) this.paperParts.shapes.push({ el, from:pathD(f.poly), to:pathD(target) });
+      }
+    } else fill(stay, byLayer(plan.before));
+    home.style.opacity = "0";
+  }
+
+  animatePaper(plan, t, timing) {
+    const { pre, post, home, landing, shapes } = this.paperParts;
+    const { a, b, c } = t;
+    const anims = [];
+    if (plan.kind === "keyframe") {
+      /* After the hold the shapes blink back to the start instead of morphing backwards. */
+      const out = c + (1 - c) / 2;
+      for (const { el, from, to } of shapes) {
+        const F = `path("${from}")`, T = `path("${to}")`;
+        anims.push(el.animate([
+          {offset:0,d:F,opacity:1},{offset:a,d:F,opacity:1,easing:"ease-in-out"},{offset:b,d:T,opacity:1},{offset:c,d:T,opacity:1},
+          {offset:out,d:T,opacity:0},{offset:out,d:F,opacity:0},{offset:1,d:F,opacity:1}
+        ], timing));
+      }
+      return anims;
+    }
+    if (!pre.childNodes.length) return anims;
+    const turn = plan.kind === "rotate";
+    const tf = (s) => turn ? turnTransform(plan.centre, plan.deg * (1 - s) / 2) : hingeTransform(plan.a, plan.b, s);
+    const preF = [], postF = [];
+    const push = (offset, s, before) => {
+      preF.push({ offset, transform:tf(s), opacity:before || turn ? 1 : 0 });
+      postF.push({ offset, transform:tf(s), opacity:before ? 0 : 1 });
+    };
+    /* One turn between offsets from and to (back: the unfold); the faces swap where it is edge-on. */
+    const sweep = (from, to, back) => {
+      for (const { u, s } of hingeSamples(16)) {
+        if (u === 0) continue;
+        const offset = from + (to - from) * u, v = back ? -s : s;
+        if (u === 0.5) { push(offset, v, !back); push(offset, v, back); }
+        else push(offset, v, back ? u > 0.5 : u < 0.5);
+      }
+    };
+    push(0, 1, true);
+    if (plan.reopen) {
+      const w = t.folds[0];
+      push(w.fs, 1, true);
+      sweep(w.fs, w.fe, false);
+      push(w.us, -1, false);
+      sweep(w.us, w.ue, true);
+      push(1, 1, true);
+    } else {
+      push(a, 1, true);
+      sweep(a, b, false);
+      push(c, -1, false);
+      preF.push({ ...preF[preF.length - 1], offset:1, opacity:0 });
+      postF.push({ ...postF[postF.length - 1], offset:1, opacity:0 });
+      anims.push(home.animate([{offset:0,opacity:0},{offset:c,opacity:0},{offset:1,opacity:1}], timing));
+    }
+    anims.unshift(pre.animate(preF, timing));
+    if (post) anims.push(post.animate(postF, timing));
+    if (landing) anims.push(landing.animate([{offset:0,opacity:0},{offset:a,opacity:.7},{offset:b,opacity:.7},{offset:Math.min(c, b + .04),opacity:0},{offset:1,opacity:0}], timing));
     return anims;
   }
 
