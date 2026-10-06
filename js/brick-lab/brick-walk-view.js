@@ -18,7 +18,7 @@ const LOOK_PER_PX = 0.006; /* radians of look per CSS pixel of drag */
 const STICK = 48;          /* knob travel, CSS px */
 const DEAD = 0.12;         /* stick dead zone, of full travel */
 const SWING = 35 * Math.PI / 180;
-const STRIDE = 10;         /* swing phase, radians a second at full stick (W7) */
+export const STRIDE = 20;  /* swing phase, radians a second at full stick (W7); keeps step with MOVE.speed */
 /* Legs swing opposite each other, each arm opposite its leg. */
 const LIMBS = { legL: 1, legR: -1, armL: -0.8, armR: 0.8 };
 const VIEW_GLIDE = 0.3; /* seconds, behind ↔ eyes */

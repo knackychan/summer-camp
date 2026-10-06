@@ -9,8 +9,8 @@ import {
 } from "./brick-catalog.js";
 import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, worldConnectors } from "./brick-rails.js";
 import { createKidCamera } from "./brick-camera.js";
-import { hitsWalker, inReach, ridersOf, snapOut, solids } from "./brick-walk.js";
-import { createWalk, limbsOf, swingLimbs } from "./brick-walk-view.js";
+import { hitsWalker, inReach, ridersOf, snapOut, solids, walkBoxes } from "./brick-walk.js";
+import { STRIDE, createWalk, limbsOf, swingLimbs } from "./brick-walk-view.js";
 import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
@@ -3838,7 +3838,7 @@ export class BrickLabRuntime {
     this.walk.view = createWalk({
       camera: this.camera, canvas: this.renderer.domElement, overlay: this.walkEl, standIn, lift, half: BASE_HALF,
       start: { x: piece.x, y: piece.y - lift, z: piece.z, yaw: piece.rotation * DEG }, view: this.prefs.walkView,
-      boxes: solids(this.pieces, boxOf, new Set([id, ...riders])),
+      boxes: this.walkSolids(new Set([id, ...riders])),
       reducedMotion: this.reducedMotion, onExit: () => this.leaveWalk(),
       onAct: (act) => this.walkAct(act), onAim: () => this.walkAim(),
     });
@@ -4013,6 +4013,14 @@ export class BrickLabRuntime {
     });
   }
 
+  /* What a walker bumps into: every piece's box, a stair's steps (walkBoxes). */
+  walkSolids(skip) {
+    return solids(this.pieces, (p) => {
+      const shape = shapeOf(p);
+      return shape.walk ? walkBoxes(p, shape) : pieceBounds(p, shape);
+    }, skip);
+  }
+
   /* After the world changed under a walk (a place, a remove, an Undo): the
      real figure and its riders stay hidden, the walk bumps into the new
      pieces and aims again. */
@@ -4020,8 +4028,7 @@ export class BrickLabRuntime {
     const walk = this.walk;
     if (!walk) return;
     this.walkHide();
-    const skip = new Set([walk.id, ...walk.riders]);
-    walk.view.setWorld(solids(this.pieces, (p) => pieceBounds(p, shapeOf(p)), skip));
+    walk.view.setWorld(this.walkSolids(new Set([walk.id, ...walk.riders])));
     this.invalidate();
   }
 
@@ -4092,7 +4099,7 @@ export class BrickLabRuntime {
       at.y += (to.y - at.y) * k;
       at.z += (to.z - at.z) * k;
       at.yaw += turn * k;
-      remote.phase = to.moving ? remote.phase + dt * 10 : 0;
+      remote.phase = to.moving ? remote.phase + dt * STRIDE : 0;
       swingLimbs(remote.limbs, remote.phase, this.reducedMotion ? 0.5 : 1);
       remote.standIn.position.set(at.x, at.y + remote.lift, at.z);
       remote.standIn.rotation.y = at.yaw;

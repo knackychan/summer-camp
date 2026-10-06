@@ -302,7 +302,10 @@ export const MORE_PARTS = Object.freeze([
   ]),
   model("stairs", ["Stairs 2×4", "樓梯 2×4"], "structure", 2, 4, B * 4, [
     range(4, (i) => ({ box: [1.96, B * (i + 1), 0.98], at: [0, B * (i + 1) / 2, 1.5 - i] })),
-  ]),
+  ], {
+    /* A walking minifig climbs it step by step (brick-lab-walk W6), not one 4-brick block. */
+    walk: range(4, (i) => ({ x: [-1, 1], z: [1 - i, 2 - i], top: B * (i + 1) })),
+  }),
   model("ladder", ["Ladder", "梯子"], "structure", 2, 1, B * 5, [
     mirror({ box: [0.16, B * 5, 0.2], at: [0.82, B * 2.5, 0], bevel: 0 }),
     range(9, (i) => ({ cyl: [0.06, 1.6], axis: "x", at: [0, 0.4 + i * 0.65, 0] })),

@@ -12,7 +12,7 @@
 
 export const WALKER = Object.freeze({ radius: 0.5, height: 4.0, eye: 3.5, head: 3.4 });
 export const MOVE = Object.freeze({
-  speed: 4,      /* studs a second at full stick (W5) */
+  speed: 8,      /* studs a second at full stick (W5; doubled from 4 after Papa tried it on the tablet, 2026-10-06) */
   stepUp: 1.25,  /* a plate or a brick, by itself (W6) */
   airStep: 0.15, /* what a foot catches mid-air */
   jump: 2.5,     /* two bricks (W6) */
@@ -38,11 +38,30 @@ function underColumn(b, x, z) {
   return b.minX < x + r - PAD && b.maxX > x - r + PAD && b.minZ < z + r - PAD && b.maxZ > z - r + PAD;
 }
 
-/* The boxes the walker bumps into: every piece but those in `skip` (itself, its riders). */
+/* The boxes the walker bumps into: every piece but those in `skip` (itself,
+   its riders). `boxOf` gives a piece's box, or several (walkBoxes). */
 export function solids(pieces, boxOf, skip = new Set()) {
   const out = [];
-  for (const [id, piece] of pieces) if (!skip.has(id)) out.push(boxOf(piece));
+  for (const [id, piece] of pieces) if (!skip.has(id)) out.push(...[].concat(boxOf(piece)));
   return out;
+}
+
+/* A part that is not one solid block to walk on (stairs) lists its own
+   boxes in `part.walk`: { x: [min, max], z: [min, max], top }, around the
+   part's centre and up from its bottom. Turned and placed with the piece
+   (Three's rotation.y: local (x, z) → (x cos + z sin, −x sin + z cos)). */
+export function walkBoxes(piece, part) {
+  const turn = (((Math.round((piece.rotation || 0) / 90) % 4) + 4) % 4) * Math.PI / 2;
+  const cos = Math.round(Math.cos(turn));
+  const sin = Math.round(Math.sin(turn));
+  const bottom = piece.y - part.height / 2;
+  return part.walk.map(({ x, z, top }) => {
+    const xs = [];
+    const zs = [];
+    x.forEach((lx) => z.forEach((lz) => { xs.push(lx * cos + lz * sin); zs.push(-lx * sin + lz * cos); }));
+    return { minX: piece.x + Math.min(...xs), maxX: piece.x + Math.max(...xs), minZ: piece.z + Math.min(...zs), maxZ: piece.z + Math.max(...zs),
+      minY: bottom, maxY: bottom + top };
+  });
 }
 
 /* The highest top under the column at (x, z) no higher than `limit`; 0 is the baseplate. */

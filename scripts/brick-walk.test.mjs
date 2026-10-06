@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   BEHIND, MOVE, REACH, WALKER,
-  behindCamera, clampLook, eyesCamera, groundUnder, hitsWalker, inReach, ridersOf, snapOut, solids, step,
+  behindCamera, clampLook, eyesCamera, groundUnder, hitsWalker, inReach, ridersOf, snapOut, solids, step, walkBoxes,
 } from "../js/brick-lab/brick-walk.js";
 
 const HALF = 32;
@@ -186,4 +186,27 @@ test("eyes view: at eye height, looking along yaw and pitch", () => {
   assert.ok(cam.target.x > cam.position.x && near(cam.target.y, cam.position.y));
   const down = eyesCamera(standing(), { yaw: 0, pitch: 0.5 });
   assert.ok(down.target.y < down.position.y, "positive pitch looks down");
+});
+
+/* Stairs 2×4 as the catalog draws them: four one-brick steps, the lowest at local +z. */
+const STAIRS = { width: 2, depth: 4, height: 4.8, walk: [0, 1, 2, 3].map((i) => ({ x: [-1, 1], z: [1 - i, 2 - i], top: 1.2 * (i + 1) })) };
+
+test("walkBoxes: a part's steps, turned and placed with the piece", () => {
+  const flat = walkBoxes({ x: 0, y: 2.4, z: 0, rotation: 0 }, STAIRS);
+  assert.equal(flat.length, 4);
+  assert.deepEqual(flat[0], box(-1, 1, 1, 2, 0, 1.2), "the lowest step at +z");
+  assert.deepEqual(flat[3], box(-1, 1, -2, -1, 0, 4.8));
+  const turned = walkBoxes({ x: 10, y: 3.6, z: 5, rotation: 90 }, STAIRS);
+  const low = turned[0];
+  assert.ok(near(low.minX, 11) && near(low.maxX, 12) && near(low.minZ, 4) && near(low.maxZ, 6) && near(low.minY, 1.2) && near(low.maxY, 2.4),
+    `turned 90°, the lowest step faces +x: ${JSON.stringify(low)}`);
+});
+
+test("stairs: the walker climbs them one step at a time, no jump needed", () => {
+  const boxes = solids(new Map([["s", { x: 0, y: 2.4, z: 0, rotation: 0 }]]), (p) => walkBoxes(p, STAIRS));
+  /* 40 frames at full stick end on the top step (the stairs climb toward −z). */
+  const { s } = run(standing({ z: 4 }), boxes, 80, (i) => (i < 40 ? { forward: 1, yaw: Math.PI } : {}));
+  assert.ok(near(s.y, 4.8), `at the top, y ${s.y}`);
+  const wall = run(standing({ z: 4 }), [box(-1, 1, -2, 2, 0, 4.8)], 240, () => ({ forward: 1, yaw: Math.PI })).s;
+  assert.equal(wall.y, 0, "as one solid box the same stairs were a wall");
 });
