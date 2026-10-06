@@ -300,10 +300,12 @@ function chord(poly, a, b) {
 
 /* Pictures that follow the paper (docs/plans/2026-10-05-origami-audit/ slice 06, design O8): a
    model whose steps all carry `fold` is drawn from the flat-fold paper model, so each step starts
-   on the shape the last one ended on. Paper coordinates map to the view box once per model: the
-   start sheet fills the box and stays put, with no re-zoom between steps. */
+   on the shape the last one ended on. Paper coordinates map to the view box once per model:
+   everything the model ever shows (usually the start sheet) fills the box and stays put, with no
+   re-zoom between steps. */
 function paperView(model) {
-  const b = paperBounds(paperStart(model));
+  const steps = replayPaper(model), all = [paperStart(model), ...steps.map(s => s.after)].map(paperBounds);
+  const b = { minX:Math.min(...all.map(x => x.minX)), minY:Math.min(...all.map(x => x.minY)), maxX:Math.max(...all.map(x => x.maxX)), maxY:Math.max(...all.map(x => x.maxY)) };
   const k = 160 / Math.max(b.maxX - b.minX, b.maxY - b.minY);
   const ox = 150 - k * (b.minX + b.maxX) / 2, oy = 105 - k * (b.minY + b.maxY) / 2;
   return (p) => [ox + k * p[0], oy + k * p[1]];

@@ -28,3 +28,30 @@
 `python scripts/check-origami-ui.py` passes; `fold-frames-07.png` reviewed; **Papa folds the six
 with real paper using only the animation and they come out right** (`foldalong.md` filled in). That
 is the checkpoint: only then are the other 22 models planned, one slice each.
+
+**Built 2026-10-06; waiting on the checkpoint.** The six models are on the paper model, written by
+[pilot-folds.mjs](pilot-folds.mjs) (re-runnable; creases are worked out from named corners so they
+meet exactly; the other 22 models come out byte-identical). Strip:
+[fold-frames-07.png](fold-frames-07.png) (`python fold-frames.py out.png pilot`), reviewed. Checklist
+for Papa: [foldalong.md](foldalong.md), with the five questions only real paper can answer.
+`check.mjs` green with the slice 06 gate on all six; `check-origami-ui.py` 78/78 — new: each pilot
+model is drawn from the paper model, every step starts where the last one ended (±1 px, measured on
+the facets' real corners), all but the finish play, Cat Face 6 lands behind the paper. Cache
+`v189-origami-pilot`.
+
+As built:
+- Every model starts as a diamond (`startRotate: 45`), white side up (`startFace: "back"`), and
+  step 1's hint says "Start white side up".
+- Words changed where the paper disagreed (EN + 中文 together); `foldalong.md` lists each model's
+  changes. Step counts: Little Fox 7 → 6, Swimming Fish 8 → 7, the rest unchanged (42 → 40 steps).
+- Paper Cup 05 stays a mountain ("down behind the cup"); question 1 of `foldalong.md` asks Papa.
+  Paper Cup 06 is a keyframe: from the front the opening cup gets narrower and taller (x × 0.88,
+  y ÷ 0.88, base fixed), which keeps the area at 1 for the gate.
+- Cat Face: the forehead moved before the ears so the ears can stand above the flat head.
+- The fixed view fits everything a model ever shows, not only the start sheet (amends slice 06):
+  the rabbit's ears rise above the diamond after its turn.
+- The live-lesson checks (loop, Pause, Replay, language switch, rest, hinge on step 1) now open
+  Samurai Helmet, a template model whose first two steps are hinge folds as Little Fox's were;
+  `NOTATION` reads the pilot models through the paper path (Swimming Fish's flip is step 5 now).
+- Swimming Fish is the weakest of the six (the kite's narrow point makes a thin tail); flagged to
+  Papa rather than redesigned.

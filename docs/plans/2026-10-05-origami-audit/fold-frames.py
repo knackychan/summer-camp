@@ -1,5 +1,6 @@
-"""Filmstrip of fold frames for the origami audit (audit.md). Usage: python fold-frames.py out.png ['[["model-id",[stepIndex,...]],...]' ['[ms,...]']]
-Six frames per step (start, 30%, 58%, 90% of the fold, hold, fade back; slice 03 timing), reduced to the SVG diagram."""
+"""Filmstrip of fold frames for the origami audit (audit.md). Usage: python fold-frames.py out.png ['[["model-id",[stepIndex,...] or "all"],...]' ['[ms,...]']]
+Six frames per step (start, 30%, 58%, 90% of the fold, hold, fade back; slice 03 timing), reduced to the SVG diagram.
+`pilot` as the picks draws every step of the six paper-model pilot models (slice 07)."""
 import functools, http.server, json, threading, sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
@@ -8,7 +9,8 @@ class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a): pass
 srv=http.server.ThreadingHTTPServer(("127.0.0.1",0),functools.partial(Q, directory=ROOT)); port=srv.server_address[1]
 threading.Thread(target=srv.serve_forever,daemon=True).start()
-PICKS=json.loads(sys.argv[2]) if len(sys.argv)>2 else [("little-fox",[0,1,6]),("classic-crane",[0,4,8,12,14]),("jumping-frog",[3,10]),("swimming-fish",[5]),("paper-boat",[0,7])]
+PILOT=[[m,"all"] for m in ["little-fox","dog-face","cat-face","swimming-fish","rabbit-face","paper-cup"]]
+PICKS=PILOT if len(sys.argv)>2 and sys.argv[2]=="pilot" else json.loads(sys.argv[2]) if len(sys.argv)>2 else [("little-fox",[0,1,6]),("classic-crane",[0,4,8,12,14]),("jumping-frog",[3,10]),("swimming-fish",[5]),("paper-boat",[0,7])]
 TIMES=json.loads(sys.argv[3]) if len(sys.argv)>3 else [150,600+1800*0.3,600+1800*0.58,600+1800*0.9,3400,4600]
 JS="""async ([picks, times]) => {
  const D = await import('/js/vendor/origami-atelier/origami-data.js');
@@ -17,12 +19,12 @@ JS="""async ([picks, times]) => {
  document.body.innerHTML=''; document.body.style.cssText='margin:0;background:#fff;font:12px sans-serif';
  await new Promise(r=>setTimeout(r,300));
  for (const [id,idx] of picks){ const m=D.getOrigamiModel(id);
-  for (const i of idx){ const s=m.steps[i];
+  for (const i of (idx==="all"?m.steps.map((_,k)=>k):idx)){ const s=m.steps[i];
    const row=document.createElement('div'); row.style.cssText='display:flex;gap:4px;align-items:center;border-bottom:1px solid #ccc';
    const lab=document.createElement('div'); lab.style.width='170px'; lab.textContent=`${id} #${i+1} [${s.diagram}] ${s.instruction.en}`; row.append(lab);
    for (const t of times){ const c=document.createElement('div'); c.style.cssText='position:relative;width:180px;height:126px;background:#fff9ec'; row.append(c);
      const st=document.createElement('div'); st.style.cssText='position:absolute;inset:0'; c.append(st);
-     const e=new E.OrigamiFoldEngine(st,{front:'#ef8f9f',back:'#ffe6e9',reducedMotion:true}); e.show(s,{autoplay:false});
+     const e=new E.OrigamiFoldEngine(st,{front:'#ef8f9f',back:'#ffe6e9',reducedMotion:true}); e.show(s,{autoplay:false,model:m});
      e.anims.forEach(a=>{a.currentTime=t; a.pause();});
      const tl=document.createElement('span'); tl.textContent=Math.round(t)+'ms'; tl.style.cssText='position:absolute;right:2px;top:0;color:#888'; c.append(tl);}
    document.body.append(row);}}

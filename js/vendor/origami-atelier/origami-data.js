@@ -9,7 +9,9 @@ export const ORIGAMI_MODELS = [
     "minutes": 5,
     "paper": {
       "shape": "square",
-      "sheets": 1
+      "sheets": 1,
+      "startFace": "back",
+      "startRotate": 45
     },
     "steps": [
       {
@@ -23,11 +25,12 @@ export const ORIGAMI_MODELS = [
           "zhHant": "把上方角摺到下方角。"
         },
         "hint": {
-          "en": "Match the corners first, then make the crease.",
-          "zhHant": "先對齊兩個角，再壓出摺痕。"
+          "en": "Start white side up. Match the corners first, then make the crease.",
+          "zhHant": "白色面朝上。先對齊兩個角，再壓出摺痕。"
         },
         "diagram": "diag-down",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,0.5],[1,0.5]],"move":[0.5,-0.2071067812]}
       },
       {
         "id": "step-02",
@@ -36,15 +39,16 @@ export const ORIGAMI_MODELS = [
           "zhHant": "左耳"
         },
         "instruction": {
-          "en": "Fold the left corner upward.",
-          "zhHant": "把左邊的角往上摺。"
+          "en": "Fold the left corner up on a line from the bottom point.",
+          "zhHant": "從下方尖角往上，把左邊的角往上摺。"
         },
         "hint": {
           "en": "Leave a little point above the head.",
           "zhHant": "讓尖角稍微高出頭頂。"
         },
         "diagram": "ear-left",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.05,0.5],[0.5,1.2071067812]],"move":[-0.2071067812,0.5]}
       },
       {
         "id": "step-03",
@@ -53,83 +57,70 @@ export const ORIGAMI_MODELS = [
           "zhHant": "右耳"
         },
         "instruction": {
-          "en": "Fold the right corner upward.",
-          "zhHant": "把右邊的角往上摺。"
+          "en": "Fold the right corner up the same way.",
+          "zhHant": "用同樣的方法，把右邊的角往上摺。"
         },
         "hint": {
           "en": "Try to make it match the other ear.",
           "zhHant": "盡量和另一邊耳朵一樣高。"
         },
         "diagram": "ear-right",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.95,0.5],[0.5,1.2071067812]],"move":[1.2071067812,0.5]}
       },
       {
         "id": "step-04",
         "title": {
-          "en": "Narrow the face",
-          "zhHant": "收窄臉型"
+          "en": "Turn it over",
+          "zhHant": "翻面"
         },
         "instruction": {
-          "en": "Fold the left edge slightly inward.",
-          "zhHant": "把左側邊緣稍微往內摺。"
+          "en": "Turn the fox over.",
+          "zhHant": "把小狐狸翻到另一面。"
         },
         "hint": {
-          "en": "A small fold is enough.",
-          "zhHant": "摺一點點就可以。"
+          "en": "Now the ears stand up behind the face.",
+          "zhHant": "耳朵會從臉的後面立起來。"
         },
-        "diagram": "side-left",
-        "operation": "valley-fold"
+        "diagram": "flip",
+        "operation": "flip",
+        "fold": {"op":"flip"}
       },
       {
         "id": "step-05",
         "title": {
-          "en": "Match the other side",
-          "zhHant": "另一側也一樣"
-        },
-        "instruction": {
-          "en": "Fold the right edge slightly inward.",
-          "zhHant": "把右側邊緣稍微往內摺。"
-        },
-        "hint": {
-          "en": "Make both sides feel balanced.",
-          "zhHant": "讓左右兩邊看起來平衡。"
-        },
-        "diagram": "side-right",
-        "operation": "valley-fold"
-      },
-      {
-        "id": "step-06",
-        "title": {
           "en": "Make the muzzle",
-          "zhHant": "做出嘴鼻"
+          "zhHant": "做出嘴巴"
         },
         "instruction": {
-          "en": "Fold the bottom tip upward.",
-          "zhHant": "把下方尖角往上摺。"
+          "en": "Fold the bottom tip up a little.",
+          "zhHant": "把下方尖角往上摺一點點。"
         },
         "hint": {
           "en": "Press the small crease gently.",
           "zhHant": "輕輕壓好這個小摺痕。"
         },
         "diagram": "tip-up",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,1.07],[1,1.07]],"move":[0.5,1.15]}
       },
       {
-        "id": "step-07",
+        "id": "step-06",
         "title": {
           "en": "Finish the fox",
-          "zhHant": "完成狐狸"
+          "zhHant": "完成小狐狸"
         },
         "instruction": {
-          "en": "Turn it over and look at your fox.",
-          "zhHant": "翻到正面，看看你的小狐狸。"
+          "en": "Your fox is ready. Look at its face!",
+          "zhHant": "小狐狸完成了，看看牠的臉！"
         },
         "hint": {
           "en": "You can draw a face later if you want.",
           "zhHant": "想要的話，完成後可以畫上表情。"
         },
         "diagram": "finish-fox",
-        "operation": "finish"
+        "operation": "finish",
+        "fold": {"op":"finish"}
       }
     ],
     "skills": [
@@ -153,7 +144,9 @@ export const ORIGAMI_MODELS = [
     "minutes": 4,
     "paper": {
       "shape": "square",
-      "sheets": 1
+      "sheets": 1,
+      "startFace": "back",
+      "startRotate": 45
     },
     "steps": [
       {
@@ -163,15 +156,16 @@ export const ORIGAMI_MODELS = [
           "zhHant": "摺成三角形"
         },
         "instruction": {
-          "en": "Fold the square corner to corner.",
-          "zhHant": "把正方形沿對角線摺成三角形。"
+          "en": "Fold the top corner down to the bottom corner.",
+          "zhHant": "把上方角往下摺到下方角，摺成三角形。"
         },
         "hint": {
-          "en": "Line up the corners.",
-          "zhHant": "先把角對齊。"
+          "en": "Start white side up. Line up the corners.",
+          "zhHant": "白色面朝上。先把角對齊。"
         },
         "diagram": "diag-down",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,0.5],[1,0.5]],"move":[0.5,-0.2071067812]}
       },
       {
         "id": "step-02",
@@ -180,15 +174,16 @@ export const ORIGAMI_MODELS = [
           "zhHant": "左耳"
         },
         "instruction": {
-          "en": "Fold the left point downward.",
-          "zhHant": "把左側尖角往下摺。"
+          "en": "Fold the left point down onto the face.",
+          "zhHant": "把左側尖角往下摺到臉上。"
         },
         "hint": {
           "en": "Let the ear hang beside the face.",
           "zhHant": "讓耳朵垂在臉旁。"
         },
         "diagram": "ear-down-left",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.28,0.5],[0.05775477,0.7648615512]],"move":[-0.2071067812,0.5]}
       },
       {
         "id": "step-03",
@@ -197,32 +192,34 @@ export const ORIGAMI_MODELS = [
           "zhHant": "右耳"
         },
         "instruction": {
-          "en": "Fold the right point downward.",
-          "zhHant": "把右側尖角往下摺。"
+          "en": "Fold the right point down the same way.",
+          "zhHant": "用同樣的方法，把右側尖角往下摺。"
         },
         "hint": {
           "en": "Match the first ear.",
           "zhHant": "和另一邊耳朵差不多即可。"
         },
         "diagram": "ear-down-right",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.72,0.5],[0.94224523,0.7648615512]],"move":[1.2071067812,0.5]}
       },
       {
         "id": "step-04",
         "title": {
-          "en": "Top of the head",
-          "zhHant": "頭頂"
+          "en": "Nose",
+          "zhHant": "鼻子"
         },
         "instruction": {
-          "en": "Fold the top point slightly backward.",
-          "zhHant": "把頂端尖角稍微往後摺。"
+          "en": "Fold only the top layer of the bottom point up.",
+          "zhHant": "只把下方尖角的上層往上摺。"
         },
         "hint": {
-          "en": "This is only a tiny fold.",
-          "zhHant": "只要一個小摺角。"
+          "en": "This makes the nose.",
+          "zhHant": "這是小狗的鼻子。"
         },
-        "diagram": "top-back",
-        "operation": "mountain-fold"
+        "diagram": "tip-up",
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,1],[1,1]],"move":[0.5,1.15],"layers":"top"}
       },
       {
         "id": "step-05",
@@ -231,15 +228,16 @@ export const ORIGAMI_MODELS = [
           "zhHant": "下巴"
         },
         "instruction": {
-          "en": "Fold the lower point upward.",
-          "zhHant": "把下方尖角往上摺。"
+          "en": "Fold the point behind it backward.",
+          "zhHant": "把後面那層尖角往後摺。"
         },
         "hint": {
-          "en": "This makes the muzzle shorter.",
-          "zhHant": "這樣會形成短短的嘴巴。"
+          "en": "Now the chin is flat.",
+          "zhHant": "下巴就變平了。"
         },
-        "diagram": "tip-up",
-        "operation": "valley-fold"
+        "diagram": "bottom-back",
+        "operation": "mountain-fold",
+        "fold": {"op":"mountain","line":[[0,1],[1,1]],"move":[0.5,1.15]}
       },
       {
         "id": "step-06",
@@ -248,15 +246,16 @@ export const ORIGAMI_MODELS = [
           "zhHant": "完成小狗"
         },
         "instruction": {
-          "en": "Turn it over to see the dog face.",
-          "zhHant": "翻面看看你的小狗臉。"
+          "en": "Your dog face is ready.",
+          "zhHant": "小狗臉完成了。"
         },
         "hint": {
           "en": "Add eyes and a nose after folding if you like.",
           "zhHant": "喜歡的話可以再畫眼睛和鼻子。"
         },
         "diagram": "finish-dog",
-        "operation": "finish"
+        "operation": "finish",
+        "fold": {"op":"finish"}
       }
     ],
     "skills": [
@@ -280,7 +279,9 @@ export const ORIGAMI_MODELS = [
     "minutes": 4,
     "paper": {
       "shape": "square",
-      "sheets": 1
+      "sheets": 1,
+      "startFace": "back",
+      "startRotate": 45
     },
     "steps": [
       {
@@ -290,21 +291,22 @@ export const ORIGAMI_MODELS = [
           "zhHant": "摺成三角形"
         },
         "instruction": {
-          "en": "Fold the square diagonally.",
-          "zhHant": "把正方形沿對角線摺起來。"
+          "en": "Fold the bottom corner up to the top corner.",
+          "zhHant": "把下方角往上摺到上方角。"
         },
         "hint": {
-          "en": "Keep the long edge at the bottom.",
-          "zhHant": "讓長邊朝下。"
+          "en": "Start white side up. Keep the long edge at the bottom.",
+          "zhHant": "白色面朝上。讓長邊朝下。"
         },
-        "diagram": "diag-down",
-        "operation": "valley-fold"
+        "diagram": "diag-up",
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,0.5],[1,0.5]],"move":[0.5,1.2071067812]}
       },
       {
         "id": "step-02",
         "title": {
           "en": "Find the middle",
-          "zhHant": "找到中間"
+          "zhHant": "找出中間"
         },
         "instruction": {
           "en": "Make a light center crease.",
@@ -315,58 +317,62 @@ export const ORIGAMI_MODELS = [
           "zhHant": "只要做記號，再打開。"
         },
         "diagram": "center-mark",
-        "operation": "precrease"
+        "operation": "precrease",
+        "fold": {"op":"precrease","line":[[0.5,0],[0.5,1]],"move":[0.2,0.4]}
       },
       {
         "id": "step-03",
+        "title": {
+          "en": "Forehead",
+          "zhHant": "額頭"
+        },
+        "instruction": {
+          "en": "Fold the top tip down to make the head flat.",
+          "zhHant": "把最上面的尖角往下摺，讓頭頂變平。"
+        },
+        "hint": {
+          "en": "Fold it down a little less than halfway.",
+          "zhHant": "往下摺，不到一半的地方。"
+        },
+        "diagram": "top-down",
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,0.1],[1,0.1]],"move":[0.5,-0.1]}
+      },
+      {
+        "id": "step-04",
         "title": {
           "en": "Left ear",
           "zhHant": "左耳"
         },
         "instruction": {
-          "en": "Fold the left corner upward.",
-          "zhHant": "把左邊的角往上摺。"
+          "en": "Fold the left corner up so its tip stands above the head.",
+          "zhHant": "把左邊的角往上摺，讓尖角立在頭頂上面。"
         },
         "hint": {
-          "en": "Aim toward the center line.",
-          "zhHant": "朝中間線方向摺。"
+          "en": "Start the fold a little left of the middle crease.",
+          "zhHant": "從中間摺線左邊一點點開始摺。"
         },
         "diagram": "ear-left",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.36,0.5],[0.0466439471,0.2462492717]],"move":[-0.2071067812,0.5]}
       },
       {
-        "id": "step-04",
+        "id": "step-05",
         "title": {
           "en": "Right ear",
           "zhHant": "右耳"
         },
         "instruction": {
-          "en": "Fold the right corner upward.",
-          "zhHant": "把右邊的角往上摺。"
+          "en": "Fold the right corner up the same way.",
+          "zhHant": "用同樣的方法，把右邊的角往上摺。"
         },
         "hint": {
           "en": "Match the height of the first ear.",
           "zhHant": "高度和第一隻耳朵接近。"
         },
         "diagram": "ear-right",
-        "operation": "valley-fold"
-      },
-      {
-        "id": "step-05",
-        "title": {
-          "en": "Forehead",
-          "zhHant": "額頭"
-        },
-        "instruction": {
-          "en": "Fold the top tip downward.",
-          "zhHant": "把最上面的尖角往下摺。"
-        },
-        "hint": {
-          "en": "Keep the fold small.",
-          "zhHant": "不要摺太多。"
-        },
-        "diagram": "top-down",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.64,0.5],[0.9533560529,0.2462492717]],"move":[1.2071067812,0.5]}
       },
       {
         "id": "step-06",
@@ -375,15 +381,16 @@ export const ORIGAMI_MODELS = [
           "zhHant": "下巴"
         },
         "instruction": {
-          "en": "Fold the bottom point backward.",
-          "zhHant": "把下方尖角往後摺。"
+          "en": "Fold the bottom edge backward a little.",
+          "zhHant": "把下方的邊往後摺一點點。"
         },
         "hint": {
-          "en": "This rounds the face.",
-          "zhHant": "讓臉型變得更圓。"
+          "en": "A thin strip is enough.",
+          "zhHant": "摺一小條就好。"
         },
         "diagram": "bottom-back",
-        "operation": "mountain-fold"
+        "operation": "mountain-fold",
+        "fold": {"op":"mountain","line":[[0,0.44],[1,0.44]],"move":[0.5,0.48]}
       },
       {
         "id": "step-07",
@@ -392,15 +399,16 @@ export const ORIGAMI_MODELS = [
           "zhHant": "完成小貓"
         },
         "instruction": {
-          "en": "Turn it over and meet your cat.",
-          "zhHant": "翻面看看你的小貓。"
+          "en": "Your cat face is ready.",
+          "zhHant": "小貓臉完成了。"
         },
         "hint": {
           "en": "Whiskers can be drawn after the fold.",
           "zhHant": "完成後可以畫上鬍鬚。"
         },
         "diagram": "finish-cat",
-        "operation": "finish"
+        "operation": "finish",
+        "fold": {"op":"finish"}
       }
     ],
     "skills": [
@@ -424,96 +432,85 @@ export const ORIGAMI_MODELS = [
     "minutes": 5,
     "paper": {
       "shape": "square",
-      "sheets": 1
+      "sheets": 1,
+      "startFace": "back",
+      "startRotate": 45
     },
     "steps": [
       {
         "id": "step-01",
         "title": {
-          "en": "Diagonal fold",
-          "zhHant": "對角摺"
+          "en": "Middle crease",
+          "zhHant": "中間摺痕"
         },
         "instruction": {
-          "en": "Fold the square into a triangle.",
-          "zhHant": "把正方形摺成三角形。"
+          "en": "Fold the square in half into a triangle, then open it again.",
+          "zhHant": "把正方形對摺成三角形，再打開。"
         },
         "hint": {
-          "en": "Press the diagonal crease.",
-          "zhHant": "壓好對角線摺痕。"
+          "en": "Start white side up. Keep the crease from top to bottom.",
+          "zhHant": "白色面朝上。保留從上到下的摺痕。"
         },
-        "diagram": "diag-down",
-        "operation": "valley-fold"
+        "diagram": "diag-open",
+        "operation": "precrease",
+        "fold": {"op":"precrease","line":[[0.5,0],[0.5,1]],"move":[0.1,0.5]}
       },
       {
         "id": "step-02",
         "title": {
-          "en": "Open the square",
-          "zhHant": "打開紙張"
+          "en": "Left side in",
+          "zhHant": "左邊往內"
         },
         "instruction": {
-          "en": "Open the paper again.",
-          "zhHant": "把紙打開。"
+          "en": "Fold the bottom-left edge onto the middle crease.",
+          "zhHant": "把左下邊摺到中間摺痕上。"
         },
         "hint": {
-          "en": "Keep the diagonal crease visible.",
-          "zhHant": "保留剛剛的對角線摺痕。"
+          "en": "Let the edge lie on the crease.",
+          "zhHant": "讓邊緣貼齊摺痕。"
         },
-        "diagram": "unfold",
-        "operation": "unfold"
+        "diagram": "side-left",
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.5,1.2071067812],[0.0857864376,0.2071067812]],"move":[-0.2071067812,0.5]}
       },
       {
         "id": "step-03",
         "title": {
-          "en": "Left side inward",
-          "zhHant": "左側往內"
+          "en": "Right side in",
+          "zhHant": "右邊往內"
         },
         "instruction": {
-          "en": "Fold the left corner toward the center.",
-          "zhHant": "把左邊角摺向中心。"
-        },
-        "hint": {
-          "en": "Let the edge meet the diagonal guide.",
-          "zhHant": "讓邊緣靠近中間摺線。"
-        },
-        "diagram": "side-left",
-        "operation": "valley-fold"
-      },
-      {
-        "id": "step-04",
-        "title": {
-          "en": "Right side inward",
-          "zhHant": "右側往內"
-        },
-        "instruction": {
-          "en": "Fold the right corner toward the center.",
-          "zhHant": "把右邊角摺向中心。"
+          "en": "Fold the bottom-right edge onto the middle crease.",
+          "zhHant": "把右下邊摺到中間摺痕上。"
         },
         "hint": {
           "en": "Make a kite shape.",
           "zhHant": "摺出風箏形。"
         },
         "diagram": "side-right",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.5,1.2071067812],[0.9142135624,0.2071067812]],"move":[1.2071067812,0.5]}
       },
       {
-        "id": "step-05",
+        "id": "step-04",
         "title": {
           "en": "Make the tail",
-          "zhHant": "做出尾巴"
+          "zhHant": "做出魚尾"
         },
         "instruction": {
-          "en": "Fold the lower section to one side.",
-          "zhHant": "把下半部往一側摺。"
+          "en": "Fold the long bottom point out to the right.",
+          "zhHant": "把下方的長尖角往右摺出去。"
         },
         "hint": {
           "en": "This becomes the tail fin.",
           "zhHant": "這會變成魚尾。"
         },
         "diagram": "tail-right",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.2,0.4],[0.7,0.9]],"move":[0.5,1.15]}
       },
       {
-        "id": "step-06",
+        "id": "step-05",
         "title": {
           "en": "Turn it over",
           "zhHant": "翻面"
@@ -527,27 +524,29 @@ export const ORIGAMI_MODELS = [
           "zhHant": "讓尾巴保持朝側邊。"
         },
         "diagram": "flip",
-        "operation": "flip"
+        "operation": "flip",
+        "fold": {"op":"flip"}
       },
       {
-        "id": "step-07",
+        "id": "step-06",
         "title": {
           "en": "Shape the nose",
-          "zhHant": "做出魚嘴"
+          "zhHant": "做出魚頭"
         },
         "instruction": {
-          "en": "Fold the front tip slightly backward.",
-          "zhHant": "把前方尖角稍微往後摺。"
+          "en": "Fold the top tip slightly backward.",
+          "zhHant": "把上方尖角稍微往後摺。"
         },
         "hint": {
           "en": "A tiny fold softens the nose.",
           "zhHant": "小小一摺就好。"
         },
         "diagram": "nose-back",
-        "operation": "mountain-fold"
+        "operation": "mountain-fold",
+        "fold": {"op":"mountain","line":[[0,-0.06],[1,-0.06]],"move":[0.5,-0.15]}
       },
       {
-        "id": "step-08",
+        "id": "step-07",
         "title": {
           "en": "Finish the fish",
           "zhHant": "完成小魚"
@@ -561,7 +560,8 @@ export const ORIGAMI_MODELS = [
           "zhHant": "喜歡的話可以畫上一隻眼睛。"
         },
         "diagram": "finish-fish",
-        "operation": "finish"
+        "operation": "finish",
+        "fold": {"op":"finish"}
       }
     ],
     "skills": [
@@ -1246,7 +1246,9 @@ export const ORIGAMI_MODELS = [
     "minutes": 5,
     "paper": {
       "shape": "square",
-      "sheets": 1
+      "sheets": 1,
+      "startFace": "back",
+      "startRotate": 45
     },
     "skills": [
       {
@@ -1266,21 +1268,22 @@ export const ORIGAMI_MODELS = [
           "zhHant": "摺成三角形"
         },
         "instruction": {
-          "en": "Fold the square diagonally.",
-          "zhHant": "沿對角線把正方形摺成三角形。"
+          "en": "Fold the bottom corner up to the top corner.",
+          "zhHant": "把下方角往上摺到上方角。"
         },
         "hint": {
-          "en": "Match the corners before pressing.",
-          "zhHant": "先把兩個角對齊再壓摺痕。"
+          "en": "Start white side up. Match the corners before pressing.",
+          "zhHant": "白色面朝上。先把兩個角對齊再壓摺痕。"
         },
-        "diagram": "diag-down",
-        "operation": "valley-fold"
+        "diagram": "diag-up",
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,0.5],[1,0.5]],"move":[0.5,1.2071067812]}
       },
       {
         "id": "step-02",
         "title": {
           "en": "Turn the triangle",
-          "zhHant": "旋轉三角形"
+          "zhHant": "轉動三角形"
         },
         "instruction": {
           "en": "Rotate so the long edge is at the top.",
@@ -1291,7 +1294,8 @@ export const ORIGAMI_MODELS = [
           "zhHant": "尖角朝下。"
         },
         "diagram": "rotate-180",
-        "operation": "rotate"
+        "operation": "rotate",
+        "fold": {"op":"rotate","deg":180}
       },
       {
         "id": "step-03",
@@ -1300,15 +1304,16 @@ export const ORIGAMI_MODELS = [
           "zhHant": "左耳"
         },
         "instruction": {
-          "en": "Fold the left corner upward.",
-          "zhHant": "把左角往上摺。"
+          "en": "Fold the left corner up on a line from the bottom point.",
+          "zhHant": "從下方尖角往上，把左角往上摺。"
         },
         "hint": {
           "en": "Leave a narrow gap near the middle.",
           "zhHant": "中央留一點小縫。"
         },
         "diagram": "ear-left",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.17,-0.2071067812],[0.5,0.5]],"move":[-0.1571067812,-0.1871067812]}
       },
       {
         "id": "step-04",
@@ -1317,38 +1322,40 @@ export const ORIGAMI_MODELS = [
           "zhHant": "右耳"
         },
         "instruction": {
-          "en": "Fold the right corner upward.",
-          "zhHant": "把右角往上摺。"
+          "en": "Fold the right corner up the same way.",
+          "zhHant": "用同樣的方法，把右角往上摺。"
         },
         "hint": {
           "en": "Try to match the first ear.",
           "zhHant": "盡量和左耳一樣。"
         },
         "diagram": "ear-right",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.83,-0.2071067812],[0.5,0.5]],"move":[1.1571067812,-0.1871067812]}
       },
       {
         "id": "step-05",
         "title": {
-          "en": "Shape the head",
-          "zhHant": "整理頭型"
+          "en": "Turn it over",
+          "zhHant": "翻面"
         },
         "instruction": {
-          "en": "Fold the top edge slightly backward.",
-          "zhHant": "把上方邊緣稍微往後摺。"
+          "en": "Turn the rabbit over.",
+          "zhHant": "把兔子翻到另一面。"
         },
         "hint": {
-          "en": "A small fold softens the head shape.",
-          "zhHant": "小小一摺就能讓頭型更圓。"
+          "en": "Now the ears stand up behind the head.",
+          "zhHant": "耳朵會在頭的後面立起來。"
         },
-        "diagram": "top-back",
-        "operation": "mountain-fold"
+        "diagram": "flip",
+        "operation": "flip",
+        "fold": {"op":"flip"}
       },
       {
         "id": "step-06",
         "title": {
           "en": "Make the chin",
-          "zhHant": "做下巴"
+          "zhHant": "做出下巴"
         },
         "instruction": {
           "en": "Fold the bottom point upward.",
@@ -1359,7 +1366,8 @@ export const ORIGAMI_MODELS = [
           "zhHant": "摺一小段就好。"
         },
         "diagram": "tip-up",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,0.36],[1,0.36]],"move":[0.5,0.45]}
       },
       {
         "id": "step-07",
@@ -1368,15 +1376,16 @@ export const ORIGAMI_MODELS = [
           "zhHant": "完成兔子"
         },
         "instruction": {
-          "en": "Turn it over and open the ears a little.",
-          "zhHant": "翻到正面，稍微把耳朵張開。"
+          "en": "Your rabbit is ready. Open the ears a little.",
+          "zhHant": "兔子完成了，把耳朵稍微張開。"
         },
         "hint": {
           "en": "Draw a face after folding if you like.",
           "zhHant": "喜歡的話可以畫上表情。"
         },
         "diagram": "finish-rabbit",
-        "operation": "finish"
+        "operation": "finish",
+        "fold": {"op":"finish"}
       }
     ]
   },
@@ -3509,7 +3518,9 @@ export const ORIGAMI_MODELS = [
     "minutes": 5,
     "paper": {
       "shape": "square",
-      "sheets": 1
+      "sheets": 1,
+      "startFace": "back",
+      "startRotate": 45
     },
     "skills": [
       {
@@ -3526,58 +3537,61 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Triangle base",
-          "zhHant": "三角底形"
+          "zhHant": "三角形底"
         },
         "instruction": {
           "en": "Fold the square diagonally into a triangle.",
           "zhHant": "把正方形沿對角線摺成三角形。"
         },
         "hint": {
-          "en": "Put the long edge at the top.",
-          "zhHant": "長邊朝上。"
+          "en": "Start white side up. Put the long edge at the bottom.",
+          "zhHant": "白色面朝上。長邊朝下。"
         },
-        "diagram": "diag-down",
-        "operation": "valley-fold"
+        "diagram": "diag-up",
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,0.5],[1,0.5]],"move":[0.5,1.2071067812]}
       },
       {
         "id": "step-02",
         "title": {
           "en": "Left corner across",
-          "zhHant": "左角斜摺"
+          "zhHant": "左角摺過去"
         },
         "instruction": {
-          "en": "Fold the left corner across to the right side.",
-          "zhHant": "把左角斜摺到右側。"
+          "en": "Fold the left corner across to the right edge.",
+          "zhHant": "把左角摺過去，碰到右邊的斜邊。"
         },
         "hint": {
-          "en": "Aim for the opposite edge.",
-          "zhHant": "對準另一側邊緣。"
+          "en": "Keep the top of the flap level.",
+          "zhHant": "讓摺過去那片的上緣保持水平。"
         },
         "diagram": "left-across",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0.7071067812,1.2928932188],[-0.1213203436,-0.7071067812]],"move":[-0.2071067812,0.5]}
       },
       {
         "id": "step-03",
         "title": {
           "en": "Right corner across",
-          "zhHant": "右角斜摺"
+          "zhHant": "右角摺過去"
         },
         "instruction": {
-          "en": "Fold the right corner across to the left side.",
-          "zhHant": "把右角斜摺到左側。"
+          "en": "Fold the right corner across to the left edge.",
+          "zhHant": "把右角摺過去，碰到左邊的斜邊。"
         },
         "hint": {
           "en": "Match the height of the first fold.",
           "zhHant": "高度和第一摺差不多。"
         },
         "diagram": "right-across",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[1.1213203436,-0.7071067812],[0.2928932188,1.2928932188]],"move":[1.2071067812,0.5]}
       },
       {
         "id": "step-04",
         "title": {
           "en": "Front rim down",
-          "zhHant": "前側杯口"
+          "zhHant": "前面杯口往下"
         },
         "instruction": {
           "en": "Fold the front top flap downward.",
@@ -3588,24 +3602,26 @@ export const ORIGAMI_MODELS = [
           "zhHant": "蓋住剛才交叉的紙層。"
         },
         "diagram": "top-down",
-        "operation": "valley-fold"
+        "operation": "valley-fold",
+        "fold": {"op":"valley","line":[[0,0.0857864376],[1,0.0857864376]],"move":[0.5,-0.1],"layers":"top"}
       },
       {
         "id": "step-05",
         "title": {
           "en": "Back rim down",
-          "zhHant": "後側杯口"
+          "zhHant": "後面杯口往下"
         },
         "instruction": {
-          "en": "Turn over and fold the back top flap downward.",
-          "zhHant": "翻面後，把後方上層也往下摺。"
+          "en": "Fold the back top flap down behind the cup.",
+          "zhHant": "把後面那片上層往後摺下來。"
         },
         "hint": {
           "en": "Make both rim folds similar.",
           "zhHant": "前後杯口高度一致。"
         },
         "diagram": "top-back",
-        "operation": "mountain-fold"
+        "operation": "mountain-fold",
+        "fold": {"op":"mountain","line":[[0,0.0857864376],[1,0.0857864376]],"move":[0.5,-0.1]}
       },
       {
         "id": "step-06",
@@ -3622,13 +3638,14 @@ export const ORIGAMI_MODELS = [
           "zhHant": "用兩根手指輕輕撐開。"
         },
         "diagram": "spread-top",
-        "operation": "spread"
+        "operation": "spread",
+        "fold": {"op":"keyframe","to":{"s.k.k.k.k":[[0.757746033,0.02930277],[0.606761902,0.5],[0.393238098,0.5],[0.242253967,0.02930277]],"s.m.k.k.k":[[0.757746033,0.02930277],[0.242253967,0.02930277],[0.393238098,0.5],[0.606761902,0.5]],"s.k.m":[[0.393238098,0.5],[0.757746033,0.02930277],[0.242253967,0.02930277]],"s.m.m":[[0.242253967,0.02930277],[0.757746033,0.02930277],[0.393238098,0.5]],"s.k.k.m":[[0.757746033,0.02930277],[0.242253967,0.02930277],[0.606761902,0.5]],"s.m.k.m":[[0.242253967,0.02930277],[0.757746033,0.02930277],[0.606761902,0.5]],"s.m.k.k.m":[[0.757746033,0.02930277],[0.5,0.362135973],[0.242253967,0.02930277]],"s.k.k.k.m":[[0.5,0.362135973],[0.757746033,0.02930277],[0.242253967,0.02930277]]}}
       },
       {
         "id": "step-07",
         "title": {
           "en": "Flatten the base",
-          "zhHant": "整理杯底"
+          "zhHant": "壓平杯底"
         },
         "instruction": {
           "en": "Pinch the lower corners so the cup shape holds.",
@@ -3639,7 +3656,8 @@ export const ORIGAMI_MODELS = [
           "zhHant": "一般摺紙不適合裝液體。"
         },
         "diagram": "finish-cup",
-        "operation": "finish"
+        "operation": "finish",
+        "fold": {"op":"finish"}
       }
     ]
   },

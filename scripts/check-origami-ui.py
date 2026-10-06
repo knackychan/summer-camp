@@ -43,7 +43,8 @@ FIT = """() => {
 }"""
 FLAP_T = "document.querySelector('.oa-paper-flap').getAnimations()[0]"
 
-# The live lesson on Little Fox step 1 (docs/plans/2026-10-05-origami-audit/ slice 01): seek every
+# The live lesson on Samurai Helmet step 1, a template hinge (docs/plans/2026-10-05-origami-audit/ slice 01;
+# Little Fox moved to the paper model in slice 07): seek every
 # animation to a point in the fold and read the flap. Fold window from the flap's own keyframes:
 # [0, lead, samples..., fold end, hold end, 1].
 HINGE = """async () => {
@@ -103,18 +104,21 @@ NOTATION = """async () => {
   document.body.append(host);
   const read = (id, i) => {
     const e = new E.OrigamiFoldEngine(host, { reducedMotion: true });
-    e.show(D.getOrigamiModel(id).steps[i], { autoplay: false });
+    const model = D.getOrigamiModel(id);
+    e.show(model.steps[i], { autoplay: false, model });
     const head = host.querySelector('.oa-arrow-head');
     const behind = host.querySelector('.oa-paper-flap-behind');
+    const paperBehind = host.querySelector('.oa-paper-model > g');
     const sym = host.querySelector('.oa-fold-symbol');
     const out = { kind: e.parts.notation, dash: getComputedStyle(host.querySelector('.oa-crease')).strokeDasharray,
       head: head.classList.contains('oa-arrow-head-full') ? 'full' : head.classList.contains('oa-arrow-head-half') ? 'half' : 'plain',
-      behind: getComputedStyle(behind).display !== 'none' && behind.getAnimations().length > 0,
+      behind: (getComputedStyle(behind.parentNode).display !== 'none' && getComputedStyle(behind).display !== 'none' && behind.getAnimations().length > 0)
+        || (getComputedStyle(paperBehind.parentNode).display !== 'none' && paperBehind.childNodes.length > 0 && paperBehind.getAnimations().length > 0),
       symbol: getComputedStyle(sym).display !== 'none' && (sym.getAttribute('d') || '').length > 10 };
     e.destroy();
     return out;
   };
-  const res = { fox: read('little-fox', 0), cat: read('cat-face', 5), fish: read('swimming-fish', 5) };
+  const res = { fox: read('little-fox', 0), cat: read('cat-face', 5), fish: read('swimming-fish', 4) };
   host.remove();
   return res;
 }"""
@@ -177,9 +181,16 @@ PAPER = """async () => {
   const FRONT = '#ef8f9f', BACK = '#3a7bd5';
   const front = colour(FRONT), back = colour(BACK);
   const shown = (el) => { for (let n = el; n && n !== host; n = n.parentNode) { const cs = getComputedStyle(n); if (cs.display === 'none' || +cs.opacity < 0.5) return false; } return true; };
+  /* The real corners of every visible facet on screen (a bounding box of a mirrored path is loose). */
   const outline = () => {
-    const r = [...host.querySelectorAll('.oa-paper-facet')].filter(shown).map(el => el.getBoundingClientRect());
-    return r.length ? [Math.min(...r.map(x => x.left)), Math.min(...r.map(x => x.top)), Math.max(...r.map(x => x.right)), Math.max(...r.map(x => x.bottom))].map(v => Math.round(v * 10) / 10) : null;
+    const pts = [...host.querySelectorAll('.oa-paper-facet')].filter(shown).flatMap(el => {
+      const d = getComputedStyle(el).d, m = el.getScreenCTM();
+      const n = (d && d !== 'none' ? d : el.getAttribute('d')).match(/-?[\\d.]+(e-?\\d+)?/g).map(Number);
+      const out = [];
+      for (let i = 0; i + 1 < n.length; i += 2) out.push(new DOMPoint(n[i], n[i + 1]).matrixTransform(m));
+      return out;
+    });
+    return pts.length ? [Math.min(...pts.map(q => q.x)), Math.min(...pts.map(q => q.y)), Math.max(...pts.map(q => q.x)), Math.max(...pts.map(q => q.y))].map(v => Math.round(v * 10) / 10) : null;
   };
   const out = [];
   let held = null;
@@ -226,6 +237,63 @@ PAPER = """async () => {
   }
   host.remove();
   return { steps: out, front, back };
+}"""
+
+# The six pilot models on the paper model (slice 07): every step starts on the outline the step
+# before held (+-1 px), every step but the finish plays, and Cat Face 6 (the chin) folds behind:
+# the paper that lands goes in the stack drawn before the paper that stays, and shows once it is
+# past edge-on.
+PILOT = """async () => {
+  const D = await import('/js/vendor/origami-atelier/origami-data.js');
+  const E = await import('/js/vendor/origami-atelier/origami-engine.js');
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:210px';
+  document.body.append(host);
+  const shown = (el) => { for (let n = el; n && n !== host; n = n.parentNode) { const cs = getComputedStyle(n); if (cs.display === 'none' || +cs.opacity < 0.5) return false; } return true; };
+  /* The real corners of every visible facet on screen (a bounding box of a mirrored path is loose). */
+  const outline = () => {
+    const pts = [...host.querySelectorAll('.oa-paper-facet')].filter(shown).flatMap(el => {
+      const d = getComputedStyle(el).d, m = el.getScreenCTM();
+      const n = (d && d !== 'none' ? d : el.getAttribute('d')).match(/-?[\\d.]+(e-?\\d+)?/g).map(Number);
+      const out = [];
+      for (let i = 0; i + 1 < n.length; i += 2) out.push(new DOMPoint(n[i], n[i + 1]).matrixTransform(m));
+      return out;
+    });
+    return pts.length ? [Math.min(...pts.map(q => q.x)), Math.min(...pts.map(q => q.y)), Math.max(...pts.map(q => q.x)), Math.max(...pts.map(q => q.y))].map(v => Math.round(v * 10) / 10) : null;
+  };
+  const out = [];
+  let behind = null;
+  for (const id of ['little-fox', 'dog-face', 'cat-face', 'swimming-fish', 'rabbit-face', 'paper-cup']) {
+    const model = D.getOrigamiModel(id);
+    const bad = [];
+    let held = null, paper = true;
+    for (const [i, step] of model.steps.entries()) {
+      const e = new E.OrigamiFoldEngine(host, { reducedMotion: true });
+      e.show(step, { autoplay: false, model });
+      paper = paper && getComputedStyle(host.querySelector('.oa-paper-model')).display !== 'none';
+      const seek = (f) => e.anims.forEach(x => { x.currentTime = f * e.cycleMs; });
+      if (e.anims.length) seek(0);
+      const start = outline();
+      if (i && !(held && start && start.every((v, k) => Math.abs(v - held[k]) <= 1))) bad.push({ step: i + 1, start, held });
+      if (!e.hasMotion && step.operation !== 'finish') bad.push({ step: i + 1, still: true });
+      if (e.anims.length) {
+        const kf = e.anims[0].effect.getKeyframes();
+        const a = kf[1].offset, c = kf[step.fold.op === 'keyframe' ? 3 : kf.length - 2].offset;
+        if (id === 'cat-face' && i === 5) {
+          const groups = [...host.querySelectorAll('.oa-paper-model > g')];
+          seek(a + (kf[kf.length - 3].offset - a) * .75);
+          behind = { landsBehind: groups[0].childNodes.length > 0 && groups[4].childNodes.length === 0,
+                     shows: [...groups[0].querySelectorAll('path')].some(shown), above: [...groups[3].querySelectorAll('path')].some(shown) };
+        }
+        seek(c - 0.001);
+      }
+      held = outline();
+      e.destroy();
+    }
+    out.push({ id, steps: model.steps.length, paper, bad });
+  }
+  host.remove();
+  return { models: out, behind };
 }"""
 
 
@@ -276,7 +344,7 @@ def run(args):
                         page.wait_for_timeout(150)
                         check(f'{name} {w}x{h}: page does not scroll', page.evaluate(PAGE_SCROLL) <= 1)
                 frame_fits('Library (grid scrolls inside)')
-                page.locator('.oa-root [data-model]').first.click()
+                page.locator('.oa-root [data-model="samurai-helmet"]').click()
                 frame_fits('Prep')
                 page.locator('.oa-root [data-action="start-lesson"]').click()
                 page.wait_for_selector('.oa-root.oa-lesson-mode .oa-stage svg')
@@ -358,14 +426,14 @@ def run(args):
                 check('Back goes to the previous step and autoplays',
                       page.locator('.oa-step-badge').inner_text() != before and page.locator('.oa-root [data-action="pause"]').count() == 1)
                 hinge = page.evaluate(HINGE)
-                check(f'Little Fox step 1 is a hinge fold ({hinge["model"]})', hinge['model'] == 'little-fox' and hinge['ok'])
+                check(f'Samurai Helmet step 1 is a hinge fold ({hinge["model"]})', hinge['model'] == 'samurai-helmet' and hinge['ok'])
                 check('The flap shows its front colour before it is edge-on, the back colour after',
                       hinge['early'] == hinge['front'] and hinge['late'] != hinge['front'] and hinge['late'] == hinge['heldFill'])
                 check(f'Mid-fold the flap stays where real paper can be {hinge["mid"]}', hinge['midInside'])
                 check(f'The folded flap stays on the result ({hinge["heldOpacity"]})', hinge['heldOpacity'] > 0.9)
                 page.locator('.oa-root [data-action="replay"]').click()
                 steps = page.evaluate(EVERY_STEP)
-                check(f'Every step of all 28 models draws without an error {steps["broken"][:3]}', steps['count'] == 275 and not steps['broken'])
+                check(f'Every step of all 28 models draws without an error {steps["broken"][:3]}', steps['count'] == 273 and not steps['broken'])
                 check(f'Every step but the finish has something to play {steps["still"][:5]}', not steps['still'])
                 paper = page.evaluate(PAPER)
                 ps = {r['id']: r for r in paper['steps']}
@@ -383,6 +451,12 @@ def run(args):
                           r['early'] > 0 and r['late'] > 0 and r['lateHidden'] == 0 and r['swapped'])
                 check(f'Paper model: the keyframe step morphs its outline {ps["k"]}', ps['k']['morphs'])
                 check(f'Paper model: the finish shows both faces {ps["end"]["fills"]}', paper['front'] in ps['end']['fills'] and paper['back'] in ps['end']['fills'])
+                pilot = page.evaluate(PILOT)
+                for r in pilot['models']:
+                    check(f'Pilot {r["id"]} ({r["steps"]} steps): drawn from the paper model, each step starts where the last one ended, all but the finish play {r["bad"][:2]}',
+                          r['paper'] and not r['bad'])
+                check(f'Pilot Cat Face 6: the chin folds behind the paper {pilot["behind"]}',
+                      pilot['behind']['landsBehind'] and pilot['behind']['shows'] and not pilot['behind']['above'])
                 for r in page.evaluate(REOPEN):
                     check(f'Crane step {r["step"]} folds and reopens, leaving its crease {r}',
                           r['play'] and r['moved'] and r['shown'] and r['reopened'] and r['crease'] >= 0.9)
@@ -411,7 +485,7 @@ def run(args):
                       and notes['fox']['dash'] == '8px, 6px' and notes['fox']['head'] == 'full')
                 check(f'Cat Face 6 is a mountain: dash-dot line, half arrowhead, flap behind {notes["cat"]}', notes['cat']['kind'] == 'mountain'
                       and notes['cat']['dash'].replace(' ', '') == '9px,4px,2px,4px' and notes['cat']['head'] == 'half' and notes['cat']['behind'])
-                check(f'Swimming Fish 6 shows the turn-over symbol {notes["fish"]}', notes['fish']['kind'] == 'flip' and notes['fish']['symbol'])
+                check(f'Swimming Fish 5 shows the turn-over symbol {notes["fish"]}', notes['fish']['kind'] == 'flip' and notes['fish']['symbol'])
                 page.locator('.oa-root [data-action="screen-back"]').click()
                 page.locator('.oa-root [data-action="screen-back"]').click()
                 page.locator('.oa-root [data-model="cat-face"]').click()
