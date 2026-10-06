@@ -296,6 +296,17 @@ PILOT = """async () => {
   return { models: out, behind };
 }"""
 
+# Finished pictures (slice 12): every model's picture is its own, drawn in both faces.
+FINISH = """async () => {
+  const D = await import('/js/vendor/origami-atelier/origami-data.js');
+  const E = await import('/js/vendor/origami-atelier/origami-engine.js');
+  const FRONT = '#ef8f9f', BACK = '#3a7bd5';
+  const pics = D.ORIGAMI_MODELS.map(m => ({ id: m.id, svg: E.finishPicture(m, FRONT, BACK) }));
+  return { count: pics.length, distinct: new Set(pics.map(p => p.svg)).size,
+           oneFace: pics.filter(p => !(p.svg.includes(FRONT) && p.svg.includes(BACK))).map(p => p.id),
+           empty: pics.filter(p => (p.svg.match(/<path/g) || []).length < 2).map(p => p.id) };
+}"""
+
 
 def run(args):
     directory = ROOT if args.target == 'source' else ROOT / 'dist/android-web'
@@ -596,6 +607,20 @@ def run(args):
                 before = page.locator('.oa-step-badge').inner_text()
                 page.locator('.oa-root [data-action="next-step"]').click()
                 check('Next works with the card open', page.locator('.oa-step-badge').inner_text() != before)
+                fin = page.evaluate(FINISH)
+                check(f'28 finished pictures, no two alike, each in both faces {fin}', fin['count'] == 28 and fin['distinct'] == 28
+                      and not fin['oneFace'] and not fin['empty'])
+                page.locator('.oa-root [data-action="next-step"]').click()
+                check('The finish step draws the finished picture two-tone', page.locator('.oa-root .oa-paper-model .oa-paper-facet').count() >= 2
+                      and page.locator('.oa-root .oa-paper-model').is_visible())
+                page.locator('.oa-root [data-action="next-step"]').click()
+                check('"You did it!" shows the finished picture', page.locator('.oa-root .oa-complete-icon .oa-finish-pic path').count() >= 2)
+                page.locator('.oa-root [data-action="collection"]').click()
+                check('The shelf shows the made model as its picture', page.locator('.oa-root .oa-shelf-slot.completed[data-model="penguin"] .oa-finish-pic path').count() >= 2)
+                page.locator('.oa-root .oa-shelf-slot[data-model="penguin"]').click()
+                check('Prep shows the finished picture', page.locator('.oa-root .oa-finished-big .oa-finish-pic path').count() >= 2
+                      and page.locator('.oa-root .oa-finished-big').bounding_box()['height'] > 80)
+                page.screenshot(path=str(out / 'prep-picture.png'))
                 check('No page errors', not report['pageErrors'] and not report['consoleErrors'])
             except Exception:
                 page.screenshot(path=str(out / 'failure.png'))

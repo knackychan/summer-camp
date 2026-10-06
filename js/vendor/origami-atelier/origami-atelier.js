@@ -1,6 +1,6 @@
 
 import { ORIGAMI_MODELS, ORIGAMI_CATEGORIES, ORIGAMI_DIFFICULTY, PAPER_COLORS, getOrigamiModel, textFor } from "./origami-data.js";
-import { OrigamiFoldEngine } from "./origami-engine.js";
+import { OrigamiFoldEngine, finishPicture } from "./origami-engine.js";
 import { createOrigamiProgressStore } from "./origami-storage.js";
 import { drawTechniqueDemo, techniqueFor } from "./origami-techniques.js";
 
@@ -55,6 +55,9 @@ export function mountOrigamiAtelier(root, options = {}) {
   function modelName(model) { return locale === "zhHant" ? model.nameZh : model.name; }
   function difficultyName(model) { return textFor(ORIGAMI_DIFFICULTY[model.difficulty] || ORIGAMI_DIFFICULTY[1], locale); }
   function announce(msg) { if (live) live.textContent = msg; }
+  /* Finished pictures (docs/plans/2026-10-05-origami-audit/ slice 12) in the kid's paper colours. */
+  function paperColors() { return PAPER_COLORS.find(c=>c.id===progress.paperColorId) || PAPER_COLORS[0]; }
+  function picture(model) { const p = paperColors(); return finishPicture(model, p.front, p.back); }
 
   /* The lesson pins the whole Atelier to the frame (no scroll); every other screen scrolls.
      Leaving the lesson stops the fold loop. */
@@ -126,7 +129,7 @@ export function mountOrigamiAtelier(root, options = {}) {
       ${topbar(modelName(model), t(`${model.steps.length} folds · one square sheet`,`${model.steps.length} 步 · 一張正方形紙`))}
       <div class="oa-prep">
         <section class="oa-prep-preview oa-pixel-panel">
-          <div class="oa-finished-big" aria-label="${escapeHtml(modelName(model))}">${model.icon}</div>
+          <div class="oa-finished-big" role="img" aria-label="${escapeHtml(modelName(model))}">${picture(model)}</div>
           <div class="oa-square-note"><span class="oa-mini-square" aria-hidden="true"></span>${t("Get one square sheet of paper.","準備一張正方形紙。")}</div>
         </section>
         <section class="oa-prep-options oa-pixel-panel">
@@ -309,7 +312,7 @@ export function mountOrigamiAtelier(root, options = {}) {
     view.innerHTML = `
       ${topbar(t("You Did It!","完成了！"), modelName(model))}
       <section class="oa-complete oa-pixel-panel">
-        <div class="oa-complete-icon">${model.icon}</div>
+        <div class="oa-complete-icon" role="img" aria-label="${escapeHtml(modelName(model))}">${picture(model)}</div>
         <h2>${t("Your paper creation is ready.","你的摺紙作品完成了。")}</h2>
         <p>${t("It has been added to your Origami Shelf.","已經放進你的摺紙收藏架。")}</p>
         <div class="oa-home-actions">
@@ -325,7 +328,7 @@ export function mountOrigamiAtelier(root, options = {}) {
     const slots = ORIGAMI_MODELS.map(model => {
       const item = progress.completedModels?.[model.id];
       return `<button type="button" class="oa-shelf-slot ${item?"completed":""}" data-model="${model.id}" aria-label="${escapeHtml(modelName(model))}">
-        <span class="${item?"oa-shelf-icon":"oa-empty"}" aria-hidden="true">${item?model.icon:"?"}</span>
+        <span class="${item?"oa-shelf-icon":"oa-empty"}" aria-hidden="true">${item?picture(model):"?"}</span>
         <span class="oa-shelf-name">${item?escapeHtml(modelName(model)):t("Unmade","還沒完成")}</span>
       </button>`;
     }).join("");

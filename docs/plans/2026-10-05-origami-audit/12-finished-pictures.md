@@ -18,3 +18,11 @@
 
 **DONE WHEN:** `node scripts/check.mjs` green; `python scripts/check-origami-ui.py` passes; a sheet
 of all 28 pictures reviewed.
+
+**Shipped 2026-10-06.** `FINISH_ART` (22 drawings, the first piece is the silhouette) replaces
+`FINISH_SHAPES`; the template finish step draws it two-tone; `finishPicture()` (paper-model models: last
+state fitted to the box). Prep, "You did it!" and made shelf slots show it in the kid's paper colours;
+library cards keep the emoji. Sheet: [finished-pictures.png](finished-pictures.png)
+(`finished-pictures.py`), reviewed; the pinwheel was redrawn (square + four turned blades) because it
+read as a plain diamond. `check-origami-ui.py` 101/101 (new: 28 distinct two-tone pictures, the finish
+step, "You did it!", the shelf and prep show it). Cache `v194-origami-pictures`.

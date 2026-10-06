@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v193-origami-techniques";
+const CACHE_NAME = "summer-quest-v194-origami-pictures";
 const APP_SHELL = [
   "./",
   "./index.html",

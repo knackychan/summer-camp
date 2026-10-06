@@ -82,6 +82,11 @@
 .oa-prep-options .oa-primary{min-height:56px;margin-top:8px}
 .oa-complete{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px;text-align:center}
 .oa-complete-icon{font-size:clamp(72px,24vh,140px);line-height:1.1}
+/* Finished pictures (origami-audit slice 12). */
+.oa-finished-big .oa-finish-pic{width:100%;height:100%;min-height:0}
+.oa-complete-icon .oa-finish-pic{display:block;margin:0 auto;width:min(70vw,320px);height:auto;max-height:30vh}
+.oa-shelf-icon .oa-finish-pic{display:block;width:120px;height:auto}
+.oa-finish-line{stroke:#5f4236;stroke-width:1.4;opacity:.75}
 .oa-complete h2{font-size:clamp(22px,4vh,30px);margin:4px 0}
 .oa-complete p{color:var(--oa-muted);margin:0 0 10px}
 .oa-color{width:48px;height:48px;border:3px solid var(--oa-wood-dark);cursor:pointer;box-shadow:3px 3px 0 rgba(78,50,41,.15)}
