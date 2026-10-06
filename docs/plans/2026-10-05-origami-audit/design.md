@@ -106,3 +106,59 @@ extended to the six pilot models and the strip is reviewed. Then Papa folds.
 
 Wrong-fold detection (the app can't see the paper; no camera, same reasoning as music-room D2),
 camera pans, physics, 3D thickness. Flat 2D diagrams are what origami books teach with.
+
+## Phase 2 — the audit's remaining fixes (Papa, 2026-10-06)
+
+**Approved by Papa 2026-10-06** ("take care of that"): C4, I3, I4, N1, N3 — all five, without
+waiting for the pilot checkpoint. Details marked † were added while writing the slices.
+Slices: [08](08-crane-frog.md) · [09](09-slow.md) · [10](10-scrub.md) · [11](11-technique-cards.md) ·
+[12](12-finished-pictures.md). Each ships on its own; none touches the paper model's maths.
+
+**O10 — Content fixes (C4).** Classic Crane narrows **both** sides: its one "fold one lower edge" /
+"the other lower edge" pair becomes left edge, right edge, turn over, left edge, right edge
+(15 → 18 steps; template pictures as today, design O3). Jumping Frog steps 1–3 lose the index-card
+wording ("top section"): it folds a square. The cat and heart operation tags were fixed in slice 05.
+Both models still get their real-paper pass in their own rollout slices.
+
+**O11 — 🐢 Slow (N1).** One toggle, not a slider: "🐢 Slow / 🐢 慢慢看", top-left of the picture,
+`aria-pressed`. On, every animation of the step runs at ×1.6 time (`playbackRate` 0.625), so the hold
+is longer too. † Remembered per kid (`slow` in the Atelier progress store), kept across steps,
+models and the language switch; a re-render keeps the loop position.
+
+**O12 — Drag to scrub (N3).** Sliding a finger sideways on the picture moves the fold: it pauses
+first if it was playing, then a drag across the whole picture is one loop, left to right is
+forward, from wherever it was (relative, not jump-to-finger). Letting go leaves it paused; Resume
+carries on from there. Works on the rest frame too. † While paused, the companion line says
+"Slide your finger on the picture to move the fold. / 在圖上左右滑動手指，就能前後移動摺紙。" The
+picture takes `touch-action: none`; the lesson never scrolls anyway.
+
+**O13 — Technique cards (I3).** The first time a kid reaches a step using inside-reverse, petal,
+squash, rabbit-ear, pleat, crimp or blintz († and outside-reverse, 5 steps, equally undefined), a
+card covers the picture: "New fold! / 新的摺法！", the name and its one-line meaning (EN + 中文), a
+looping mini demo (code-drawn SVG, a few shapes morphing through CSS `d`, the kid's paper colours)
+and "Got it ▶ / 我懂了 ▶", which starts the step. Remembered per kid (`techniquesSeen`). † On those
+steps the legend chip shows the technique and reopens its card when tapped. A coach, never a gate:
+the card never blocks Next or Back. Reduced motion: the demo rests on its end frame.
+
+**O14 — Finished pictures (I4).** The prep screen, the finish step, the "You did it!" screen and the
+shelf show a two-tone picture of the finished model in the kid's paper colours instead of the emoji:
+for a paper-model model it is the model's own last state; for the 22 template models a code-drawn
+picture (silhouette in one face, the folded-over parts in the other, a few fold lines) replaces
+`FINISH_SHAPES`, so no two models share a shape. Library cards keep the emoji (small and many).
+When a template model moves to the paper model in its rollout slice, its picture comes from the
+paper model and the drawing is retired.
+
+| Key | EN | 中文 | Slice |
+|---|---|---|---|
+| slow | 🐢 Slow | 🐢 慢慢看 | 09 |
+| scrub hint | Slide your finger on the picture to move the fold. | 在圖上左右滑動手指，就能前後移動摺紙。 | 10 |
+| new technique | New fold! | 新的摺法！ | 11 |
+| got it | Got it ▶ | 我懂了 ▶ | 11 |
+| inside-reverse | Inside reverse fold — push the point inside between the layers | 內反摺：把尖角往兩層紙的中間推進去 | 11 |
+| outside-reverse | Outside reverse fold — wrap the point around the outside of the layers | 外反摺：把尖角翻到外面，包住兩層紙 | 11 |
+| petal | Petal fold — lift one layer up like opening a flower | 花瓣摺：把一層紙往上掀開，像花打開一樣 | 11 |
+| squash | Squash fold — open the flap and press it flat | 壓平摺：把紙層打開，再壓平 | 11 |
+| rabbit-ear | Rabbit-ear fold — pinch two sides together into a point | 兔耳摺：把兩邊捏在一起，摺出尖角 | 11 |
+| pleat | Pleat — fold forward, then back, like a step | 階梯摺：先往前摺，再往後摺，像樓梯 | 11 |
+| crimp | Crimp — a pleat on both layers of a point, so it bends | 曲摺：在尖角的兩層紙上一起摺階梯，讓它彎過來 | 11 |
+| blintz | Blintz fold — fold all four corners to the center | 四角摺：把四個角都摺到中心點 | 11 |
