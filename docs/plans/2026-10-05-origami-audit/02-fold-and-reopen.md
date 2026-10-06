@@ -26,3 +26,15 @@
 
 **DONE WHEN:** `node scripts/check.mjs` green; `python scripts/check-origami-ui.py` passes,
 including the 275-step walk; `fold-frames-02.png` shows Crane step 1 folding and reopening.
+
+**Shipped 2026-10-06.** Engine: `reopenTimeline()` (lead, per crease fold 1500 / hold 600 /
+unfold 1200, hold 800 on the crease, reset), `animateReopen()`; diag-cross swaps between two
+stay/flap pairs at the moment the first fold has reopened, when both are the flat sheet; the
+`shape` step lifts 4 % and settles. `check-origami-ui.py` 48/48: all 275 steps draw, every step but
+the finish has Play, Crane 1–4 fold, reopen flat and leave the crease at full strength. `check.mjs`
+green; cache `v183-origami-reopen`. Strip: [fold-frames-02.png](fold-frames-02.png)
+(`fold-frames.py` also takes frame times now).
+
+Data: three operation tags, no text. Paper Heart 02 and Butterfly 02 (`diag-other`, "…then open")
+were `valley-fold` and are now `precrease`; Paper Heart 08 (its finish picture) was `valley-fold`
+and is now `finish`, so only finish steps are still.

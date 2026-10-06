@@ -145,11 +145,11 @@
 }
 
 .oa-paper-shadow{fill:#5a4238;opacity:.12}
-.oa-paper-base,.oa-paper-after,.oa-paper-flap,.oa-paper-flap-behind,.oa-paper-flap-home,.oa-paper-ghost{stroke:#7a5647;stroke-width:2;stroke-linejoin:round}
+.oa-paper-base,.oa-paper-after,.oa-paper-flap,.oa-paper-flap-behind,.oa-paper-flap-home,.oa-paper-flap-second,.oa-paper-ghost{stroke:#7a5647;stroke-width:2;stroke-linejoin:round}
 .oa-paper-ghost{stroke-dasharray:5 5}
 /* Hinge folds transform in view-box units around 0 0 (origami-audit slice 01); the engine sets
    fill-box/center inline for template slides. */
-.oa-paper-flap,.oa-paper-flap-behind{transform-box:view-box;transform-origin:0 0}
+.oa-paper-flap,.oa-paper-flap-behind,.oa-paper-flap-second{transform-box:view-box;transform-origin:0 0}
 .oa-paper-landing{fill:none;stroke:#7a5647;stroke-width:1.6;stroke-dasharray:4 5;opacity:0}
 .oa-crease{stroke:#a84e63;stroke-width:2.6;stroke-dasharray:7 6}
 .oa-arrow,.oa-arrow-head{stroke:#3276b1;stroke-width:5;stroke-linecap:square;stroke-linejoin:miter}

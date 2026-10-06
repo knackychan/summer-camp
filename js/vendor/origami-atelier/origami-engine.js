@@ -215,19 +215,45 @@ function foldPlan(step, d) {
     if (op === "rotate") return { kind:"turn", flap:sheet, stay:[], centre:[cx, cy], deg:d.rotate || 180 };
     return { kind:"flip", flap:sheet, stay:[], a:[cx, box.minY], b:[cx, box.maxY] };
   }
-  if (!HINGE_OPS.has(op) || !d.crease || !d.flap || d.slide) return null;
+  if (op === "shape") return { kind:"shape", flap:[], stay:d.base, centre:centroid(d.base) };
+  /* Fold-and-reopen (slice 02, design O4): precreases, and the "…-open" / "…-mark" pictures. */
+  const reopen = op === "precrease" || /-(open|mark)$/.test(step.diagram) || step.diagram === "diag-cross";
+  if (!(HINGE_OPS.has(op) || reopen) || !d.crease || d.slide) return null;
+  if (!d.flap && !reopen) return null;
   const sheet = op === "unfold" ? (d.after || d.base) : d.base;
-  const [a, b, tip] = d.reach || d.to ? reachLine(sheet, d.flap, d.reach, d.to) : d.crease;
-  let side = Math.sign(sideOf(tip || centroid(d.flap), a, b));
-  if (!side) return null;
-  /* A template whose drawn flap is the bigger side means the smaller side folds over it
-     ("fold the left lower edge toward the middle"). A crease on the paper's edge has nothing to
-     fold over: keep the template slide. */
-  if (!tip && area(clipByLine(sheet, a, b, side)) > 1.2 * area(clipByLine(sheet, a, b, -side))) side = -side;
+  const plan = hingeOf(sheet, d, d.crease, d.flap);
+  if (!plan) return null;
+  plan.kind = op === "mountain-fold" ? "mountain" : "valley";
+  plan.reverse = op === "unfold";
+  if (reopen) {
+    plan.reopen = true;
+    if (d.extraCrease && step.diagram === "diag-cross") plan.second = hingeOf(sheet, d, d.extraCrease, null);
+  }
+  return plan;
+}
+
+/* One crease on one sheet: which side moves, the moving part, the part that stays. */
+function hingeOf(sheet, d, line, templateFlap) {
+  const [a, b, tip] = templateFlap && (d.reach || d.to) ? reachLine(sheet, templateFlap, d.reach, d.to) : line;
+  let side;
+  if (templateFlap) {
+    side = Math.sign(sideOf(tip || centroid(templateFlap), a, b));
+    if (!side) return null;
+    /* A template whose drawn flap is the bigger side means the smaller side folds over it
+       ("fold the left lower edge toward the middle"). */
+    if (!tip && area(clipByLine(sheet, a, b, side)) > 1.2 * area(clipByLine(sheet, a, b, -side))) side = -side;
+  } else {
+    /* No drawn flap (a precrease picture): the half whose middle is further left folds, or the
+       top half for a level crease. */
+    const one = clipByLine(sheet, a, b, 1), other = clipByLine(sheet, a, b, -1);
+    if (!one.length || !other.length) return null;
+    const p = centroid(one), q = centroid(other);
+    side = Math.abs(p[0] - q[0]) > 1 ? (p[0] < q[0] ? 1 : -1) : (p[1] < q[1] ? 1 : -1);
+  }
+  /* A crease on the paper's edge has nothing to fold over: keep the template slide. */
   const flap = clipByLine(sheet, a, b, side), stay = clipByLine(sheet, a, b, -side);
   if (!flap.length || area(flap) < 40 || area(stay) < 0.15 * area(sheet)) return null;
-  const crease = tip ? chord(flap, a, b) : d.crease;
-  return { kind:op === "mountain-fold" ? "mountain" : "valley", flap, stay, a, b, crease, reverse:op === "unfold" };
+  return { flap, stay, a, b, crease:tip ? chord(flap, a, b) : line };
 }
 
 /* Templates that bring a corner toward the middle ("…-to-center", and the generic left / right /
@@ -265,6 +291,30 @@ const LEAD_MS = 400;
 const HOLD_MS = 500;
 const RESET_MS = 250;
 
+/* Offsets (0–1) of one cycle. A fold: lead, fold, hold, reset; a = fold start, b = fold end,
+   c = hold end. */
+function foldTimeline(foldMs) {
+  const total = LEAD_MS + foldMs + HOLD_MS + RESET_MS;
+  return { total, a:LEAD_MS / total, b:(LEAD_MS + foldMs) / total, c:(LEAD_MS + foldMs + HOLD_MS) / total };
+}
+
+/* A fold-and-reopen: lead, then per crease fold / short hold / unfold, then a hold on the open
+   sheet with its crease, then the reset. folds[i] = { fs, fe, us, ue } (fold start / end, unfold
+   start / end); a and b span the first fold, c ends the hold. */
+const REOPEN_FOLD_MS = 1500, REOPEN_PAUSE_MS = 600, REOPEN_UNFOLD_MS = 1200, REOPEN_HOLD_MS = 800;
+function reopenTimeline(plan) {
+  const count = plan.second ? 2 : 1;
+  const total = LEAD_MS + count * (REOPEN_FOLD_MS + REOPEN_PAUSE_MS + REOPEN_UNFOLD_MS) + REOPEN_HOLD_MS + RESET_MS;
+  const folds = [];
+  let at = LEAD_MS;
+  for (let i = 0; i < count; i++) {
+    const fs = at, fe = fs + REOPEN_FOLD_MS, us = fe + REOPEN_PAUSE_MS, ue = us + REOPEN_UNFOLD_MS;
+    folds.push({ fs:fs / total, fe:fe / total, us:us / total, ue:ue / total });
+    at = ue;
+  }
+  return { total, folds, a:folds[0].fs, b:folds[0].fe, c:(at + REOPEN_HOLD_MS) / total };
+}
+
 export class OrigamiFoldEngine {
   constructor(host, options = {}) {
     this.host = host;
@@ -296,7 +346,9 @@ export class OrigamiFoldEngine {
     this.arrowGlow = svgEl("path", {class:"oa-arrow-glow", fill:"none"});
     this.arrow = svgEl("path", {class:"oa-arrow", fill:"none"});
     this.arrowHead = svgEl("path", {class:"oa-arrow-head", fill:"none"});
-    this.svg.append(shadow,this.ghost,this.after,this.flapBehind,this.base,this.landing,this.flapHome,this.flap,this.crease,this.extraCrease,this.arrowGlow,this.arrow,this.arrowHead);
+    this.base2 = svgEl("polygon", {class:"oa-paper-base oa-paper-base-second"});
+    this.flap2 = svgEl("polygon", {class:"oa-paper-flap-second"});
+    this.svg.append(shadow,this.ghost,this.after,this.flapBehind,this.base,this.base2,this.landing,this.flapHome,this.flap,this.flap2,this.crease,this.extraCrease,this.arrowGlow,this.arrow,this.arrowHead);
     this.host.append(this.svg);
     this.setColors(this.front,this.back);
   }
@@ -304,6 +356,7 @@ export class OrigamiFoldEngine {
   setColors(front, back) {
     this.front = front; this.back = back;
     this.base.style.fill = front;
+    this.base2.style.fill = front;
     this.after.style.fill = front;
     this.flap.style.fill = back;
     this.ghost.style.fill = front;
@@ -315,23 +368,27 @@ export class OrigamiFoldEngine {
     this.stop();
     const d = diagramFor(step.diagram) || baseDiagram();
     const plan = foldPlan(step, d);
-    const arrowPts = plan && (plan.kind === "valley" || plan.kind === "mountain")
+    const folds = plan && (plan.kind === "valley" || plan.kind === "mountain");
+    const arrowPts = folds
       ? foldArrow(plan.reverse ? reflect(plan.flap, plan.a, plan.b) : plan.flap, plan.a, plan.b)
       : d.arrow;
     const crease = plan?.crease || d.crease;
+    const extra = plan?.second?.crease || d.extraCrease;
     this.parts = { crease:Boolean(crease), arrow:Boolean(arrowPts) };
-    if (plan) this.drawHinge(plan);
+    [this.base2, this.flap2].forEach(el => { el.style.display = "none"; });
+    this.base.style.transform = "none";
+    if (plan?.kind === "shape") this.drawShape(plan);
+    else if (plan) this.drawHinge(plan);
     else this.drawSlide(d);
-    if (crease) {
-      this.crease.style.display = "";
-      this.crease.setAttribute("x1",crease[0][0]); this.crease.setAttribute("y1",crease[0][1]);
-      this.crease.setAttribute("x2",crease[1][0]); this.crease.setAttribute("y2",crease[1][1]);
-    } else this.crease.style.display = "none";
-    if (d.extraCrease) {
-      this.extraCrease.style.display = "";
-      this.extraCrease.setAttribute("x1",d.extraCrease[0][0]); this.extraCrease.setAttribute("y1",d.extraCrease[0][1]);
-      this.extraCrease.setAttribute("x2",d.extraCrease[1][0]); this.extraCrease.setAttribute("y2",d.extraCrease[1][1]);
-    } else this.extraCrease.style.display = "none";
+    const line = (el, seg) => {
+      if (!seg) { el.style.display = "none"; return; }
+      el.style.display = "";
+      el.setAttribute("x1",seg[0][0]); el.setAttribute("y1",seg[0][1]);
+      el.setAttribute("x2",seg[1][0]); el.setAttribute("y2",seg[1][1]);
+    };
+    line(this.crease, crease);
+    line(this.extraCrease, extra);
+    this.extraCrease.classList.toggle("oa-crease-secondary", !plan?.second);
     const arrowParts = [this.arrowGlow, this.arrow, this.arrowHead];
     if (arrowPts) {
       const [s,c,e]=arrowPts;
@@ -345,22 +402,30 @@ export class OrigamiFoldEngine {
     } else arrowParts.forEach(el => { el.style.display = "none"; });
     this.arrowGlow.style.opacity = "0";
 
-    const fold = Number(step.durationMs) || 1850;
-    const total = LEAD_MS + fold + HOLD_MS + RESET_MS;
-    const a = LEAD_MS / total, b = (LEAD_MS + fold) / total, c = (LEAD_MS + fold + HOLD_MS) / total;
+    const t = plan?.reopen ? reopenTimeline(plan) : foldTimeline(Number(step.durationMs) || 1850);
+    const { total, a, b, c } = t;
     const m = a + (b - a) * .58;
     const timing = { duration:total, iterations:Infinity };
     const canAnimate = typeof this.flap.animate === "function";
     const anims = [];
-    if (canAnimate && plan) anims.push(...this.animateHinge(plan, { a, b, c }, timing));
+    if (canAnimate && plan?.reopen) anims.push(...this.animateReopen(plan, t, timing));
+    else if (canAnimate && plan?.kind === "shape") anims.push(this.animateShape(plan, t, timing));
+    else if (canAnimate && plan) anims.push(...this.animateHinge(plan, t, timing));
     else if (canAnimate && d.flap) anims.push(...this.animateSlide(d, { a, b, c, m }, timing));
-    if (canAnimate && arrowPts) {
+    if (canAnimate && arrowPts && anims.length) {
       const beam = [{offset:0,opacity:.35},{offset:a,opacity:1},{offset:m,opacity:1},{offset:b,opacity:.3},{offset:1,opacity:.3}];
       anims.push(this.arrow.animate(beam, timing), this.arrowHead.animate(beam, timing));
       anims.push(this.arrowGlow.animate([{offset:0,opacity:0},{offset:a,opacity:.85},{offset:(a+m)/2,opacity:.35},{offset:m,opacity:.85},{offset:b,opacity:0},{offset:1,opacity:0}], timing));
     }
     if (canAnimate && crease && anims.length) {
-      anims.push(this.crease.animate([{offset:0,opacity:.55},{offset:a,opacity:1},{offset:b,opacity:1},{offset:1,opacity:.55}], timing));
+      if (plan?.reopen) {
+        /* The crease is faint until the paper has been folded and opened: it is what is left. */
+        const mark = (w) => [{offset:0,opacity:.35},{offset:w.fs,opacity:.6},{offset:w.ue,opacity:1},{offset:c,opacity:1},{offset:1,opacity:.35}];
+        anims.push(this.crease.animate(mark(t.folds[0]), timing));
+        if (plan.second) anims.push(this.extraCrease.animate(mark(t.folds[1]), timing));
+      } else {
+        anims.push(this.crease.animate([{offset:0,opacity:.55},{offset:a,opacity:1},{offset:b,opacity:1},{offset:1,opacity:.55}], timing));
+      }
     }
     this.anims = anims;
     this.cycleMs = anims.length ? total : 0;
@@ -424,7 +489,7 @@ export class OrigamiFoldEngine {
     this.base.style.opacity = "1";
     this.after.style.opacity = "0";
     this.ghost.style.opacity = "0";
-    [this.flap, this.flapBehind].forEach(el => {
+    [this.flap, this.flapBehind, this.flap2].forEach(el => {
       el.style.display = "";
       el.setAttribute("points", points(plan.flap));
       el.style.transformBox = "view-box";
@@ -433,13 +498,33 @@ export class OrigamiFoldEngine {
     this.flap.style.opacity = "1";
     this.flapBehind.style.display = plan.kind === "mountain" ? "" : "none";
     this.flapBehind.style.opacity = "0";
-    this.flapHome.style.display = "";
+    this.flap2.style.display = "none";
+    this.flapHome.style.display = plan.reopen ? "none" : "";
     this.flapHome.setAttribute("points", points(startPoly));
     this.flapHome.style.fill = plan.reverse ? this.back : this.front;
     this.flapHome.style.opacity = "0";
-    const lands = plan.kind === "valley" || plan.kind === "mountain";
+    const lands = (plan.kind === "valley" || plan.kind === "mountain") && !plan.second;
     this.landing.style.display = lands ? "" : "none";
     if (lands) this.landing.setAttribute("points", points(plan.reverse ? plan.flap : reflect(plan.flap, plan.a, plan.b)));
+    if (plan.second) {
+      this.base2.style.display = "";
+      this.base2.setAttribute("points", points(plan.second.stay));
+      this.flap2.style.display = "";
+      this.flap2.setAttribute("points", points(plan.second.flap));
+    }
+  }
+
+  /* The keyframes of one fold of `flap` over a→b between offsets from and to: s goes 1 → −1
+     (or back with `back`), the face changes where the paper is edge-on. */
+  turnFrames(a, b, from, to, c0, c1, back = false) {
+    const out = [];
+    for (const { u, s } of hingeSamples(16)) {
+      if (u === 0) continue;
+      const offset = from + (to - from) * u, v = back ? -s : s;
+      if (u === 0.5) out.push({ offset, transform:hingeTransform(a, b, v), fill:c0 }, { offset, transform:hingeTransform(a, b, v), fill:c1 });
+      else out.push({ offset, transform:hingeTransform(a, b, v), fill:u < 0.5 ? c0 : c1 });
+    }
+    return out;
   }
 
   animateHinge(plan, { a, b, c }, timing) {
@@ -472,6 +557,54 @@ export class OrigamiFoldEngine {
       anims.push(this.landing.animate([{offset:0,opacity:0},{offset:a,opacity:.7},{offset:b,opacity:.7},{offset:Math.min(c, b + .04),opacity:0},{offset:1,opacity:0}], timing));
     }
     return anims;
+  }
+
+  /* Fold-and-reopen (slice 02, design O4): fold, a short hold, unfold to where it started; with a
+     second crease (diag-cross) the second fold follows on the other half-pair. At the switch both
+     pictures are the whole flat sheet, so swapping which polygons show is invisible. */
+  animateReopen(plan, t, timing) {
+    const id = (p) => hingeTransform(p.a, p.b, 1);
+    const fw = t.folds;
+    const one = (p, w) => [
+      { offset:w.fs, transform:id(p), fill:this.front },
+      ...this.turnFrames(p.a, p.b, w.fs, w.fe, this.front, this.back),
+      { offset:w.us, transform:hingeTransform(p.a, p.b, -1), fill:this.back },
+      ...this.turnFrames(p.a, p.b, w.us, w.ue, this.back, this.front, true),
+    ];
+    const anims = [];
+    if (!plan.second) {
+      anims.push(this.flap.animate([{ offset:0, transform:id(plan), fill:this.front }, ...one(plan, fw[0]), { offset:1, transform:id(plan), fill:this.front }], timing));
+      if (this.landing.style.display !== "none") {
+        anims.push(this.landing.animate([{offset:0,opacity:0},{offset:fw[0].fs,opacity:.7},{offset:fw[0].us,opacity:.7},{offset:fw[0].ue,opacity:0},{offset:1,opacity:0}], timing));
+      }
+      return anims;
+    }
+    const sw = fw[0].ue;
+    const shownUntil = (on) => [{offset:0,opacity:on?1:0},{offset:sw,opacity:on?1:0},{offset:sw,opacity:on?0:1},{offset:1,opacity:on?0:1}];
+    const firstFrames = [{ offset:0, transform:id(plan), fill:this.front }, ...one(plan, fw[0]), { offset:1, transform:id(plan), fill:this.front }];
+    const secondFrames = [{ offset:0, transform:id(plan.second), fill:this.front }, ...one(plan.second, fw[1]), { offset:1, transform:id(plan.second), fill:this.front }];
+    anims.push(this.flap.animate(firstFrames, timing), this.flap.animate(shownUntil(true), timing));
+    anims.push(this.flap2.animate(secondFrames, timing), this.flap2.animate(shownUntil(false), timing));
+    anims.push(this.base.animate(shownUntil(true), timing), this.base2.animate(shownUntil(false), timing));
+    return anims;
+  }
+
+  /* The Lotus "soften" step: the paper lifts a little and settles. */
+  drawShape(plan) {
+    this.base.style.display = "";
+    this.base.setAttribute("points", points(plan.stay));
+    this.base.style.opacity = "1";
+    this.base.style.transformBox = "view-box";
+    this.base.style.transformOrigin = "0 0";
+    [this.flap, this.flapBehind, this.flapHome, this.landing].forEach(el => { el.style.display = "none"; });
+    this.after.style.opacity = "0";
+    this.ghost.style.opacity = "0";
+  }
+
+  animateShape(plan, { a, b }, timing) {
+    const [x, y] = plan.centre;
+    const k = (s) => `translate(${x}px,${y}px) scale(${s}) translate(${-x}px,${-y}px)`;
+    return this.base.animate([{offset:0,transform:k(1)},{offset:a,transform:k(1)},{offset:(a+b)/2,transform:k(1.04)},{offset:b,transform:k(1)},{offset:1,transform:k(1)}], timing);
   }
 
   get hasMotion() { return this.anims.length > 0; }

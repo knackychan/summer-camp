@@ -72,20 +72,56 @@ HINGE = """async () => {
            mid: [m.left, m.right, m.top, m.bottom].map(Math.round) };
 }"""
 
-# Every step of every model through the engine, off-screen; returns the steps that threw.
+# Every step of every model through the engine, off-screen: the steps that threw, and the
+# non-finish steps with nothing to play (slice 02: only finish steps may be still).
 EVERY_STEP = """async () => {
   const D = await import('/js/vendor/origami-atelier/origami-data.js');
   const E = await import('/js/vendor/origami-atelier/origami-engine.js');
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;left:-400px;top:0;width:300px;height:210px';
   document.body.append(host);
-  const broken = [];
+  const broken = [], still = [];
+  let count = 0;
   for (const m of D.ORIGAMI_MODELS) for (const [i, s] of m.steps.entries()) {
-    try { const e = new E.OrigamiFoldEngine(host, { reducedMotion: true }); e.show(s, { autoplay: false }); e.destroy(); }
-    catch (err) { broken.push(`${m.id} #${i + 1}: ${err.message}`); }
+    count++;
+    try {
+      const e = new E.OrigamiFoldEngine(host, { reducedMotion: true }); e.show(s, { autoplay: false });
+      if (!e.hasMotion && s.operation !== 'finish') still.push(`${m.id} #${i + 1}`);
+      e.destroy();
+    } catch (err) { broken.push(`${m.id} #${i + 1}: ${err.message}`); }
   }
   host.remove();
-  return broken;
+  return { broken, still, count };
+}"""
+
+# Classic Crane steps 1-4 (fold and reopen): Play is there, the paper moves mid-fold, and on the
+# hold after reopening the flap is back flat with the crease drawn at full strength.
+REOPEN = """async () => {
+  const D = await import('/js/vendor/origami-atelier/origami-data.js');
+  const E = await import('/js/vendor/origami-atelier/origami-engine.js');
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-400px;top:0;width:300px;height:210px';
+  document.body.append(host);
+  const matrix = (el) => { const m = getComputedStyle(el).transform; return m === 'none' ? [1,0,0,1,0,0] : m.slice(7, -1).split(',').map(Number); };
+  const flat = (m) => Math.abs(m[0] - 1) < .01 && Math.abs(m[3] - 1) < .01 && Math.abs(m[1]) < .01 && Math.abs(m[2]) < .01 && Math.abs(m[4]) < .5 && Math.abs(m[5]) < .5;
+  const out = [];
+  for (const i of [0, 1, 2, 3]) {
+    const e = new E.OrigamiFoldEngine(host, { reducedMotion: true });
+    e.show(D.getOrigamiModel('classic-crane').steps[i], { autoplay: false });
+    const flap = host.querySelector('.oa-paper-flap'), crease = host.querySelector('.oa-crease');
+    const seek = (ms) => e.anims.forEach(x => { x.currentTime = ms; });
+    const kf = flap.getAnimations()[0].effect.getKeyframes();
+    const total = e.cycleMs, foldEnd = kf.findIndex(k => k.offset > 0 && k.fill !== kf[0].fill);
+    seek(kf[foldEnd].offset * total);
+    const mid = { moved: !flat(matrix(flap)), shown: getComputedStyle(flap).display !== 'none' && +getComputedStyle(flap).opacity > .9 };
+    const hold = kf[kf.length - 2].offset * total + 1;
+    const holdEnd = Math.max(...e.anims.map(x => { const f = x.effect.getKeyframes(); return f[f.length - 2].offset; })) * total;
+    seek((hold + holdEnd) / 2);
+    out.push({ step: i + 1, play: e.hasMotion, ...mid, reopened: flat(matrix(flap)), crease: +getComputedStyle(crease).opacity });
+    e.destroy();
+  }
+  host.remove();
+  return out;
 }"""
 
 
@@ -204,8 +240,12 @@ def run(args):
                 check(f'Mid-fold the flap stays where real paper can be {hinge["mid"]}', hinge['midInside'])
                 check(f'The folded flap stays on the result ({hinge["heldOpacity"]})', hinge['heldOpacity'] > 0.9)
                 page.locator('.oa-root [data-action="replay"]').click()
-                broken = page.evaluate(EVERY_STEP)
-                check(f'Every step of all 28 models draws without an error {broken[:3]}', not broken)
+                steps = page.evaluate(EVERY_STEP)
+                check(f'Every step of all 28 models draws without an error {steps["broken"][:3]}', steps['count'] == 275 and not steps['broken'])
+                check(f'Every step but the finish has something to play {steps["still"][:5]}', not steps['still'])
+                for r in page.evaluate(REOPEN):
+                    check(f'Crane step {r["step"]} folds and reopens, leaving its crease {r}',
+                          r['play'] and r['moved'] and r['shown'] and r['reopened'] and r['crease'] >= 0.9)
                 page.emulate_media(reduced_motion='reduce')
                 page.locator('.oa-root [data-action="next-step"]').click()
                 page.wait_for_timeout(100)

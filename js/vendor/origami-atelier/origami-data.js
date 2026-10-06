@@ -798,7 +798,7 @@ export const ORIGAMI_MODELS = [
           "zhHant": "現在可以看到正中央。"
         },
         "diagram": "diag-other",
-        "operation": "valley-fold"
+        "operation": "precrease"
       },
       {
         "id": "step-03",
@@ -900,7 +900,7 @@ export const ORIGAMI_MODELS = [
           "zhHant": "可以拿來當小卡片或裝飾。"
         },
         "diagram": "finish-heart",
-        "operation": "valley-fold"
+        "operation": "finish"
       }
     ],
     "skills": [
@@ -1103,7 +1103,7 @@ export const ORIGAMI_MODELS = [
           "zhHant": "兩條線會在中央交叉。"
         },
         "diagram": "diag-other",
-        "operation": "valley-fold"
+        "operation": "precrease"
       },
       {
         "id": "step-03",
