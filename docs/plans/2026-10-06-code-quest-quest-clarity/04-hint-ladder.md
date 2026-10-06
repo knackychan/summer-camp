@@ -1,6 +1,6 @@
 # Slice 04: Hint ladder on stuck signals
 
-**Status:** Design approved by Papa 2026-10-06 (`design.md` D6, D7). Not started.
+**Status:** Design approved by Papa 2026-10-06 (`design.md` D6, D7). Built 2026-10-06; `check-codequest-ui.py` green at both sizes.
 **Goal:** A kid who is stuck gets a stronger hint each time, without asking and without being told off.
 **Depends on:** 01, 02.
 **Files:** `js/games/codequest.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `scripts/check-codequest-ui.py`.
@@ -28,3 +28,10 @@
   - at tier 2 the goal pop shows the peek with a 🪨 card and the Rune row's cards;
   - opening another quest → tier back to gentle.
 - `node scripts/check.mjs` green.
+
+## As built (2026-10-06)
+
+- At the near tier the bubble says "Look at the 🏁 goal card: it shows how to start." / "看看 🏁 目標卡：上面有開始的方法。" instead of the near lead-in (which ends in a colon and only makes sense next to the peek).
+- The goal pop puts the 💡 hint (and peek) right under the title, and never runs past the scene: its `max-height` follows the scene bottom and the rest scrolls inside it. At 1280×600 the q12 peek fits without scrolling.
+- The Rune coach waits while the goal pop is open, so the two cards never overlap.
+- The hero resting clears "ran since Reset", so the Reset that follows a rest is not a second signal.

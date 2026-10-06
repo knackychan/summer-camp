@@ -433,7 +433,50 @@ def run(args):
                 act('run')
                 bubble = page.evaluate("document.querySelector('.cq-bubble').innerText")
                 check(f'{tag}: q12 Hero row = Attack, Run names Rune and Repeat in one message',
-                      notice() == 'This quest needs 🪨 Rune + 🔁 Repeat.' and 'Rune' in bubble and 'Repeat' in bubble and state()['model']['phase'] == 'programming', bubble)
+                      notice().startswith('This quest needs 🪨 Rune + 🔁 Repeat.') and 'Rune' in bubble and 'Repeat' in bubble and state()['model']['phase'] == 'programming', bubble)
+                # Slice 04: the refusal was a stuck signal, so the strong hint joined it.
+                check(f'{tag}: the refusal moves the hint to the strong tier', state()['hintTier'] == 1 and '💡 Put Attack' in notice(), notice())
+                act('clear')
+
+                def run_until_still():
+                    act('run')
+                    page.wait_for_function(SNAPSHOT + ".model.phase !== 'executing'", timeout=30000)
+
+                # Rune = Turn left ×2, Hero row = 🪨: Runs that don't win never count; the hero resting does.
+                for a in ['row:rune', 'picker:walk', 'add:turnLeft', 'picker:stickers', 'sticker:repeat:2', 'row:main', 'logic:callRune']:
+                    act(a)
+                run_until_still()
+                check(f'{tag}: a Run that ends without a win does not move the hint', state()['hintTier'] == 1 and state()['model']['phase'] == 'programming', state()['model']['phase'])
+                for _ in range(12):
+                    if state()['model']['phase'] == 'resting':
+                        break
+                    run_until_still()
+                check(f'{tag}: the hero resting moves the hint to the near tier and opens the goal pop',
+                      state()['model']['phase'] == 'resting' and state()['hintTier'] == 2 and state()['goalOpen'], (state()['model']['phase'], state()['hintTier']))
+                peek = page.evaluate("""() => { const p = document.querySelector('.cq-goal-pop .cq-peek'); return p ? {rows: p.querySelectorAll('.cq-peek-row').length,
+                  cards: p.querySelectorAll('.cq-peek-card').length, more: !!p.querySelector('.cq-peek-more'), hint: document.querySelector('.cq-goal-hint').innerText,
+                  seen: p.getBoundingClientRect().bottom <= document.querySelector('.cq-goal-pop').getBoundingClientRect().bottom + 1
+                    && document.querySelector('.cq-goal-pop').getBoundingClientRect().bottom <= document.querySelector('.cq-scene').getBoundingClientRect().bottom + 1,
+                  coach: !document.querySelector('.cq-coach').hidden, bubble: document.querySelector('.cq-bubble').innerText} : null; }""")
+                page.screenshot(path=str(out / f'peek-q12-{tag}.png'))
+                check(f'{tag}: the near tier peeks at the Rune row and the start of the Hero row', peek and peek['rows'] == 2 and peek['cards'] >= 3 and peek['more'] and 'Nearly' in peek['hint'] and peek['seen'] and not peek['coach'] and '🏁 goal card' in peek['bubble'], peek)
+                act('goal')
+                act('reset')
+                check(f'{tag}: the Reset after a rest does not count again', state()['hintTier'] == 2)
+                act('row:rune')
+                act('clear')
+                act('row:main')
+                act('clear')
+                enter_level('q05')
+                act('brief:start')
+                check(f'{tag}: a new quest starts back at the gentle hint', state()['hintTier'] == 0)
+                for a in ['add:move', 'sticker:repeat:2']:
+                    act(a)
+                run_until_still()
+                act('reset')
+                check(f'{tag}: Run then Reset moves the hint one tier', state()['hintTier'] == 1, state()['hintTier'])
+                act('reset')
+                check(f'{tag}: a second Reset without a Run does not', state()['hintTier'] == 1, state()['hintTier'])
                 act('clear')
                 enter_level('q01')
                 b = brief()

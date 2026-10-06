@@ -34,7 +34,7 @@
 .cq-goal .cq-ico{color:#a8743f;width:22px;height:22px}
 .cq-goal-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cq-goal i{flex:none;padding:2px 7px;border-radius:10px;background:var(--cq-wood);color:var(--cq-paper);font:900 12px ui-monospace,monospace}
-.cq-goal-pop{position:absolute;left:0;top:calc(100% + 8px);width:min(380px,80vw);display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:3px solid var(--cq-wood);border-radius:8px;background:var(--cq-paper);color:#2a1a10;box-shadow:0 4px 0 var(--cq-out);z-index:6}
+.cq-goal-pop{position:absolute;left:0;top:calc(100% + 8px);width:min(380px,80vw);overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:3px solid var(--cq-wood);border-radius:8px;background:var(--cq-paper);color:#2a1a10;box-shadow:0 4px 0 var(--cq-out);z-index:6}
 .cq-goal-pop>b{font-size:17px}.cq-goal-pop>small{color:#6b4528}.cq-goal-pop>p{font-weight:700}
 .cq-checks{list-style:none;margin:2px 0;padding:0;display:flex;flex-direction:column;gap:4px}
 .cq-checks li{display:flex;align-items:center;gap:6px;padding:4px 8px;border:2px solid #a8743f;border-radius:5px;background:#fff8e0;font-size:13px}
@@ -385,3 +385,11 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
 .cq-goal-meta .cq-pips{color:#6b4528}.cq-goal-meta .cq-pips>b>i{color:#6b452840}
 .cq-goal-meta .cq-skill{font-size:12px;padding:2px 8px 2px 4px}
 .cq-map-pips{color:#ffd23f;letter-spacing:1px}
+.cq-goal-hint{padding:6px 8px;border:2px solid #a8743f;border-radius:5px;background:#fff8e0;font-size:14px}
+.cq-peek{display:flex;flex-direction:column;gap:6px}
+.cq-peek-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cq-peek-row>small{flex:none;width:44px;color:#6b4528;font-size:12px}
+.cq .cq-peek-card{display:flex;align-items:center;justify-content:center;width:auto;min-width:58px;height:auto;min-height:60px;border:3px solid var(--cq-out);border-radius:6px;color:#fff}
+.cq-peek-more{font:900 18px ui-monospace,monospace;font-style:normal;color:#6b4528}
+.cq-peek-code{margin:0;padding:6px 8px;border:2px solid var(--cq-out);border-radius:5px;background:#14132a;color:#c9ef6a;font:700 12px/1.35 ui-monospace,monospace;white-space:pre-wrap}
+.cq-goal-pop>*{flex:none}

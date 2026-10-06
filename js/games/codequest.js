@@ -12,7 +12,7 @@ import { placeBubbleRect } from './codequest/bubble.js';
 import { repeatCounts, ifTests, insertAfter } from './codequest/strip-edit.js';
 import { cardView, withSticker, withoutStickers } from './codequest/stickers.js';
 import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, COACH, STICKER, PICKER, BRIEF, pairHTML, setLanguage, language, t } from './codequest/strings.js';
-import { skillsFor, difficultyFor, hintFor, missingSkills, needsAll } from './codequest/hints.js';
+import { skillsFor, difficultyFor, hintFor, peekFor, missingSkills, needsAll } from './codequest/hints.js';
 import { mountLab } from './codequest/lab/lab-screen.js';
 
 let S = null;
@@ -376,7 +376,7 @@ function runeCoachDue(level) {
     && !(S.profile.coach || []).includes('rune'));
 }
 function coachVisible() {
-  return S.coach >= 0 && S.coach < COACH_STEPS.length && !S.dialog && !S.paused && !S.lab && S.model.phase !== 'executing';
+  return S.coach >= 0 && S.coach < COACH_STEPS.length && !S.dialog && !S.paused && !S.lab && !S.goalOpen && S.model.phase !== 'executing';
 }
 function renderCoach() {
   const card = S.root.querySelector('.cq-coach');
@@ -548,7 +548,7 @@ function goalHTML() {
 }
 function goalPopHTML() {
   const l = S.level, best = S.profile.bestBlocks[l.id] || 0;
-  return '<b>' + label(l.title) + '</b><small>' + label(l.region.label) + ' · ' + label(l.concept) + '</small>' + (l.endless || l.expedition ? '' : '<div class="cq-goal-meta">' + skillChipsHTML(l) + pipsHTML(l) + '</div>') + '<p>' + label(l.objectiveText) + '</p>' +
+  return '<b>' + label(l.title) + '</b><small>' + label(l.region.label) + ' · ' + label(l.concept) + '</small>' + hintPopHTML() + (l.endless || l.expedition ? '' : '<div class="cq-goal-meta">' + skillChipsHTML(l) + pipsHTML(l) + '</div>') + '<p>' + label(l.objectiveText) + '</p>' +
     '<ul class="cq-checks">' + objectives().map(([done, en, zh]) => '<li class="' + (done ? 'done' : '') + '"><b>' + (done ? '◆' : '◇') + '</b>' + pair(en, zh) + '</li>').join('') + '</ul>' +
     '<small>' + pair('Par ' + l.parBlocks + ' blocks' + (best ? ' · your best ' + best : ''), '目標 ' + l.parBlocks + ' 個積木' + (best ? '・你的最佳 ' + best : '')) + '</small>';
 }
@@ -571,6 +571,35 @@ function briefHTML() {
     (chips.length ? '<h3><b aria-hidden="true">📚</b> ' + label(teach ? BRIEF.practise : BRIEF.needs) + '</h3>' + skillChipsHTML(l) : '') +
     '<p class="cq-brief-hint"><b aria-hidden="true">💡</b> ' + label(hintFor(l, 0)) + '</p></div>' +
     '<div class="cq-dialog-actions">' + button('brief:start', label(BRIEF.start), 'class="cq-primary" autofocus') + '</div>';
+}
+/* Hint ladder (quest-clarity D6, D7): the current tier's hint stays in the goal pop; at
+   the near tier, a peek at how the reference solution starts. */
+function peekCard(node) {
+  const view = cardView(node);
+  if (!view) return miniCards([node]);
+  return '<span class="cq-card cq-peek-card cat-' + nodeCategory(view.card) + '">' + nodeIcon(view.card) + '<b>' + label(nodeShort(view.card)) + '</b>' + stickerTagsHTML(view) + '</span>';
+}
+function peekHTML(level) {
+  const peek = peekFor(level), more = peek.more ? '<i class="cq-peek-more">…</i>' : '';
+  if (peek.kind === 'code') return '<pre class="cq-peek-code"><code>' + esc(peek.lines.join('\n')) + (peek.more ? '\n…' : '') + '</code></pre>';
+  const row = (name, nodes, tail) => '<div class="cq-peek-row"><small>' + label(name) + '</small>' + nodes.map(peekCard).join('') + tail + '</div>';
+  return '<div class="cq-peek">' + (peek.rune ? row(UI.runeRow, peek.rune, '') : '') + row(UI.heroRow, peek.nodes, more) + '</div>';
+}
+function hintPopHTML() {
+  const l = S.level;
+  if (!l || l.endless || l.expedition) return '';
+  return '<p class="cq-goal-hint"><b aria-hidden="true">💡</b> ' + label(hintFor(l, S.hintTier)) + '</p>' + (S.hintTier >= 2 ? peekHTML(l) : '');
+}
+const HINT_LOOK = ['Look at the 🏁 goal card: it shows how to start.', '看看 🏁 目標卡：上面有開始的方法。'];
+/** A stuck signal (D7): the hint moves up one tier and joins the message just shown. */
+function stuck() {
+  if (!S || !S.level || S.level.endless || S.level.expedition) return;
+  S.hintTier = Math.min(2, (S.hintTier || 0) + 1);
+  // The near tier's peek lives in the goal pop: open it, and the bubble points there.
+  const hint = S.hintTier === 2 ? HINT_LOOK : hintFor(S.level, S.hintTier), base = S.notice || ['', ''];
+  if (S.hintTier === 2) S.goalOpen = true;
+  notify([base[0] + ' 💡 ' + hint[0], base[1] + ' 💡 ' + hint[1]]);
+  render();
 }
 function openBrief() {
   if (!S || !S.level || S.level.endless || S.level.expedition) return;
@@ -641,6 +670,8 @@ function render() {
   html('.cq-goal', goalHTML());
   root.querySelector('.cq-goal').setAttribute('aria-expanded', String(!!S.goalOpen));
   const pop = root.querySelector('.cq-goal-pop'); pop.hidden = !S.goalOpen; if (S.goalOpen) html('.cq-goal-pop', goalPopHTML());
+  // The pop never runs past the scene; what doesn't fit scrolls inside it (hint first, quest-clarity D7).
+  if (S.goalOpen) { const scene = root.querySelector('.cq-scene').getBoundingClientRect(); pop.style.maxHeight = Math.max(120, Math.floor(scene.bottom - pop.getBoundingClientRect().top - 8)) + 'px'; }
   html('.cq-vitals', vitalsHTML());
   const debugAllowed = behaviorAllowedForLevel();
   root.querySelector('[data-action="debug"]').hidden = !debugAllowed;
@@ -926,13 +957,14 @@ function beginIfNeeded() {
   if (S.model.phase === 'executing') return true;
   if (S.model.phase !== 'programming') return false;
   const result = S.model.begin(S.program, functions(), persistentBehaviors());
-  if (result.ok) return true;
+  if (result.ok) { S.ranSinceReset = true; return true; }
   if (result.reason === 'empty-program') notify(S.runeProgram.length ? MESSAGES.runeReady : MESSAGES.empty);
   else if (result.reason === 'too-many-blocks') notify(MESSAGES.tooMany);
   // Name the whole rule and everything still missing, not just the first gap (quest-clarity D3).
   else if (result.reason === 'missing-concept') notify(needsAll(S.level, missingSkills(S.level, S.program, functions()), S.runeProgram.length > 0));
   else if (result.reason === 'missing-function') notify(MESSAGES.missingFunction);
   else notify(['Try adjusting the program.', '試著調整程式。']);
+  if (result.reason === 'missing-concept' || result.reason === 'too-many-blocks') stuck();
   render(); return false;
 }
 
@@ -1103,6 +1135,8 @@ function executeOne(auto) {
   if (S.model.phase === 'won') { completeQuest(); return; }
   if (S.model.phase === 'resting' || S.model.phase === 'programming') {
     S.autoRun = false; render();
+    // Resting is one stuck signal; the Reset that follows it is part of the same moment.
+    if (S.model.phase === 'resting') { S.ranSinceReset = false; stuck(); }
     if (S.model.phase === 'resting' && S.run && S.level && S.level.expedition) failExpedition();
     return;
   }
@@ -1172,6 +1206,7 @@ function startLevel(level, options = {}) {
   S.level = level; S.model = createModel(level);
   if (!preserveProgram) { S.program = []; S.runeProgram = []; S.extraFunctions = {}; S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
   else { S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
+  if (!preserveProgram) { S.hintTier = 0; S.ranSinceReset = false; }
   S.editor = 'main'; S.activeCalls = []; S.coach = runeCoachDue(level) ? 0 : -1; S.goalOpen = false; S.debugOpen = false; S.menuOpen = false; S.camera = HOME();
   S.representation = level.codingView === 'hybrid' && allowedRepresentations().includes('hybrid') ? 'hybrid' : defaultRepresentation();
   S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false;
@@ -1434,7 +1469,10 @@ function perform(actionId) {
   if (actionId === 'clear') { if (currentProgram().length) { pushUndo(); setCurrentProgram([]); currentSelection().clear(); render(); } return; }
   if (actionId === 'run') { closeMenu(); executeOne(true); return; }
   if (actionId === 'step') { closeMenu(); executeOne(false); return; }
-  if (actionId === 'reset') { closeMenu(); S.activeCalls = []; S.camera = HOME(); S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']); render(); return; }
+  if (actionId === 'reset') { closeMenu(); S.activeCalls = []; S.camera = HOME(); S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']);
+    // A Reset after a Run is a stuck signal (quest-clarity D7); two Resets in a row count once.
+    if (S.ranSinceReset) { S.ranSinceReset = false; stuck(); }
+    render(); return; }
   if (actionId === 'map') { openDialog('map'); return; }
   if (actionId === 'camp') { openDialog('camp'); return; }
   if (actionId === 'lab') { openLab(); return; }
@@ -1524,7 +1562,8 @@ function init(ctx) {
     codeDraft: '', codeDirty: false, codeError: null,
     undo: [], serial: 0, scheduler: createScheduler(), paused: false, dialog: null, autoRun: false,
     canvas: root.querySelector('canvas'), bubble: root.querySelector('.cq-bubble'), best: Number(ctx.best) || 0, notice: MESSAGES.intro, heroState: 'idle', heroStateUntil: 0, heroMotion: null, enemyMotions: {}, fx: null, activeUid: null,
-    lab: null, campNotice: null, completing: false, lastDraw: 0, run: normalizeDungeonRun(profile.activeRun)
+    lab: null, campNotice: null, completing: false, lastDraw: 0, run: normalizeDungeonRun(profile.activeRun),
+    hintTier: 0, ranSinceReset: false
   };
   S.model = createModel(initial); syncCodeFromAst(); S.coach = runeCoachDue(initial) ? 0 : -1;
   settingsRoot(ctx)[ctx.kid] = profile; ctx.saveSettings();
@@ -1584,5 +1623,5 @@ export default {
   settings, init, stop,
   /** Host Back: inside the Lab it closes the script sheet, then returns to the dungeon — one press never leaves Code Quest from the Lab. */
   back() { if (!S || !S.lab) return false; if (!S.lab.closeSheet()) closeLab(); return true; },
-  snapshot() { return S ? { level: S.level.id, lab: S.lab ? S.lab.snapshot() : { open: false }, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog, lang: language(), goalOpen: !!S.goalOpen, preview: S.preview, notice: S.notice, bubbleSide: S.bubbleSide, heroBox: S.view ? S.view.heroBox : null, menuOpen: menuVisible(), selection: [...currentSelection()].sort((a, b) => a - b), pickerTab: pickerTabbed(pickerGroups()) ? pickerTab(pickerGroups()) : null, camera: { zoom: S.camera.zoom, cx: S.camera.cx, cy: S.camera.cy }, roomScale: S.view ? S.view.scale : null } : null; }
+  snapshot() { return S ? { level: S.level.id, lab: S.lab ? S.lab.snapshot() : { open: false }, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog, lang: language(), goalOpen: !!S.goalOpen, preview: S.preview, notice: S.notice, bubbleSide: S.bubbleSide, heroBox: S.view ? S.view.heroBox : null, menuOpen: menuVisible(), selection: [...currentSelection()].sort((a, b) => a - b), pickerTab: pickerTabbed(pickerGroups()) ? pickerTab(pickerGroups()) : null, camera: { zoom: S.camera.zoom, cx: S.camera.cx, cy: S.camera.cy }, roomScale: S.view ? S.view.scale : null, hintTier: S.hintTier } : null; }
 };
