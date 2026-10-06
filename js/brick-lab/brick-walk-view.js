@@ -6,8 +6,10 @@
    unchanged, until the walk ends (W2, W3). The camera only moves while
    something does, so a still walker draws nothing (W8). Slice 03: the lab
    aims the crosshair whenever the camera moved (`onAim`) and does the
-   building buttons (`onAct`: place, remove, turn). */
-import { behindCamera, clampLook, step } from "./brick-walk.js";
+   building buttons (`onAct`: place, remove, turn, view). Slice 04: the
+   eyes view, glided to in 300 ms (at once with reduced motion); the
+   stand-in hides once the camera is past halfway into its head. */
+import { behindCamera, clampLook, eyesCamera, step } from "./brick-walk.js";
 
 const LOOK_PER_PX = 0.006; /* radians of look per CSS pixel of drag */
 const STICK = 48;          /* knob travel, CSS px */
@@ -16,8 +18,11 @@ const SWING = 35 * Math.PI / 180;
 const STRIDE = 10;         /* swing phase, radians a second at full stick (W7) */
 /* Legs swing opposite each other, each arm opposite its leg. */
 const LIMBS = { legL: 1, legR: -1, armL: -0.8, armR: 0.8 };
+const VIEW_GLIDE = 0.3; /* seconds, behind ↔ eyes */
+const mix = (a, b, k) => a + (b - a) * k;
+const ease = (t) => t * t * (3 - 2 * t);
 
-export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxes, half, reducedMotion = false, onExit, onAct, onAim }) {
+export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxes, half, view = "behind", reducedMotion = false, onExit, onAct, onAim }) {
   let state = { x: start.x, y: start.y, z: start.z, vy: 0, yaw: start.yaw, grounded: true, moving: false };
   let look = { yaw: start.yaw, pitch: 0 };
   let world = boxes;
@@ -26,6 +31,8 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
   let phase = 0;
   let lookPointer = null;
   let aim = true; /* aim again on the next frame */
+  let mode = view === "eyes" ? "eyes" : "behind";
+  let blend = mode === "eyes" ? 1 : 0; /* 0 behind … 1 eyes */
   let seen = "";
   const stick = { id: null, forward: 0, strafe: 0 };
   const base = overlay.querySelector("[data-walk-stick]");
@@ -113,7 +120,17 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
       limbs.forEach((limb) => { limb.node.rotation.x = limb.rest + swing * limb.sign; });
       standIn.position.set(state.x, state.y + lift, state.z);
       standIn.rotation.y = state.yaw;
-      const view = behindCamera(state, look, world);
+      const goal = mode === "eyes" ? 1 : 0;
+      blend = reducedMotion ? goal : goal > blend ? Math.min(goal, blend + dt / VIEW_GLIDE) : Math.max(goal, blend - dt / VIEW_GLIDE);
+      standIn.visible = blend < 0.5;
+      const k = ease(blend);
+      const back = behindCamera(state, look, world);
+      const eyes = eyesCamera(state, look);
+      const view = {
+        position: { x: mix(back.position.x, eyes.position.x, k), y: mix(back.position.y, eyes.position.y, k), z: mix(back.position.z, eyes.position.z, k) },
+        target: { x: mix(back.target.x, eyes.target.x, k), y: mix(back.target.y, eyes.target.y, k), z: mix(back.target.z, eyes.target.z, k) },
+        fov: mix(back.fov, eyes.fov, k),
+      };
       camera.position.set(view.position.x, view.position.y, view.position.z);
       camera.up.set(0, 1, 0);
       camera.lookAt(view.target.x, view.target.y, view.target.z);
@@ -134,6 +151,9 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
     /* The picked part, colour or turn changed: aim again. */
     reaim() { aim = true; },
     jump() { jump = true; },
+    /* "behind" or "eyes" (W4). */
+    view: () => mode,
+    setView(next) { mode = next === "eyes" ? "eyes" : "behind"; },
     dispose() {
       base.removeEventListener("pointerdown", onStickDown);
       base.removeEventListener("pointermove", onStickMove);

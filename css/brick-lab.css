@@ -297,6 +297,9 @@
 .sqbl-walk-pad .sqbl-walk-turn,.sqbl-walk-pad .sqbl-walk-remove{width:68px;height:68px;background:rgba(255,255,255,.94);color:var(--sqbl-ink)}
 .sqbl-walk-pad .sqbl-walk-turn b,.sqbl-walk-pad .sqbl-walk-remove b{font-size:22px}.sqbl-walk-pad .sqbl-walk-turn span,.sqbl-walk-pad .sqbl-walk-remove span{font-size:10.5px}
 .sqbl-walk-place{background:var(--sqbl-green)}.sqbl-walk-jump{background:var(--sqbl-blue)}
-.sqbl-walk-pad button:active,.sqbl-walk-exit:active{transform:scale(.94)}
+.sqbl-walk-pad button:active,.sqbl-walk-exit:active,.sqbl-walk-view:active{transform:scale(.94)}
+/* Slice 04: 👀 top right switches behind ↔ eyes. */
+.sqbl-walk-view{position:absolute;top:12px;right:12px;min-width:64px;min-height:64px;padding:6px 12px;border-radius:18px;border:1px solid var(--sqbl-line);background:rgba(255,255,255,.94);color:var(--sqbl-ink);font-weight:800;font-size:11px;line-height:1.1;display:grid;place-content:center;justify-items:center;gap:2px;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.sqbl-walk-view b{font-size:26px;line-height:1}
 @media(max-width:760px){.sqbl-walk-pad{grid-template-columns:repeat(2,76px);gap:8px}.sqbl-walk-pad button{width:76px;height:76px}.sqbl-walk-pad .sqbl-walk-turn,.sqbl-walk-pad .sqbl-walk-remove{width:60px;height:60px}.sqbl-walk-stick{width:120px;height:120px}}
 .sqbl-app.is-walking .sqbl-cam,.sqbl-app.is-walking .sqbl-bubble,.sqbl-app.is-walking .sqbl-mode-toggle,.sqbl-app.is-walking [data-action=home-view]{visibility:hidden}

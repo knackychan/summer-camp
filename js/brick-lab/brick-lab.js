@@ -58,6 +58,9 @@ const WALK = {
   place: ["Place", "放上去"],
   remove: ["Remove", "拿掉"],
   turn: ["Turn", "轉一轉"],
+  /* The 👀 button names the view it switches to (slice 04). */
+  eyes: ["Eyes view", "用眼睛看"],
+  behind: ["Behind view", "從後面看"],
 };
 /* Back in Build after a walk: close to the figure, looking the way it looked. */
 const WALK_EXIT_DISTANCE = 24;
@@ -1562,7 +1565,7 @@ export class BrickLabRuntime {
 
   cleanPrefs(prefs) {
     const known = (list, max) => Array.from(new Set(list)).filter((id) => PARTS.some((part) => part.id === id)).slice(0, max);
-    return { favorites: known(prefs.favorites, PARTS.length), recents: known(prefs.recents, RECENT_MAX) };
+    return { favorites: known(prefs.favorites, PARTS.length), recents: known(prefs.recents, RECENT_MAX), walkView: prefs.walkView === "eyes" ? "eyes" : "behind" };
   }
 
   async mount() {
@@ -1666,6 +1669,7 @@ export class BrickLabRuntime {
             <div class="sqbl-walk" data-walk hidden>
               <button type="button" class="sqbl-walk-exit" data-walk-act="exit" aria-label="${escapeHtml(label(WALK.build))}">🔨${pre ? "" : ` <span>${escapeHtml(label(WALK.build))}</span>`}</button>
               <div class="sqbl-walk-stick" data-walk-stick role="group" aria-label="${escapeHtml(label(WALK.stick))}"><i class="sqbl-walk-knob" data-walk-knob></i></div>
+              <button type="button" class="sqbl-walk-view" data-walk-act="view" aria-label="${escapeHtml(label(WALK.eyes))}"><b aria-hidden="true">👀</b>${pre ? "" : `<span>${escapeHtml(WALK.eyes[0])}<br>${escapeHtml(WALK.eyes[1])}</span>`}</button>
               <i class="sqbl-walk-cross" aria-hidden="true"></i>
               <div class="sqbl-walk-pad" role="group" aria-label="${escapeHtml(label(WALK.place))}">
                 ${[["turn", "⟳"], ["remove", "－"], ["place", "＋"]].map(([act, icon]) => `
@@ -3784,15 +3788,26 @@ export class BrickLabRuntime {
     this.walk = { id, riders, standIn, fov: this.camera.fov, turn: 0, aim: null, changes: 0 };
     this.walk.view = createWalk({
       camera: this.camera, canvas: this.renderer.domElement, overlay: this.walkEl, standIn, lift, half: BASE_HALF,
-      start: { x: piece.x, y: piece.y - lift, z: piece.z, yaw: piece.rotation * DEG },
+      start: { x: piece.x, y: piece.y - lift, z: piece.z, yaw: piece.rotation * DEG }, view: this.prefs.walkView,
       boxes: solids(this.pieces, boxOf, new Set([id, ...riders])),
       reducedMotion: this.reducedMotion, onExit: () => this.leaveWalk(),
       onAct: (act) => this.walkAct(act), onAim: () => this.walkAim(),
     });
+    this.walkViewButton();
     this.setHint("🚶", HINTS.walk);
     this.haptic("tap");
     this.invalidate();
     return true;
+  }
+
+  /* 👀 shows the view it switches to: the eyes from behind, behind from the eyes (W4). */
+  walkViewButton() {
+    const button = this.walkEl.querySelector("[data-walk-act=view]");
+    const next = this.walk && this.walk.view.view() === "eyes" ? WALK.behind : WALK.eyes;
+    button.setAttribute("aria-label", label(next));
+    button.querySelector("b").textContent = next === WALK.eyes ? "👀" : "🧍";
+    const text = button.querySelector("span");
+    if (text) text.innerHTML = `${escapeHtml(next[0])}<br>${escapeHtml(next[1])}`;
   }
 
   /* The walking stand-in: the figure jointed (its legs swing, W7) with its
@@ -3908,6 +3923,15 @@ export class BrickLabRuntime {
       this.haptic("tap");
       return;
     }
+    if (act === "view") {
+      walk.view.setView(walk.view.view() === "eyes" ? "behind" : "eyes");
+      this.prefs.walkView = walk.view.view();
+      this.storage.savePrefs(this.prefs);
+      this.walkViewButton();
+      this.invalidate();
+      this.haptic("tap");
+      return;
+    }
     const aim = walk.aim;
     if (act === "place" && aim && aim.place) {
       const part = getPart(this.activePartId);
@@ -3924,16 +3948,27 @@ export class BrickLabRuntime {
     this.haptic("tap");
   }
 
+  /* The real figure and its riders stay hidden while the stand-in walks, even
+     when something rebuilds their 3D objects (an Undo, a tap reaction ending);
+     then the view draws again, or the last frame would keep showing them. */
+  walkHide() {
+    const walk = this.walk;
+    if (!walk) return;
+    [walk.id, ...walk.riders].forEach((pid) => {
+      const object = this.sceneObjects.get(pid);
+      if (!object || !object.visible) return;
+      object.visible = false;
+      this.invalidate();
+    });
+  }
+
   /* After the world changed under a walk (a place, a remove, an Undo): the
      real figure and its riders stay hidden, the walk bumps into the new
      pieces and aims again. */
   walkSync() {
     const walk = this.walk;
     if (!walk) return;
-    [walk.id, ...walk.riders].forEach((pid) => {
-      const object = this.sceneObjects.get(pid);
-      if (object) object.visible = false;
-    });
+    this.walkHide();
     const skip = new Set([walk.id, ...walk.riders]);
     walk.view.setWorld(solids(this.pieces, (p) => pieceBounds(p, shapeOf(p)), skip));
     this.invalidate();
@@ -4115,8 +4150,10 @@ export class BrickLabRuntime {
       this.raf = requestAnimationFrame(loop);
       /* Slides, glides and button turns move the camera here (K1–K5);
          while walking, the walk does (walk plan W8). */
-      if (this.walk) this.walk.view.frame(time);
-      else this.cam.update(time);
+      if (this.walk) {
+        this.walkHide();
+        this.walk.view.frame(time);
+      } else this.cam.update(time);
       /* Circuit rails breathe softly (still with reduced motion). */
       const glowing = this.rails.circuit.size && !this.reducedMotion;
       if (glowing) {
@@ -4218,7 +4255,8 @@ export class BrickLabRuntime {
       moving: !!this.moveId,
       /* Walking a minifig (walk plan): the walker, its riders, where it is and where it looks. */
       walk: this.walk ? { id: this.walk.id, riders: this.walk.riders.slice(), ...this.walk.view.state(), look: this.walk.view.look(),
-        turn: this.walk.turn, aim: this.walk.aim, changes: this.walk.changes, ghost: this.ghost.visible,
+        turn: this.walk.turn, aim: this.walk.aim, changes: this.walk.changes, ghost: this.ghost.visible, view: this.walk.view.view(),
+        standIn: this.walk.standIn.visible, fov: this.camera.fov,
         hidden: [this.walk.id, ...this.walk.riders].every((pid) => !this.sceneObjects.get(pid) || !this.sceneObjects.get(pid).visible) } : null,
       dragging: !!(this.drag && this.drag.active),
       toolsShown: this.bubble.shown,
@@ -4230,7 +4268,7 @@ export class BrickLabRuntime {
         triangles: this.renderer.info.render.triangles, trayDrag: !!(this.trayDrag && this.trayDrag.active), studs: this.studsPainted ? "painted" : "mesh", frames: this.frames || 0,
         level: this.perf.level, pixelRatio: this.renderer.getPixelRatio(), shadows: !!(this.renderer.shadowMap.enabled && this.sun.castShadow) } : null,
       canvas: rect ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
-      camera: this.camera ? { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, aspect: this.camera.aspect } : null,
+      camera: this.camera ? { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, aspect: this.camera.aspect, fov: this.camera.fov } : null,
       /* The ground point the view looks at, and the kid camera's view (K7). */
       target: this.cam ? { x: this.cam.view().x, y: 0, z: this.cam.view().z } : null,
       view: this.cam ? this.cam.view() : null,

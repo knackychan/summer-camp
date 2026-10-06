@@ -61,11 +61,12 @@ export class BrickLabStorage {
     try { raw = localStorage.getItem(this.prefsKey); } catch { raw = null; }
     const saved = safeParse(raw) || {};
     const ids = (list) => (Array.isArray(list) ? list.filter((id) => typeof id === "string") : []);
-    return { favorites: ids(saved.favorites), recents: ids(saved.recents) };
+    /* walkView: behind or eyes, the last view this kid walked with (walk plan slice 04). */
+    return { favorites: ids(saved.favorites), recents: ids(saved.recents), walkView: saved.walkView === "eyes" ? "eyes" : "behind" };
   }
 
   savePrefs(prefs) {
-    const payload = { favorites: prefs.favorites.slice(), recents: prefs.recents.slice() };
+    const payload = { favorites: prefs.favorites.slice(), recents: prefs.recents.slice(), walkView: prefs.walkView === "eyes" ? "eyes" : "behind" };
     try { localStorage.setItem(this.prefsKey, JSON.stringify(payload)); } catch { return null; }
     return payload;
   }
