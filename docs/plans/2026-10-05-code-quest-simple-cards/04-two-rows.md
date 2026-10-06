@@ -1,6 +1,6 @@
 # Slice 04: Two rows for the Rune; words and coach fixed
 
-**Status:** Design approved by Papa 2026-10-05 (`design.md` D5, D6). Not started.
+**Status:** Design approved by Papa 2026-10-05 (`design.md` D5, D6). Built 2026-10-06; browser checks green at both sizes. Waiting on Papa's tablet play of q10–q12.
 **Goal:** The Rune and the hero's program are on screen together, and every message names a card the kid can see.
 **Depends on:** 02
 **Files:** `js/games/codequest.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `scripts/check-codequest-ui.py`.

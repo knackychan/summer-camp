@@ -1,6 +1,6 @@
 # Slice 02: Sticker cards on the strip; Wrap gone
 
-**Status:** Design approved by Papa 2026-10-05 (`design.md` D1–D4). Not started.
+**Status:** Design approved by Papa 2026-10-05 (`design.md` D1–D4). Built 2026-10-06; browser checks green at both sizes. Screenshots: `.tmp/codequest-ui/stickers-q05-*.png`, `stickers-q16-*.png`.
 **Goal:** A kid builds "Move, 5 times" and "Attack, if enemy" with two taps, and the strip shows the words on the card.
 **Depends on:** 01
 **Files:** `js/games/codequest.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `scripts/check-codequest-ui.py`.

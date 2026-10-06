@@ -1,6 +1,6 @@
 # Slice 03: Picker on the right with tabs
 
-**Status:** Design approved by Papa 2026-10-05 (`design.md` D7). Not started.
+**Status:** Design approved by Papa 2026-10-05 (`design.md` D7). Built 2026-10-06; browser checks green at both sizes. Screenshots: `.tmp/codequest-ui/picker-q01-*.png`, `picker-q11-*.png`, `picker-q15-*.png`.
 **Goal:** Finding a card is one tab tap plus a short list; the bottom of the screen holds only the program.
 **Depends on:** 02
 **Files:** `js/games/codequest.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `scripts/check-codequest-ui.py`.

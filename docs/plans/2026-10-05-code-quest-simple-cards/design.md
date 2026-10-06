@@ -1,6 +1,6 @@
 # Code Quest: simple cards — stickers, two rows, a picker on the right
 
-**Status:** Design approved by Papa in chat, 2026-10-05. Slices 01–04 written, not started.
+**Status:** Design approved by Papa in chat, 2026-10-05. Slices 01–04 built 2026-10-06 (see "As built" at the end); waiting on Papa's tablet play of q10–q12.
 **Game id:** `codequest`.
 **Builds on:** `2026-10-03-code-quest-redesign/` and `2026-10-05-code-quest-facing-and-rune/`. Everything there stays in force except what "Supersedes" lists below. Those docs stay in the repo.
 
@@ -67,3 +67,17 @@ So "select cards, Wrap them into a bracket" is far more power than any card room
 | 02 | Sticker cards on the strip; slim card menu; Wrap gone | 01 |
 | 03 | Picker on the right with tabs | 02 |
 | 04 | Two rows for the Rune; words and coach fixed | 02 |
+
+## As built (2026-10-06)
+
+Built as written, with these choices the slices left open or the screen forced:
+
+- **Picker width.** The column is `clamp(240px, 27%, 348px)`, not 25 %: q15's six tabs need 6 × 48 px plus gaps, which does not fit in a quarter of a 1280 px screen.
+- **Two-row dock is compact.** With both rows on screen the cards use the small size (56 px wide), and at 1280×600 smaller still, so every 9×7 room keeps its 2× pixel scale. `check-codequest-ui.py` now checks all 72 rooms draw at 2× or more at both sizes.
+- **Sticker tags sit side by side** under the card name; a card with stickers grows sideways (up to 190 px) instead of taller. Rooms that offer stickers reserve one tag line in the row so adding the first sticker never moves the room.
+- **If-sticker pictures** reuse the room sprites (goblin for enemy, trap for trap, lever for lever, …); every `if*` test has a short line in `strings.js` `STICKER.short`.
+- **Running Rune.** The card being run lights up in its own row; the 🪨 card in the Hero row whose Rune is running gets a dashed ring (`calling`), read from `activeCalls()` (D8). Only one card is ever lit.
+- **Row switching.** Tapping a row's label or its empty space makes it glow; tapping a card in the other row also switches to that row.
+- **Card menu** uses the trash glyph for 🗑 and the words "Take stickers off / 撕掉貼紙" for the sticker button.
+- **Speech bubble.** The scene beside the picker is narrower, so with the goal card and the event debugger both open the bubble could find no clear spot. `bubble.js`'s caption fallback now also tries every gap along the bottom (then top) edge, nearest the middle first, and the debugger panel is only as tall as its content. Outside that fallback the bubble behaves as before.
+- **`snapshot()`** gains `pickerTab` and `roomScale` for the browser checks. `strip-edit.js` is unchanged (its Wrap helpers and tests stay; the game no longer calls them).

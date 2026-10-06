@@ -1,6 +1,6 @@
 # Slice 01: Sticker model
 
-**Status:** Design approved by Papa 2026-10-05 (`design.md` D1, D2). Not started.
+**Status:** Design approved by Papa 2026-10-05 (`design.md` D1, D2). Built 2026-10-06; unit tests green.
 **Goal:** A pure module that reads a program node as "one card + stickers" and changes its stickers, without touching the AST shape the engine runs.
 **Depends on:** —
 **Files:** `js/games/codequest/stickers.js` (new), `sw.js`, `scripts/codequest.test.mjs`.
