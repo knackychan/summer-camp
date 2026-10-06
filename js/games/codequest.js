@@ -11,7 +11,8 @@ import { drawRoom, MAX_ZOOM, ROOM_VIEW } from './codequest/room-view.js';
 import { placeBubbleRect } from './codequest/bubble.js';
 import { repeatCounts, ifTests, insertAfter } from './codequest/strip-edit.js';
 import { cardView, withSticker, withoutStickers } from './codequest/stickers.js';
-import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, COACH, STICKER, PICKER, pairHTML, setLanguage, language, t } from './codequest/strings.js';
+import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, COACH, STICKER, PICKER, BRIEF, pairHTML, setLanguage, language, t } from './codequest/strings.js';
+import { skillsFor, difficultyFor, hintFor } from './codequest/hints.js';
 import { mountLab } from './codequest/lab/lab-screen.js';
 
 let S = null;
@@ -547,9 +548,34 @@ function goalHTML() {
 }
 function goalPopHTML() {
   const l = S.level, best = S.profile.bestBlocks[l.id] || 0;
-  return '<b>' + label(l.title) + '</b><small>' + label(l.region.label) + ' · ' + label(l.concept) + '</small><p>' + label(l.objectiveText) + '</p>' +
+  return '<b>' + label(l.title) + '</b><small>' + label(l.region.label) + ' · ' + label(l.concept) + '</small>' + (l.endless || l.expedition ? '' : '<div class="cq-goal-meta">' + skillChipsHTML(l) + pipsHTML(l) + '</div>') + '<p>' + label(l.objectiveText) + '</p>' +
     '<ul class="cq-checks">' + objectives().map(([done, en, zh]) => '<li class="' + (done ? 'done' : '') + '"><b>' + (done ? '◆' : '◇') + '</b>' + pair(en, zh) + '</li>').join('') + '</ul>' +
     '<small>' + pair('Par ' + l.parBlocks + ' blocks' + (best ? ' · your best ' + best : ''), '目標 ' + l.parBlocks + ' 個積木' + (best ? '・你的最佳 ' + best : '')) + '</small>';
+}
+
+/* Quest card (quest-clarity D2, D4, D5): what wins, which skills the quest needs, how hard. */
+function skillChipsHTML(level) {
+  const chips = skillsFor(level);
+  return chips.length ? '<span class="cq-skills">' + chips.map(item => '<span class="cq-skill' + (item.teach ? ' teach' : '') + '"><b aria-hidden="true">' + item.icon + '</b>' + label(item.name) + '</span>').join('') + '</span>' : '';
+}
+const PIPS = { easy: 1, medium: 2, hard: 3 };
+function pipsHTML(level) {
+  const d = difficultyFor(level), n = PIPS[d];
+  return '<span class="cq-pips ' + d + '"><b aria-hidden="true">' + '●'.repeat(n) + '<i>' + '●'.repeat(3 - n) + '</i></b>' + label(BRIEF[d]) + '</span>';
+}
+function briefHTML() {
+  const l = S.level, chips = skillsFor(l), teach = chips.length > 0 && chips[0].teach;
+  return '<div class="cq-dialog-head"><div><h2>' + label(l.title) + '</h2><small>' + label(l.region.label) + ' · ' + label(l.concept) + '</small></div>' + pipsHTML(l) + '</div>' +
+    '<div class="cq-brief-body"><p class="cq-brief-goal">' + label(l.objectiveText) + '</p>' +
+    '<h3><b aria-hidden="true">🎯</b> ' + label(BRIEF.toWin) + '</h3><ul class="cq-checks">' + objectives().map(([, en, zh]) => '<li><b>◇</b>' + pair(en, zh) + '</li>').join('') + '</ul>' +
+    (chips.length ? '<h3><b aria-hidden="true">📚</b> ' + label(teach ? BRIEF.practise : BRIEF.needs) + '</h3>' + skillChipsHTML(l) : '') +
+    '<p class="cq-brief-hint"><b aria-hidden="true">💡</b> ' + label(hintFor(l, 0)) + '</p></div>' +
+    '<div class="cq-dialog-actions">' + button('brief:start', label(BRIEF.start), 'class="cq-primary" autofocus') + '</div>';
+}
+function openBrief() {
+  if (!S || !S.level || S.level.endless || S.level.expedition) return;
+  openDialog('brief', briefHTML());
+  render();
 }
 
 const HEART = '<svg viewBox="0 0 7 6" aria-hidden="true"><path d="M1 0H3V1H4V0H6V1H7V3H6V4H5V5H4V6H3V5H2V4H1V3H0V1H1Z"/></svg>';
@@ -1156,6 +1182,7 @@ function startLevel(level, options = {}) {
   if (!S.paused) S.scheduler.resume();
   if (level.codingView === 'code' && codeUnlocked() && !level.expedition) S.notice = CODE_ROOM;
   renderBar(); render(); notify(S.notice);
+  if (options.brief) openBrief();
 }
 const CODE_ROOM = ['This room is solved in code. Tap Code to write it.', '這個房間要用程式碼解決。點「程式碼」來寫。'];
 
@@ -1163,7 +1190,7 @@ function startAuthored(index) {
   if (index < 0 || index >= LEVELS.length) return;
   S.run = null;
   if (index > 0 && !S.profile.completed.includes(LEVELS[index - 1].id)) { notify(MESSAGES.lockedLevel); return; }
-  startLevel(LEVELS[index]);
+  startLevel(LEVELS[index], { brief: true });
 }
 function startEndless(floor) {
   S.run = null;
@@ -1274,7 +1301,7 @@ function mapHTML() {
   });
   const sections = [...groups.values()].map(group => '<section class="cq-map-region"><h3>' + label(group.region.label) + '</h3><div class="cq-map-grid">' + group.levels.map(({ level, index }) => {
     const unlocked = index === 0 || S.profile.completed.includes(LEVELS[index - 1].id), done = S.profile.completed.includes(level.id), best = S.profile.bestBlocks[level.id] || 0;
-    return button('level:' + index, '<b>' + (index + 1) + '</b><span>' + label(level.title) + '</span><small>' + label(level.concept) + '</small><em>' + (done ? pair('Cleared' + (best ? ' · ' + best + ' blocks' : ''), '已完成' + (best ? '・' + best + ' 積木' : '')) : unlocked ? pair('Ready', '可以挑戰') : label(UI.locked)) + '</em>', 'class="cq-level ' + (done ? 'done' : '') + '" ' + (!unlocked ? 'disabled' : ''));
+    return button('level:' + index, '<b>' + (index + 1) + '</b><span>' + label(level.title) + '</span><small>' + label(level.concept) + ' <span class="cq-map-pips ' + difficultyFor(level) + '" role="img" aria-label="' + esc(BRIEF[difficultyFor(level)].join(' ')) + '">' + '●'.repeat(PIPS[difficultyFor(level)]) + '</span></small><em>' + (done ? pair('Cleared' + (best ? ' · ' + best + ' blocks' : ''), '已完成' + (best ? '・' + best + ' 積木' : '')) : unlocked ? pair('Ready', '可以挑戰') : label(UI.locked)) + '</em>', 'class="cq-level ' + (done ? 'done' : '') + '" ' + (!unlocked ? 'disabled' : ''));
   }).join('') + '</div></section>').join('');
   const towerUnlocked = S.profile.completed.length >= 8, runUnlocked = S.profile.completed.length >= 30;
   const runButton = S.profile.activeRun ? button('run:resume', pair('Resume connected expedition','繼續相連遠征'), 'class="cq-primary"') : button('run:new', pair(runUnlocked ? 'Begin connected expedition' : 'Locked · clear Algorithm Vault', runUnlocked ? '開始相連遠征' : '尚未解鎖・先完成演算法寶庫'), 'class="cq-primary" ' + (!runUnlocked ? 'disabled' : ''));
@@ -1312,7 +1339,7 @@ function openDialog(kind, html) {
   S.dialog = kind; S.scheduler.pause();
   const dialog = S.root.querySelector('.cq-dialog');
   dialog.innerHTML = html || (kind === 'map' ? mapHTML() : kind === 'camp' ? campHTML() : '<h2>' + label(UI.pausedTitle) + '</h2><p>' + label(UI.pausedBody) + '</p><div class="cq-dialog-actions">' + button('pause', label(UI.resume), 'class="cq-primary" autofocus') + '</div>');
-  dialog.setAttribute('aria-label', kind === 'map' ? 'Quest map 冒險地圖' : kind === 'camp' ? 'Pixel camp 像素營地' : kind === 'expedition' ? 'Connected dungeon expedition 相連地下城遠征' : kind === 'code' ? 'Code 程式碼' : 'Code Quest paused 程式冒險暫停');
+  dialog.setAttribute('aria-label', kind === 'map' ? 'Quest map 冒險地圖' : kind === 'camp' ? 'Pixel camp 像素營地' : kind === 'expedition' ? 'Connected dungeon expedition 相連地下城遠征' : kind === 'code' ? 'Code 程式碼' : kind === 'brief' ? 'Quest card 任務卡' : 'Code Quest paused 程式冒險暫停');
   dialog.classList.toggle('cq-sheet', kind === 'code');
   if (S.bubble) S.bubble.hidden = true;
   if (!dialog.open) dialog.showModal();
@@ -1412,7 +1439,7 @@ function perform(actionId) {
   if (actionId === 'lab') { openLab(); return; }
   if (actionId === 'lab:exit') { closeLab(); return; }
   if (actionId === 'pause') { if (S.paused) resume(); else pause(); return; }
-  if (actionId === 'dialog:close') { closeDialog(); return; }
+  if (actionId === 'dialog:close' || actionId === 'brief:start') { closeDialog(); return; }
   if (actionId.startsWith('run:loadout:save:')) { const index = Number(actionId.slice(17)); const result = saveRunLoadout(S.run,index,sourceFromAst()); if (result.ok) { S.run=result.run; saveRun(S.run,false); notify(['Rune loadout saved.','符文配置已儲存。']); } openDialog('expedition', expeditionHTML()); return; }
   if (actionId.startsWith('run:loadout:load:')) { const index = Number(actionId.slice(17)); const result = activateRunLoadout(S.run,index); if (result.ok) { S.run=result.run; saveRun(S.run,false); restoreRunCode(S.run); notify(['Rune loadout loaded.','符文配置已載入。']); } openDialog('expedition', expeditionHTML()); return; }
   if (actionId === 'run:new') { if (S.profile.activeRun) { S.profile = abandonDungeonRun(S.profile); saveProfile(); } startNewExpedition(); return; }
@@ -1536,6 +1563,7 @@ function init(ctx) {
   S.scheduler.frame(time => { if (!S || S.paused || S.dialog) return; if (time - S.lastDraw > 48) { S.lastDraw = time; draw(time); } });
   renderBar(); render(); notify(initial.codingView === 'code' && initialMode === 'architect' ? CODE_ROOM : MESSAGES.intro);
   if (S.run) openDialog('expedition', expeditionHTML());
+  else openBrief();
 }
 
 function stop() {

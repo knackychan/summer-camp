@@ -130,8 +130,9 @@ def run(args):
                 check(f'{tag}: registry opens Code Quest', page.evaluate("SQContentRegistry.open('game:codequest',{origin:'hub'})")['ok'])
                 page.wait_for_selector('.cq .cq-scene canvas')
                 page.wait_for_timeout(300)
-                if state()['dialog']:
-                    page.keyboard.press('Escape')
+                # Launch opens the quest card for the first uncleared quest (quest-clarity D2).
+                check(f'{tag}: launch opens the quest card', state()['dialog'] == 'brief', state()['dialog'])
+                act('brief:start')
 
                 # ---- Simple cards (2026-10-05). Taps only: stickers, slim card menu, picker column. ----
                 def tap(selector):
@@ -153,17 +154,25 @@ def run(args):
                 def program(key='program'):
                     return [(n['type'], n.get('times') or n.get('op') or n.get('test') or n.get('name')) for n in state()[key]]
 
-                def open_level(level_id):
+                def enter_level(level_id):
+                    # Entering from the Map opens the quest card (quest-clarity D2).
                     act('map')
                     page.wait_for_selector(f'[data-action="level:{level_ids.index(level_id)}"]', state='attached')
                     act(f'level:{level_ids.index(level_id)}')
-                    page.wait_for_function(SNAPSHOT + f".level === '{level_id}' && !" + SNAPSHOT + ".dialog")
+                    page.wait_for_function(SNAPSHOT + f".level === '{level_id}' && " + SNAPSHOT + ".dialog === 'brief'")
+
+                def open_level(level_id):
+                    enter_level(level_id)
+                    act('brief:start')
+                    page.wait_for_function('!' + SNAPSHOT + '.dialog')
 
                 def win(where):
                     page.wait_for_function(SNAPSHOT + ".model.phase === 'won' || " + SNAPSHOT + ".dialog === 'win'", timeout=30000)
                     check(f'{tag}: {where} wins', True)
                     page.wait_for_selector('[data-action="win:continue"]', state='attached')
                     act('win:continue')
+                    page.wait_for_function(SNAPSHOT + ".dialog === 'brief' || " + SNAPSHOT + ".dialog === 'map'")
+                    act('brief:start')
                     page.wait_for_function('!' + SNAPSHOT + '.dialog')
 
                 def notice():
@@ -286,10 +295,7 @@ def run(args):
                     return page.evaluate("""() => [...document.querySelectorAll('.cq-zoom button')].every(b => { const r = b.getBoundingClientRect();
                       return r.width >= 47.5 && r.height >= 47.5 && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })""")
 
-                act('map')
-                page.wait_for_selector('[data-action="level:1"]', state='attached')
-                act('level:1')
-                page.wait_for_function(SNAPSHOT + ".level === 'q02' && !" + SNAPSHOT + ".dialog")
+                open_level('q02')
                 scene = page.locator('.cq-scene canvas').bounding_box()
                 cx, cy = scene['x'] + scene['width'] * 0.55, scene['y'] + scene['height'] * 0.5
                 check(f'{tag}: room opens at the whole-room Home framing', camera()['zoom'] == 0 and page.locator('.cq-zoom [data-action="zoom:home"]').count() == 0)
@@ -345,15 +351,14 @@ def run(args):
                 check(f'{tag}: the camera keeps the hero on screen during the run', not off_screen, off_screen[:3])
                 page.wait_for_selector('[data-action="win:continue"]', state='attached')
                 act('win:continue')
+                page.wait_for_function(SNAPSHOT + ".dialog === 'brief'")
+                act('brief:start')
                 page.wait_for_function('!' + SNAPSHOT + '.dialog')
                 check(f'{tag}: the next room starts back at Home', camera()['zoom'] == 0)
 
                 # ---- Facing + Rune plan (2026-10-05). ----
                 # Slice 02: every turn shows the beat and, in Step, the hand rule.
-                act('map')
-                page.wait_for_selector('[data-action="level:1"]', state='attached')
-                act('level:1')
-                page.wait_for_function(SNAPSHOT + ".level === 'q02' && !" + SNAPSHOT + ".dialog")
+                open_level('q02')
                 for _ in range(4):
                     act('add:turnRight')
                 facings, beats = [], []
@@ -395,6 +400,44 @@ def run(args):
                         tap(f'.cq-picker [data-action="picker:{name}"]')
                         audit_picker(f'q15 {name}')
                 check(f'{tag}: picker buttons ≥ 48 px, on screen, hittable; no page scroll; scene clear of the column', not picker_problems, picker_problems[:8])
+
+                # ---- Quest clarity slice 02: the quest card at entry. ----
+                def brief():
+                    return page.evaluate("""() => { const d = document.querySelector('.cq-dialog'), b = d.querySelector('[data-action="brief:start"]');
+                      if (!d.open || !b) return null; const q = b.getBoundingClientRect(), r = d.getBoundingClientRect();
+                      return {text: d.innerText, chips: [...d.querySelectorAll('.cq-skill')].map(c => c.innerText.trim()), pips: d.querySelector('.cq-pips').innerText,
+                        checks: d.querySelectorAll('.cq-checks li').length, scroll: d.scrollHeight - d.clientHeight, inside: r.top >= 0 && r.bottom <= innerHeight + 1,
+                        w: q.width, h: q.height, hit: b.contains(document.elementFromPoint(q.x + q.width / 2, q.y + q.height / 2)),
+                        page: document.scrollingElement.scrollHeight - innerHeight}; }""")
+
+                enter_level('q12')
+                b = brief()
+                page.screenshot(path=str(out / f'brief-q12-{tag}.png'))
+                check(f'{tag}: q12 quest card names Rune + Repeat, Hard, the win checks and the gentle hint',
+                      b and [c.split()[-1] for c in b['chips']] == ['Rune', 'Repeat'] and 'Hard' in b['pips'] and b['checks'] == 3
+                      and 'one hit' in b['text'] and 'This quest needs' in b['text'], b)
+                check(f'{tag}: the Rune coach waits behind the quest card', page.evaluate("document.querySelector('.cq-coach').hidden"))
+                check(f'{tag}: quest card fits without scrolling; Start ≥ 48 px and hittable',
+                      b['scroll'] <= 1 and b['inside'] and b['page'] <= 1 and b['w'] >= 47.5 and b['h'] >= 47.5 and b['hit'], b)
+                tap('.cq-dialog [data-action="brief:start"]')
+                check(f'{tag}: Start closes the quest card', not state()['dialog'])
+                act('reset')
+                check(f'{tag}: Reset room does not reopen the quest card', not state()['dialog'])
+                act('goal')
+                meta = page.evaluate("(() => { const m = document.querySelector('.cq-goal-pop .cq-goal-meta'); return m ? m.innerText : ''; })()")
+                check(f'{tag}: goal pop shows the chips and the difficulty', 'Rune' in meta and 'Repeat' in meta and 'Hard' in meta, meta)
+                act('goal')
+                enter_level('q01')
+                b = brief()
+                check(f"{tag}: q01 says You'll practise + Sequence, Easy", b and "You'll practise" in b['text'] and b['chips'] and b['chips'][0].endswith('Sequence') and 'Easy' in b['pips'], b)
+                act('brief:start')
+                enter_level('q05')
+                check(f'{tag}: q05 is Medium', 'Medium' in brief()['pips'])
+                act('brief:start')
+                act('map')
+                pips = page.evaluate(f"document.querySelector('[data-action=\"level:{level_ids.index('q12')}\"] .cq-map-pips').textContent")
+                check(f'{tag}: the q12 map row shows ●●●', pips == '●●●', pips)
+                act('dialog:close')
 
                 # ---- Simple cards slice 04: two rows for the Rune. ----
                 def coach():
@@ -488,10 +531,7 @@ def run(args):
                         page.screenshot(path=str(out / f'bubble-fail-{tag}.png'))
 
                 for index, level_id in enumerate(level_ids):
-                    act('map')
-                    page.wait_for_selector(f'[data-action="level:{index}"]', state='attached')
-                    act(f'level:{index}')
-                    page.wait_for_function(SNAPSHOT + f".level === '{level_id}' && !" + SNAPSHOT + ".dialog")
+                    open_level(level_id)
                     assert_bubble(f'{level_id} start')
                     # The program rows and picker never squeeze a room below a 2× pixel scale (simple-cards D7).
                     if (state().get('roomScale') or 0) < 2:

@@ -170,6 +170,13 @@ export const COACH = Object.freeze({
   next: ['Next ›', '下一步 ›'], done: ['Got it', '知道了'], title: ['Rune tips', '符文小提示']
 });
 
+/* Quest card at entry (quest-clarity D2, D5). */
+export const BRIEF = Object.freeze({
+  toWin: ['To win', '過關條件'], needs: ['This quest needs', '這一關需要'], practise: ["You'll practise", '你會練習'],
+  start: ['Start', '開始'], label: ['Quest card', '任務卡'],
+  easy: ['Easy', '簡單'], medium: ['Medium', '中等'], hard: ['Hard', '困難']
+});
+
 /* Which way the hero faces, in screen words (facing-and-rune D3; screen reader only). */
 export const FACING = Object.freeze({
   N: ['Facing up', '面向上方'], S: ['Facing down', '面向下方'], W: ['Facing left', '面向左邊'], E: ['Facing right', '面向右邊']

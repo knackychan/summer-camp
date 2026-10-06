@@ -1,6 +1,6 @@
 # Slice 02: Quest card at entry
 
-**Status:** Design approved by Papa 2026-10-06 (`design.md` D2, D5). Not started.
+**Status:** Design approved by Papa 2026-10-06 (`design.md` D2, D5). Built 2026-10-06; `check-codequest-ui.py` green at both sizes.
 **Goal:** Before the first Run, the kid sees what wins the quest, which skills it needs, how hard it is, and a gentle hint.
 **Depends on:** 01.
 **Files:** `js/games/codequest.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `scripts/check-codequest-ui.py`.

@@ -366,3 +366,22 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
   .cq .cq-card.selected,.cq-bracket.selected .cq-bracket-head{transform:none}
   .cq .cq-card.just-added,.cq-bracket.just-added>.cq-bracket-head{animation:none;outline:3px solid #fff;outline-offset:2px}
 }
+
+/* Quest card + skill chips + difficulty pips (quest-clarity D2, D4, D5). */
+.cq-dialog[aria-label^="Quest card"]{width:min(560px,94vw)}
+.cq-dialog-head small{display:block;margin-top:2px;color:#c4d4ec;font-size:13px}
+.cq-brief-body{display:flex;flex-direction:column;gap:8px;padding-top:10px}
+.cq-brief-goal{font-size:16px;color:#fff}
+.cq-dialog .cq-brief-body h3{display:flex;align-items:center;gap:6px;margin:4px 0 0;font-size:15px}
+.cq-brief-body .cq-checks li{color:#2a1a10;font-size:14px}
+.cq-brief-hint{padding:8px 10px;border:2px solid #ffd23f;border-radius:6px;background:#3a3255;color:#fff6d6;font-size:15px}
+.cq-skills{display:flex;flex-wrap:wrap;gap:6px}
+.cq-skill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px 4px 6px;border:2px solid #0b0a1f;border-radius:14px;background:#4d78e0;color:#fff;box-shadow:inset 0 2px 0 #9cb7ff;font-size:14px;white-space:nowrap}
+.cq-skill.teach{background:#2f9a4c;box-shadow:inset 0 2px 0 #7bd34b}
+.cq-skill>b{font-size:16px;line-height:1}
+.cq-pips{display:inline-flex;align-items:center;gap:6px;flex:none;color:#ffd23f;font-size:14px;white-space:nowrap}
+.cq-pips>b{letter-spacing:2px;font-size:14px}.cq-pips>b>i{font-style:normal;color:#ffffff33}
+.cq-goal-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.cq-goal-meta .cq-pips{color:#6b4528}.cq-goal-meta .cq-pips>b>i{color:#6b452840}
+.cq-goal-meta .cq-skill{font-size:12px;padding:2px 8px 2px 4px}
+.cq-map-pips{color:#ffd23f;letter-spacing:1px}

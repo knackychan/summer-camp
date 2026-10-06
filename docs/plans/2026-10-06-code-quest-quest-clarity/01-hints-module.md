@@ -18,7 +18,7 @@
   - `skillsFor(level)` → array of SKILLS entries, de-duplicated, in `requires` order; `params`/`arguments` → one; `expression` and `member` dropped when `property` is present. Empty `requires` → `[TEACH entry]` if any, else `[]`. Tagged `{ teach: true }` when from TEACH.
   - `difficultyFor(level)` → `'easy' | 'medium' | 'hard'` per D5 (TEACH chips count as 0).
   - `HINTS`: object keyed by quest id, each `{ gentle:[en,zh], strong:[en,zh], near:[en,zh] }`. This slice ships it with **q12 only** (Papa's case) as the worked example:
-    - gentle: "Good try! The golem is tough — one hit won't be enough." / "很棒的嘗試！魔像很強壯，打一下不夠。"
+    - gentle: "The golem is tough — one hit won't be enough." / "魔像很強壯，打一下不夠。"
     - strong: "Put Attack with a 🔁 Repeat sticker in the 🪨 Rune row, then put the 🪨 card in the Hero row." / "把貼了 🔁 重複貼紙的攻擊放進 🪨 符文那一排，再把 🪨 卡片放到英雄那一排。"
     - (No count in the strong hint: with the Training Blade the golem needs 4 hits, with the Bronze Blade 2; the peek shows the reference's own shape.)
     - near: "Nearly! Your Hero row can start like this:" / "快成功了！英雄那一排可以這樣開始："

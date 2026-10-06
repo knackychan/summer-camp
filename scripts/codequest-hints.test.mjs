@@ -46,6 +46,7 @@ for (const [id, entry] of Object.entries(HINTS)) {
     assert.ok(en.length <= 110, id + ' ' + tier + ' EN ≤ 110 chars (' + en.length + ')');
     assert.ok(!HIT_COUNT_EN.test(en) && !HIT_COUNT_ZH.test(zh), id + ' ' + tier + ' states no hit count');
     assert.ok(!SHAME.test(en) && !SHAME.test(zh), id + ' ' + tier + ' never says wrong/failed');
+    if (tier === 'gentle') assert.ok(!/^good try/i.test(en), id + ' gentle is read before any try');
   }
 }
 

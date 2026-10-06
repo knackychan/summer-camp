@@ -76,7 +76,7 @@ const hint = (gentle, strong, near) => Object.freeze({ gentle: Object.freeze(gen
 /** Hand-written hints per quest (D6). Missing quests fall back to `fallbackHint`. */
 export const HINTS = Object.freeze({
   q12: hint(
-    ['Good try! The golem is tough — one hit won\'t be enough.', '很棒的嘗試！魔像很強壯，打一下不夠。'],
+    ['The golem is tough — one hit won\'t be enough.', '魔像很強壯，打一下不夠。'],
     ['Put Attack with a 🔁 Repeat sticker in the 🪨 Rune row, then put the 🪨 card in the Hero row.', '把貼了 🔁 重複貼紙的攻擊放進 🪨 符文那一排，再把 🪨 卡片放到英雄那一排。'],
     ['Nearly! Your Hero row can start like this:', '快成功了！英雄那一排可以這樣開始：']
   )
