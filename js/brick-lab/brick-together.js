@@ -10,11 +10,16 @@
 
    Messages (one JSON object per line):
      guest → host  hello {proto, cat, kid} · req {id, op} · resync · bye
-     host → guest  welcome {world, seq, roster, name, host, more} · world {pieces} · refuse {why}
+                   walk-claim {id, ids} · walk-pos {id, x, y, z, yaw, view, moving} · walk-release {id}
+     host → guest  welcome {world, seq, roster, name, host, more, walkers} · world {pieces} · refuse {why}
                    apply {seq, by, req, op} · reject {req, why} · peers {roster} · bye
+                   walkers {list} · walk-grant {id, ok} · walk-pos {…, kid}
+   Walking (docs/plans/2026-10-06-brick-lab-walk/ W12, W13): the host keeps
+   who walks which minifig; a walked figure and its riders refuse everyone's
+   changes but the walker's. Positions are relayed, never numbered or saved.
    A line is at most 64 KB, so a big world comes as a welcome plus `more`
    world lines, sent back to back; the guest loads it once they are all in. */
-import { PROTO, createClient, createUndo } from "./brick-share.js";
+import { PROTO, cleanWalk, createClaims, createClient, createUndo } from "./brick-share.js";
 import { CATALOG_ID } from "./brick-catalog.js";
 import { LINE_MAX } from "../game-services/lan-session.js";
 
@@ -38,6 +43,8 @@ export class BrickTogether {
     this.hostInfo = null; /* guest: { kid, world, name, peer } */
     this.lost = null; /* guest: { kid, world, timer } while looking for a lost host */
     this.retryMs = retryMs;
+    this.claims = createClaims(); /* who walks which minifig: the host's truth, a guest's copy */
+    this.groups = new Map(); /* guest: undo group id → own changes applied so far */
     this.offs = [
       lan.onMessage((peer, message) => this.onMessage(peer, message)),
       lan.onPeer((peer, open) => this.onPeer(peer, open)),
@@ -48,6 +55,11 @@ export class BrickTogether {
 
   get shared() {
     return this.role === "guest" || (this.role === "host" && this.peers.size > 0);
+  }
+
+  /* A lab hook that a bare harness lab may not have. */
+  tell(name, ...args) {
+    if (typeof this.lab[name] === "function") this.lab[name](...args);
   }
 
   /* ---------- finding worlds (menu) ---------- */
@@ -101,6 +113,7 @@ export class BrickTogether {
     this.roster = [];
     this.role = null;
     this.undo.clear();
+    this.claims.clear();
   }
 
   hostHello(peer, message) {
@@ -153,6 +166,7 @@ export class BrickTogether {
       name: this.lab.currentWorldName(),
       host: this.kid,
       more: chunks.length - 1,
+      walkers: this.claims.list(),
     };
     return [head, ...chunks.slice(1).map((pieces) => ({ t: "world", pieces }))];
   }
@@ -190,6 +204,11 @@ export class BrickTogether {
   hostRequest(peer, message) {
     const kid = this.peers.get(peer);
     if (!kid || !message || typeof message.id !== "string") return;
+    /* W13: someone else is walking that figure. */
+    if (this.claims.busy(message.op, kid)) {
+      this.lan.send(peer, { t: "reject", req: message.id, why: "busy" });
+      return;
+    }
     const result = this.lab.sequencer.submit(kid, { id: message.id, op: message.op });
     if (result.t !== "apply") {
       this.lan.send(peer, { t: "reject", req: result.req, why: result.why });
@@ -198,6 +217,66 @@ export class BrickTogether {
     this.lab.showOp(result.op, result.inverse);
     this.lab.afterRemoteOp(result.op);
     this.broadcastApply(result);
+  }
+
+  /* Host: a guest's walk message (W12, W13). */
+  hostWalk(peer, raw) {
+    const kid = this.peers.get(peer);
+    const message = cleanWalk(raw);
+    if (!kid || !message) return;
+    if (message.t === "walk-claim") {
+      const ok = this.claims.claim(message.id, kid, message.ids);
+      this.lan.send(peer, { t: "walk-grant", id: message.id, ok });
+      if (ok) this.walkersChanged();
+    } else if (message.t === "walk-release") {
+      if (this.claims.release(message.id, kid)) this.walkersChanged();
+    } else {
+      const claim = this.claims.get(message.id);
+      if (!claim || claim.kid !== kid) return;
+      const relayed = { ...message, kid };
+      this.peers.forEach((otherKid, other) => { if (other !== peer) this.lan.send(other, relayed); });
+      this.tell("remoteWalkPos", relayed);
+    }
+  }
+
+  /* Host: everyone hears the new list of walkers. */
+  walkersChanged() {
+    if (this.role === "host" && this.peers.size) this.lan.broadcast({ t: "walkers", list: this.claims.list() });
+    this.tell("walkersChanged");
+  }
+
+  /* ---------- walking, from this tablet ---------- */
+
+  /* Ask for a figure (and its riders) to walk. Host or alone: true / false at
+     once. Guest: "pending"; the lab hears walkGranted(id, ok). */
+  claimWalk(id, ids = [id]) {
+    if (this.role === "guest") {
+      if (!this.hostInfo || !this.hostInfo.peer) return false;
+      this.lan.send(this.hostInfo.peer, { t: "walk-claim", id, ids });
+      return "pending";
+    }
+    if (this.role !== "host") return true;
+    const ok = this.claims.claim(id, this.kid, ids);
+    if (ok) this.walkersChanged();
+    return ok;
+  }
+
+  walkPos(pos) {
+    const message = cleanWalk({ ...pos, t: "walk-pos" });
+    if (!message) return;
+    if (this.role === "guest" && this.hostInfo && this.hostInfo.peer) this.lan.send(this.hostInfo.peer, message);
+    else if (this.role === "host" && this.peers.size) this.lan.broadcast({ ...message, kid: this.kid });
+  }
+
+  releaseWalk(id) {
+    if (this.role === "guest") {
+      if (this.hostInfo && this.hostInfo.peer) this.lan.send(this.hostInfo.peer, { t: "walk-release", id });
+    } else if (this.role === "host" && this.claims.release(id, this.kid)) this.walkersChanged();
+  }
+
+  /* The kid walking this piece, when it isn't this tablet's kid. */
+  busyFor(pieceId) {
+    return this.claims.busyFor(pieceId, this.kid);
   }
 
   /* After any applied change on the host: every guest gets it, in order. */
@@ -282,6 +361,9 @@ export class BrickTogether {
     this.pending.clear();
     this.undo.clear();
     this.roster = [];
+    this.groups.clear();
+    this.claims.clear();
+    this.tell("walkersChanged");
   }
 
   guestWelcome(message) {
@@ -292,6 +374,8 @@ export class BrickTogether {
     this.pending.clear();
     this.lab.loadShared(world);
     this.client = createClient({ world: this.lab.pieces, seq: Number(message.seq) || 0 });
+    this.claims.set(message.walkers);
+    this.tell("walkersChanged");
     this.lab.renderCrew();
     this.lab.sharedChanged();
   }
@@ -309,7 +393,18 @@ export class BrickTogether {
     const mine = this.pending.get(message.req);
     if (mine) {
       this.pending.delete(message.req);
-      if (message.by === this.kid) this.undo.push(result);
+      if (message.by === this.kid) {
+        this.undo.push(result);
+        /* A walk's landing: its moves become one Undo step once all are in (W2). */
+        const group = mine.meta && mine.meta.group;
+        if (group) {
+          const done = (this.groups.get(group.id) || 0) + 1;
+          if (done >= group.size) {
+            this.groups.delete(group.id);
+            this.undo.group(group.size);
+          } else this.groups.set(group.id, done);
+        }
+      }
       this.lab.ownChangeApplied(message.op, mine);
     }
     this.lab.updateUndoUI();
@@ -356,6 +451,11 @@ export class BrickTogether {
       this.request(inverse, { undo: true });
       return true;
     }
+    /* W13: not while someone else walks that figure. */
+    if (this.claims.busy(inverse, this.kid)) {
+      this.lab.ownChangeRefused(inverse, "busy", true);
+      return true;
+    }
     const result = this.lab.sequencer.submit(this.kid, { id: `undo-${Date.now().toString(36)}`, op: inverse });
     if (result.t !== "apply") {
       this.lab.ownChangeRefused(inverse, result.why, true);
@@ -374,6 +474,7 @@ export class BrickTogether {
       if (message.t === "hello") this.hostHello(peer, message);
       else if (message.t === "req") this.hostRequest(peer, message);
       else if (message.t === "resync" && this.peers.has(peer)) this.sendWelcome(peer, this.peers.get(peer));
+      else if (typeof message.t === "string" && message.t.startsWith("walk-")) this.hostWalk(peer, message);
       else if (message.t === "bye") this.lan.close(peer);
       return;
     }
@@ -381,6 +482,14 @@ export class BrickTogether {
     if (message.t === "welcome" || message.t === "world") this.guestWorld(message);
     else if (message.t === "apply") this.guestApply(message);
     else if (message.t === "reject") this.guestReject(message);
+    else if (message.t === "walkers") {
+      this.claims.set(message.list);
+      this.tell("walkersChanged");
+    } else if (message.t === "walk-grant") this.tell("walkGranted", message.id, !!message.ok);
+    else if (message.t === "walk-pos") {
+      const pos = cleanWalk(message);
+      if (pos && typeof message.kid === "string" && message.kid !== this.kid) this.tell("remoteWalkPos", { ...pos, kid: message.kid });
+    }
     else if (message.t === "peers") {
       if (!this.client) return; /* the welcome carries the first roster */
       const before = this.roster;
@@ -407,6 +516,8 @@ export class BrickTogether {
       const kid = this.peers.get(peer);
       this.peers.delete(peer);
       const stillHere = Array.from(this.peers.values()).includes(kid);
+      /* W12: the figures it walked stay at their saved spot, free again. */
+      if (!stillHere && this.claims.releaseKid(kid).length) this.walkersChanged();
       this.updateRoster();
       if (!stillHere) this.lab.crewToast(kid, false);
       if (!this.peers.size) this.lan.keepAwake(false);
@@ -426,6 +537,7 @@ export class BrickTogether {
       pending: this.pending.size,
       lost: !!this.lost,
       undo: this.undo.size,
+      walkers: this.claims.list(),
       joinable: this.joinable().map((s) => ({ id: s.id, kid: s.kid, world: s.world })),
     };
   }

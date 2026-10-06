@@ -14,9 +14,15 @@
      { type: "pose", id, pose, x, y, z }   (pose null = rest; sitting moves the piece)
    An op may carry `expect`: the state the asker last saw. Undo sends the
    inverse op with `expect`; if the piece has changed since (a sibling moved
-   it), the op is refused instead of undoing someone else's work. */
+   it), the op is refused instead of undoing someone else's work.
 
-export const PROTO = 4; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint · 4: poses (moving-parts M9) */
+   Walking a minifig (docs/plans/2026-10-06-brick-lab-walk/ W12, W13) adds
+   messages that are not ops — never numbered, never saved:
+     { t: "walk-claim", id, ids }    ids: the figure and its riders
+     { t: "walk-pos", id, x, y, z, yaw, view, moving }
+     { t: "walk-release", id } */
+
+export const PROTO = 5; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint · 4: poses (moving-parts M9) · 5: walking minifigs (brick-lab-walk W12) */
 const ID_MAX = 64;
 const Y_MAX = 200;
 const FIELDS = ["partId", "colorId", "x", "y", "z", "rotation"];
@@ -175,6 +181,77 @@ export function createClient({ world, seq = 0 }) {
       seq = nextSeq;
     },
   };
+}
+
+/* A walk message from the wire, cleaned, or null (W12). Positions stay over
+   the island and under Y_MAX; a claim names at most 16 pieces. */
+const WALK_IDS = 16;
+const WALK_HALF = 32;
+export function cleanWalk(message) {
+  if (!message || !goodId(message.id)) return null;
+  const { t, id } = message;
+  if (t === "walk-release") return { t, id };
+  if (t === "walk-claim") {
+    const ids = [id, ...(Array.isArray(message.ids) ? message.ids : []).filter((x) => goodId(x) && x !== id)];
+    return { t, id, ids: Array.from(new Set(ids)).slice(0, WALK_IDS) };
+  }
+  if (t !== "walk-pos") return null;
+  const { x, y, z, yaw } = message;
+  if (![x, y, z, yaw].every(finite) || Math.abs(x) > WALK_HALF || Math.abs(z) > WALK_HALF || y < 0 || y > Y_MAX) return null;
+  return { t, id, x, y, z, yaw, view: message.view === "eyes" ? "eyes" : "behind", moving: !!message.moving };
+}
+
+/* Who walks which minifig (W13). The host's list is the truth; a guest keeps
+   a copy. A claim covers the figure and its riders: while it lasts, only the
+   walker may change them. */
+export function createClaims() {
+  const claims = new Map(); /* figure id → { kid, ids } */
+  const owner = (pieceId) => {
+    for (const [, claim] of claims) if (claim.ids.includes(pieceId)) return claim.kid;
+    return null;
+  };
+  const api = {
+    claim(id, kid, ids = [id]) {
+      const all = Array.from(new Set([id, ...ids]));
+      if (all.some((pieceId) => { const who = owner(pieceId); return who && who !== kid; })) return false;
+      claims.set(id, { kid, ids: all });
+      return true;
+    },
+    release(id, kid) {
+      const claim = claims.get(id);
+      if (!claim || claim.kid !== kid) return false;
+      claims.delete(id);
+      return true;
+    },
+    /* A tablet left: the figures it walked are free again, at their saved spot. */
+    releaseKid(kid) {
+      const freed = [];
+      claims.forEach((claim, id) => { if (claim.kid === kid) freed.push(id); });
+      freed.forEach((id) => claims.delete(id));
+      return freed;
+    },
+    /* The kid walking this piece, when it is someone other than `kid`. */
+    busyFor(pieceId, kid) {
+      const who = owner(pieceId);
+      return who && who !== kid ? who : null;
+    },
+    busy(op, kid) {
+      return op && op.type !== "add" ? api.busyFor(op.id, kid) : null;
+    },
+    get(id) { return claims.get(id) || null; },
+    list: () => Array.from(claims, ([id, claim]) => [id, claim.kid, claim.ids.slice()]),
+    set(list) {
+      claims.clear();
+      (Array.isArray(list) ? list : []).forEach((row) => {
+        if (!Array.isArray(row) || !goodId(row[0]) || !goodId(row[1])) return;
+        const ids = (Array.isArray(row[2]) ? row[2] : []).filter(goodId);
+        claims.set(row[0], { kid: row[1], ids: ids.includes(row[0]) ? ids : [row[0], ...ids] });
+      });
+    },
+    get size() { return claims.size; },
+    clear() { claims.clear(); },
+  };
+  return api;
 }
 
 /* Each kid's own undo in a shared world: the inverses of their own changes. */

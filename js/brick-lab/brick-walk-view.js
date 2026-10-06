@@ -30,6 +30,21 @@ const KEYS = {
 const mix = (a, b, k) => a + (b - a) * k;
 const ease = (t) => t * t * (3 - 2 * t);
 
+/* The figure's legs and arms in a stand-in, at rest, for the walk swing (W7). */
+export function limbsOf(standIn) {
+  const found = [];
+  standIn.traverse((node) => {
+    const sign = LIMBS[node.userData.sqblJoint];
+    if (sign && node.userData.sqblWalker) found.push({ node, rest: node.rotation.x, sign });
+  });
+  return found;
+}
+
+export function swingLimbs(limbs, phase, scale = 1) {
+  const swing = Math.sin(phase) * SWING * scale;
+  limbs.forEach((limb) => { limb.node.rotation.x = limb.rest + swing * limb.sign; });
+}
+
 export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxes, half, view = "behind", reducedMotion = false, onExit, onAct, onAim }) {
   let state = { x: start.x, y: start.y, z: start.z, vy: 0, yaw: start.yaw, grounded: true, moving: false };
   let look = { yaw: start.yaw, pitch: 0 };
@@ -48,11 +63,7 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
   const base = overlay.querySelector("[data-walk-stick]");
   const knob = overlay.querySelector("[data-walk-knob]");
   const swingScale = reducedMotion ? 0.5 : 1;
-  const limbs = [];
-  standIn.traverse((node) => {
-    const sign = LIMBS[node.userData.sqblJoint];
-    if (sign && node.userData.sqblWalker) limbs.push({ node, rest: node.rotation.x, sign });
-  });
+  const limbs = limbsOf(standIn);
 
   function setStick(event) {
     const r = base.getBoundingClientRect();
@@ -158,8 +169,7 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
       state = step(state, { forward: move.forward, strafe: move.strafe, jump, yaw: look.yaw }, dt, world, half);
       jump = false;
       phase = state.moving ? phase + dt * STRIDE * Math.min(1, Math.hypot(move.forward, move.strafe)) : 0;
-      const swing = Math.sin(phase) * SWING * swingScale;
-      limbs.forEach((limb) => { limb.node.rotation.x = limb.rest + swing * limb.sign; });
+      swingLimbs(limbs, phase, swingScale);
       standIn.position.set(state.x, state.y + lift, state.z);
       standIn.rotation.y = state.yaw;
       const goal = mode === "eyes" ? 1 : 0;

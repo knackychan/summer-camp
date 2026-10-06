@@ -10,7 +10,7 @@ import {
 import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, worldConnectors } from "./brick-rails.js";
 import { createKidCamera } from "./brick-camera.js";
 import { hitsWalker, inReach, ridersOf, snapOut, solids } from "./brick-walk.js";
-import { createWalk } from "./brick-walk-view.js";
+import { createWalk, limbsOf, swingLimbs } from "./brick-walk-view.js";
 import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
@@ -61,7 +61,10 @@ const WALK = {
   /* The 👀 button names the view it switches to (slice 04). */
   eyes: ["Eyes view", "用眼睛看"],
   behind: ["Behind view", "從後面看"],
+  busy: ["Someone is walking with it", "有人正在用它走路"],
 };
+/* Walking together (walk plan W12): a walker's place goes out this often, ms. */
+const WALK_SHARE_MS = 160;
 /* Back in Build after a walk: close to the figure, looking the way it looked. */
 const WALK_EXIT_DISTANCE = 24;
 
@@ -1561,6 +1564,8 @@ export class BrickLabRuntime {
     this.freeEndsCache = null;
     this.snap = null;
     this.walk = null; /* walking a minifig: { id, riders, standIn, view, fov } */
+    this.walkAsk = null; /* a guest waiting for the host to give it a figure (W12) */
+    this.remoteWalks = new Map(); /* figures other tablets walk: id → { kid, ids, standIn, at, to, limbs } */
   }
 
   cleanPrefs(prefs) {
@@ -2741,6 +2746,7 @@ export class BrickLabRuntime {
 
   /* Guest back on its own menu: the host left, the link dropped, or Back. */
   endShared() {
+    this.leaveWalk(false);
     this.showLost(null);
     this.clearPlate();
     this.sharedChanged();
@@ -2755,6 +2761,9 @@ export class BrickLabRuntime {
 
   /* Guest: the link to the host dropped; the plate stays while we look (D9). */
   connectionLost(hostKid) {
+    /* W12: a walk without the host stops; the figure stays at its saved spot. */
+    this.leaveWalk(false);
+    this.walkAsk = null;
     this.selectPiece(null);
     this.moveId = null;
     this.placementArmed = false;
@@ -2838,6 +2847,7 @@ export class BrickLabRuntime {
   afterRemoteOp() {
     if (this.focus && !this.pieces.has(this.focus.id)) this.leaveFocus();
     this.syncRails();
+    this.walkSync(); /* a walk bumps into what the others build */
     if (this.selectedId && !this.pieces.has(this.selectedId)) this.selectPiece(null);
     else if (this.selectedId) {
       this.selectionBox.setFromObject(this.sceneObjects.get(this.selectedId));
@@ -2848,7 +2858,7 @@ export class BrickLabRuntime {
 
   /* Guest: the host applied this tablet's own change. */
   ownChangeApplied(op, sent) {
-    if (op.type === "add" && !(sent.meta && sent.meta.undo)) this.selectPiece(op.piece.id);
+    if (op.type === "add" && !(sent.meta && sent.meta.undo) && !this.walk) this.selectPiece(op.piece.id);
     if (sent.meta && sent.meta.undo) this.setHint("↶", HINTS.undone);
   }
 
@@ -2860,6 +2870,7 @@ export class BrickLabRuntime {
       object.rotation.y = piece.rotation * Math.PI / 180;
     }
     if (why === "changed") this.setHint("🤝", HINTS.changed);
+    else if (why === "busy") this.setHint("🚶", WALK.busy);
     else this.setHint("🛤️", HINTS.railBusy);
     this.updateUndoUI();
     this.invalidate();
@@ -2957,6 +2968,10 @@ export class BrickLabRuntime {
 
   /* Submit an op; on success the scene follows. Returns the applied change or null. */
   commit(op) {
+    if (this.together.role === "host" && this.together.claims.busy(op, this.kidId)) {
+      this.setHint("🚶", WALK.busy);
+      return null;
+    }
     if (this.together.role === "guest") return this.together.request(op);
     if (!this.sequencer) return null;
     const result = this.sequencer.submit(this.kidId, { id: uid("req"), op });
@@ -3371,6 +3386,12 @@ export class BrickLabRuntime {
     const hits = this.pointFromEvent(event);
     const pieceHit = hits.find((hit) => this.getPieceIdFromIntersection(hit));
     const pieceId = pieceHit ? this.getPieceIdFromIntersection(pieceHit) : null;
+    /* W13: a figure another tablet walks (or its hat) can't be picked up. */
+    if (pieceId && this.together.busyFor(pieceId)) {
+      this.selectPiece(null);
+      this.setHint("🚶", WALK.busy);
+      return;
+    }
 
     /* Focus mode (F4): a tap on the model picks the limb under the finger. */
     if (this.focus) {
@@ -3466,8 +3487,8 @@ export class BrickLabRuntime {
       this.poseToolEl.hidden = !posable;
       this.bubble.width = 0; /* one more or one fewer tool: measure again */
     }
-    /* W1: a standing minifig can walk; not yet while building together (slice 05). */
-    const walkable = !!(this.selectedId && this.canWalk(this.pieces.get(this.selectedId))) && !this.together.shared;
+    /* W1: a standing minifig can walk, unless another tablet is walking it (W13). */
+    const walkable = !!(this.selectedId && this.canWalk(this.pieces.get(this.selectedId))) && !this.together.busyFor(this.selectedId);
     if (this.walkToolEl.hidden === walkable) {
       this.walkToolEl.hidden = !walkable;
       this.bubble.width = 0;
@@ -3767,7 +3788,35 @@ export class BrickLabRuntime {
      with the kid camera off. Nothing changes in the world until the walk ends. */
   enterWalk(id) {
     const piece = id && this.pieces.get(id);
-    if (!piece || this.walk || this.focus || this.mode !== "build" || this.together.shared || !this.canWalk(piece)) return false;
+    if (!piece || this.walk || this.walkAsk || this.focus || this.mode !== "build" || !this.canWalk(piece)) return false;
+    /* W12: in a hosted or joined world the host gives the figure, first come first served. */
+    const riders = Array.from(ridersOf(id, this.pieces, (p) => pieceBounds(p, shapeOf(p))));
+    const claim = this.together.claimWalk(id, [id, ...riders]);
+    if (claim === "pending") {
+      this.walkAsk = id;
+      return true;
+    }
+    if (!claim) {
+      this.setHint("🚶", WALK.busy);
+      return false;
+    }
+    return this.startWalk(id);
+  }
+
+  /* Guest: the host's answer to our ask (W12). */
+  walkGranted(id, ok) {
+    if (this.walkAsk !== id) {
+      if (ok) this.together.releaseWalk(id); /* we stopped wanting it */
+      return;
+    }
+    this.walkAsk = null;
+    if (ok && this.pieces.has(id) && !this.walk && this.mode === "build" && !this.focus) this.startWalk(id);
+    else if (ok) this.together.releaseWalk(id);
+    else this.setHint("🚶", WALK.busy);
+  }
+
+  startWalk(id) {
+    const piece = this.pieces.get(id);
     this.hideInfo();
     this.selectPiece(null);
     this.placementArmed = false;
@@ -3860,6 +3909,8 @@ export class BrickLabRuntime {
       if (object) object.visible = true;
     });
     if (keep && this.pieces.has(walk.id)) this.landWalk(walk.id, walk.riders.filter((pid) => this.pieces.has(pid)), end);
+    /* After the landing moves, so the host frees the figure where it landed (W12). */
+    this.together.releaseWalk(walk.id);
     const figure = this.pieces.get(walk.id);
     this.cam.enabled = true;
     /* The kid camera sits behind the figure, looking where the walk looked. */
@@ -3974,6 +4025,85 @@ export class BrickLabRuntime {
     this.invalidate();
   }
 
+  /* W12: while building together, where this walk is goes out a few times a
+     second, and only when it changed. */
+  walkShare(time) {
+    const walk = this.walk;
+    if (!walk || !this.together.shared || time - (walk.sharedAt || 0) < WALK_SHARE_MS) return;
+    const s = walk.view.state();
+    const pos = { id: walk.id, x: s.x, y: s.y, z: s.z, yaw: s.yaw, view: walk.view.view(), moving: s.moving };
+    const key = `${pos.x.toFixed(3)},${pos.y.toFixed(3)},${pos.z.toFixed(3)},${pos.yaw.toFixed(3)},${pos.view},${pos.moving}`;
+    if (key === walk.sharedKey) return;
+    walk.sharedAt = time;
+    walk.sharedKey = key;
+    this.together.walkPos(pos);
+  }
+
+  /* W12: the list of who walks what changed. Figures another tablet walks
+     get a stand-in here (the real ones hide); figures let go show again
+     where their landing moves put them. */
+  walkersChanged() {
+    if (this.destroyed || !this.scene) return;
+    const list = this.together.claims.list();
+    const wanted = new Map(list.filter(([id, kid]) => kid !== this.kidId && this.pieces.has(id)).map(([id, kid, ids]) => [id, { kid, ids }]));
+    this.remoteWalks.forEach((remote, id) => {
+      if (wanted.has(id)) return;
+      this.scene.remove(remote.standIn);
+      disposeTree(remote.standIn);
+      remote.ids.forEach((pid) => {
+        const object = this.sceneObjects.get(pid);
+        if (object) object.visible = true;
+      });
+      this.remoteWalks.delete(id);
+    });
+    wanted.forEach(({ kid, ids }, id) => {
+      if (this.remoteWalks.has(id)) return;
+      const piece = this.pieces.get(id);
+      const riders = ids.filter((pid) => pid !== id && this.pieces.has(pid));
+      const standIn = this.walkStandIn(id, riders);
+      this.scene.add(standIn);
+      const lift = shapeOf(piece).height / 2;
+      const at = { x: piece.x, y: piece.y - lift, z: piece.z, yaw: piece.rotation * DEG };
+      this.remoteWalks.set(id, { kid, ids: [id, ...riders], standIn, lift, at, to: { ...at, moving: false }, limbs: limbsOf(standIn), phase: 0, last: 0 });
+    });
+    if (this.selectedId && this.together.busyFor(this.selectedId)) this.selectPiece(null);
+    else this.updateSelectionUI();
+    this.invalidate();
+  }
+
+  remoteWalkPos(message) {
+    const remote = this.remoteWalks.get(message.id);
+    if (!remote || remote.kid !== message.kid) return;
+    remote.to = { x: message.x, y: message.y, z: message.z, yaw: message.yaw, moving: message.moving };
+    this.invalidate();
+  }
+
+  /* Other tablets' walkers glide to their last known spot, legs swinging
+     while they walk; the real figures stay hidden meanwhile. */
+  remoteFrame(time) {
+    this.remoteWalks.forEach((remote) => {
+      const dt = remote.last ? Math.min(0.1, (time - remote.last) / 1000) : 0;
+      remote.last = time;
+      const k = 1 - Math.exp(-dt * 10);
+      const { at, to } = remote;
+      const turn = Math.atan2(Math.sin(to.yaw - at.yaw), Math.cos(to.yaw - at.yaw));
+      const far = Math.abs(to.x - at.x) + Math.abs(to.y - at.y) + Math.abs(to.z - at.z) + Math.abs(turn);
+      at.x += (to.x - at.x) * k;
+      at.y += (to.y - at.y) * k;
+      at.z += (to.z - at.z) * k;
+      at.yaw += turn * k;
+      remote.phase = to.moving ? remote.phase + dt * 10 : 0;
+      swingLimbs(remote.limbs, remote.phase, this.reducedMotion ? 0.5 : 1);
+      remote.standIn.position.set(at.x, at.y + remote.lift, at.z);
+      remote.standIn.rotation.y = at.yaw;
+      remote.ids.forEach((pid) => {
+        const object = this.sceneObjects.get(pid);
+        if (object && object.visible) object.visible = false;
+      });
+      if (far > 1e-3 || to.moving) this.invalidate(100);
+    });
+  }
+
   /* W2: snapped to the studs and the nearest 90°, landing like any drop; the
      riders keep their place on it, turned with it (W3). */
   landWalk(id, riders, end) {
@@ -3995,7 +4125,13 @@ export class BrickLabRuntime {
       ops.push({ type: "move", id: pid, x: round(pos.x + dx * cos + dz * sin), y: round(rider.y + pos.y - figure.y), z: round(pos.z - dx * sin + dz * cos),
         rotation: normalRotation(rider.rotation + out.rotation - figure.rotation) });
     });
-    /* One Undo step: one solo snapshot, or the host's inverses grouped. */
+    /* One Undo step: one solo snapshot, the host's inverses grouped, or a
+       guest's grouped as the host's answers come back. */
+    if (this.together.role === "guest") {
+      const group = { id: uid("walk"), size: ops.length };
+      ops.forEach((op) => this.together.request(op, { group }));
+      return;
+    }
     const solo = !this.together.role;
     if (solo) this.recordHistory();
     const before = this.together.undo.size;
@@ -4153,7 +4289,9 @@ export class BrickLabRuntime {
       if (this.walk) {
         this.walkHide();
         this.walk.view.frame(time);
+        this.walkShare(time);
       } else this.cam.update(time);
+      if (this.remoteWalks.size) this.remoteFrame(time);
       /* Circuit rails breathe softly (still with reduced motion). */
       const glowing = this.rails.circuit.size && !this.reducedMotion;
       if (glowing) {
@@ -4254,6 +4392,9 @@ export class BrickLabRuntime {
       placementArmed: this.placementArmed,
       moving: !!this.moveId,
       /* Walking a minifig (walk plan): the walker, its riders, where it is and where it looks. */
+      /* Walking together (W12): figures other tablets walk, where they are drawn. */
+      remoteWalks: Array.from(this.remoteWalks, ([id, r]) => ({ id, kid: r.kid, ids: r.ids.slice(), x: r.at.x, y: r.at.y, z: r.at.z, visible: r.standIn.visible })),
+      walkAsk: this.walkAsk,
       walk: this.walk ? { id: this.walk.id, riders: this.walk.riders.slice(), ...this.walk.view.state(), look: this.walk.view.look(),
         turn: this.walk.turn, aim: this.walk.aim, changes: this.walk.changes, ghost: this.ghost.visible, view: this.walk.view.view(),
         standIn: this.walk.standIn.visible, fov: this.camera.fov,

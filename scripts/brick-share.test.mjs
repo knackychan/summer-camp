@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { COLORS, getPart, PARTS } from "../js/brick-lab/brick-catalog.js";
 import {
-  applyOp, checkOp, createClient, createSequencer, createUndo, PROTO, sameState,
+  applyOp, checkOp, cleanWalk, createClaims, createClient, createSequencer, createUndo, PROTO, sameState,
 } from "../js/brick-lab/brick-share.js";
 
 const rules = {
@@ -206,6 +206,42 @@ test("a removed posed piece comes back posed; expect sees a pose change", () => 
   assert.equal(checkOp({ type: "move", id: "f", x: 2, y: 2.025, z: 0.5, rotation: 0, expect: { ...before, pose: JSON.stringify({ p: "wave" }) } }, world, rules), "changed");
 });
 
-test("PROTO is 4: poses are new on the wire", () => {
-  assert.equal(PROTO, 4);
+test("PROTO is 5: walking minifigs are new on the wire (brick-lab-walk W12)", () => {
+  assert.equal(PROTO, 5);
+});
+
+test("walk messages: claims, positions and releases are checked and cleaned (W12)", () => {
+  assert.deepEqual(cleanWalk({ t: "walk-claim", id: "fig", ids: ["fig", "hat", 3, ""], extra: 1 }), { t: "walk-claim", id: "fig", ids: ["fig", "hat"] });
+  assert.deepEqual(cleanWalk({ t: "walk-claim", id: "fig" }), { t: "walk-claim", id: "fig", ids: ["fig"] }, "the figure is always in its own claim");
+  const pos = { t: "walk-pos", id: "fig", x: 1.5, y: 1.2, z: -3, yaw: 0.5, view: "eyes", moving: true };
+  assert.deepEqual(cleanWalk({ ...pos, kid: "leo" }), pos, "a position carries no kid: the host adds who walks");
+  assert.equal(cleanWalk({ ...pos, view: "upside" }).view, "behind");
+  assert.equal(cleanWalk({ ...pos, x: Infinity }), null);
+  assert.equal(cleanWalk({ ...pos, y: 900 }), null, "no higher than any piece may go");
+  assert.equal(cleanWalk({ ...pos, x: 99 }), null, "off the island");
+  assert.deepEqual(cleanWalk({ t: "walk-release", id: "fig" }), { t: "walk-release", id: "fig" });
+  assert.equal(cleanWalk({ t: "walk-claim", id: "" }), null);
+  assert.equal(cleanWalk({ t: "walk-jump", id: "fig" }), null);
+  assert.equal(cleanWalk({ t: "walk-claim", id: "fig", ids: Array.from({ length: 40 }, (_, i) => `p${i}`) }).ids.length, 16, "at most 16 riders");
+});
+
+test("walk claims: first wins, a walked figure and its riders are busy for everyone else (W13)", () => {
+  const claims = createClaims();
+  assert.equal(claims.claim("fig", "leo", ["fig", "hat"]), true);
+  assert.equal(claims.claim("fig", "lili", ["fig"]), false, "Lili can't take Leo's figure");
+  assert.equal(claims.claim("hat", "lili", ["hat"]), false, "nor the hat riding on it");
+  assert.equal(claims.claim("fig", "leo", ["fig", "hat"]), true, "Leo asking again keeps it");
+  assert.equal(claims.busy({ type: "move", id: "fig" }, "lili"), "leo");
+  assert.equal(claims.busy({ type: "remove", id: "hat" }, "lili"), "leo");
+  assert.equal(claims.busy({ type: "move", id: "fig" }, "leo"), null, "the walker's own moves go through");
+  assert.equal(claims.busy({ type: "add", piece: { id: "new" } }, "lili"), null);
+  assert.equal(claims.busyFor("hat", "maya"), "leo");
+  assert.deepEqual(claims.list(), [["fig", "leo", ["fig", "hat"]]]);
+  assert.equal(claims.release("fig", "lili"), false, "only the walker lets go");
+  assert.equal(claims.claim("boy", "lili", ["boy"]), true);
+  assert.deepEqual(claims.releaseKid("leo"), ["fig"], "a tablet that leaves lets go of its walks");
+  assert.equal(claims.busyFor("fig", "maya"), null);
+  assert.equal(claims.release("boy", "lili"), true);
+  claims.set([["x", "leo", ["x"]], ["bad"]]);
+  assert.deepEqual(claims.list(), [["x", "leo", ["x"]]], "a guest mirrors the host's list, cleaned");
 });

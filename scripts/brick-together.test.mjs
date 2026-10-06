@@ -23,6 +23,9 @@ function fakeLab(kid) {
     sessionEnded: (reason, host) => lab.events.push(["ended", reason, host]),
     connectionLost: (host) => lab.events.push(["lost", host]),
     versionRefused: () => lab.events.push(["version"]),
+    walkersChanged: () => lab.events.push(["walkers", lab.together ? lab.together.claims.list() : []]),
+    remoteWalkPos: (m) => lab.events.push(["pos", m.id, m.kid, m.x]),
+    walkGranted: (id, ok) => lab.events.push(["granted", id, ok]),
   };
   return lab;
 }
@@ -261,4 +264,122 @@ test("a world too big for one line still reaches a guest who joins, and one whos
   await flush();
   assert.equal(maya.pieces.get("after").by, "tom");
   assert.deepEqual(plain(leo.lab.pieces), plain(maya.pieces));
+});
+
+/* ---------- walking a minifig together (docs/plans/2026-10-06-brick-lab-walk/ W12, W13) ---------- */
+
+async function walkers() {
+  const fam = await family();
+  [fam.maya, fam.leo.lab, fam.lili.lab].forEach((lab, i) => { lab.together = [fam.host, fam.leo.together, fam.lili.together][i]; });
+  return fam;
+}
+const last = (lab, kind) => lab.events.filter((e) => e[0] === kind).at(-1);
+
+test("walk claims: the first kid gets the figure, everyone sees who walks it", async () => {
+  const { maya, host, leo, lili } = await walkers();
+  assert.equal(leo.together.claimWalk("a", ["a", "hat"]), "pending", "a guest asks the host");
+  await flush();
+  assert.deepEqual(last(leo.lab, "granted"), ["granted", "a", true]);
+  assert.deepEqual(host.claims.list(), [["a", "leo", ["a", "hat"]]]);
+  assert.deepEqual(last(lili.lab, "walkers")[1], [["a", "leo", ["a", "hat"]]]);
+  assert.deepEqual(last(maya, "walkers")[1], [["a", "leo", ["a", "hat"]]]);
+  lili.together.claimWalk("a", ["a"]);
+  await flush();
+  assert.deepEqual(last(lili.lab, "granted"), ["granted", "a", false], "Lili can't take Leo's figure");
+  assert.equal(host.claimWalk("a", ["a"]), false, "nor can the host");
+  assert.equal(lili.together.busyFor("hat"), "leo");
+  assert.equal(leo.together.busyFor("a"), null, "it isn't busy for the walker");
+});
+
+test("a walked figure and its riders refuse everyone's changes but the walker's", async () => {
+  const { maya, leo, lili } = await walkers();
+  leo.together.claimWalk("a", ["a"]);
+  await flush();
+  lili.together.request({ type: "move", id: "a", x: 8.5, y: 0.6, z: 0, rotation: 0 });
+  lili.together.request({ type: "remove", id: "a" });
+  await flush();
+  assert.deepEqual(lili.lab.events.filter((e) => e[0] === "refused"), [["refused", "busy"], ["refused", "busy"]]);
+  assert.equal(maya.pieces.get("a").x, 0.5);
+  leo.together.request({ type: "move", id: "a", x: 8.5, y: 0.6, z: 0, rotation: 0 });
+  await flush();
+  assert.equal(maya.pieces.get("a").x, 8.5, "the walker's own landing goes through");
+  assert.equal(lili.lab.pieces.get("a").x, 8.5);
+});
+
+test("the host can't undo its way into a figure someone else is walking", async () => {
+  const { maya, host, leo } = await walkers();
+  hostChange(maya, host, { type: "move", id: "a", x: 4.5, y: 0.6, z: 0, rotation: 0 });
+  leo.together.claimWalk("a", ["a"]);
+  await flush();
+  assert.ok(host.undoLast());
+  assert.equal(maya.pieces.get("a").x, 4.5, "the undo is refused");
+  assert.deepEqual(maya.events.at(-1), ["refused", "busy"]);
+});
+
+test("walk positions reach every other tablet, marked with the walker; never the walker's own", async () => {
+  const { maya, host, leo, lili } = await walkers();
+  leo.together.claimWalk("a", ["a"]);
+  await flush();
+  leo.together.walkPos({ id: "a", x: 3, y: 0, z: 1, yaw: 0, view: "behind", moving: true });
+  await flush();
+  assert.deepEqual(last(maya, "pos"), ["pos", "a", "leo", 3]);
+  assert.deepEqual(last(lili.lab, "pos"), ["pos", "a", "leo", 3]);
+  assert.equal(last(leo.lab, "pos"), undefined);
+  lili.together.walkPos({ id: "a", x: 9, y: 0, z: 1, yaw: 0 });
+  await flush();
+  assert.deepEqual(last(maya, "pos"), ["pos", "a", "leo", 3], "a kid can't move someone else's walk");
+  host.claimWalk("b", ["b"]);
+  host.walkPos({ id: "b", x: -4, y: 0, z: 2, yaw: 1, view: "eyes", moving: false });
+  await flush();
+  assert.deepEqual(last(leo.lab, "pos"), ["pos", "b", "maya", -4], "the host walks too");
+});
+
+test("letting go, or leaving the wifi, frees the figure for everyone", async () => {
+  const { host, leo, lili } = await walkers();
+  leo.together.claimWalk("a", ["a"]);
+  await flush();
+  leo.together.releaseWalk("a");
+  await flush();
+  assert.equal(host.claims.size, 0);
+  assert.deepEqual(last(lili.lab, "walkers")[1], []);
+  lili.together.claimWalk("a", ["a"]);
+  await flush();
+  assert.deepEqual(last(lili.lab, "granted"), ["granted", "a", true]);
+  lili.together.leave();
+  await flush();
+  assert.equal(host.claims.size, 0, "Lili's tablet left: the figure is free at its saved spot");
+  assert.deepEqual(last(leo.lab, "walkers")[1], []);
+});
+
+test("a kid who joins mid-walk sees who is walking", async () => {
+  const { wifi, maya, host, leo } = await walkers();
+  leo.together.claimWalk("a", ["a"]);
+  await flush();
+  const lab = fakeLab("tom");
+  const tom = new BrickTogether(lab, createLanSession(wifi.device()), "tom");
+  lab.together = tom;
+  tom.startLooking();
+  await flush();
+  await tom.join(tom.joinable()[0]);
+  await flush();
+  assert.deepEqual(tom.claims.list(), [["a", "leo", ["a"]]]);
+  assert.deepEqual(last(lab, "walkers")[1], [["a", "leo", ["a"]]]);
+  assert.ok(maya && host);
+});
+
+test("a guest's walk lands as one Undo step", async () => {
+  const { maya, host, leo } = await walkers();
+  hostChange(maya, host, { type: "add", piece: { id: "hat", partId: "hat_crown", colorId: "yellow", x: 0.5, y: 1.575, z: 0, rotation: 0 } });
+  leo.together.claimWalk("a", ["a", "hat"]);
+  await flush();
+  const group = { id: "w1", size: 2 };
+  leo.together.request({ type: "move", id: "a", x: 6.5, y: 0.6, z: 4, rotation: 90 }, { group });
+  leo.together.request({ type: "move", id: "hat", x: 6.5, y: 1.575, z: 4, rotation: 90 }, { group });
+  leo.together.releaseWalk("a");
+  await flush();
+  assert.equal(leo.together.undo.size, 1);
+  assert.ok(leo.together.undoLast());
+  await flush();
+  assert.equal(maya.pieces.get("a").x, 0.5);
+  assert.equal(maya.pieces.get("hat").x, 0.5);
 });
