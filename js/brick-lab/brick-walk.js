@@ -22,7 +22,9 @@ export const MOVE = Object.freeze({
 });
 export const REACH = 8; /* studs across the ground (W9) */
 export const LOOK = Object.freeze({ maxPitch: Math.PI / 3 });
-export const BEHIND = Object.freeze({ back: 8, up: 4, fov: 60, nearest: 1.5, minTilt: 5 * Math.PI / 180, maxTilt: 70 * Math.PI / 180 });
+/* `shoulder`: the view looks past the right shoulder, so the crosshair in the
+   middle of the screen is never hidden by the figure's own head (W9). */
+export const BEHIND = Object.freeze({ back: 8, up: 4, shoulder: 1.6, fov: 60, nearest: 1.5, minTilt: 5 * Math.PI / 180, maxTilt: 70 * Math.PI / 180 });
 export const EYES = Object.freeze({ fov: 75 });
 
 const EPS = 1e-6;
@@ -123,6 +125,11 @@ export function snapOut(state) {
   return { x: state.x, z: state.z, rotation: ((Math.round(deg / 90) * 90) % 360 + 360) % 360 };
 }
 
+/* Would a piece's box land in the walker's own column (W9: no ghost there)? */
+export function hitsWalker(b, state) {
+  return underColumn(b, state.x, state.z) && b.minY < state.y + WALKER.height - EPS && b.maxY > state.y + EPS;
+}
+
 export function inReach(walker, point, reach = REACH) {
   return Math.hypot(point.x - walker.x, point.z - walker.z) <= reach + EPS;
 }
@@ -154,16 +161,25 @@ function rayBox(o, d, b) {
   return nearT;
 }
 
-/* Behind view (W4): BEHIND.back studs back and BEHIND.up up from the head at
-   level look, tipping with the look's pitch; pulled in in front of a piece
-   in the way. `boxes` leaves out the walker and its riders. */
+/* How far a ray from `o` along unit `d` goes before a box, up to `max`. */
+function clear(o, d, max, boxes) {
+  return Math.min(max, ...boxes.map((b) => rayBox(o, d, b)));
+}
+
+/* Behind view (W4): BEHIND.back studs back and BEHIND.up up from a point
+   beside the head (BEHIND.shoulder to the right, less if a piece is there)
+   at level look, tipping with the look's pitch; pulled in in front of a
+   piece in the way. `boxes` leaves out the walker and its riders. */
 export function behindCamera(state, look, boxes) {
   const tilt = clamp(look.pitch + Math.atan2(BEHIND.up, BEHIND.back), BEHIND.minTilt, BEHIND.maxTilt);
-  const target = { x: state.x, y: state.y + WALKER.head, z: state.z };
+  const head = { x: state.x, y: state.y + WALKER.head, z: state.z };
+  const right = { x: -Math.cos(look.yaw), y: 0, z: Math.sin(look.yaw) };
+  const side = Math.max(0, clear(head, right, BEHIND.shoulder + 0.3, boxes) - 0.3);
+  const target = { x: head.x + right.x * side, y: head.y, z: head.z + right.z * side };
   const dir = lookDir(look.yaw, tilt);
   const back = { x: -dir.x, y: -dir.y, z: -dir.z };
   let dist = Math.hypot(BEHIND.back, BEHIND.up);
-  const hit = Math.min(...boxes.map((b) => rayBox(target, back, b)));
+  const hit = clear(target, back, Infinity, boxes);
   if (hit < dist) dist = Math.max(BEHIND.nearest, hit - 0.3);
   return {
     position: { x: target.x + back.x * dist, y: target.y + back.y * dist, z: target.z + back.z * dist },

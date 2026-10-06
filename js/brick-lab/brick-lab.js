@@ -9,7 +9,7 @@ import {
 } from "./brick-catalog.js";
 import { extendSpots, isRail, railClash, railLinks, snapRail, traceCircuits, worldConnectors } from "./brick-rails.js";
 import { createKidCamera } from "./brick-camera.js";
-import { ridersOf, snapOut, solids } from "./brick-walk.js";
+import { hitsWalker, inReach, ridersOf, snapOut, solids } from "./brick-walk.js";
 import { createWalk } from "./brick-walk-view.js";
 import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
@@ -55,6 +55,9 @@ const WALK = {
   build: ["Build", "建造"],
   jump: ["Jump", "跳"],
   stick: ["Walk around", "走來走去"],
+  place: ["Place", "放上去"],
+  remove: ["Remove", "拿掉"],
+  turn: ["Turn", "轉一轉"],
 };
 /* Back in Build after a walk: close to the figure, looking the way it looked. */
 const WALK_EXIT_DISTANCE = 24;
@@ -1663,7 +1666,12 @@ export class BrickLabRuntime {
             <div class="sqbl-walk" data-walk hidden>
               <button type="button" class="sqbl-walk-exit" data-walk-act="exit" aria-label="${escapeHtml(label(WALK.build))}">🔨${pre ? "" : ` <span>${escapeHtml(label(WALK.build))}</span>`}</button>
               <div class="sqbl-walk-stick" data-walk-stick role="group" aria-label="${escapeHtml(label(WALK.stick))}"><i class="sqbl-walk-knob" data-walk-knob></i></div>
-              <button type="button" class="sqbl-walk-jump" data-walk-act="jump" aria-label="${escapeHtml(label(WALK.jump))}"><b aria-hidden="true">⤒</b>${pre ? "" : `<span>${escapeHtml(label(WALK.jump))}</span>`}</button>
+              <i class="sqbl-walk-cross" aria-hidden="true"></i>
+              <div class="sqbl-walk-pad" role="group" aria-label="${escapeHtml(label(WALK.place))}">
+                ${[["turn", "⟳"], ["remove", "－"], ["place", "＋"]].map(([act, icon]) => `
+                <button type="button" class="sqbl-walk-${act}" data-walk-act="${act}" aria-label="${escapeHtml(label(WALK[act]))}"><b aria-hidden="true">${icon}</b>${pre ? "" : `<span>${escapeHtml(WALK[act][0])}<br>${escapeHtml(WALK[act][1])}</span>`}</button>`).join("")}
+                <button type="button" class="sqbl-walk-jump" data-walk-act="jump" aria-label="${escapeHtml(label(WALK.jump))}"><b aria-hidden="true">⤒</b>${pre ? "" : `<span>${escapeHtml(WALK.jump[0])}<br>${escapeHtml(WALK.jump[1])}</span>`}</button>
+              </div>
             </div>
             <div class="sqbl-cam" role="toolbar" aria-label="Camera 鏡頭">${CAMERA_BUTTONS.map((b) => `
               <button type="button" class="sqbl-cam-btn" data-cam="${b.id}" aria-label="${escapeHtml(label(b.label))}"><svg viewBox="0 0 32 32" aria-hidden="true">${b.icon}</svg></button>`).join("")}
@@ -2115,7 +2123,8 @@ export class BrickLabRuntime {
       this.activePartId = tile.dataset.part;
       this.markActivePart();
       this.armPlacement(this.activePartId);
-      this.showInfo(this.activePartId);
+      /* Walking: the card would cover the joystick; the ghost shows the part. */
+      if (!this.walk) this.showInfo(this.activePartId);
     });
     this.bindTrayDrag();
     /* A list with more below fades out at its foot, so a kid knows to scroll. */
@@ -3031,6 +3040,7 @@ export class BrickLabRuntime {
     this.ghost.rotation.y = 0;
     this.setHint("☝️", HINTS.place);
     this.updateRailMarks();
+    if (this.walk) this.setHint("🚶", HINTS.walk);
   }
 
   refreshGhost() {
@@ -3051,6 +3061,7 @@ export class BrickLabRuntime {
     this.ghost.add(preview);
     this.ghost.visible = false;
     this.ghostBlocked = false;
+    if (this.walk) this.walk.view.reaim();
   }
 
   setRay(event) {
@@ -3768,12 +3779,15 @@ export class BrickLabRuntime {
     this.cam.enabled = false;
     this.app.classList.add("is-walking");
     this.walkEl.hidden = false;
-    this.walk = { id, riders, standIn, fov: this.camera.fov };
+    /* turn: the picked part's turn (W10); aim: what the crosshair points at;
+       changes: pieces placed or removed on this walk, for Undo. */
+    this.walk = { id, riders, standIn, fov: this.camera.fov, turn: 0, aim: null, changes: 0 };
     this.walk.view = createWalk({
       camera: this.camera, canvas: this.renderer.domElement, overlay: this.walkEl, standIn, lift, half: BASE_HALF,
       start: { x: piece.x, y: piece.y - lift, z: piece.z, yaw: piece.rotation * DEG },
       boxes: solids(this.pieces, boxOf, new Set([id, ...riders])),
       reducedMotion: this.reducedMotion, onExit: () => this.leaveWalk(),
+      onAct: (act) => this.walkAct(act), onAim: () => this.walkAim(),
     });
     this.setHint("🚶", HINTS.walk);
     this.haptic("tap");
@@ -3821,6 +3835,7 @@ export class BrickLabRuntime {
     this.walk = null;
     this.scene.remove(walk.standIn);
     disposeTree(walk.standIn);
+    this.ghost.visible = false;
     this.walkEl.hidden = true;
     this.app.classList.remove("is-walking");
     this.camera.fov = walk.fov;
@@ -3839,6 +3854,89 @@ export class BrickLabRuntime {
     this.setHint("🧱", HINTS.choose);
     this.invalidate();
     return true;
+  }
+
+  /* W9: the crosshair (the middle of the view) aims landing() for the picked
+     part. A side of a piece aims half a stud out from it, so a part lands
+     beside what the crosshair is on, a top lands on it. The ghost shows the
+     spot within reach and never in the walker; otherwise nothing shows. */
+  walkAim() {
+    const walk = this.walk;
+    if (!walk) return;
+    const skip = new Set([walk.id, ...walk.riders]);
+    const pieceOf = (hit) => {
+      const id = this.getPieceIdFromIntersection(hit);
+      return id && !skip.has(id) ? id : null;
+    };
+    this.pointer.set(0, 0);
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    this.scene.updateMatrixWorld();
+    const hit = this.raycaster.intersectObjects(this.scene.children, true).find((h) => isGround(h) || pieceOf(h));
+    const at = walk.view.state();
+    const before = walk.aim && walk.aim.place;
+    walk.aim = null;
+    if (hit && inReach(at, hit.point)) {
+      const point = hit.point.clone();
+      if (hit.face && !isGround(hit)) {
+        const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+        if (Math.abs(normal.y) < 0.7) point.addScaledVector(normal.setY(0).normalize(), 0.5);
+      }
+      const part = getPart(this.activePartId);
+      const pool = new Map(Array.from(this.pieces).filter(([pid]) => !skip.has(pid)));
+      const land = this.landing(point, part, walk.turn, null, pool);
+      const fits = !land.blocked && !hitsWalker(pieceBounds({ ...land.pos, rotation: walk.turn }, part), at);
+      walk.aim = { pieceId: pieceOf(hit), place: fits ? land.pos : null };
+    }
+    const place = walk.aim && walk.aim.place;
+    this.ghost.visible = !!place;
+    if (place) {
+      this.ghost.position.set(place.x, place.y, place.z);
+      this.ghost.rotation.y = walk.turn * DEG;
+    }
+    if (!before !== !place || (place && (place.x !== before.x || place.y !== before.y || place.z !== before.z))) this.invalidate();
+  }
+
+  /* W10: ＋ places the picked part at the ghost, － removes the piece under
+     the crosshair (never the walker or its riders), ⟳ turns the part. The
+     same ops as Build, so Undo, saving and sharing work as ever. */
+  walkAct(act) {
+    const walk = this.walk;
+    if (!walk) return;
+    if (act === "turn") {
+      walk.turn = (walk.turn + 90) % 360;
+      walk.view.reaim();
+      this.haptic("tap");
+      return;
+    }
+    const aim = walk.aim;
+    if (act === "place" && aim && aim.place) {
+      const part = getPart(this.activePartId);
+      const id = uid();
+      if (!this.change({ type: "add", piece: { id, partId: part.id, colorId: this.activeColorId, ...aim.place, rotation: walk.turn } })) return;
+      this.rememberRecent(part.id);
+      this.syncRails(id, true);
+    } else if (act === "remove" && aim && aim.pieceId) {
+      if (!this.change({ type: "remove", id: aim.pieceId })) return;
+      this.syncRails();
+    } else return;
+    walk.changes += 1;
+    this.walkSync();
+    this.haptic("tap");
+  }
+
+  /* After the world changed under a walk (a place, a remove, an Undo): the
+     real figure and its riders stay hidden, the walk bumps into the new
+     pieces and aims again. */
+  walkSync() {
+    const walk = this.walk;
+    if (!walk) return;
+    [walk.id, ...walk.riders].forEach((pid) => {
+      const object = this.sceneObjects.get(pid);
+      if (object) object.visible = false;
+    });
+    const skip = new Set([walk.id, ...walk.riders]);
+    walk.view.setWorld(solids(this.pieces, (p) => pieceBounds(p, shapeOf(p)), skip));
+    this.invalidate();
   }
 
   /* W2: snapped to the studs and the nearest 90°, landing like any drop; the
@@ -3930,15 +4028,18 @@ export class BrickLabRuntime {
   }
 
   undo() {
-    /* Undo while walking takes back the walk: the figure stays where it was. */
-    if (this.walk) {
+    /* Undo while walking takes back what this walk placed or removed, last
+       first, then the walk itself: the figure stays where it was. */
+    if (this.walk && !this.walk.changes) {
       this.leaveWalk(false);
       this.setHint("↶", HINTS.undone);
       return;
     }
+    if (this.walk) this.walk.changes -= 1;
     if (this.together.role) {
       if (this.together.undoLast()) this.haptic("tap");
       this.updateUndoUI();
+      this.walkSync();
       return;
     }
     const snapshot = this.history.pop();
@@ -3956,6 +4057,7 @@ export class BrickLabRuntime {
     this.scheduleSave();
     this.setHint("↶", HINTS.undone);
     this.haptic("tap");
+    this.walkSync();
   }
 
   scheduleSave() {
@@ -4115,7 +4217,9 @@ export class BrickLabRuntime {
       placementArmed: this.placementArmed,
       moving: !!this.moveId,
       /* Walking a minifig (walk plan): the walker, its riders, where it is and where it looks. */
-      walk: this.walk ? { id: this.walk.id, riders: this.walk.riders.slice(), ...this.walk.view.state(), look: this.walk.view.look() } : null,
+      walk: this.walk ? { id: this.walk.id, riders: this.walk.riders.slice(), ...this.walk.view.state(), look: this.walk.view.look(),
+        turn: this.walk.turn, aim: this.walk.aim, changes: this.walk.changes, ghost: this.ghost.visible,
+        hidden: [this.walk.id, ...this.walk.riders].every((pid) => !this.sceneObjects.get(pid) || !this.sceneObjects.get(pid).visible) } : null,
       dragging: !!(this.drag && this.drag.active),
       toolsShown: this.bubble.shown,
       baseplateStuds: this.baseplateStuds,

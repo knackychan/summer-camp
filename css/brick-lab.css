@@ -288,7 +288,15 @@
 .sqbl-walk-exit{position:absolute;top:12px;left:12px;min-height:56px;padding:0 18px;border-radius:16px;border:0;background:#2e9d5b;color:#fff;font-weight:800;font-size:16px;box-shadow:0 6px 16px rgba(0,0,0,.2)}
 .sqbl-walk-stick{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:62px;width:136px;height:136px;border-radius:50%;background:rgba(255,255,255,.26);border:3px solid rgba(255,255,255,.8);box-shadow:0 8px 22px rgba(0,0,0,.18)}
 .sqbl-walk-knob{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25);pointer-events:none}
-.sqbl-walk-jump{position:absolute;right:max(18px,env(safe-area-inset-right));bottom:74px;width:88px;height:88px;border-radius:50%;border:0;background:var(--sqbl-blue);color:#fff;font-weight:800;font-size:13px;display:grid;place-content:center;justify-items:center;gap:2px;box-shadow:0 8px 20px rgba(0,0,0,.25)}
-.sqbl-walk-jump b{font-size:30px;line-height:1}
-.sqbl-walk-jump:active,.sqbl-walk-exit:active{transform:scale(.94)}
+/* Slice 03 (W9, W10): a crosshair in the middle; the building pad bottom right —
+   Turn and Remove above, Place and Jump below, Place nearest the thumb's reach. */
+.sqbl-walk-cross{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;pointer-events:none;background:linear-gradient(#fff,#fff) center/4px 100% no-repeat,linear-gradient(#fff,#fff) center/100% 4px no-repeat;filter:drop-shadow(0 0 1.5px rgba(0,0,0,.8))}
+.sqbl-walk-pad{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:62px;display:grid;grid-template-columns:repeat(2,88px);gap:10px;align-items:end;justify-items:center}
+.sqbl-walk-pad button{width:88px;height:88px;border-radius:50%;border:0;color:#fff;font-weight:800;font-size:12px;line-height:1.1;display:grid;place-content:center;justify-items:center;gap:2px;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.sqbl-walk-pad b{font-size:30px;line-height:1}
+.sqbl-walk-pad .sqbl-walk-turn,.sqbl-walk-pad .sqbl-walk-remove{width:68px;height:68px;background:rgba(255,255,255,.94);color:var(--sqbl-ink)}
+.sqbl-walk-pad .sqbl-walk-turn b,.sqbl-walk-pad .sqbl-walk-remove b{font-size:22px}.sqbl-walk-pad .sqbl-walk-turn span,.sqbl-walk-pad .sqbl-walk-remove span{font-size:10.5px}
+.sqbl-walk-place{background:var(--sqbl-green)}.sqbl-walk-jump{background:var(--sqbl-blue)}
+.sqbl-walk-pad button:active,.sqbl-walk-exit:active{transform:scale(.94)}
+@media(max-width:760px){.sqbl-walk-pad{grid-template-columns:repeat(2,76px);gap:8px}.sqbl-walk-pad button{width:76px;height:76px}.sqbl-walk-pad .sqbl-walk-turn,.sqbl-walk-pad .sqbl-walk-remove{width:60px;height:60px}.sqbl-walk-stick{width:120px;height:120px}}
 .sqbl-app.is-walking .sqbl-cam,.sqbl-app.is-walking .sqbl-bubble,.sqbl-app.is-walking .sqbl-mode-toggle,.sqbl-app.is-walking [data-action=home-view]{visibility:hidden}

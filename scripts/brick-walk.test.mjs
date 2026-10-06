@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   BEHIND, MOVE, REACH, WALKER,
-  behindCamera, clampLook, eyesCamera, groundUnder, inReach, ridersOf, snapOut, solids, step,
+  behindCamera, clampLook, eyesCamera, groundUnder, hitsWalker, inReach, ridersOf, snapOut, solids, step,
 } from "../js/brick-lab/brick-walk.js";
 
 const HALF = 32;
@@ -141,18 +141,35 @@ test("reach is 8 studs across the ground (W9)", () => {
   assert.ok(!inReach({ x: 0, z: 0 }, { x: 6, z: 6 }));
 });
 
+test("hitsWalker: a piece in the walker's column, not beside it, under its feet or over its head", () => {
+  const at = standing({ y: 1.2 });
+  assert.ok(hitsWalker(box(-1, 1, -1, 1, 1.2, 2.4), at));
+  assert.ok(!hitsWalker(box(1, 3, -1, 1, 1.2, 2.4), at), "beside");
+  assert.ok(!hitsWalker(box(-1, 1, -1, 1, 0, 1.2), at), "the brick it stands on");
+  assert.ok(!hitsWalker(box(-1, 1, -1, 1, 5.2, 6.4), at), "over its head");
+});
+
 test("clampLook keeps the tilt within ±60°", () => {
   assert.ok(near(clampLook({ yaw: 1, pitch: 3 }).pitch, Math.PI / 3));
   assert.ok(near(clampLook({ yaw: 1, pitch: -3 }).pitch, -Math.PI / 3));
   assert.equal(clampLook({ yaw: 1, pitch: 0.2 }).yaw, 1);
 });
 
-test("behind view: 8 back and 4 up from the head, looking at it (W4)", () => {
+test("behind view: 8 back and 4 up from beside the head, over the right shoulder (W4)", () => {
   const cam = behindCamera(standing(), { yaw: 0, pitch: 0 }, []);
   assert.ok(near(cam.target.y, WALKER.head));
-  assert.ok(near(cam.position.z, -BEHIND.back) && near(cam.position.x, 0));
+  assert.ok(near(cam.target.x, -BEHIND.shoulder) && near(cam.target.z, 0), "right of a walker facing +z is −x");
+  assert.ok(near(cam.position.z, -BEHIND.back) && near(cam.position.x, -BEHIND.shoulder));
   assert.ok(near(cam.position.y, WALKER.head + BEHIND.up));
   assert.equal(cam.fov, BEHIND.fov);
+  const east = behindCamera(standing(), { yaw: Math.PI / 2, pitch: 0 }, []);
+  assert.ok(near(east.target.z, BEHIND.shoulder) && near(east.position.x, -BEHIND.back), "facing +x, right is +z");
+});
+
+test("behind view: the shoulder comes in when a piece is right beside the head", () => {
+  const wall = box(-3, -1, -4, 4, 0, 20);
+  const cam = behindCamera(standing(), { yaw: 0, pitch: 0 }, [wall]);
+  assert.ok(cam.target.x > -1 && cam.target.x <= 0, `target x ${cam.target.x}`);
 });
 
 test("behind view pulls in in front of a wall", () => {

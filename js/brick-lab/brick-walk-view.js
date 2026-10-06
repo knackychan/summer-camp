@@ -4,7 +4,9 @@
    stand-in — the figure drawn jointed, its riders with it — and this moves
    it with the maths in brick-walk.js. The real pieces wait, hidden and
    unchanged, until the walk ends (W2, W3). The camera only moves while
-   something does, so a still walker draws nothing (W8). */
+   something does, so a still walker draws nothing (W8). Slice 03: the lab
+   aims the crosshair whenever the camera moved (`onAim`) and does the
+   building buttons (`onAct`: place, remove, turn). */
 import { behindCamera, clampLook, step } from "./brick-walk.js";
 
 const LOOK_PER_PX = 0.006; /* radians of look per CSS pixel of drag */
@@ -15,7 +17,7 @@ const STRIDE = 10;         /* swing phase, radians a second at full stick (W7) *
 /* Legs swing opposite each other, each arm opposite its leg. */
 const LIMBS = { legL: 1, legR: -1, armL: -0.8, armR: 0.8 };
 
-export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxes, half, reducedMotion = false, onExit }) {
+export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxes, half, reducedMotion = false, onExit, onAct, onAim }) {
   let state = { x: start.x, y: start.y, z: start.z, vy: 0, yaw: start.yaw, grounded: true, moving: false };
   let look = { yaw: start.yaw, pitch: 0 };
   let world = boxes;
@@ -23,6 +25,8 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
   let last = 0;
   let phase = 0;
   let lookPointer = null;
+  let aim = true; /* aim again on the next frame */
+  let seen = "";
   const stick = { id: null, forward: 0, strafe: 0 };
   const base = overlay.querySelector("[data-walk-stick]");
   const knob = overlay.querySelector("[data-walk-knob]");
@@ -81,8 +85,10 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
     const button = event.target.closest("[data-walk-act]");
     if (!button) return;
     event.preventDefault();
-    if (button.dataset.walkAct === "jump") jump = true;
-    else if (button.dataset.walkAct === "exit" && onExit) onExit();
+    const act = button.dataset.walkAct;
+    if (act === "jump") jump = true;
+    else if (act === "exit") { if (onExit) onExit(); }
+    else if (onAct) onAct(act);
   };
 
   base.addEventListener("pointerdown", onStickDown);
@@ -116,11 +122,17 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
         camera.updateProjectionMatrix();
       }
       camera.updateMatrixWorld();
+      const now = `${view.position.x},${view.position.y},${view.position.z},${view.target.x},${view.target.y},${view.target.z}`;
+      if ((aim || now !== seen) && onAim) onAim();
+      aim = false;
+      seen = now;
     },
     state: () => ({ ...state }),
     look: () => ({ ...look }),
     /* The pieces changed (slice 03 places and removes): new solid boxes. */
-    setWorld(next) { world = next; },
+    setWorld(next) { world = next; aim = true; },
+    /* The picked part, colour or turn changed: aim again. */
+    reaim() { aim = true; },
     jump() { jump = true; },
     dispose() {
       base.removeEventListener("pointerdown", onStickDown);
