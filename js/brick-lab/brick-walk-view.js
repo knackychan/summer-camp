@@ -8,7 +8,10 @@
    aims the crosshair whenever the camera moved (`onAim`) and does the
    building buttons (`onAct`: place, remove, turn, view). Slice 04: the
    eyes view, glided to in 300 ms (at once with reduced motion); the
-   stand-in hides once the camera is past halfway into its head. */
+   stand-in hides once the camera is past halfway into its head. Slice 06
+   (W11): on a computer, W A S D or the arrows walk, Space jumps, V switches
+   the view, R turns the part, a click places and a right click removes —
+   only while walking; nothing here outlives the walk. */
 import { behindCamera, clampLook, eyesCamera, step } from "./brick-walk.js";
 
 const LOOK_PER_PX = 0.006; /* radians of look per CSS pixel of drag */
@@ -19,6 +22,11 @@ const STRIDE = 10;         /* swing phase, radians a second at full stick (W7) *
 /* Legs swing opposite each other, each arm opposite its leg. */
 const LIMBS = { legL: 1, legR: -1, armL: -0.8, armR: 0.8 };
 const VIEW_GLIDE = 0.3; /* seconds, behind ↔ eyes */
+const CLICK = 10; /* CSS px a click may travel and still place (the lab's DRAG_START) */
+const KEYS = {
+  KeyW: "forward", ArrowUp: "forward", KeyS: "back", ArrowDown: "back",
+  KeyA: "left", ArrowLeft: "left", KeyD: "right", ArrowRight: "right",
+};
 const mix = (a, b, k) => a + (b - a) * k;
 const ease = (t) => t * t * (3 - 2 * t);
 
@@ -35,6 +43,8 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
   let blend = mode === "eyes" ? 1 : 0; /* 0 behind … 1 eyes */
   let seen = "";
   const stick = { id: null, forward: 0, strafe: 0 };
+  const held = new Set(); /* walking keys down */
+  let click = null; /* a left mouse press on the view: place on release if it stayed put */
   const base = overlay.querySelector("[data-walk-stick]");
   const knob = overlay.querySelector("[data-walk-knob]");
   const swingScale = reducedMotion ? 0.5 : 1;
@@ -74,8 +84,10 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
 
   /* Drag right turns the look right; drag up looks up. */
   const onLookDown = (event) => {
+    if (event.pointerType === "mouse" && event.button === 2) { if (onAct) onAct("remove"); return; }
     if (lookPointer || (event.pointerType === "mouse" && event.button !== 0)) return;
     lookPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    if (event.pointerType === "mouse") click = { id: event.pointerId, x: event.clientX, y: event.clientY };
   };
   const onLookMove = (event) => {
     if (!lookPointer || event.pointerId !== lookPointer.id) return;
@@ -86,7 +98,33 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
     lookPointer.x = event.clientX;
     lookPointer.y = event.clientY;
   };
-  const onLookUp = (event) => { if (lookPointer && event.pointerId === lookPointer.id) lookPointer = null; };
+  const onLookUp = (event) => {
+    if (lookPointer && event.pointerId === lookPointer.id) lookPointer = null;
+    if (!click || event.pointerId !== click.id) return;
+    const still = event.type === "pointerup" && Math.hypot(event.clientX - click.x, event.clientY - click.y) < CLICK;
+    click = null;
+    if (still && onAct) onAct("place");
+  };
+
+  const typing = (event) => !!(event.target && event.target.closest && event.target.closest("input, textarea, select, [contenteditable]"));
+  const onKeyDown = (event) => {
+    if (typing(event) || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (KEYS[event.code]) held.add(KEYS[event.code]);
+    else if (event.code === "Space") jump = true;
+    else if (event.code === "KeyV" && !event.repeat) { if (onAct) onAct("view"); }
+    else if (event.code === "KeyR" && !event.repeat) { if (onAct) onAct("turn"); }
+    else return;
+    event.preventDefault();
+  };
+  const onKeyUp = (event) => { if (KEYS[event.code]) held.delete(KEYS[event.code]); };
+  const onBlur = () => held.clear();
+  /* The stick wins while a finger is on it; otherwise the keys walk. */
+  const input = () => {
+    if (stick.id !== null || !held.size) return { forward: stick.forward, strafe: stick.strafe };
+    const forward = (held.has("forward") ? 1 : 0) - (held.has("back") ? 1 : 0);
+    const strafe = (held.has("right") ? 1 : 0) - (held.has("left") ? 1 : 0);
+    return { forward, strafe };
+  };
 
   const onButton = (event) => {
     const button = event.target.closest("[data-walk-act]");
@@ -107,15 +145,19 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
   canvas.addEventListener("pointerup", onLookUp);
   canvas.addEventListener("pointercancel", onLookUp);
   overlay.addEventListener("pointerdown", onButton);
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keyup", onKeyUp);
+  window.addEventListener("blur", onBlur);
 
   const api = {
     /* One frame: walk, swing the limbs, follow with the camera. */
     frame(time) {
       const dt = last ? (time - last) / 1000 : 0;
       last = time;
-      state = step(state, { forward: stick.forward, strafe: stick.strafe, jump, yaw: look.yaw }, dt, world, half);
+      const move = input();
+      state = step(state, { forward: move.forward, strafe: move.strafe, jump, yaw: look.yaw }, dt, world, half);
       jump = false;
-      phase = state.moving ? phase + dt * STRIDE * Math.min(1, Math.hypot(stick.forward, stick.strafe)) : 0;
+      phase = state.moving ? phase + dt * STRIDE * Math.min(1, Math.hypot(move.forward, move.strafe)) : 0;
       const swing = Math.sin(phase) * SWING * swingScale;
       limbs.forEach((limb) => { limb.node.rotation.x = limb.rest + swing * limb.sign; });
       standIn.position.set(state.x, state.y + lift, state.z);
@@ -164,6 +206,10 @@ export function createWalk({ camera, canvas, overlay, standIn, start, lift, boxe
       canvas.removeEventListener("pointerup", onLookUp);
       canvas.removeEventListener("pointercancel", onLookUp);
       overlay.removeEventListener("pointerdown", onButton);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+      held.clear();
       releaseStick();
     },
   };
