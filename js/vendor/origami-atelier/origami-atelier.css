@@ -102,6 +102,10 @@
 .oa-legend[hidden]{display:none}
 .oa-legend-crease{width:28px;height:0;border-top:3px dashed #a84e63}
 .oa-legend-arrow{font-style:normal;color:#3276b1;font-size:18px;line-height:1}
+.oa-legend-notation{flex:1 1 100%;min-width:0;color:var(--oa-ink,#4a3328)}
+.oa-legend-notation .oa-legend-text{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.oa-legend-sym{display:inline-flex;flex:none;font-style:normal}
+.oa-legend-sym svg{width:44px;height:16px}
 .oa-instruction{font-size:clamp(20px,2.4vw,26px);line-height:1.2;font-weight:900;margin:0}
 .oa-hint{font-family:ui-sans-serif,system-ui,sans-serif;color:var(--oa-muted);line-height:1.35;margin:0;font-size:14px;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
@@ -151,7 +155,14 @@
    fill-box/center inline for template slides. */
 .oa-paper-flap,.oa-paper-flap-behind,.oa-paper-flap-second{transform-box:view-box;transform-origin:0 0}
 .oa-paper-landing{fill:none;stroke:#7a5647;stroke-width:1.6;stroke-dasharray:4 5;opacity:0}
-.oa-crease{stroke:#a84e63;stroke-width:2.6;stroke-dasharray:7 6}
+.oa-crease{stroke:#a84e63;stroke-width:2.6;stroke-dasharray:8 6}
+/* Book notation (origami-audit slice 05): mountain = dash-dot, a reopened crease = thin solid. */
+.oa-crease-mountain{stroke-dasharray:9 4 2 4}
+.oa-crease-mark{stroke:#a84e63;stroke-width:1.6;opacity:0}
+.oa-arrow-head-full{fill:#3276b1}
+.oa-arrow-head-half{fill:#fff9ec}
+.oa-fold-symbol{stroke:#3276b1;stroke-width:4;stroke-linecap:round}
+.oa-fold-symbol-head{fill:#3276b1}
 .oa-arrow,.oa-arrow-head{stroke:#3276b1;stroke-width:5;stroke-linecap:square;stroke-linejoin:miter}
 .oa-arrow-glow{stroke:#9fd0ff;stroke-width:14;stroke-linecap:round;opacity:0}
 .oa-collection-room{padding:14px;display:flex;flex-direction:column;gap:10px}

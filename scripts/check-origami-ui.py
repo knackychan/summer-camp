@@ -94,6 +94,31 @@ EVERY_STEP = """async () => {
   return { broken, still, count };
 }"""
 
+# Book notation per operation (slice 05), read off-screen from the engine.
+NOTATION = """async () => {
+  const D = await import('/js/vendor/origami-atelier/origami-data.js');
+  const E = await import('/js/vendor/origami-atelier/origami-engine.js');
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-400px;top:0;width:300px;height:210px';
+  document.body.append(host);
+  const read = (id, i) => {
+    const e = new E.OrigamiFoldEngine(host, { reducedMotion: true });
+    e.show(D.getOrigamiModel(id).steps[i], { autoplay: false });
+    const head = host.querySelector('.oa-arrow-head');
+    const behind = host.querySelector('.oa-paper-flap-behind');
+    const sym = host.querySelector('.oa-fold-symbol');
+    const out = { kind: e.parts.notation, dash: getComputedStyle(host.querySelector('.oa-crease')).strokeDasharray,
+      head: head.classList.contains('oa-arrow-head-full') ? 'full' : head.classList.contains('oa-arrow-head-half') ? 'half' : 'plain',
+      behind: getComputedStyle(behind).display !== 'none' && behind.getAnimations().length > 0,
+      symbol: getComputedStyle(sym).display !== 'none' && (sym.getAttribute('d') || '').length > 10 };
+    e.destroy();
+    return out;
+  };
+  const res = { fox: read('little-fox', 0), cat: read('cat-face', 5), fish: read('swimming-fish', 5) };
+  host.remove();
+  return res;
+}"""
+
 # Classic Crane steps 1-4 (fold and reopen): Play is there, the paper moves mid-fold, and on the
 # hold after reopening the flap is back flat with the crease drawn at full strength.
 REOPEN = """async () => {
@@ -108,7 +133,7 @@ REOPEN = """async () => {
   for (const i of [0, 1, 2, 3]) {
     const e = new E.OrigamiFoldEngine(host, { reducedMotion: true });
     e.show(D.getOrigamiModel('classic-crane').steps[i], { autoplay: false });
-    const flap = host.querySelector('.oa-paper-flap'), crease = host.querySelector('.oa-crease');
+    const flap = host.querySelector('.oa-paper-flap'), crease = host.querySelector('.oa-crease-mark');
     const seek = (ms) => e.anims.forEach(x => { x.currentTime = ms; });
     const kf = flap.getAnimations()[0].effect.getKeyframes();
     const total = e.cycleMs, foldEnd = kf.findIndex(k => k.offset > 0 && k.fill !== kf[0].fill);
@@ -286,6 +311,27 @@ def run(args):
                 page.locator('.oa-root [data-action="continue"]').click()
                 check('中文 fold diagram is labelled 摺紙步驟圖', page.locator('.oa-root .oa-fold-svg').get_attribute('aria-label') == '摺紙步驟圖')
                 check('Continue reopens the lesson', page.locator('.oa-root.oa-lesson-mode').count() == 1)
+                notes = page.evaluate(NOTATION)
+                check(f'Little Fox 1 is a valley: dashed line, full arrowhead {notes["fox"]}', notes['fox']['kind'] == 'valley'
+                      and notes['fox']['dash'] == '8px, 6px' and notes['fox']['head'] == 'full')
+                check(f'Cat Face 6 is a mountain: dash-dot line, half arrowhead, flap behind {notes["cat"]}', notes['cat']['kind'] == 'mountain'
+                      and notes['cat']['dash'].replace(' ', '') == '9px,4px,2px,4px' and notes['cat']['head'] == 'half' and notes['cat']['behind'])
+                check(f'Swimming Fish 6 shows the turn-over symbol {notes["fish"]}', notes['fish']['kind'] == 'flip' and notes['fish']['symbol'])
+                page.locator('.oa-root [data-action="screen-back"]').click()
+                page.locator('.oa-root [data-action="screen-back"]').click()
+                page.locator('.oa-root [data-model="cat-face"]').click()
+                page.locator('.oa-root [data-action="start-lesson"]').click()
+                for _ in range(5):
+                    page.locator('.oa-root [data-action="next-step"]').click()
+                check('Cat Face 6 legend: 山摺 with its meaning', '山摺' in page.locator('.oa-root [data-legend="notation"]').inner_text()
+                      and page.locator('.oa-root [data-legend="crease"]').is_hidden())
+                for w, h in SIZES:
+                    page.set_viewport_size({'width': w, 'height': h})
+                    page.wait_for_timeout(200)
+                    fit = page.evaluate(FIT)
+                    check(f'{w}x{h}: the mountain legend fits, nothing scrolls', fit['hostScroll'] <= 1 and fit['hostScrollX'] <= 1 and fit['docScroll'] <= 1
+                          and all(b['inside'] for b in fit['boxes'].values()))
+                page.screenshot(path=str(out / 'mountain-legend.png'))
                 check('No page errors', not report['pageErrors'] and not report['consoleErrors'])
             except Exception:
                 page.screenshot(path=str(out / 'failure.png'))

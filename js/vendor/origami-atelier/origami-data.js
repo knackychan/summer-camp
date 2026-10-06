@@ -383,7 +383,7 @@ export const ORIGAMI_MODELS = [
           "zhHant": "讓臉型變得更圓。"
         },
         "diagram": "bottom-back",
-        "operation": "valley-fold"
+        "operation": "mountain-fold"
       },
       {
         "id": "step-07",
@@ -544,7 +544,7 @@ export const ORIGAMI_MODELS = [
           "zhHant": "小小一摺就好。"
         },
         "diagram": "nose-back",
-        "operation": "valley-fold"
+        "operation": "mountain-fold"
       },
       {
         "id": "step-08",
@@ -883,7 +883,7 @@ export const ORIGAMI_MODELS = [
           "zhHant": "小摺角會讓愛心更圓。"
         },
         "diagram": "corner-back",
-        "operation": "valley-fold"
+        "operation": "mountain-fold"
       },
       {
         "id": "step-08",
@@ -993,7 +993,7 @@ export const ORIGAMI_MODELS = [
           "zhHant": "讓花朵底部更平。"
         },
         "diagram": "bottom-back",
-        "operation": "valley-fold"
+        "operation": "mountain-fold"
       },
       {
         "id": "step-05",
@@ -1010,7 +1010,7 @@ export const ORIGAMI_MODELS = [
           "zhHant": "只摺一點點。"
         },
         "diagram": "corner-back-left",
-        "operation": "valley-fold"
+        "operation": "mountain-fold"
       },
       {
         "id": "step-06",
@@ -1027,7 +1027,7 @@ export const ORIGAMI_MODELS = [
           "zhHant": "和左邊差不多即可。"
         },
         "diagram": "corner-back-right",
-        "operation": "valley-fold"
+        "operation": "mountain-fold"
       },
       {
         "id": "step-07",

@@ -157,6 +157,7 @@ export function mountOrigamiAtelier(root, options = {}) {
             <span class="oa-step-badge">${t(`Step ${stepIndex+1} of ${model.steps.length}`,`步驟 ${stepIndex+1} / ${model.steps.length}`)}</span>
             <span class="oa-legend" data-legend="crease"><i class="oa-legend-crease" aria-hidden="true"></i>${t("Fold line","摺線")}</span>
             <span class="oa-legend" data-legend="arrow"><i class="oa-legend-arrow" aria-hidden="true">➜</i>${t("Fold this way","往這邊摺")}</span>
+            <span class="oa-legend oa-legend-notation" data-legend="notation"><i class="oa-legend-sym" aria-hidden="true"></i><span class="oa-legend-text"></span></span>
           </div>
           <h2 class="oa-instruction">${escapeHtml(textFor(step.instruction, locale))}</h2>
           ${config.preReader ? "" : `<p class="oa-hint">${escapeHtml(textFor(step.hint, locale))}</p>`}
@@ -178,8 +179,19 @@ export function mountOrigamiAtelier(root, options = {}) {
     engine = new OrigamiFoldEngine(view.querySelector("[data-fold-stage]"), { front:paper.front, back:paper.back, label:t("Origami folding diagram","摺紙步驟圖") });
     if (keep) engine.played = keep.played;
     engine.show(step, keep ? { autoplay:!keep.paused, time:keep.time } : {});
-    view.querySelector('[data-legend="crease"]').hidden = !engine.parts.crease;
-    view.querySelector('[data-legend="arrow"]').hidden = !engine.parts.arrow;
+    /* Book notation (docs/plans/2026-10-05-origami-audit/ slice 05): a step with a valley,
+       mountain, precrease, flip or rotate shows that one symbol and what it means; other steps
+       keep the plain fold-line / arrow chips. */
+    const kind = engine.parts.notation;
+    view.querySelector('[data-legend="crease"]').hidden = !engine.parts.crease || Boolean(kind);
+    view.querySelector('[data-legend="arrow"]').hidden = !engine.parts.arrow || Boolean(kind);
+    const notation = view.querySelector('[data-legend="notation"]');
+    notation.hidden = !kind;
+    if (kind) {
+      notation.dataset.kind = kind;
+      notation.querySelector(".oa-legend-sym").innerHTML = NOTATION[kind].sym;
+      notation.querySelector(".oa-legend-text").textContent = t(...NOTATION[kind].text);
+    }
     syncPlayButton();
     announce(`${modelName(model)}. ${t("Step","步驟")} ${stepIndex+1}. ${textFor(step.instruction,locale)}`);
   }
@@ -188,6 +200,19 @@ export function mountOrigamiAtelier(root, options = {}) {
      e.g. reduced motion) while it is still, Watch again once the loops have run out and the fold
      rests on the result (docs/plans/2026-10-05-origami-audit/ slice 03). Disabled on the finish
      steps, which have nothing to move. */
+  const NOTATION = {
+    valley:{ text:["Valley fold — fold toward you, the paper makes a V","谷摺：往自己這邊摺，紙會變成 V 字"],
+      sym:'<svg viewBox="0 0 44 14"><line x1="2" y1="7" x2="30" y2="7" stroke="#a84e63" stroke-width="2.5" stroke-dasharray="5 4"/><path d="M31 1.5 L42 7 L31 12.5 Z" fill="#3276b1"/></svg>' },
+    mountain:{ text:["Mountain fold — fold away from you, the paper makes a ^","山摺：往後面摺，紙會像一座山"],
+      sym:'<svg viewBox="0 0 44 14"><line x1="2" y1="7" x2="30" y2="7" stroke="#a84e63" stroke-width="2.5" stroke-dasharray="6 3 1.5 3"/><path d="M31 1 L42 7 L31 7 Z" fill="#fff9ec" stroke="#3276b1" stroke-width="2"/></svg>' },
+    precrease:{ text:["Fold, press, then open again","摺好、壓一壓，再打開"],
+      sym:'<svg viewBox="0 0 44 14"><line x1="2" y1="7" x2="18" y2="7" stroke="#a84e63" stroke-width="2.5" stroke-dasharray="4 3"/><line x1="24" y1="7" x2="42" y2="7" stroke="#a84e63" stroke-width="1.6"/></svg>' },
+    flip:{ text:["Turn the paper over","把紙翻到背面"],
+      sym:'<svg viewBox="0 0 44 22"><path d="M8 19 C4 7 22 0 30 7 C36 13 28 21 20 17 C15 14 17 8 23 7" fill="none" stroke="#3276b1" stroke-width="2.6" stroke-linecap="round"/><path d="M18 4 L26 6 L20 12 Z" fill="#3276b1"/></svg>' },
+    rotate:{ text:["Turn the paper around","把紙轉個方向"],
+      sym:'<svg viewBox="0 0 44 22"><path d="M32 13 A9 9 0 1 1 23 3" fill="none" stroke="#3276b1" stroke-width="2.6" stroke-linecap="round"/><path d="M20 0 L28 3 L21 8 Z" fill="#3276b1"/></svg>' },
+  };
+
   function syncPlayButton() {
     const btn = view.querySelector(".oa-play");
     if (!btn || !engine) return;

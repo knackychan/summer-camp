@@ -32,3 +32,12 @@
 
 **DONE WHEN:** `node scripts/check.mjs` green with the new gate; `python scripts/check-origami-ui.py`
 passes.
+
+**Shipped 2026-10-06.** Engine: `notationFor()` per operation; valley 8 6 dashes and a filled
+arrowhead, mountain 9 4 2 4 dash-dot and a hollow half arrowhead, precrease dashes that turn into a
+thin solid `oa-crease-mark` once reopened, flip / rotate symbols top-right; `parts.notation`. The
+legend shows one symbol + meaning (EN + 中文) and hides the plain fold-line / arrow chips; other
+operations keep those chips. Data: the six tags listed above. `check.mjs` gate green;
+`check-origami-ui.py` 62/62 (new: Little Fox 1 valley, Cat Face 6 mountain with the flap behind,
+Swimming Fish 6 flip symbol, Cat Face 6 legend 山摺 in the real lesson, the mountain legend fits at
+all three sizes). Cache `v187-origami-notation` (v186 went to Code Quest meanwhile).

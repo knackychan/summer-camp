@@ -578,6 +578,15 @@ try {
   if (bad.length) fail("origami 摺", `${bad.length} 中文 strings use 折 for folding, e.g. "${bad[0]}" — use 摺`);
   const unnamed = origami.PAPER_COLORS.filter((c) => !c.labelZh);
   if (unnamed.length) fail("origami 中文", `paper colours without labelZh: ${unnamed.map((c) => c.id).join(", ")}`);
+  // Slice 05: the diagram draws valley and mountain differently now, so a step whose words say
+  // "backward" / "behind" but is tagged valley-fold would show the opposite of what it says.
+  // These read "back" in another sense: "back up", "the back point", "on the back".
+  const backOk = new Set(["samurai-helmet/step-04", "samurai-helmet/step-05", "swan/step-09", "water-bomb/step-06"]);
+  for (const m of origami.ORIGAMI_MODELS) for (const st of m.steps) {
+    if (st.operation === "valley-fold" && /(backward|behind)/i.test(st.instruction.en) && !backOk.has(`${m.id}/${st.id}`)) {
+      fail("origami notation", `${m.id} ${st.id} says "${st.instruction.en}" but is tagged valley-fold`);
+    }
+  }
 }
 
 // Brain gate (plan 2026-07-26-brain-gym slice 11): the daily three are the door to the games

@@ -256,6 +256,18 @@ function hingeOf(sheet, d, line, templateFlap) {
   return { flap, stay, a, b, crease:tip ? chord(flap, a, b) : line };
 }
 
+/* Which book symbol a step uses (slice 05, design O7). Precreases fold toward you, so they use
+   the valley arrow and a dashed line that turns into the crease mark. */
+function notationFor(step, plan) {
+  const op = step.operation;
+  if (plan?.reopen) return "precrease";
+  if (op === "mountain-fold") return "mountain";
+  if (op === "valley-fold" || op === "blintz" || op === "unfold") return "valley";
+  if (op === "flip") return "flip";
+  if (op === "rotate") return "rotate";
+  return null;
+}
+
 /* Templates that bring a corner toward the middle ("…-to-center", and the generic left / right /
    top / bottom ones) only say which corner moves; their drawn crease is the centre line, which
    would fold the sheet in half. The crease that brings the corner `reach` of the way to the
@@ -332,7 +344,7 @@ export class OrigamiFoldEngine {
     this.cycleMs = 0;
     this.paused = true;
     this.played = false;
-    this.parts = { crease:false, arrow:false };
+    this.parts = { crease:false, arrow:false, notation:null };
     this.renderShell();
   }
 
@@ -355,7 +367,11 @@ export class OrigamiFoldEngine {
     this.arrowHead = svgEl("path", {class:"oa-arrow-head", fill:"none"});
     this.base2 = svgEl("polygon", {class:"oa-paper-base oa-paper-base-second"});
     this.flap2 = svgEl("polygon", {class:"oa-paper-flap-second"});
-    this.svg.append(shadow,this.ghost,this.after,this.flapBehind,this.base,this.base2,this.landing,this.flapHome,this.flap,this.flap2,this.crease,this.extraCrease,this.arrowGlow,this.arrow,this.arrowHead);
+    this.creaseMark = svgEl("line", {class:"oa-crease-mark"});
+    this.extraMark = svgEl("line", {class:"oa-crease-mark"});
+    this.symbol = svgEl("path", {class:"oa-fold-symbol", fill:"none"});
+    this.symbolHead = svgEl("path", {class:"oa-fold-symbol-head"});
+    this.svg.append(shadow,this.ghost,this.after,this.flapBehind,this.base,this.base2,this.landing,this.flapHome,this.flap,this.flap2,this.crease,this.extraCrease,this.creaseMark,this.extraMark,this.arrowGlow,this.arrow,this.arrowHead,this.symbol,this.symbolHead);
     this.host.append(this.svg);
     this.setColors(this.front,this.back);
   }
@@ -381,7 +397,8 @@ export class OrigamiFoldEngine {
       : d.arrow;
     const crease = plan?.crease || d.crease;
     const extra = plan?.second?.crease || d.extraCrease;
-    this.parts = { crease:Boolean(crease), arrow:Boolean(arrowPts) };
+    const notation = notationFor(step, plan);
+    this.parts = { crease:Boolean(crease), arrow:Boolean(arrowPts), notation };
     [this.base2, this.flap2].forEach(el => { el.style.display = "none"; });
     this.base.style.transform = "none";
     if (plan?.kind === "shape") this.drawShape(plan);
@@ -395,7 +412,11 @@ export class OrigamiFoldEngine {
     };
     line(this.crease, crease);
     line(this.extraCrease, extra);
+    line(this.creaseMark, plan?.reopen ? crease : null);
+    line(this.extraMark, plan?.second ? extra : null);
     this.extraCrease.classList.toggle("oa-crease-secondary", !plan?.second);
+    this.crease.classList.toggle("oa-crease-mountain", notation === "mountain");
+    this.drawSymbol(notation);
     const arrowParts = [this.arrowGlow, this.arrow, this.arrowHead];
     if (arrowPts) {
       const [s,c,e]=arrowPts;
@@ -405,7 +426,13 @@ export class OrigamiFoldEngine {
       this.arrowGlow.setAttribute("d",curve);
       const vx=e[0]-c[0], vy=e[1]-c[1], len=Math.hypot(vx,vy)||1, ux=vx/len, uy=vy/len;
       const px=-uy, py=ux, ax=e[0]-ux*12, ay=e[1]-uy*12;
-      this.arrowHead.setAttribute("d",`M ${ax+px*7} ${ay+py*7} L ${e[0]} ${e[1]} L ${ax-px*7} ${ay-py*7}`);
+      /* Book notation (slice 05, design O7): valley = a full arrowhead, mountain = a hollow half one. */
+      const full = notation === "valley" || notation === "precrease", half = notation === "mountain";
+      this.arrowHead.classList.toggle("oa-arrow-head-full", full);
+      this.arrowHead.classList.toggle("oa-arrow-head-half", half);
+      this.arrowHead.setAttribute("d", full ? `M ${ax+px*8} ${ay+py*8} L ${e[0]} ${e[1]} L ${ax-px*8} ${ay-py*8} Z`
+        : half ? `M ${ax+px*10} ${ay+py*10} L ${e[0]} ${e[1]} L ${ax} ${ay} Z`
+        : `M ${ax+px*7} ${ay+py*7} L ${e[0]} ${e[1]} L ${ax-px*7} ${ay-py*7}`);
     } else arrowParts.forEach(el => { el.style.display = "none"; });
     this.arrowGlow.style.opacity = "0";
 
@@ -427,10 +454,12 @@ export class OrigamiFoldEngine {
     }
     if (canAnimate && crease && anims.length) {
       if (plan?.reopen) {
-        /* The crease is faint until the paper has been folded and opened: it is what is left. */
-        const mark = (w) => [{offset:0,opacity:.35},{offset:w.fs,opacity:.6},{offset:w.ue,opacity:1},{offset:c,opacity:1},{offset:1,opacity:.35}];
-        anims.push(this.crease.animate(mark(t.folds[0]), timing));
-        if (plan.second) anims.push(this.extraCrease.animate(mark(t.folds[1]), timing));
+        /* The dashed fold line shows while the paper folds; once it is open again a thin solid
+           line is what is left on the paper (slice 05). */
+        const dashed = (w) => [{offset:0,opacity:.55},{offset:w.fs,opacity:1},{offset:w.ue,opacity:1},{offset:w.ue,opacity:0},{offset:c,opacity:0},{offset:1,opacity:.55}];
+        const mark = (w) => [{offset:0,opacity:0},{offset:w.ue,opacity:0},{offset:w.ue,opacity:1},{offset:c,opacity:1},{offset:1,opacity:0}];
+        anims.push(this.crease.animate(dashed(t.folds[0]), timing), this.creaseMark.animate(mark(t.folds[0]), timing));
+        if (plan.second) anims.push(this.extraCrease.animate(dashed(t.folds[1]), timing), this.extraMark.animate(mark(t.folds[1]), timing));
       } else {
         anims.push(this.crease.animate([{offset:0,opacity:.55},{offset:a,opacity:1},{offset:b,opacity:1},{offset:1,opacity:.55}], timing));
       }
@@ -447,6 +476,20 @@ export class OrigamiFoldEngine {
     if (start >= this.endMs) { this.paused = false; this.played = true; return; }
     if (autoplay && !this.reducedMotion) this.resume();
     else this.pause();
+  }
+
+  /* Flip and rotate get the book symbols in the top-right corner: a looped turn-over arrow, and a
+     circular arrow (slice 05). */
+  drawSymbol(notation) {
+    const show = notation === "flip" || notation === "rotate";
+    [this.symbol, this.symbolHead].forEach(el => { el.style.display = show ? "" : "none"; });
+    if (notation === "flip") {
+      this.symbol.setAttribute("d", "M 250 50 C 244 26 274 12 288 26 C 298 38 284 54 270 46 C 262 41 264 30 274 28");
+      this.symbolHead.setAttribute("d", "M 266 22 L 279 27 L 269 36 Z");
+    } else if (notation === "rotate") {
+      this.symbol.setAttribute("d", "M 288 34 A 18 18 0 1 1 272 16");
+      this.symbolHead.setAttribute("d", "M 266 10 L 279 16 L 267 24 Z");
+    }
   }
 
   /* Template steps (design O3): the hand-drawn flap slides and spins around its own middle, then
