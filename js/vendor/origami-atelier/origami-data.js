@@ -2139,8 +2139,8 @@ export const ORIGAMI_MODELS = [
           "zhHant": "第一條對角線"
         },
         "instruction": {
-          "en": "Fold the top section diagonally and reopen.",
-          "zhHant": "把上半部做一條對角摺後打開。"
+          "en": "Fold diagonally and reopen.",
+          "zhHant": "沿對角線摺好再打開。"
         },
         "hint": {
           "en": "Make the crease crisp.",
@@ -2156,8 +2156,8 @@ export const ORIGAMI_MODELS = [
           "zhHant": "第二條對角線"
         },
         "instruction": {
-          "en": "Fold the opposite diagonal and reopen.",
-          "zhHant": "另一方向也做對角摺後打開。"
+          "en": "Fold the other diagonal and reopen.",
+          "zhHant": "另一條對角線也摺好再打開。"
         },
         "hint": {
           "en": "The creases form an X.",
@@ -2173,8 +2173,8 @@ export const ORIGAMI_MODELS = [
           "zhHant": "水平摺痕"
         },
         "instruction": {
-          "en": "Fold across the center of the X and reopen.",
-          "zhHant": "沿 X 的中央做水平摺再打開。"
+          "en": "Fold in half across the middle and reopen.",
+          "zhHant": "從中間對摺後再打開。"
         },
         "hint": {
           "en": "This prepares the collapse.",
@@ -2572,12 +2572,12 @@ export const ORIGAMI_MODELS = [
       {
         "id": "step-11",
         "title": {
-          "en": "Narrow the neck side",
-          "zhHant": "收窄脖子側"
+          "en": "Narrow the left side",
+          "zhHant": "左邊收窄"
         },
         "instruction": {
-          "en": "Fold one lower edge to the center.",
-          "zhHant": "把一側下方邊緣摺向中央。"
+          "en": "Fold the lower left edge of the top layer to the center.",
+          "zhHant": "把最上層左下的邊摺到中央。"
         },
         "hint": {
           "en": "This prepares a thin neck.",
@@ -2589,12 +2589,63 @@ export const ORIGAMI_MODELS = [
       {
         "id": "step-12",
         "title": {
-          "en": "Narrow the tail side",
-          "zhHant": "收窄尾巴側"
+          "en": "Narrow the right side",
+          "zhHant": "右邊收窄"
         },
         "instruction": {
-          "en": "Fold the other lower edge to the center.",
-          "zhHant": "另一側下方邊緣也摺向中央。"
+          "en": "Fold the lower right edge of the top layer to the center.",
+          "zhHant": "把最上層右下的邊也摺到中央。"
+        },
+        "hint": {
+          "en": "Keep both edges on the center line.",
+          "zhHant": "兩邊都貼齊中央線。"
+        },
+        "diagram": "side-right-narrow",
+        "operation": "valley-fold"
+      },
+      {
+        "id": "step-13",
+        "title": {
+          "en": "Turn it over",
+          "zhHant": "翻面"
+        },
+        "instruction": {
+          "en": "Turn the crane over.",
+          "zhHant": "把紙鶴翻到另一面。"
+        },
+        "hint": {
+          "en": "The back gets the same two folds.",
+          "zhHant": "背面也要摺同樣的兩摺。"
+        },
+        "diagram": "flip",
+        "operation": "flip"
+      },
+      {
+        "id": "step-14",
+        "title": {
+          "en": "Narrow the left side",
+          "zhHant": "左邊收窄"
+        },
+        "instruction": {
+          "en": "Fold the lower left edge to the center again.",
+          "zhHant": "再把左下的邊摺到中央。"
+        },
+        "hint": {
+          "en": "Match the front.",
+          "zhHant": "和正面一樣。"
+        },
+        "diagram": "side-left-narrow",
+        "operation": "valley-fold"
+      },
+      {
+        "id": "step-15",
+        "title": {
+          "en": "Narrow the right side",
+          "zhHant": "右邊收窄"
+        },
+        "instruction": {
+          "en": "Fold the lower right edge to the center. Both sides are slim now.",
+          "zhHant": "再把右下的邊摺到中央。現在兩面都很細了。"
         },
         "hint": {
           "en": "Keep both sides slim.",
@@ -2604,7 +2655,7 @@ export const ORIGAMI_MODELS = [
         "operation": "valley-fold"
       },
       {
-        "id": "step-13",
+        "id": "step-16",
         "title": {
           "en": "Raise neck and tail",
           "zhHant": "抬起脖子和尾巴"
@@ -2621,7 +2672,7 @@ export const ORIGAMI_MODELS = [
         "operation": "inside-reverse"
       },
       {
-        "id": "step-14",
+        "id": "step-17",
         "title": {
           "en": "Make the head",
           "zhHant": "做頭"
@@ -2638,7 +2689,7 @@ export const ORIGAMI_MODELS = [
         "operation": "inside-reverse"
       },
       {
-        "id": "step-15",
+        "id": "step-18",
         "title": {
           "en": "Finish the crane",
           "zhHant": "完成紙鶴"

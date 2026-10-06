@@ -433,7 +433,7 @@ def run(args):
                 check(f'The folded flap stays on the result ({hinge["heldOpacity"]})', hinge['heldOpacity'] > 0.9)
                 page.locator('.oa-root [data-action="replay"]').click()
                 steps = page.evaluate(EVERY_STEP)
-                check(f'Every step of all 28 models draws without an error {steps["broken"][:3]}', steps['count'] == 273 and not steps['broken'])
+                check(f'Every step of all 28 models draws without an error {steps["broken"][:3]}', steps['count'] == 276 and not steps['broken'])
                 check(f'Every step but the finish has something to play {steps["still"][:5]}', not steps['still'])
                 paper = page.evaluate(PAPER)
                 ps = {r['id']: r for r in paper['steps']}

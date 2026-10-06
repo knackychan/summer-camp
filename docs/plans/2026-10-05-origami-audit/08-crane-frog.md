@@ -16,3 +16,7 @@
 
 **DONE WHEN:** `node scripts/check.mjs` green; `python scripts/check-origami-ui.py` passes; every
 crane step opens.
+
+**Shipped 2026-10-06.** Crane 15 → 18 steps (left, right, turn over, left, right; template
+pictures as today); frog steps 1–3 reworded for a square. `check.mjs` green;
+`check-origami-ui.py` 78/78 with 276 steps drawing. Cache `v190-origami-crane`.
