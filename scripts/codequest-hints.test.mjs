@@ -31,9 +31,9 @@ assert.equal(difficultyFor(byId.q12), 'hard');
 for (const level of LEVELS) assert.ok(['easy', 'medium', 'hard'].includes(difficultyFor(level)), level.id + ' difficulty');
 
 // Every quest has three bilingual hints (hand-written or the chip fallback).
-// Card rooms are hand-written (slice 06); code rooms may still use the chip fallback.
-const handWritten = new Set(LEVELS.filter(level => level.codingView !== 'code').map(level => level.id));
-assert.equal(handWritten.size, 24);
+// Every quest is hand-written (slices 06–08); the chip fallback is used by none.
+const handWritten = new Set(LEVELS.map(level => level.id));
+assert.equal(Object.keys(HINTS).length, LEVELS.length);
 for (const level of LEVELS) for (const tier of [0, 1, 2]) {
   assert.ok(filled(hintFor(level, tier)), level.id + ' tier ' + tier);
   if (handWritten.has(level.id)) assert.ok(hasHandHint(level, tier), level.id + ' tier ' + tier + ' hand-written');
@@ -49,6 +49,7 @@ for (const [id, entry] of Object.entries(HINTS)) {
     assert.ok(en.length <= 110, id + ' ' + tier + ' EN ≤ 110 chars (' + en.length + ')');
     assert.ok(!HIT_COUNT_EN.test(en) && !HIT_COUNT_ZH.test(zh), id + ' ' + tier + ' states no hit count');
     assert.ok(!SHAME.test(en) && !SHAME.test(zh), id + ' ' + tier + ' never says wrong/failed');
+    assert.ok(!/[<>&`]/.test(en + zh), id + ' ' + tier + ' has no < > & or backticks (hints go in as HTML)');
     if (tier === 'gentle') assert.ok(!/^good try/i.test(en), id + ' gentle is read before any try');
   }
 }

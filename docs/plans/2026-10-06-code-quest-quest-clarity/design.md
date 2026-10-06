@@ -1,6 +1,6 @@
 # Code Quest: quest clarity — say the rule up front, hint when stuck, explain the win
 
-**Status:** Design approved by Papa in chat, 2026-10-06. Not started.
+**Status:** Design approved by Papa in chat, 2026-10-06. Slices 01–08 built and shipped 2026-10-06.
 **Game id:** `codequest`.
 **Builds on:** `2026-10-03-code-quest/`, `2026-10-03-code-quest-redesign/`, `2026-10-05-code-quest-facing-and-rune/`, `2026-10-05-code-quest-simple-cards/`. All of them stay in force; this plan supersedes nothing.
 

@@ -1,6 +1,6 @@
 # Slice 08: Hint text — code rooms q44, q47–q72
 
-**Status:** Design approved by Papa 2026-10-06 (`design.md` D6). Not started.
+**Status:** Design approved by Papa 2026-10-06 (`design.md` D6). Built 2026-10-06; wording approved by Papa the same day (`review-07-08-code-rooms.md`).
 **Goal:** The remaining typed-code quests (mechanisms, logic, companions, signals, state machines) have their own hints in EN + 繁體中文.
 **Depends on:** 01.
 **Files:** `js/games/codequest/hints.js`, `scripts/codequest-hints.test.mjs`.
