@@ -21,7 +21,7 @@
     - gentle: "The golem is tough — one hit won't be enough." / "魔像很強壯，打一下不夠。"
     - strong: "Put Attack with a 🔁 Repeat sticker in the 🪨 Rune row, then put the 🪨 card in the Hero row." / "把貼了 🔁 重複貼紙的攻擊放進 🪨 符文那一排，再把 🪨 卡片放到英雄那一排。"
     - (No count in the strong hint: with the Training Blade the golem needs 4 hits, with the Bronze Blade 2; the peek shows the reference's own shape.)
-    - near: "Nearly! Your Hero row can start like this:" / "快成功了！英雄那一排可以這樣開始："
+    - near: "Nearly! You can start like this:" / "快成功了！可以這樣開始："
   - `hintFor(level, tier)` (`tier` 0 gentle, 1 strong, 2 near) → `[en,zh]`. Missing entry or tier → fallback built from `skillsFor` ("Look at the quest card: this quest needs 🪨 Rune + 🔁 Repeat." / "看看任務卡：這一關需要 🪨 符文＋🔁 重複。"; with no skills: "Look at the goal flag 🏁 and try one card at a time." / "看看目標旗子 🏁，一次試一張卡。").
   - `peekFor(level)`: card rooms (`codingView !== 'code'`) → `{ kind:'cards', nodes: reference.main.slice(0, 3), more: reference.main.length > 3, rune: reference.functions.rune || null }`; code rooms → `{ kind:'code', lines: first 3 non-empty lines of toJavaScript(reference.main, reference.functions), more }`. Uses the existing `toJavaScript` (the one `codequest.js` `sourceFromAst` calls).
   - `missingSkills(level, program, functions)` → SKILLS entries for each `requires` tag where `requirementPresent` is false (same folding as `skillsFor`).

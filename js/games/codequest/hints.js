@@ -75,12 +75,108 @@ export function chipText(skills) {
 const hint = (gentle, strong, near) => Object.freeze({ gentle: Object.freeze(gentle), strong: Object.freeze(strong), near: Object.freeze(near) });
 
 /** Hand-written hints per quest (D6). Missing quests fall back to `fallbackHint`. */
+// One short lead-in: the peek under it labels its own rows (Rune, Hero), so it fits on one line.
+const NEAR = Object.freeze(['Nearly! You can start like this:', '快成功了！可以這樣開始：']);
+
+/* Card rooms (slice 06). Card and sticker words are the ones on the cards. A fight hint never
+   counts hits: "Repeat + if enemy" keeps striking only while the enemy is there, for any blade. */
 export const HINTS = Object.freeze({
+  q01: hint(
+    ['The exit is straight ahead. How many steps away is it?', '出口就在正前方。要走幾步才到？'],
+    ['Put one Move card in the Hero row for each step to the glowing exit.', '每走一步，就在英雄那一排放一張前進卡，一直到發光的出口。'],
+    NEAR),
+  q02: hint(
+    ['The hall bends. Walk to the corner first, then look where it goes.', '走廊會轉彎。先走到轉角，再看看路往哪裡走。'],
+    ['Move to the corner, Turn Right — the hero\'s own right hand — then Move to the exit.', '前進到轉角，右轉（英雄自己的右手邊），再前進到出口。'],
+    NEAR),
+  q03: hint(
+    ['A chest opens only when the hero stands next to it and faces it.', '英雄要站在寶箱旁邊、面向它，才能打開。'],
+    ['Walk until the chest is right below the hero, Turn Right to face it, then Open.', '走到寶箱就在英雄正下方，右轉面向它，再打開。'],
+    NEAR),
+  q04: hint(
+    ['The hero can only hit what is right in front.', '英雄只能打到正前方的東西。'],
+    ['Step under the slime, Turn Left to face it, then Attack.', '走到史萊姆下方，左轉面向它，再攻擊。'],
+    NEAR),
+  q05: hint(
+    ['That is a long hall — lots of the same card in a row.', '這條走廊好長，要放好多張一樣的卡。'],
+    ['Use one Move card with a 🔁 Repeat sticker instead of many Moves.', '用一張貼了 🔁 重複貼紙的前進卡，代替好多張前進卡。'],
+    NEAR),
+  q06: hint(
+    ['Two long walks: across, then down to the chest.', '要走兩段長路：先往旁邊，再往下走到寶箱。'],
+    ['Give each walk a Move with a 🔁 Repeat sticker. Open when the chest is in front.', '每段路用一張貼了 🔁 重複貼紙的前進卡。寶箱在正前方時再打開。'],
+    NEAR),
+  q07: hint(
+    ['Something blocks the hall. The hero could look before stepping.', '有東西擋住走廊。英雄可以先看一看再走。'],
+    ['Give Attack an "if enemy" sticker: the hero strikes only when the slime is there.', '在攻擊卡貼上「如果有敵人」貼紙：史萊姆在前面時，英雄才會攻擊。'],
+    NEAR),
+  q08: hint(
+    ['The goblin stands between the hero and the chest.', '哥布林擋在英雄和寶箱中間。'],
+    ['Attack with a 🔁 Repeat sticker and an "if enemy" sticker keeps hitting until the goblin is gone.', '攻擊卡貼上 🔁 重複和「如果有敵人」貼紙，會一直打到哥布林不見為止。'],
+    NEAR),
+  q09: hint(
+    ['The hero starts hurt, and the goal wants them healthy at the end.', '英雄一開始就受傷了，目標要他最後保持健康。'],
+    ['Give Heal an "if hurt" sticker first. Then face the goblin and Attack.', '先在治療卡貼上「如果受傷」貼紙。再面向哥布林攻擊。'],
+    NEAR),
+  q10: hint(
+    ['Both walks are the same length. Could one card do a whole walk?', '兩段路一樣長。能不能用一張卡走完一整段？'],
+    ['Put Move with a Repeat sticker in the 🪨 Rune row. Use the 🪨 card before and after the turn.', '把貼了重複貼紙的前進卡放進 🪨 符文那一排。轉彎前後各用一次 🪨 卡片。'],
+    NEAR),
+  q11: hint(
+    ['Two goblins, one way to beat them. Build that way once.', '兩隻哥布林，打法都一樣。把打法只做一次。'],
+    ['In the 🪨 Rune row: Attack with Repeat and "if enemy" stickers. Use the 🪨 card at each goblin.', '🪨 符文那一排放：貼了重複和「如果有敵人」的攻擊卡。每隻哥布林前用一次 🪨 卡片。'],
+    NEAR),
   q12: hint(
     ['The golem is tough — one hit won\'t be enough.', '魔像很強壯，打一下不夠。'],
-    ['Put Attack with a 🔁 Repeat sticker in the 🪨 Rune row, then put the 🪨 card in the Hero row.', '把貼了 🔁 重複貼紙的攻擊放進 🪨 符文那一排，再把 🪨 卡片放到英雄那一排。'],
-    ['Nearly! Your Hero row can start like this:', '快成功了！英雄那一排可以這樣開始：']
-  )
+    ['Put Attack with the biggest 🔁 Repeat sticker in the 🪨 Rune row, then the 🪨 card in the Hero row.', '把貼了最大 🔁 重複貼紙的攻擊卡放進 🪨 符文那一排，再把 🪨 卡片放到英雄那一排。'],
+    NEAR),
+  q13: hint(
+    ['The door is locked. Something in the hall can open it.', '門鎖住了。走廊裡有東西可以打開它。'],
+    ['Walk over the key to the door, Turn Right, Open, then Move with a 🔁 Repeat sticker.', '走過鑰匙到門前，右轉，打開，再用貼了 🔁 重複貼紙的前進卡。'],
+    NEAR),
+  q14: hint(
+    ['Look at the floor on the way down: one tile is a trap.', '看看往下走的地板：有一格是陷阱。'],
+    ['Face the trap and give Disarm an "if trap" sticker, then Move with a 🔁 Repeat sticker.', '面向陷阱，在拆除卡貼上「如果有陷阱」貼紙，再用貼了 🔁 重複貼紙的前進卡。'],
+    NEAR),
+  q15: hint(
+    ['One hall holds everything. Take it one thing at a time, left to right.', '一條走廊什麼都有。從左到右，一次處理一樣。'],
+    ['Key, door, goblin, trap, chest: face each one and use its card. Stickers keep it short.', '鑰匙、門、哥布林、陷阱、寶箱：面向每一個，用它的卡片。貼紙讓程式變短。'],
+    NEAR),
+  q16: hint(
+    ['This enemy wears armor. A normal Attack just goes clang.', '這個敵人穿著盔甲。普通攻擊只會「鏘」一聲。'],
+    ['Give Heavy an "if armored" sticker and a 🔁 Repeat sticker, then walk to the exit.', '在重擊卡貼上「如果有盔甲」和 🔁 重複貼紙，再走到出口。'],
+    NEAR),
+  q17: hint(
+    ['The hero starts poisoned, and the goal wants no poison at the end.', '英雄一開始就中毒了，目標要他最後沒有中毒。'],
+    ['Give Antidote an "if poisoned" sticker. Then face the viper: Attack with Repeat and "if enemy".', '在解毒卡貼上「如果中毒」貼紙。再面向毒蛇：攻擊卡貼上重複和「如果有敵人」。'],
+    NEAR),
+  q18: hint(
+    ['The archer warns before it shoots. One short plan, run again and again, is enough.', '弓手射箭前會先警告。一個短短的計畫，一直重複執行就夠了。'],
+    ['Give Guard an "if danger" sticker, add one Move, then press Run again each turn.', '在防禦卡貼上「如果有危險」貼紙，加一張前進卡，每回合再按一次執行。'],
+    NEAR),
+  q19: hint(
+    ['Keep walking, run after run. Be ready for the viper and its poison.', '一回合一回合往前走。準備好對付毒蛇和牠的毒。'],
+    ['Three cards: Antidote "if poisoned", Attack "if enemy", then Move. Run it again each turn.', '三張卡：解毒「如果中毒」、攻擊「如果有敵人」，再前進。每回合再執行一次。'],
+    NEAR),
+  q20: hint(
+    ['Armor, arrows and enemies share one path. One plan can check for each.', '盔甲、弓箭和敵人都在同一條路上。一個計畫可以一一檢查。'],
+    ['Guard "if danger", Heavy "if armored", Attack "if enemy", then Move. Run it each turn.', '防禦「如果有危險」、重擊「如果有盔甲」、攻擊「如果有敵人」，再前進。每回合執行一次。'],
+    NEAR),
+  q21: hint(
+    ['Same cards as always — tap Code to see them written as JavaScript.', '還是一樣的卡片——點「程式碼」看看它們寫成 JavaScript 的樣子。'],
+    ['In the 🪨 Rune row: Attack with Repeat and "if enemy". Use the 🪨 card when the goblin is in front.', '🪨 符文那一排放：貼了重複和「如果有敵人」的攻擊卡。哥布林在前面時用 🪨 卡片。'],
+    NEAR),
+  q43: hint(
+    ['The gate below opens with the lever beside it.', '下面的閘門要用旁邊的拉桿打開。'],
+    ['Step once, give Use an "if lever" sticker, then Turn Right and walk through the gate.', '走一步，在互動卡貼上「如果有拉桿」貼紙，再右轉走過閘門。'],
+    NEAR),
+  q45: hint(
+    ['A crate blocks the hall. Some things can be smashed.', '有木箱擋住走廊。有些東西可以打破。'],
+    ['Give Smash an "if breakable" sticker, then Move with a 🔁 Repeat sticker to the end.', '在擊破卡貼上「如果可以打破」貼紙，再用貼了 🔁 重複貼紙的前進卡走到底。'],
+    NEAR),
+  q46: hint(
+    ['The guide has something you need for the locked door.', '嚮導有打開鎖門需要的東西。'],
+    ['Give Use an "if guide" sticker to talk to the guide, then go to the door, Turn Right and Open.', '在互動卡貼上「如果有嚮導」貼紙和嚮導說話，再走到門前，右轉，打開。'],
+    NEAR)
 });
 const TIERS = Object.freeze(['gentle', 'strong', 'near']);
 

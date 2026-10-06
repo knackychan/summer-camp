@@ -1,6 +1,6 @@
 # Slice 06: Hint text — the 24 card rooms
 
-**Status:** Design approved by Papa 2026-10-06 (`design.md` D6). Not started.
+**Status:** Design approved by Papa 2026-10-06 (`design.md` D6). Built 2026-10-06; wording approved by Papa in play the same day (`review-06-card-rooms.md`).
 **Goal:** Every picture-card quest has its own gentle / strong / near hints in EN + 繁體中文.
 **Depends on:** 01.
 **Files:** `js/games/codequest/hints.js`, `scripts/codequest-hints.test.mjs`.

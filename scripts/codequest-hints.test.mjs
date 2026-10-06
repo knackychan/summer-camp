@@ -31,7 +31,9 @@ assert.equal(difficultyFor(byId.q12), 'hard');
 for (const level of LEVELS) assert.ok(['easy', 'medium', 'hard'].includes(difficultyFor(level)), level.id + ' difficulty');
 
 // Every quest has three bilingual hints (hand-written or the chip fallback).
-const handWritten = new Set(['q12']);
+// Card rooms are hand-written (slice 06); code rooms may still use the chip fallback.
+const handWritten = new Set(LEVELS.filter(level => level.codingView !== 'code').map(level => level.id));
+assert.equal(handWritten.size, 24);
 for (const level of LEVELS) for (const tier of [0, 1, 2]) {
   assert.ok(filled(hintFor(level, tier)), level.id + ' tier ' + tier);
   if (handWritten.has(level.id)) assert.ok(hasHandHint(level, tier), level.id + ' tier ' + tier + ' hand-written');
