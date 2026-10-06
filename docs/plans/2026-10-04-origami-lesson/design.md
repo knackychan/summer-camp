@@ -21,6 +21,10 @@ as before.
 forever. A cycle is: 400 ms unfolded start (arrow and crease light up), the fold (the step's
 `durationMs`, default 1850 ms), a 500 ms hold on the folded shape, then a 250 ms fade back to the
 start. That makes a 3000 ms cycle for a default step.
+*Amended 2026-10-06 (Papa):* the fold now loops 4 times and then rests on the result with
+"▶ Watch again / ▶ 再看一次"; the cycle is lead 600 ms, fold 1800 / 3000 ms, hold 2000 ms, reset
+400 ms. See [../2026-10-05-origami-audit/design.md](../2026-10-05-origami-audit/design.md) O5 and
+slice 03.
 
 **D3 — One big Pause / Resume button.** Green, 64 px, first in the row. Pause freezes the fold
 mid-move. Resume carries on from that same frame. Replay restarts the cycle, and so do Back and Next.

@@ -28,3 +28,12 @@ design.md O5.
 
 **DONE WHEN:** `node scripts/check.mjs` green; `python scripts/check-origami-ui.py` passes with the
 new loop checks; reduced motion still waits for Play (D8).
+
+**Shipped 2026-10-06.** Engine: `LEAD_MS 600`, `HOLD_MS 2000`, `RESET_MS 400`, fold 1800 / 3000 ms
+by operation, `iterations: 3 + c` with `fill: "forwards"`, `resting`, `onRest()` (latest callback
+wins), `snapshot()` keeps the absolute time and `show()` puts a resting fold straight back at rest.
+The big button's resting action is `data-action="watch-again"` rather than `"replay"`, so the
+secondary ↻ Replay button keeps its own unique selector. `check-origami-ui.py` 52/52 (new: 4 loops
+ending on the hold, 2 s hold, loop 3 kept through EN and 中文 switches, rest with 再看一次 and the
+folded flap showing, Watch again runs again; reduced motion still waits for Play). `check.mjs` green;
+cache `v184-origami-rest`. origami-lesson D2 carries an "Amended 2026-10-06" note.

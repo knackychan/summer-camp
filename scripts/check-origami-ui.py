@@ -195,12 +195,14 @@ def run(args):
                           and play['w'] >= fit['boxes']['[data-action="replay"]']['w'])
                     page.screenshot(path=str(out / f'lesson-{tag}.png'))
 
-                check('Fold loops forever', page.evaluate(FLAP_T + ".effect.getTiming().iterations") == float('inf'))
+                loops = page.evaluate(FLAP_T + ".effect.getTiming().iterations")
+                check(f'Fold loops 4 times, ending on the hold ({loops:.2f})', 3 < loops < 4)
                 t0 = page.evaluate(FLAP_T + ".currentTime")
                 page.wait_for_timeout(400)
                 check('Fold autoplays', page.evaluate(FLAP_T + ".currentTime") > t0 and page.evaluate(FLAP_T + ".playState") == 'running')
                 cycle = page.evaluate(FLAP_T + ".effect.getTiming().duration")
-                check(f'Cycle holds the folded shape after the fold ({cycle} ms)', cycle >= 1850 + 500)
+                hold = page.evaluate("(() => { const k = " + FLAP_T + ".effect.getKeyframes(); return (k[k.length - 2].offset - k[k.length - 3].offset) * " + FLAP_T + ".effect.getTiming().duration; })()")
+                check(f'Cycle holds the folded shape for 2 s after the fold ({hold:.0f} ms)', hold >= 1999)
                 page.locator('.oa-root [data-action="pause"]').click()
                 page.wait_for_timeout(100)  # a WAAPI pause settles on the next frame
                 frozen = page.evaluate(FLAP_T + ".currentTime")
@@ -229,6 +231,24 @@ def run(args):
                 check('Step text is bilingual', '步驟' in page.locator('.oa-step-badge').inner_text()
                       and '繼續' in page.locator('.oa-root [data-action="resume"]').inner_text())
                 page.screenshot(path=str(out / 'lesson-zh.png'))
+                SEEK = "(t) => document.querySelector('.oa-stage').getAnimations({subtree: true}).forEach(a => { a.currentTime = t; })"
+                page.evaluate(SEEK, cycle * 2.5)
+                for lang in ('en', 'zh'):
+                    page.locator(f'.oa-root [data-action="locale-{lang}"]').click()
+                    page.wait_for_timeout(100)
+                    check(f'Language switch ({lang}) keeps the loop count (loop 3)', abs(page.evaluate(FLAP_T + ".currentTime") - cycle * 2.5) < 1)
+                page.locator('.oa-root [data-action="resume"]').click()
+                page.evaluate("() => document.querySelector('.oa-stage').getAnimations({subtree: true}).forEach(a => { a.currentTime = a.effect.getComputedTiming().endTime; })")
+                page.wait_for_selector('.oa-root [data-action="watch-again"]', timeout=3000)
+                check('After 4 loops the fold rests on the result with Watch again / 再看一次',
+                      '再看一次' in page.locator('.oa-root [data-action="watch-again"]').inner_text()
+                      and page.evaluate(FLAP_T + ".playState") == 'finished'
+                      and page.evaluate("+getComputedStyle(document.querySelector('.oa-paper-flap')).opacity") > 0.9)
+                page.screenshot(path=str(out / 'resting.png'))
+                page.locator('.oa-root [data-action="watch-again"]').click()
+                check('Watch again plays the loops again', page.evaluate(FLAP_T + ".playState") == 'running'
+                      and page.evaluate(FLAP_T + ".currentTime") < 300
+                      and page.locator('.oa-root [data-action="pause"]').count() == 1)
                 before = page.locator('.oa-step-badge').inner_text()
                 page.locator('.oa-root [data-action="prev-step"]').click()
                 check('Back goes to the previous step and autoplays',

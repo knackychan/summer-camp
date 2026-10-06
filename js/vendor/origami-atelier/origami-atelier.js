@@ -184,15 +184,24 @@ export function mountOrigamiAtelier(root, options = {}) {
     announce(`${modelName(model)}. ${t("Step","步驟")} ${stepIndex+1}. ${textFor(step.instruction,locale)}`);
   }
 
-  /* One button, two actions: Pause while the fold loops, Resume (Play before the first run,
-     e.g. reduced motion) while it is still. Disabled on the few steps with nothing to move. */
+  /* One button, three actions: Pause while the fold loops, Resume (Play before the first run,
+     e.g. reduced motion) while it is still, Watch again once the loops have run out and the fold
+     rests on the result (docs/plans/2026-10-05-origami-audit/ slice 03). Disabled on the finish
+     steps, which have nothing to move. */
   function syncPlayButton() {
     const btn = view.querySelector(".oa-play");
     if (!btn || !engine) return;
+    if (engine.resting) {
+      btn.dataset.action = "watch-again";
+      btn.disabled = false;
+      btn.textContent = `▶ ${t("Watch again","再看一次")}`;
+      return;
+    }
     const playing = engine.hasMotion && !engine.paused;
     btn.dataset.action = playing ? "pause" : "resume";
     btn.disabled = !engine.hasMotion;
     btn.textContent = playing ? `⏸ ${t("Pause","暫停")}` : engine.played ? `▶ ${t("Resume","繼續")}` : `▶ ${t("Play","播放")}`;
+    if (playing) engine.onRest(syncPlayButton);
   }
 
   function renderComplete({ mark = true } = {}) {
@@ -271,7 +280,7 @@ export function mountOrigamiAtelier(root, options = {}) {
       return renderLesson();
     }
     if (action==="start-lesson") { stepIndex=0; return renderLesson(); }
-    if (action==="pause" || action==="resume" || action==="replay") {
+    if (action==="pause" || action==="resume" || action==="replay" || action==="watch-again") {
       if (!engine) return;
       if (action==="pause") engine.pause();
       else if (action==="resume") engine.resume();

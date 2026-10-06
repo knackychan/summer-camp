@@ -286,10 +286,16 @@ function chord(poly, a, b) {
 
 /* One loop cycle: the unfolded start (arrow lights up), the fold, a hold on the folded
    shape so kids can catch up, then a short fade back to the start. Pure WAAPI, so pause
-   and resume keep the exact frame (docs/plans/2026-10-04-origami-lesson/). */
-const LEAD_MS = 400;
-const HOLD_MS = 500;
-const RESET_MS = 250;
+   and resume keep the exact frame (docs/plans/2026-10-04-origami-lesson/). Timing and the rest
+   after LOOPS cycles: docs/plans/2026-10-05-origami-audit/ slice 03 (amends origami-lesson D2).
+   The last cycle stops at the end of its hold, so the fold rests on the result. */
+const LEAD_MS = 600;
+const HOLD_MS = 2000;
+const RESET_MS = 400;
+const LOOPS = 4;
+const SIMPLE_FOLD_MS = 1800;
+const COMPLEX_FOLD_MS = 3000;
+const COMPLEX_OPS = new Set(["squash-fold", "petal-fold", "inside-reverse", "outside-reverse", "rabbit-ear", "pleat", "crimp", "collapse", "spread", "tuck"]);
 
 /* Offsets (0–1) of one cycle. A fold: lead, fold, hold, reset; a = fold start, b = fold end,
    c = hold end. */
@@ -402,10 +408,11 @@ export class OrigamiFoldEngine {
     } else arrowParts.forEach(el => { el.style.display = "none"; });
     this.arrowGlow.style.opacity = "0";
 
-    const t = plan?.reopen ? reopenTimeline(plan) : foldTimeline(Number(step.durationMs) || 1850);
+    const foldMs = Number(step.durationMs) || (COMPLEX_OPS.has(step.operation) ? COMPLEX_FOLD_MS : SIMPLE_FOLD_MS);
+    const t = plan?.reopen ? reopenTimeline(plan) : foldTimeline(foldMs);
     const { total, a, b, c } = t;
     const m = a + (b - a) * .58;
-    const timing = { duration:total, iterations:Infinity };
+    const timing = { duration:total, iterations:LOOPS - 1 + c, fill:"forwards" };
     const canAnimate = typeof this.flap.animate === "function";
     const anims = [];
     if (canAnimate && plan?.reopen) anims.push(...this.animateReopen(plan, t, timing));
@@ -429,12 +436,14 @@ export class OrigamiFoldEngine {
     }
     this.anims = anims;
     this.cycleMs = anims.length ? total : 0;
+    this.endMs = total * timing.iterations;
     if (!anims.length) {
       this.paused = true;
       return;
     }
-    const start = time == null ? (this.reducedMotion ? LEAD_MS : 0) : time % total;
+    const start = time == null ? (this.reducedMotion ? LEAD_MS : 0) : Math.min(time, this.endMs);
     anims.forEach(x => { x.currentTime = start; });
+    if (start >= this.endMs) { this.paused = false; this.played = true; return; }
     if (autoplay && !this.reducedMotion) this.resume();
     else this.pause();
   }
@@ -609,6 +618,15 @@ export class OrigamiFoldEngine {
 
   get hasMotion() { return this.anims.length > 0; }
 
+  /* After the last loop the fold rests on the result until Watch again (replay). */
+  get resting() { return this.anims.length > 0 && this.anims.every(x => x.playState === "finished"); }
+
+  /* Calls back once when the loops run out; a later call replaces an earlier one. */
+  onRest(callback) {
+    const token = this.restToken = (this.restToken || 0) + 1;
+    Promise.all(this.anims.map(x => x.finished)).then(() => { if (token === this.restToken && this.resting) callback(); }, () => {});
+  }
+
   pause() {
     this.anims.forEach(x => x.pause());
     this.paused = true;
@@ -627,10 +645,11 @@ export class OrigamiFoldEngine {
     this.resume();
   }
 
-  /* Where the loop is, so a re-render (language switch) can pick it up again. */
+  /* Where the loop is, so a re-render (language switch) can pick it up again: the time since the
+     first loop started, so the loop count carries over too. */
   snapshot() {
     const now = this.anims[0]?.currentTime;
-    return { paused:this.paused, played:this.played, time:now == null ? null : now % (this.cycleMs || 1) };
+    return { paused:this.paused, played:this.played, time:now == null ? null : now };
   }
 
   stop() {
