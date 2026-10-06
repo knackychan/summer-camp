@@ -166,10 +166,16 @@ def run(args):
                     act('brief:start')
                     page.wait_for_function('!' + SNAPSHOT + '.dialog')
 
-                def win(where):
+                def win(where, says=()):
                     page.wait_for_function(SNAPSHOT + ".model.phase === 'won' || " + SNAPSHOT + ".dialog === 'win'", timeout=30000)
                     check(f'{tag}: {where} wins', True)
                     page.wait_for_selector('[data-action="win:continue"]', state='attached')
+                    # Quest clarity slice 05: the win card says which skill was used, fits, and Continue is reachable.
+                    w = page.evaluate("""() => { const d = document.querySelector('.cq-dialog'), s = d.querySelector('.cq-win-skill'), b = d.querySelector('[data-action="win:continue"]').getBoundingClientRect(), r = d.getBoundingClientRect();
+                      return {skill: s ? s.innerText : '', scroll: d.scrollHeight - d.clientHeight, inside: r.top >= 0 && r.bottom <= innerHeight + 1, btn: b.bottom <= r.bottom + 1 && b.height >= 47.5}; }""")
+                    check(f'{tag}: {where} win card explains the skill and fits', w['skill'] and all(x in w['skill'] for x in says) and w['scroll'] <= 1 and w['inside'] and w['btn'], w)
+                    if says:
+                        page.screenshot(path=str(out / f'win-skill-{tag}.png'))
                     act('win:continue')
                     page.wait_for_function(SNAPSHOT + ".dialog === 'brief' || " + SNAPSHOT + ".dialog === 'map'")
                     act('brief:start')
@@ -551,7 +557,7 @@ def run(args):
                 check(f'{tag}: at every Rune step exactly one card is lit and it is in the Rune row',
                       sum(t['rune'] for t in trail) == 4 and all(t['lit'] == 1 for t in trail) and all(t['rune'] == 1 for t in trail if t['calling']), trail)
                 check(f'{tag}: the glowing row never changes during the run', editors == {'main'}, editors)
-                win('q11 with two rows')
+                win('q11 with two rows', ('You used 🪨 Rune.', 'function', 'Next: Loop Golem'))
 
                 open_level('q05')
                 check(f'{tag}: q05 has one row and no row-label tap target', page.evaluate("""() => document.querySelector('.cq-row[data-row="rune"]').hidden

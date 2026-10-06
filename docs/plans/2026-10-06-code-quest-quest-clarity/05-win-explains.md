@@ -1,6 +1,6 @@
 # Slice 05: The win card explains the skill
 
-**Status:** Design approved by Papa 2026-10-06 (`design.md` D8). Not started.
+**Status:** Design approved by Papa 2026-10-06 (`design.md` D8). Built 2026-10-06; unit tests and `check-codequest-ui.py` green (checked on the q11 win, which every run of the harness reaches; q12 has the same code path).
 **Goal:** After a win the kid hears which skill they used, why it matters, and what the next quest brings.
 **Depends on:** 01.
 **Files:** `js/games/codequest.js`, `js/games/codequest/hints.js`, `js/games/codequest/strings.js`, `css/codequest.css`, `scripts/codequest-hints.test.mjs`, `scripts/check-codequest-ui.py`.

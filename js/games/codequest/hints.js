@@ -4,7 +4,7 @@
    Words are the game's own (D1). Hints never state a number of hits: gear changes damage (D6).
    Pure: no DOM, no game state. */
 import { functionDescriptor, normalizeProgram, toJavaScript } from './ast.js';
-import { NEEDS } from './strings.js';
+import { NEEDS, WIN } from './strings.js';
 import { requirementPresent } from './model.js';
 
 const skill = (id, icon, en, zh, whyEn, whyZh) => Object.freeze({ id, icon, name: Object.freeze([en, zh]), why: Object.freeze([whyEn, whyZh]) });
@@ -127,4 +127,14 @@ export function needsAll(level, missing, runeBuilt = false) {
   const more = lacking.length && lacking.length < all.length ? NEEDS.missing(chipText(lacking)) : ['', ''];
   const place = runeBuilt && lacking.some(item => item.id === 'call') ? NEEDS.heroRow : ['', ''];
   return [en + more[0] + place[0], zh + more[1] + place[1]];
+}
+
+/** The win card's lines (D8): the skills used (true by construction: the model refuses a
+    Run without them), why each matters, and what the next quest brings. */
+export function winLines(level, nextLevel) {
+  const chips = skillsFor(level), teach = chips.length > 0 && chips[0].teach;
+  const used = chips.length ? (teach ? WIN.practised : WIN.used)(chipText(chips)) : null;
+  const nextChips = nextLevel ? skillsFor(nextLevel) : [];
+  const next = nextLevel ? WIN.next(nextLevel.title, nextChips.length ? chipText(nextChips) : null) : null;
+  return { used, why: chips.map(item => item.why), next };
 }

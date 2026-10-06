@@ -184,6 +184,13 @@ export const NEEDS = Object.freeze({
   heroRow: [' Put the 🪨 card in the Hero row.', '把 🪨 卡片放到英雄那一排。']
 });
 
+/* The win card explains the skill (quest-clarity D8). */
+export const WIN = Object.freeze({
+  used: chips => ['You used ' + chips[0] + '.', '你用了 ' + chips[1] + '。'],
+  practised: chips => ['You practised: ' + chips[0] + '.', '你練習了：' + chips[1] + '。'],
+  next: (title, chips) => ['Next: ' + title[0] + (chips ? ' — ' + chips[0] : '') + '.', '下一關：' + title[1] + (chips ? '——' + chips[1] : '') + '。']
+});
+
 /* Which way the hero faces, in screen words (facing-and-rune D3; screen reader only). */
 export const FACING = Object.freeze({
   N: ['Facing up', '面向上方'], S: ['Facing down', '面向下方'], W: ['Facing left', '面向左邊'], E: ['Facing right', '面向右邊']

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { LEVELS } from '../js/games/codequest/levels.js';
-import { SKILLS, HINTS, skillsFor, difficultyFor, chipText, hintFor, hasHandHint, peekFor, missingSkills, needsAll } from '../js/games/codequest/hints.js';
+import { SKILLS, HINTS, skillsFor, difficultyFor, chipText, hintFor, hasHandHint, peekFor, missingSkills, needsAll, winLines } from '../js/games/codequest/hints.js';
 import { action as A, repeat as R, call as CALL } from '../js/games/codequest/ast.js';
 
 const byId = Object.fromEntries(LEVELS.map(level => [level.id, level]));
@@ -78,5 +78,17 @@ assert.deepEqual(ids(runeOnly), ['repeat']);
 assert.deepEqual(needsAll(byId.q12, runeOnly), ['This quest needs 🪨 Rune + 🔁 Repeat. Still missing: 🔁 Repeat.', '這一關需要 🪨 符文＋🔁 重複。還差：🔁 重複。']);
 const heroOnly = missingSkills(byId.q12, [R(2, [A('attack')])], { rune: [A('attack')] });
 assert.ok(needsAll(byId.q12, heroOnly, true)[0].endsWith('Put the 🪨 card in the Hero row.'), 'a built Rune only needs placing');
+
+// The win card explains the skill (D8).
+const golemWin = winLines(byId.q12, byId.q13);
+assert.deepEqual(golemWin.used, ['You used 🪨 Rune + 🔁 Repeat.', '你用了 🪨 符文＋🔁 重複。']);
+assert.equal(golemWin.why.length, 2);
+assert.ok(golemWin.next[0].startsWith('Next: Key Crypt') && golemWin.next[1].startsWith('下一關：鑰匙地窖'), golemWin.next.join(' / '));
+assert.equal(winLines(byId.q72, undefined).next, null);
+assert.ok(winLines(byId.q01, byId.q02).used[0].startsWith('You practised'), 'teach-only quests say practised');
+LEVELS.forEach((level, index) => {
+  const lines = winLines(level, LEVELS[index + 1]);
+  for (const line of [lines.used, lines.next, ...lines.why].filter(Boolean)) assert.ok(filled(line), level.id + ' win line');
+});
 
 console.log('codequest-hints: ok');

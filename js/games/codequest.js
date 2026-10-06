@@ -12,7 +12,7 @@ import { placeBubbleRect } from './codequest/bubble.js';
 import { repeatCounts, ifTests, insertAfter } from './codequest/strip-edit.js';
 import { cardView, withSticker, withoutStickers } from './codequest/stickers.js';
 import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, COACH, STICKER, PICKER, BRIEF, pairHTML, setLanguage, language, t } from './codequest/strings.js';
-import { skillsFor, difficultyFor, hintFor, peekFor, missingSkills, needsAll } from './codequest/hints.js';
+import { skillsFor, difficultyFor, hintFor, peekFor, missingSkills, needsAll, winLines } from './codequest/hints.js';
 import { mountLab } from './codequest/lab/lab-screen.js';
 
 let S = null;
@@ -1152,6 +1152,15 @@ function rewardHTML(reward) {
   return rows.length ? '<ul class="cq-rewards">' + rows.join('') + '</ul>' : '';
 }
 
+/* What the kid just practised and what comes next (quest-clarity D8). Authored quests only. */
+function winSkillHTML() {
+  const l = S.level;
+  if (!l || l.endless || l.expedition) return '';
+  const index = LEVELS.findIndex(level => level.id === l.id), lines = winLines(l, index >= 0 ? LEVELS[index + 1] : null);
+  return '<div class="cq-win-skill">' + (lines.used ? '<p class="cq-win-used">' + label(lines.used) + '</p>' : '') +
+    (lines.why.length ? '<ul>' + lines.why.map(why => '<li>' + label(why) + '</li>').join('') + '</ul>' : '') +
+    (lines.next ? '<p class="cq-win-next">' + label(lines.next) + '</p>' : '') + '</div>';
+}
 function completeQuest() {
   if (!S || S.completing) return;
   S.completing = true; S.autoRun = false;
@@ -1167,7 +1176,7 @@ function completeQuest() {
   const score = scoreForProfile(S.profile); S.ctx.finish({ score }); S.best = Math.max(S.best, score);
   S.ctx.sfx && S.ctx.sfx.good && S.ctx.sfx.good();
   const extra = firstClear ? '<p>' + label(MESSAGES.firstReward) + '</p>' + rewardHTML(reward) : improved ? '<p>' + label(MESSAGES.improved) + '</p>' : '';
-  openDialog('win', '<h2>' + label(MESSAGES.won) + '</h2><p>' + pair('Program size: ' + blocks + ' · par ' + S.level.parBlocks, '程式大小：' + blocks + '・目標 ' + S.level.parBlocks) + '</p>' + extra + '<div class="cq-dialog-actions">' + button('win:replay', label(UI.replay)) + button('win:continue', label(UI.continue), 'class="cq-primary" autofocus') + '</div>');
+  openDialog('win', '<h2>' + label(MESSAGES.won) + '</h2>' + winSkillHTML() + '<p>' + pair('Program size: ' + blocks + ' · par ' + S.level.parBlocks, '程式大小：' + blocks + '・目標 ' + S.level.parBlocks) + '</p>' + extra + '<div class="cq-dialog-actions">' + button('win:replay', label(UI.replay)) + button('win:continue', label(UI.continue), 'class="cq-primary" autofocus') + '</div>');
   render();
 }
 
