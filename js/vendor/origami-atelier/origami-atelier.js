@@ -164,6 +164,7 @@ export function mountOrigamiAtelier(root, options = {}) {
         </header>
         <div class="oa-stage-wrap">
           <div class="oa-stage" data-fold-stage></div>
+          <button type="button" class="oa-slow" data-action="slow" aria-pressed="${Boolean(progress.slow)}">🐢 ${t("Slow","慢慢看")}</button>
           <div class="oa-companion"><span aria-hidden="true">🐈</span>${t("Pause anytime to compare with your paper.","隨時按暫停，和你的紙比一比。")}</div>
         </div>
         <div class="oa-controls">
@@ -176,7 +177,7 @@ export function mountOrigamiAtelier(root, options = {}) {
       </div>`;
     const paper = PAPER_COLORS.find(c=>c.id===progress.paperColorId) || PAPER_COLORS[0];
     engine?.destroy();
-    engine = new OrigamiFoldEngine(view.querySelector("[data-fold-stage]"), { front:paper.front, back:paper.back, label:t("Origami folding diagram","摺紙步驟圖") });
+    engine = new OrigamiFoldEngine(view.querySelector("[data-fold-stage]"), { front:paper.front, back:paper.back, label:t("Origami folding diagram","摺紙步驟圖"), slow:Boolean(progress.slow) });
     if (keep) engine.played = keep.played;
     engine.show(step, keep ? { autoplay:!keep.paused, time:keep.time, model } : { model });
     /* Book notation (docs/plans/2026-10-05-origami-audit/ slice 05): a step with a valley,
@@ -311,6 +312,13 @@ export function mountOrigamiAtelier(root, options = {}) {
       else if (action==="resume") engine.resume();
       else engine.replay();
       syncPlayButton();
+      return;
+    }
+    /* 🐢 Slow (docs/plans/2026-10-05-origami-audit/ slice 09): ×1.6 time, remembered per kid. */
+    if (action==="slow") {
+      progress = store.patch({ slow:!progress.slow });
+      engine?.setSlow(progress.slow);
+      target.setAttribute("aria-pressed", String(progress.slow));
       return;
     }
     if (action==="prev-step") {

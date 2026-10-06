@@ -18,3 +18,8 @@
 - `sw.js` — bump `CACHE_NAME`.
 
 **DONE WHEN:** `node scripts/check.mjs` green; `python scripts/check-origami-ui.py` passes.
+
+**Shipped 2026-10-06.** `engine.setSlow()`, `slow` option, rate applied on every `show()`; the
+toggle top-left of the picture; `slow` in the per-kid store. `check-origami-ui.py` 82/82 (new: ×1.6
+on every animation, kept after Next and a language switch, off goes back to 1; the toggle is in the
+frame and a ≥ 48 px target at all three sizes). Cache `v191-origami-slow`.

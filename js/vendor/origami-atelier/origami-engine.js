@@ -344,6 +344,8 @@ const RESET_MS = 400;
 const LOOPS = 4;
 const SIMPLE_FOLD_MS = 1800;
 const COMPLEX_FOLD_MS = 3000;
+/* 🐢 Slow (slice 09, design O11): every animation at ×1.6 time. */
+const SLOW_RATE = 0.625;
 const COMPLEX_OPS = new Set(["squash-fold", "petal-fold", "inside-reverse", "outside-reverse", "rabbit-ear", "pleat", "crimp", "collapse", "spread", "tuck"]);
 
 /* Offsets (0–1) of one cycle. A fold: lead, fold, hold, reset; a = fold start, b = fold end,
@@ -377,6 +379,7 @@ export class OrigamiFoldEngine {
     this.back = options.back || "#ffe6e9";
     this.label = options.label || "Origami folding diagram";
     this.reducedMotion = options.reducedMotion ?? window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+    this.rate = options.slow ? SLOW_RATE : 1;
     this.anims = [];
     this.cycleMs = 0;
     this.paused = true;
@@ -510,6 +513,7 @@ export class OrigamiFoldEngine {
         anims.push(this.crease.animate([{offset:0,opacity:.55},{offset:a,opacity:1},{offset:b,opacity:1},{offset:1,opacity:.55}], timing));
       }
     }
+    anims.forEach(x => { x.playbackRate = this.rate; });
     this.anims = anims;
     this.cycleMs = anims.length ? total : 0;
     this.endMs = total * timing.iterations;
@@ -806,6 +810,12 @@ export class OrigamiFoldEngine {
   }
 
   get hasMotion() { return this.anims.length > 0; }
+
+  /* currentTime stays in fold time at any rate, so snapshot() and the loop count don't change. */
+  setSlow(on) {
+    this.rate = on ? SLOW_RATE : 1;
+    this.anims.forEach(x => { x.playbackRate = this.rate; });
+  }
 
   /* After the last loop the fold rests on the result until Watch again (replay). */
   get resting() { return this.anims.length > 0 && this.anims.every(x => x.playState === "finished"); }

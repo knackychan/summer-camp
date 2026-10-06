@@ -12,6 +12,7 @@ function initialState() {
     lastModelId: null,
     lastStepIndex: 0,
     paperColorId: "sakura",
+    slow: false,
     updatedAt: null
   };
 }

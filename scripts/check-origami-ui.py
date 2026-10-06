@@ -31,7 +31,7 @@ FIT = """() => {
   const vw = innerWidth, vh = innerHeight;
   const sel = ['.oa-instruction', '.oa-step-badge', '.oa-stage svg', '.oa-progress',
                '[data-action="pause"],[data-action="resume"]', '[data-action="replay"]',
-               '[data-action="prev-step"]', '[data-action="next-step"]'];
+               '[data-action="prev-step"]', '[data-action="next-step"]', '[data-action="slow"]'];
   const boxes = {};
   for (const s of sel) { const r = document.querySelector('.oa-root').querySelector(s).getBoundingClientRect();
     boxes[s] = {x: r.x, y: r.y, w: r.width, h: r.height, inside: r.top >= 0 && r.left >= 0 && r.bottom <= vh + 0.5 && r.right <= vw + 0.5}; }
@@ -432,6 +432,28 @@ def run(args):
                 check(f'Mid-fold the flap stays where real paper can be {hinge["mid"]}', hinge['midInside'])
                 check(f'The folded flap stays on the result ({hinge["heldOpacity"]})', hinge['heldOpacity'] > 0.9)
                 page.locator('.oa-root [data-action="replay"]').click()
+                # 🐢 Slow (slice 09): x1.6 time on every animation, remembered across steps and languages.
+                RATES = "() => document.querySelector('.oa-stage').getAnimations({subtree: true}).map(a => a.playbackRate)"
+                SLOW = '.oa-root [data-action="slow"]'
+                was_zh = page.locator('.oa-root [data-action="locale-zh"]').get_attribute('aria-pressed') == 'true'
+                page.locator(SLOW).click()
+                rates = page.evaluate(RATES)
+                check(f'Slow runs every animation at x1.6 time ({len(rates)} animations)', rates and all(abs(r - 0.625) < 1e-9 for r in rates)
+                      and page.locator(SLOW).get_attribute('aria-pressed') == 'true')
+                page.locator('.oa-root [data-action="next-step"]').click()
+                rates = page.evaluate(RATES)
+                check('Slow stays on for the next step', rates and all(abs(r - 0.625) < 1e-9 for r in rates)
+                      and page.locator(SLOW).get_attribute('aria-pressed') == 'true')
+                page.locator('.oa-root [data-action="locale-zh"]').click()
+                rates = page.evaluate(RATES)
+                check('Slow stays on after a language switch, labelled 慢慢看', '慢慢看' in page.locator(SLOW).inner_text()
+                      and rates and all(abs(r - 0.625) < 1e-9 for r in rates))
+                page.locator('.oa-root [data-action="locale-zh"]' if was_zh else '.oa-root [data-action="locale-en"]').click()
+                page.locator(SLOW).click()
+                rates = page.evaluate(RATES)
+                check('Slow off goes back to normal speed', rates and all(r == 1 for r in rates)
+                      and page.locator(SLOW).get_attribute('aria-pressed') == 'false')
+                page.locator('.oa-root [data-action="prev-step"]').click()
                 steps = page.evaluate(EVERY_STEP)
                 check(f'Every step of all 28 models draws without an error {steps["broken"][:3]}', steps['count'] == 276 and not steps['broken'])
                 check(f'Every step but the finish has something to play {steps["still"][:5]}', not steps['still'])
