@@ -20,7 +20,9 @@
 
 /* ---------- stage ---------- */
 .cq-play{position:relative;flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
-.cq-scene{position:relative;flex:1;min-height:300px;border:3px solid var(--cq-out);border-radius:6px;background:var(--cq-deep);overflow:hidden;box-shadow:inset 0 0 0 2px #23223b}
+/* Simple-cards D7: scene + program rows on the left, the card picker as a column on the right. */
+.cq-play:not([hidden]){display:grid;grid-template-columns:minmax(0,1fr) clamp(240px,27%,348px);grid-template-rows:minmax(0,1fr) auto}
+.cq-scene{grid-column:1;grid-row:1;position:relative;flex:1;min-height:300px;border:3px solid var(--cq-out);border-radius:6px;background:var(--cq-deep);overflow:hidden;box-shadow:inset 0 0 0 2px #23223b}
 .cq-scene canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;background:var(--cq-deep);touch-action:none}
 .cq-scene canvas.zoomed{cursor:grab}
 .cq-zoom{position:absolute;left:10px;bottom:10px;display:flex;gap:6px;z-index:2}
@@ -46,7 +48,7 @@
 .cq-chip .cq-spr{width:22px;height:22px}
 .cq-chip.status{border-color:#9a5ae0;color:#d8c4ff}
 .cq .cq-debug-toggle{position:absolute;right:10px;bottom:10px;background:var(--cq-panel)}
-.cq-debug{position:absolute;right:10px;top:72px;bottom:68px;width:min(380px,46%);overflow:auto;border:3px solid var(--cq-out);border-radius:6px;background:#0b0a1ff0;z-index:4}
+.cq-debug{position:absolute;right:10px;top:72px;max-height:calc(100% - 140px);width:min(380px,46%);overflow:auto;border:3px solid var(--cq-out);border-radius:6px;background:#0b0a1ff0;z-index:4}
 .cq-debug .cq-event-debugger{margin:0;border:0;box-shadow:none}
 .cq-bubble{position:absolute;left:0;top:0;max-width:300px;padding:8px 12px;border:3px solid var(--cq-out);border-radius:8px;background:#fff8e0;color:#2a1a10;font:800 15px/1.3 'Nunito',system-ui,sans-serif;box-shadow:0 3px 0 var(--cq-out);pointer-events:none;z-index:3}
 .cq-bubble::after{content:"";position:absolute;left:calc(var(--tail,30px) - 8px);bottom:-11px;border:8px solid transparent;border-top:9px solid var(--cq-out);border-bottom:0}
@@ -55,32 +57,53 @@
 .cq-bubble.side-left::after{left:auto;right:-11px;top:calc(var(--tail,20px) - 8px);bottom:auto;border:8px solid transparent;border-left:9px solid var(--cq-out);border-right:0}
 .cq-bubble.caption::after{display:none}
 
-/* ---------- dock: program strip + command library + run ---------- */
-.cq-dock{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;gap:8px 10px;padding:8px;border:3px solid var(--cq-out);border-radius:6px;background:linear-gradient(#2b2a45,var(--cq-panel));box-shadow:inset 0 2px 0 var(--cq-edge)}
-.cq-program{grid-column:1;grid-row:1;display:flex;align-items:center;gap:8px;min-width:0;padding:4px;border:2px solid var(--cq-out);border-radius:6px;background:#1a1930;box-shadow:inset 0 2px 0 #0b0a1f}
-/* Main / Rune tabs (facing-and-rune D6): the tab being edited is filled with a gold edge. */
-.cq-strip-tabs{display:flex;gap:7px;flex:none;padding-left:3px}
-.cq .cq-strip-tab{flex:none;flex-direction:column;gap:2px;width:60px;min-height:62px;padding:4px 2px;font-size:12px;color:#c9d4ff;background:#14132a;box-shadow:inset 0 0 0 2px #4d78e0,0 3px 0 var(--cq-out)}
-.cq .cq-strip-tab.on{color:#fff;background:#232174;box-shadow:inset 0 2px 0 #4d78e0,0 0 0 3px var(--cq-gold),0 3px 0 var(--cq-out)}
-.cq-strip-tab .cq-ico{width:20px;height:20px}
-.cq-tab-dots{display:flex;gap:3px;height:6px}
-.cq-tab-dots i{width:6px;height:6px;border-radius:50%;background:#8fd3ff}
-.cq-tab-dots i.hollow{background:transparent;box-shadow:inset 0 0 0 1.5px #8fd3ff}
+/* ---------- dock: program row(s) + Undo / Clear (simple-cards D5, D7) ---------- */
+.cq-dock{grid-column:1;grid-row:2;display:flex;align-items:center;gap:8px;min-width:0;padding:8px;border:3px solid var(--cq-out);border-radius:6px;background:linear-gradient(#2b2a45,var(--cq-panel));box-shadow:inset 0 2px 0 var(--cq-edge)}
+.cq-rows{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.cq-row{display:flex;align-items:center;gap:8px;min-width:0;padding:4px;border:2px solid var(--cq-out);border-radius:6px;background:#1a1930;box-shadow:inset 0 2px 0 #0b0a1f}
+/* Two rows: the glowing row (where new cards go) has a gold edge; the other one rests. */
+.cq-dock.two .cq-row.on{box-shadow:inset 0 2px 0 #0b0a1f,0 0 0 3px var(--cq-gold)}
+.cq-dock.two .cq-row:not(.on){background:#16152a}
+.cq-dock.two .cq-row:not(.on) .cq-strip{opacity:.72}
+.cq-dock:not(.two) .cq-row-label{display:none}
+.cq .cq-row-label{flex:none;flex-direction:column;gap:2px;width:60px;min-height:62px;padding:4px 2px;font-size:12px;color:#c9d4ff;background:#14132a;box-shadow:inset 0 0 0 2px #4d78e0,0 3px 0 var(--cq-out)}
+.cq .cq-row.on .cq-row-label{color:#fff;background:#232174;box-shadow:inset 0 2px 0 #4d78e0,0 3px 0 var(--cq-out)}
+.cq-row-label .cq-ico{width:20px;height:20px}
 .cq-scroll{display:flex;align-items:center;gap:10px;overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;scrollbar-width:thin;touch-action:pan-x}
 .cq .cq-scroll button{touch-action:pan-x}
-.cq-strip{flex:1;min-width:0;min-height:96px;padding:12px 6px 8px 12px}
+.cq-strip{flex:1;min-width:0;min-height:calc(96px + var(--tagline,0) * 22px);padding:12px 6px 8px 12px}
 .cq-tools{display:flex;gap:6px;flex:none}
 .cq .cq-tool{width:48px;padding:0;background:var(--cq-panel2)}
+/* Two rows on screen: compact cards, so the room keeps its height. */
+.cq-dock.two .cq-strip{min-height:calc(72px + var(--tagline,0) * 20px);padding:10px 4px 4px 11px}
+.cq-dock.two .cq-row{padding:2px}
+.cq .cq-dock.two .cq-row-label{min-height:52px;padding:2px}
 /* Cards: one colour family per kind of action (design.md, Screen). */
 .cat-move{--c:#3340b8;--c-hi:#8fd3ff}.cat-turn{--c:#7a3fc0;--c-hi:#d8c4ff}.cat-attack{--c:#c2352a;--c-hi:#ff7a1f}.cat-use{--c:#a8743f;--c-hi:#ffd23f}
 .cat-care{--c:#2f9a4c;--c-hi:#c9ef6a}.cat-ally{--c:#1d8f8a;--c-hi:#39d0c8}.cat-loop{--c:#5b1e7a;--c-hi:#9a5ae0}.cat-logic{--c:#b5309a;--c-hi:#ff5fa2}.cat-func{--c:#232174;--c-hi:#4d78e0}.cat-data{--c:#46456a;--c-hi:#7d8fb8}
-.cq .cq-card,.cq .cq-bracket-head{position:relative;flex:none;flex-direction:column;gap:3px;width:70px;height:78px;padding:6px 4px 4px;background:var(--c);box-shadow:inset 0 3px 0 var(--c-hi),inset 0 -4px 0 #0b0a1f55,0 3px 0 var(--cq-out);font-size:12px;line-height:1.1}
+.cq .cq-card,.cq .cq-bracket-head{position:relative;flex:none;flex-direction:column;gap:3px;width:70px;height:calc(78px + var(--tagline,0) * 22px);padding:6px 4px 4px;background:var(--c);box-shadow:inset 0 3px 0 var(--c-hi),inset 0 -4px 0 #0b0a1f55,0 3px 0 var(--cq-out);font-size:12px;line-height:1.1}
+.cq .cq-dock.two .cq-card,.cq .cq-dock.two .cq-bracket-head,.cq-dock.two .cq-slot{width:56px;height:calc(60px + var(--tagline,0) * 20px);font-size:11px}
+.cq .cq-dock.two .cq-card:has(.cq-stickers){width:auto;min-width:56px}
+.cq-dock.two .cq-card .cq-ico,.cq-dock.two .cq-bracket-head .cq-ico{width:24px;height:24px}
+.cq-dock.two .cq-card .cq-spr,.cq-dock.two .cq-bracket-head .cq-spr{width:28px;height:28px}
 .cq-card b,.cq-bracket-head b,.cq-cmd b{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cq-card .cq-ico,.cq-bracket-head .cq-ico{width:30px;height:30px;filter:drop-shadow(0 2px 0 #0b0a1f)}
 .cq-card .cq-spr,.cq-bracket-head .cq-spr{width:34px;height:34px}
 .cq-num{position:absolute;left:-9px;top:-10px;display:grid;place-items:center;width:24px;height:24px;border:2px solid var(--cq-out);border-radius:50%;background:var(--cq-gold);color:#2a1a10;font:900 12px/1 ui-monospace,monospace;font-style:normal}
 .cq .cq-card.selected,.cq-bracket.selected .cq-bracket-head{border-color:var(--cq-gold);box-shadow:inset 0 3px 0 var(--c-hi),0 0 0 3px var(--cq-gold),0 3px 0 var(--cq-out);transform:translateY(-3px)}
 .cq .cq-card.executing,.cq-bracket.executing>.cq-bracket-head{border-color:#fff;box-shadow:inset 0 3px 0 var(--c-hi),0 0 0 3px #fff,0 0 14px #ffd23f;animation:cq-exec .36s steps(2,end) infinite}
+/* A 🪨 card whose Rune is running: a quiet ring, not the lit card (simple-cards D5). */
+.cq .cq-card.calling{outline:3px dashed #fff;outline-offset:2px}
+/* Stickers (simple-cards D1): coloured tags under the card name, words always showing. A card
+   with stickers grows sideways so the tags stay on one line. */
+.cq .cq-card:has(.cq-stickers){width:auto;min-width:70px;max-width:190px}
+.cq .cq-card:has(.cq-stickers){padding:4px 4px 3px;gap:2px}
+.cq-dock.two .cq-card:has(.cq-stickers)>.cq-ico,.cq-dock.two .cq-card:has(.cq-stickers)>.cq-spr{width:22px;height:22px}
+.cq-stickers{display:flex;gap:3px;max-width:100%}
+.cq-sticker{display:flex;align-items:center;gap:3px;min-width:0;padding:1px 5px 1px 3px;border:2px solid var(--cq-out);border-radius:9px;background:var(--c);box-shadow:inset 0 2px 0 var(--c-hi);color:#fff;font-size:11px;line-height:1.1;white-space:nowrap}
+.cq-sticker>span{overflow:hidden;text-overflow:ellipsis}
+.cq .cq-card .cq-sticker .cq-ico{width:13px;height:13px;filter:none}
+.cq .cq-card .cq-sticker .cq-spr{width:16px;height:16px}
 @keyframes cq-exec{50%{transform:translateY(-3px)}}
 .cq-bracket{flex:none;display:flex;align-items:stretch;gap:6px;padding:0 8px 0 0;border:3px solid var(--c);border-radius:8px;background:color-mix(in srgb,var(--c) 22%,#14132a)}
 .cq .cq-bracket-head{margin:-3px 0 -3px -3px}
@@ -112,18 +135,34 @@
 .cq .cq-menu-btn .cq-ico{width:22px;height:22px}
 .cq .cq-card.just-added,.cq-bracket.just-added>.cq-bracket-head{animation:cq-added .6s ease-out 1}
 @keyframes cq-added{0%{box-shadow:inset 0 3px 0 var(--c-hi),0 0 0 6px #fff,0 3px 0 var(--cq-out);transform:translateY(-6px)}100%{box-shadow:inset 0 3px 0 var(--c-hi),0 0 0 0 #fff0,0 3px 0 var(--cq-out);transform:none}}
-.cq-slot{display:grid;place-items:center;flex:none;width:70px;height:78px;border:2px dashed var(--cq-edge);border-radius:6px;color:var(--cq-lit);font:900 26px ui-monospace,monospace}
+.cq-slot{display:grid;place-items:center;flex:none;width:70px;height:calc(78px + var(--tagline,0) * 22px);border:2px dashed var(--cq-edge);border-radius:6px;color:var(--cq-lit);font:900 26px ui-monospace,monospace}
 .cq-slot.more{width:auto;min-width:54px;padding:0 8px;font-size:15px}
-.cq-library{grid-column:1;grid-row:2;min-height:70px;padding:2px 2px 6px}
-.cq .cq-cmd{flex:none;flex-direction:column;gap:2px;width:84px;min-height:66px;padding:5px 4px;background:var(--c);box-shadow:inset 0 3px 0 var(--c-hi),inset 0 -4px 0 #0b0a1f55,0 3px 0 var(--cq-out);font-size:12px;line-height:1.1}
+/* ---------- picker column (simple-cards D7): 🪨 pinned, tabs, the list, Run / Step / Reset ---------- */
+.cq-picker{grid-column:2;grid-row:1/3;display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0;padding:8px;border:3px solid var(--cq-out);border-radius:6px;background:linear-gradient(#2b2a45,var(--cq-panel));box-shadow:inset 0 2px 0 var(--cq-edge)}
+.cq-picker-pin{display:flex}
+.cq .cq-cmd.cq-rune-card{flex:1;flex-direction:row;justify-content:flex-start;gap:10px;min-height:56px;padding:4px 12px;font-size:15px;text-align:left}
+.cq-rune-card>span{display:flex;flex-direction:column;min-width:0}
+.cq-rune-card small{font-size:12px}
+.cq .cq-cmd.cq-rune-card.dim{opacity:.5;filter:saturate(.4)}
+.cq-picker-tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(48px,1fr));gap:4px}
+.cq .cq-tab{flex-direction:column;gap:1px;min-width:48px;min-height:54px;padding:3px 0;border-width:2px;font-size:10px;line-height:1.1;background:#14132a;box-shadow:inset 0 0 0 2px var(--cq-edge),0 3px 0 var(--cq-out)}
+.cq .cq-tab.on{background:var(--cq-panel2);box-shadow:inset 0 2px 0 var(--cq-lit),0 0 0 3px var(--cq-gold),0 3px 0 var(--cq-out)}
+.cq-tab i{font-style:normal;font-size:20px;line-height:1}
+.cq-tab b{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cq-library{flex:1;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));align-content:start;gap:10px 8px;padding:4px 4px 8px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;touch-action:pan-y}
+.cq .cq-vscroll button{touch-action:pan-y}
+.cq .cq-cmd{flex:none;flex-direction:column;gap:2px;min-width:0;min-height:66px;padding:5px 4px;background:var(--c);box-shadow:inset 0 3px 0 var(--c-hi),inset 0 -4px 0 #0b0a1f55,0 3px 0 var(--cq-out);font-size:12px;line-height:1.1}
 .cq-cmd .cq-ico{width:26px;height:26px;filter:drop-shadow(0 2px 0 #0b0a1f)}
 .cq-cmd .cq-spr{width:30px;height:30px}
-.cq-runbox{grid-column:2;grid-row:1/3;display:flex;flex-direction:column;gap:8px;width:150px}
-.cq .cq-run{flex:1;flex-direction:column;gap:2px;min-height:92px;border-color:var(--cq-out);background:#2f9a4c;box-shadow:inset 0 4px 0 #7bd34b,inset 0 -5px 0 #1d5e45,0 4px 0 var(--cq-out);font-size:20px}
-.cq-run .cq-ico{width:34px;height:34px}
+/* An if sticker in the picker reads "only if: …" on a full-width row. */
+.cq .cq-cmd.wide{grid-column:1/-1;flex-direction:row;justify-content:flex-start;gap:8px;min-height:52px;padding:4px 10px;text-align:left}
+.cq .cq-cmd.wide b{white-space:normal;font-size:13px}
+.cq-runbox{display:flex;flex-direction:column;gap:8px}
+.cq .cq-run{flex:none;gap:8px;min-height:64px;border-color:var(--cq-out);background:#2f9a4c;box-shadow:inset 0 4px 0 #7bd34b,inset 0 -5px 0 #1d5e45,0 4px 0 var(--cq-out);font-size:20px}
+.cq-run .cq-ico{width:30px;height:30px}
 .cq .cq-run.running{background:#ffd23f;color:#2a1a10;box-shadow:inset 0 4px 0 #fff6d6,inset 0 -5px 0 #a8743f,0 4px 0 var(--cq-out)}
 .cq-runbox>div{display:flex;gap:8px}
-.cq .cq-small{flex:1;flex-direction:column;gap:0;padding:2px;font-size:11px}
+.cq .cq-small{flex:1;gap:6px;padding:2px 6px;font-size:13px}
 .cq-small .cq-ico{width:18px;height:18px}
 
 /* ---------- host bar ---------- */
@@ -229,20 +268,30 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
   .cq-scene{min-height:0}
 }
 @media (min-width:901px) and (orientation:landscape) and (max-height:700px){
-  /* 1280×600 class: the dock gives up height so the room keeps ≥ 55 % of the screen. */
+  /* 1280×600 class: the dock gives up height so the room keeps most of the screen. */
   .cq{padding:4px;gap:4px}.cq-play{gap:4px}
-  .cq-dock{padding:5px;gap:5px 8px}
-  .cq-program{padding:2px}
-  .cq-strip{min-height:72px;padding:10px 4px 4px 11px}
-  .cq .cq-strip-tab{width:54px;min-height:52px;padding:3px 2px;font-size:11px}
-  .cq .cq-card,.cq .cq-bracket-head,.cq-slot{width:56px;height:60px;font-size:11px}
+  .cq-dock{padding:4px;gap:6px}
+  .cq-rows{gap:4px}.cq-row{padding:2px;gap:6px}
+  .cq-strip{min-height:calc(72px + var(--tagline,0) * 20px);padding:10px 4px 4px 11px}
+  .cq .cq-row-label{width:54px;min-height:52px;padding:2px;font-size:11px}
+  .cq .cq-card,.cq .cq-bracket-head,.cq-slot{width:56px;height:calc(60px + var(--tagline,0) * 20px);font-size:11px}
+  .cq .cq-card:has(.cq-stickers){width:auto;min-width:56px}
+  .cq-card:has(.cq-stickers)>.cq-ico,.cq-card:has(.cq-stickers)>.cq-spr{width:22px;height:22px}
   .cq-card .cq-ico,.cq-bracket-head .cq-ico{width:24px;height:24px}
   .cq-card .cq-spr,.cq-bracket-head .cq-spr{width:28px;height:28px}
   .cq-mini{width:32px;height:36px}
-  .cq .cq-cmd{width:76px;min-height:50px;padding:3px 4px;font-size:11px}
+  .cq-picker{padding:6px;gap:6px}
+  .cq .cq-cmd.cq-rune-card{min-height:50px}
+  .cq .cq-tab{min-height:50px}
+  .cq-library{grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px 6px}
+  .cq .cq-cmd{min-height:54px;padding:3px 4px;font-size:11px}
   .cq-cmd .cq-ico{width:22px;height:22px}.cq-cmd .cq-spr{width:24px;height:24px}
-  .cq-library{min-height:52px;padding:1px 2px 3px}
-  .cq-runbox{width:132px;gap:6px}.cq .cq-run{min-height:72px;font-size:18px}
+  .cq .cq-cmd.wide{min-height:48px}
+  .cq-runbox{gap:6px}.cq .cq-run{min-height:56px;font-size:18px}
+  /* Two rows: smaller still, so a 9×7 room keeps its 2× pixel scale above them. */
+  .cq-dock.two .cq-strip{min-height:calc(64px + var(--tagline,0) * 18px);padding:9px 4px 2px 11px}
+  .cq .cq-dock.two .cq-card,.cq .cq-dock.two .cq-bracket-head,.cq-dock.two .cq-slot{height:calc(54px + var(--tagline,0) * 18px)}
+  .cq .cq-dock.two .cq-row-label{min-height:48px}
   .cq-hud{top:8px;left:8px;right:8px}
   .cq .cq-goal{font-size:14px}
 }
@@ -296,16 +345,19 @@ body.game-mode:has(.cq) .summer-companion__face{font-size:26px}body.game-mode:ha
 .cq-camp-potions .cq-camp-lab{margin-top:8px;width:100%}
 .cq-ingredients .cq-ingredient{align-items:center;border:3px solid #2f9a4c;border-radius:6px}.cq-ingredients .cq-ingredient.empty{border-color:#7d8fb8}
 @media (max-width:900px){
-  .cq-dock{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
-  .cq-runbox{grid-column:1;grid-row:3;width:auto;flex-direction:row}
-  .cq .cq-run{min-height:56px;flex-direction:row}
+  /* Narrow screens: the picker drops under the program rows. */
+  .cq-play:not([hidden]){grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
+  .cq-picker{grid-column:1;grid-row:3}
+  .cq-library{max-height:220px}
+  .cq-runbox{flex-direction:row}
+  .cq .cq-run{flex:1;min-height:56px}
   .cq-runbox>div{flex:1}
   .cq-scene{min-height:min(56vh,420px)}
   .cq-tools .cq-tool{width:44px}
   .cq-lab-dock{flex-wrap:wrap}.cq-lab-steps{flex-basis:100%;order:3}
 }
 @media (max-width:620px){
-  .cq-program{flex-wrap:wrap}.cq-tools{width:100%;justify-content:flex-end}
+  .cq-dock{flex-wrap:wrap}.cq-tools{width:100%;justify-content:flex-end}
   .cq-hud-left{max-width:100%}.cq-hud{flex-direction:column;align-items:stretch}.cq-vitals{align-self:flex-end}
 }
 @media (prefers-reduced-motion:reduce){

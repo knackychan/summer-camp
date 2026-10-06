@@ -54,6 +54,10 @@ export const UI = Object.freeze({
   run: ['Run turn', '執行回合'], step: ['Step', '單步'], undo: ['Undo', '上一步'], clear: ['Clear', '清空'], reset: ['Reset room', '重設房間'],
   moveLeft: ['Move card left', '卡片左移'], moveRight: ['Move card right', '卡片右移'], removeCard: ['Remove card', '移除卡片'],
   wrap: ['Wrap', '包起來'], unwrap: ['Unwrap', '拆開'], repeatCount: ['Change repeat count', '換重複次數'],
+  stickersOff: ['Take stickers off', '撕掉貼紙'],
+  heroRow: ['Hero', '英雄'], runeRow: ['Rune', '符文'], useInHeroRow: ['Use it in the Hero row', '在英雄那一排使用它'],
+  heroRowLabel: ['Hero row: the program the hero runs', '英雄那一排：英雄執行的程式'], runeRowLabel: ['Rune row: runs at every 🪨 card', '符文那一排：每張 🪨 卡片都會執行它'],
+  cards: ['Cards', '卡片'],
   zoomIn: ['Zoom in', '放大'], zoomOut: ['Zoom out', '縮小'], zoomHome: ['Whole room', '看整個房間'],
   actions: ['Action cards', '動作卡'], logic: ['Logic cards', '邏輯卡'], selectHint: ['Build a turn routine. Run it again after the dungeon changes.', '建立一套回合程式；地下城狀態改變後可以再次執行。'],
   functionHint: ['Build Rune once, then Call Rune from the main program.', '先建立一次「符文」，再從主程式呼叫它。'],
@@ -89,7 +93,8 @@ export const MESSAGES = Object.freeze({
   intro: ['Build a turn routine, predict the result, then run it.', '建立回合程式、先預測結果，再執行。'],
   empty: ['Add at least one action card first.', '先加入至少一張動作卡。'],
   tooMany: ['That program is a little too big for this quest. Try a loop or function.', '這關的程式有點太長，試試迴圈或函式。'],
-  needRepeat: ['This quest asks you to use Repeat.', '這一關要使用「重複」。'], needIf: ['This quest asks you to use IF.', '這一關要使用「如果」。'], needCall: ['This quest asks you to Call Rune.', '這一關要呼叫「符文」。'],
+  needRepeat: ['This quest asks you to use Repeat.', '這一關要使用「重複」。'], needIf: ['This quest asks you to use IF.', '這一關要使用「如果」。'], needCall: ['This quest needs the 🪨 Rune card in the Hero row.', '這一關要把 🪨 符文卡片放到英雄那一排。'],
+  runeReady: ['Your Rune is ready! Put the 🪨 card in the Hero row.', '你的符文準備好了！把 🪨 卡片放到英雄那一排。'],
   missingFunction: ['Your Rune is empty. Put some cards in it first.', '你的符文是空的，先放幾張卡片進去。'], noSelfCall: ["A Rune can't use itself. Use it from Main.", '符文不能呼叫自己，請從主程式使用它。'], recursion: ['Rune tried to call itself forever. Try a smaller reusable routine.', '符文一直呼叫自己了。試著做一個較小的可重複步驟。'],
   blocked: ['Bump! Something blocks the corridor. Inspect the room and adjust the program.', '碰！走廊被擋住了。看看房間，再調整程式。'], noTarget: ['No valid enemy target is selected.', '目前沒有可用的敵人目標。'],
   targeted: ['Target locked. The next ranged action can use it.', '目標已鎖定，下一個遠距動作可以使用它。'],
@@ -118,7 +123,9 @@ export const MESSAGES = Object.freeze({
   runeRunning: ['Running your Rune…', '正在執行你的符文……'], runeDone: ['Rune finished — back to Main.', '符文跑完了——回到主程式。'],
   worldTurn: ['Now the dungeon takes its turn.', '現在輪到地下城行動。'], resting: ['The hero needs a quick rest. Change the plan and reset the room.', '英雄需要休息一下。調整計畫，再重設房間。'],
   won: ['Quest clear! Your program worked.', '闖關成功！你的程式成功了。'], firstReward: ['New loot added to your camp.', '新戰利品已放進營地。'], improved: ['New smallest program for this quest!', '這一關有新的最短程式紀錄！'],
-  selected: ['Selected. Choose Repeat or IF to wrap the selected cards.', '已選取。可以用「重複」或「如果」包住這些卡。'], selectContiguous: ['Select cards next to each other before wrapping them.', '要包起來的卡片必須彼此相鄰。'], wrapEmpty: ['Add an action first, then wrap it.', '先加入動作，再把它包起來。'],
+  selected: ['Selected. Tap a sticker to put it on this card.', '已選取。點一張貼紙，就會貼到這張卡片上。'],
+  stickerNeedsCard: ['Put a card first, then its sticker.', '先放一張卡片，再貼貼紙。'], stickerNoBracket: ["This card can't take stickers.", '這張卡片不能貼貼紙。'],
+  selectContiguous: ['Select cards next to each other before wrapping them.', '要包起來的卡片必須彼此相鄰。'], wrapEmpty: ['Add an action first, then wrap it.', '先加入動作，再把它包起來。'],
   benchFull: ['The cauldron has three ingredients. Brew or clear it first.', '煉金鍋已有三份材料，先調製或清空。'], noIngredient: ['You do not have that ingredient yet.', '你還沒有這個材料。'], needThree: ['Put exactly three ingredients in the cauldron.', '請在煉金鍋放入三份材料。'],
   unknownRecipe: ['That ingredient combination is not a known recipe. Nothing was lost.', '這個材料組合不是已知配方，材料沒有消失。'], wrongProcess: ['The ingredients are right, but the process order is wrong. Nothing was lost.', '材料正確，但製程順序不對。材料沒有消失。'], missingIngredient: ['The bag changed. Add ingredients again.', '背包內容更新了，請重新加入材料。'], brewed: ['Potion brewed!', '藥水調製完成！'], potionCodeError: ['Potion code needs a small fix.', '藥水程式需要修正一下。'], potionCodeReady: ['Potion recipe loaded as code.', '已把藥水配方載入成程式。'], processAdded: ['Lab step added.', '已加入製程步驟。'],
   // Written-code editor (Architect surface). Referenced by codequest.js since v0.4 but never shipped — opening any code-view quest threw.
@@ -129,11 +136,37 @@ export const MESSAGES = Object.freeze({
   equipped: ['Loadout changed.', '裝備配置已更換。'], lockedLevel: ['Clear the previous quest to unlock this one.', '先完成上一關，就能解鎖這一關。'], towerLocked: ['Clear eight quests to unlock the Infinite Tower.', '完成八個關卡，就能解鎖無限高塔。'], paused: ['Paused.', '已暫停。']
 });
 
+/* Stickers (simple-cards D1): words on a sticker in the program row, and the picker's longer
+   "only if" words. Every if* card in strip-edit.js IF_TESTS has a short line here. */
+/* Picker tabs (simple-cards D7): groups follow the card colours (opCategory). */
+export const PICKER = Object.freeze({
+  walk: ['Walk', '走路'], fight: ['Fight', '戰鬥'], use: ['Use', '使用'], care: ['Care', '照顧'], friend: ['Friend', '夥伴'], stickers: ['Stickers', '貼紙']
+});
+
+export const STICKER = Object.freeze({
+  times: n => [n + ' times', n + ' 次'],
+  onlyIf: test => ['only if: ' + (CONDITIONS[test] || [test])[0], '只有在：' + (CONDITIONS[test] || [test, test])[1]],
+  short: Object.freeze({
+    enemyAhead: ['if enemy', '如果有敵人'], enemyArmoredAhead: ['if armored', '如果有盔甲'], enemyWeakAhead: ['if weak', '如果敵人虛弱'],
+    dangerIncoming: ['if danger', '如果有危險'], heroPoisoned: ['if poisoned', '如果中毒'], chestAhead: ['if chest', '如果有寶箱'],
+    doorAhead: ['if door', '如果有門'], trapAhead: ['if trap', '如果有陷阱'], hasKey: ['if key', '如果有鑰匙'], hpLow: ['if hurt', '如果受傷'],
+    multipleEnemies: ['if many foes', '如果敵人很多'], targetInRange: ['if in range', '如果打得到'], targetWeak: ['if target weak', '如果目標虛弱'],
+    targetElementWeak: ['if weak spot', '如果有弱點'], leverAhead: ['if lever', '如果有拉桿'], breakableAhead: ['if breakable', '如果可以打破'],
+    npcAhead: ['if guide', '如果有嚮導'], runeGateAhead: ['if rune gate', '如果有符文閘門'], pushableAhead: ['if block', '如果有方塊'],
+    cycleTrapAhead: ['if clock trap', '如果有循環陷阱'], cycleTrapActiveAhead: ['if trap is on', '如果陷阱啟動'], platformAhead: ['if platform', '如果有平台'],
+    onPlatform: ['if on platform', '如果在平台上'], questTokenAhead: ['if token', '如果有符記'], companionNear: ['if friend near', '如果夥伴在旁邊'],
+    carryableAhead: ['if core', '如果有核心'], heroCarrying: ['if carrying', '如果拿著核心'], heroOnPlate: ['if on plate', '如果在壓力板上'],
+    companionCarryableAhead: ['if core by friend', '如果夥伴前有核心'], companionCarrying: ['if friend carries', '如果夥伴拿著核心'],
+    companionOnPlate: ['if friend on plate', '如果夥伴在壓力板上']
+  })
+});
+
 /* Rune coach, shown once per kid (facing-and-rune D10). */
 export const COACH = Object.freeze({
   rune1: ['This is your Rune — your own card. The cards inside it run together.', '這是你的符文——你自己的卡片。放在裡面的卡片會一起執行。'],
   rune2: ['Build it once here.', '先在這裡做一次。'],
   rune3: ['Then use it again and again from Main.', '然後在主程式裡一用再用。'],
+  runeRow: ['Cards in the Rune row run every time the hero reaches a 🪨 card.', '每次英雄走到 🪨 卡片，符文那一排的卡片就會執行。'],
   next: ['Next ›', '下一步 ›'], done: ['Got it', '知道了'], title: ['Rune tips', '符文小提示']
 });
 

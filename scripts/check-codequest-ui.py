@@ -1,8 +1,10 @@
 """Code Quest redesign UI harness, in a real browser.
 
 Started by UX polish slice 07 (speech-bubble placement); slice 06 adds its layout,
-q01-by-taps, language and sheet checks to this same file. Uses the recovery
-harness's isolated save and server and coarse-pointer touch emulation.
+q01-by-taps, language and sheet checks to this same file. The simple-cards plan
+(2026-10-05) replaces the Wrap and Main/Rune-tab checks with stickers, the picker
+column and the two program rows. Uses the recovery harness's isolated save and
+server and coarse-pointer touch emulation.
 
   python scripts/check-codequest-ui.py [--browser PATH] [--target web]
 """
@@ -60,6 +62,9 @@ def run(args):
     out.mkdir(parents=True, exist_ok=True)
     node = lambda script: json.loads(subprocess.check_output(['node', '--input-type=module', '-e', script], text=True, cwd=str(directory)))
     level_ids = node("import { LEVELS } from './js/games/codequest/levels.js'; process.stdout.write(JSON.stringify(LEVELS.map(l => l.id)))")
+    # Reference solutions by room id ('q11:rune' for a room's Rune), to compare tapped programs with.
+    refs = node("import { LEVELS } from './js/games/codequest/levels.js'; const o = {}; for (const l of LEVELS) { o[l.id] = l.reference.main; "
+                "for (const [k, v] of Object.entries(l.reference.functions || {})) o[l.id + ':' + k] = v; } process.stdout.write(JSON.stringify(o))")
     brain_ids = json.loads(subprocess.check_output(['node', '-e',
         'process.stdout.write(JSON.stringify(Object.keys(require(process.argv[1]).GAMES)))',
         str(directory / 'js/brain-data.js')], text=True))
@@ -128,84 +133,150 @@ def run(args):
                 if state()['dialog']:
                     page.keyboard.press('Escape')
 
-                # ---- Slice 08: card menu. q05's reference (×5 Move, Right, ×3 Move) built by taps only. ----
+                # ---- Simple cards (2026-10-05). Taps only: stickers, slim card menu, picker column. ----
                 def tap(selector):
                     target = page.locator(selector).first
+                    target.evaluate("el => el.scrollIntoView({block: 'nearest', inline: 'nearest'})")
                     box = target.evaluate("""el => { const r=el.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;
                       return {x,y,w:r.width,h:r.height,on:r.x>=0&&r.y>=0&&r.right<=innerWidth+1&&r.bottom<=innerHeight+1,hit:el.contains(document.elementFromPoint(x,y))}; }""")
                     assert box['on'] and box['hit'], f'{selector} not tappable: {box}'
                     page.touchscreen.tap(box['x'], box['y'])
                     page.wait_for_timeout(80)
 
-                def program():
-                    return [(n['type'], n.get('times') or n.get('op') or n.get('test')) for n in state()['program']]
+                def bare(value):
+                    if isinstance(value, dict):
+                        return {k: bare(v) for k, v in value.items() if k != 'uid'}
+                    if isinstance(value, list):
+                        return [bare(v) for v in value]
+                    return value
 
-                menu_problems = []
+                def program(key='program'):
+                    return [(n['type'], n.get('times') or n.get('op') or n.get('test') or n.get('name')) for n in state()[key]]
+
+                def open_level(level_id):
+                    act('map')
+                    page.wait_for_selector(f'[data-action="level:{level_ids.index(level_id)}"]', state='attached')
+                    act(f'level:{level_ids.index(level_id)}')
+                    page.wait_for_function(SNAPSHOT + f".level === '{level_id}' && !" + SNAPSHOT + ".dialog")
+
+                def win(where):
+                    page.wait_for_function(SNAPSHOT + ".model.phase === 'won' || " + SNAPSHOT + ".dialog === 'win'", timeout=30000)
+                    check(f'{tag}: {where} wins', True)
+                    page.wait_for_selector('[data-action="win:continue"]', state='attached')
+                    act('win:continue')
+                    page.wait_for_function('!' + SNAPSHOT + '.dialog')
+
+                def notice():
+                    n = state()['notice']
+                    return n and n[0]
+
+                menu_problems, picker_problems = [], []
 
                 def audit_menu(where):
                     m = page.evaluate("""() => {
-                      const menu = document.querySelector('.cq-card-menu'), run = document.querySelector('[data-action="run"]').getBoundingClientRect();
+                      const menu = document.querySelector('.cq-card-menu'), picker = document.querySelector('.cq-picker').getBoundingClientRect();
                       const r = menu.getBoundingClientRect(), btns = [...menu.querySelectorAll('button')].map(b => { const q = b.getBoundingClientRect(); return {a: b.dataset.action, w: q.width, h: q.height, hit: b.contains(document.elementFromPoint(q.x + q.width / 2, q.y + q.height / 2))}; });
-                      return {hidden: menu.hidden, r: {x: r.x, y: r.y, w: r.width, h: r.height}, run: {x: run.x, y: run.y, w: run.width, h: run.height}, btns, vw: innerWidth, vh: innerHeight};
+                      return {hidden: menu.hidden, r: {x: r.x, y: r.y, w: r.width, h: r.height}, picker: {x: picker.x, y: picker.y, w: picker.width, h: picker.height}, btns, vw: innerWidth, vh: innerHeight};
                     }""")
                     if m['hidden']:
                         menu_problems.append(f'{where}: menu hidden')
-                        return
+                        return []
                     r = m['r']
                     if r['x'] < 0 or r['y'] < 0 or r['x'] + r['w'] > m['vw'] + 1 or r['y'] + r['h'] > m['vh'] + 1:
                         menu_problems.append(f'{where}: menu off screen {r}')
-                    if intersects(r, m['run']):
-                        menu_problems.append(f'{where}: menu covers Run')
+                    if intersects(r, m['picker']):
+                        menu_problems.append(f'{where}: menu covers the picker')
                     for b in m['btns']:
                         if b['w'] < 47.5 or b['h'] < 47.5 or not b['hit']:
                             menu_problems.append(f"{where}: {b['a']} {b['w']:.0f}x{b['h']:.0f} hit={b['hit']}")
+                    return [b['a'] for b in m['btns']]
 
-                act('map')
-                page.wait_for_selector('[data-action="level:4"]', state='attached')
-                act('level:4')
-                page.wait_for_function(SNAPSHOT + ".level === 'q05' && !" + SNAPSHOT + ".dialog")
+                def cards_readable():
+                    # Every card's name and sticker tags fit inside the card (nothing squeezed or cut off).
+                    return page.evaluate("""() => [...document.querySelectorAll('.cq-strip .cq-card')].filter(card => {
+                      const c = card.getBoundingClientRect(), name = card.querySelector(':scope > b'), tags = card.querySelector('.cq-stickers');
+                      const n = name.getBoundingClientRect(), t = tags ? tags.getBoundingClientRect() : n;
+                      return name.clientHeight < 10 || n.top < c.top || t.bottom > c.bottom - 2 || n.bottom > t.top + (tags ? 1 : 0) + (tags ? 0 : 99);
+                    }).map(card => card.getAttribute('aria-label'))""")
+
+                def audit_picker(where):
+                    # Every picker button (pin, tabs, every list card scrolled into view, Run / Step / Reset) ≥ 48 px and hittable.
+                    bad = page.evaluate("""() => {
+                      const out = [], list = document.querySelector('.cq-library');
+                      for (const b of document.querySelectorAll('.cq-picker button')) {
+                        if (list.contains(b)) b.scrollIntoView({block: 'nearest'});
+                        const q = b.getBoundingClientRect(), x = q.x + q.width / 2, y = q.y + q.height / 2;
+                        const ok = q.width >= 47.5 && q.height >= 47.5 && q.x >= 0 && q.bottom <= innerHeight + 1 && q.right <= innerWidth + 1 && b.contains(document.elementFromPoint(x, y));
+                        if (!ok) out.push(b.dataset.action + ' ' + Math.round(q.width) + 'x' + Math.round(q.height) + ' @' + Math.round(q.x) + ',' + Math.round(q.y));
+                      }
+                      list.scrollTop = 0;
+                      const page = document.scrollingElement;
+                      if (page.scrollHeight > innerHeight + 1 || page.scrollWidth > innerWidth + 1) out.push('page scrolls ' + page.scrollWidth + 'x' + page.scrollHeight);
+                      const scene = document.querySelector('.cq-scene canvas').getBoundingClientRect(), picker = document.querySelector('.cq-picker').getBoundingClientRect();
+                      if (scene.right > picker.left + 0.5) out.push('picker covers the scene');
+                      return out;
+                    }""")
+                    picker_problems.extend(f'{where}: {b}' for b in bad)
+
+                # Slice 02: q05 — Move, ×5 sticker, Right, Move, ×3 sticker.
+                open_level('q05')
+                audit_picker('q05')
+                check(f'{tag}: q05 picker is one list (6 cards + stickers), no tabs', page.evaluate("document.querySelector('.cq-picker-tabs').hidden"))
                 tap('.cq-library [data-action="add:move"]')
                 check(f'{tag}: library tap adds a card marked to pulse', program() == [('action', 'move')]
                       and page.evaluate("!!document.querySelector('.cq-strip .just-added')"))
-                tap('.cq-strip [data-action="select:0"]')
-                check(f'{tag}: tapping a card opens the card menu; the pulse does not replay', state()['menuOpen'] and state()['selection'] == [0]
-                      and page.evaluate("!document.querySelector('.cq-strip .just-added')"))
-                audit_menu('action card')
-                tap('.cq-card-menu [data-action="menu:wrap"]')
-                audit_menu('wrap choices')
-                page.screenshot(path=str(out / f'menu-open-{tag}.png'))
-                tap('.cq-card-menu [data-action="logic:repeat2"]')
-                check(f'{tag}: Wrap ▸ ×2 wraps the card in one tap', program() == [('repeat', 2)])
-                tap('.cq-strip [data-action="select:0"]')
-                audit_menu('repeat head')
-                tap('.cq-card-menu [data-action="menu:count"]')
-                tap('.cq-card-menu [data-action="menu:count"]')
-                check(f'{tag}: ×N chip cycles the room counts 2 → 3 → 5', program() == [('repeat', 5)] and state()['menuOpen'])
+                tap('.cq-strip [data-action="select:main:0"]')
+                check(f'{tag}: tapping a card selects that one card and opens the menu', state()['menuOpen'] and state()['selection'] == [0])
+                check(f'{tag}: a plain card menu is ◀ ▶ 🗑', audit_menu('plain card') == ['nudge:-1', 'nudge:1', 'delete'])
                 tap('.cq-scene canvas')
                 check(f'{tag}: tapping the scene closes the menu', not state()['menuOpen'])
+                tap('.cq-library [data-action="sticker:repeat:5"]')
+                check(f'{tag}: ×5 sticker goes on the last card', program() == [('repeat', 5)])
+                check(f'{tag}: the sticker shows its words on the card', page.evaluate(
+                    "document.querySelector('.cq-strip [data-action=\"select:main:0\"] .cq-sticker.cat-loop').textContent") == '5 times')
                 tap('.cq-library [data-action="add:turnRight"]')
                 tap('.cq-library [data-action="add:move"]')
-                tap('.cq-strip [data-action="select:2"]')
-                tap('.cq-library [data-action="logic:repeat3"]')
-                check(f'{tag}: q05 reference built by taps', program() == [('repeat', 5), ('action', 'turnRight'), ('repeat', 3)])
-                tap('.cq-strip [data-action="select:2"]')
-                tap('.cq-card-menu [data-action="menu:unwrap"]')
-                unwrapped = program()
+                tap('.cq-library [data-action="sticker:repeat:3"]')
+                check(f'{tag}: q05 program equals the reference shape', bare(state()['program']) == refs['q05'])
+                page.screenshot(path=str(out / f'stickers-q05-{tag}.png'))
+                tap('.cq-strip [data-action="select:main:0"]')
+                check(f'{tag}: a sticker card menu is ◀ ▶ (stickers off) 🗑', audit_menu('sticker card') == ['nudge:-1', 'nudge:1', 'menu:unstick', 'delete'])
+                tap('.cq-card-menu [data-action="menu:unstick"]')
+                unstuck = program()
                 tap('.cq-tools [data-action="undo"]')
-                check(f'{tag}: Unwrap then Undo', unwrapped == [('repeat', 5), ('action', 'turnRight'), ('action', 'move')] and program()[-1] == ('repeat', 3))
-                tap('.cq-strip [data-action="select:0"]')
+                check(f'{tag}: Take stickers off, then Undo', unstuck[0] == ('action', 'move') and program()[0] == ('repeat', 5))
+                tap('.cq-strip [data-action="select:main:0"]')
                 tap('.cq-library [data-action="add:turnLeft"]')
                 inserted = program()
                 tap('.cq-tools [data-action="undo"]')
                 check(f'{tag}: library tap inserts after the selected card', inserted[1] == ('action', 'turnLeft') and len(inserted) == 4 and len(program()) == 3)
-                page.screenshot(path=str(out / f'menu-{tag}.png'))
+                check(f'{tag}: no Wrap, count or test control anywhere', page.evaluate(
+                    "!document.querySelector('[data-action=\"menu:wrap\"],[data-action=\"menu:unwrap\"],[data-action=\"menu:count\"],[data-action^=\"menu:test\"],[data-action^=\"logic:repeat\"],[data-action^=\"logic:if\"]')"))
                 tap('.cq-runbox [data-action="run"]')
-                page.wait_for_function(SNAPSHOT + ".model.phase === 'won' || " + SNAPSHOT + ".dialog === 'win'", timeout=30000)
-                check(f'{tag}: q05 built with the card menu wins', True)
-                check(f'{tag}: card menu on screen, clear of Run, every button ≥ 48 px and hittable', not menu_problems, menu_problems[:8])
-                page.wait_for_selector('[data-action="win:continue"]', state='attached')
-                act('win:continue')
-                page.wait_for_function('!' + SNAPSHOT + '.dialog')
+                win('q05 built with stickers')
+
+                # q16 — tabs: Fight ▸ Heavy, Stickers ▸ if armored, ×2 → R2[IF enemyArmoredAhead[heavyAttack]], then the rest.
+                open_level('q16')
+                check(f'{tag}: q16 picker has tabs and opens on Walk', not page.evaluate("document.querySelector('.cq-picker-tabs').hidden") and state()['pickerTab'] == 'walk')
+                for sel in ['picker:fight', 'add:heavyAttack', 'picker:stickers', 'sticker:if:enemyArmoredAhead', 'sticker:repeat:2']:
+                    tap(f'.cq-picker [data-action="{sel}"]')
+                check(f'{tag}: q16 Heavy + if armored + ×2 is one card R2[IF enemyArmoredAhead[heavyAttack]]',
+                      bare(state()['program']) == refs['q16'][:1], state()['program'])
+                check(f'{tag}: one card carries both stickers', page.evaluate("document.querySelectorAll('.cq-strip [data-action=\"select:main:0\"] .cq-sticker').length") == 2)
+                check(f'{tag}: the card name and both tags are fully visible', not cards_readable(), cards_readable())
+                page.screenshot(path=str(out / f'stickers-q16-{tag}.png'))
+                for sel in ['picker:walk', 'add:move', 'picker:stickers', 'sticker:repeat:2', 'picker:walk', 'add:turnRight', 'add:move', 'picker:stickers', 'sticker:repeat:2']:
+                    tap(f'.cq-picker [data-action="{sel}"]')
+                check(f'{tag}: q16 program equals the reference shape', bare(state()['program']) == refs['q16'])
+                audit_picker('q16')
+                tap('.cq-runbox [data-action="run"]')
+                win('q16 built through tabs')
+
+                # q07 — a sticker on an empty row says so and changes nothing.
+                open_level('q07')
+                tap('.cq-library [data-action="sticker:repeat:3"]')
+                check(f'{tag}: ×3 on an empty row says "card first" and changes nothing', state()['program'] == [] and notice() == 'Put a card first, then its sticker.')
+                check(f'{tag}: card menu on screen, clear of the picker, every button ≥ 48 px and hittable', not menu_problems, menu_problems[:8])
 
                 # ---- Slice 09: zoom in, pan, Home; Run while zoomed keeps the hero on screen. q02 by taps. ----
                 def camera():
@@ -277,10 +348,7 @@ def run(args):
                 page.wait_for_function('!' + SNAPSHOT + '.dialog')
                 check(f'{tag}: the next room starts back at Home', camera()['zoom'] == 0)
 
-                # ---- Facing + Rune plan (2026-10-05). q10 Function Forge. ----
-                def library_has(action):
-                    return page.evaluate(f"!!document.querySelector('.cq-library [data-action=\"{action}\"]')")
-
+                # ---- Facing + Rune plan (2026-10-05). ----
                 # Slice 02: every turn shows the beat and, in Step, the hand rule.
                 act('map')
                 page.wait_for_selector('[data-action="level:1"]', state='attached')
@@ -301,12 +369,34 @@ def run(args):
                 check(f'{tag}: a room without the Rune shows no coach', page.evaluate("document.querySelector('.cq-coach').hidden"))
                 act('reset')
 
-                q10 = level_ids.index('q10')
-                act('map')
-                page.wait_for_selector(f'[data-action="level:{q10}"]', state='attached')
-                act(f'level:{q10}')
-                page.wait_for_function(SNAPSHOT + ".level === 'q10' && !" + SNAPSHOT + ".dialog")
-                # Slice 05: the Rune coach, once per kid.
+                # ---- Simple cards slice 03: the picker column. ----
+                open_level('q01')
+                check(f'{tag}: q01 (3 cards) shows no tabs and every card', page.evaluate("""() => document.querySelector('.cq-picker-tabs').hidden
+                  && ['add:move', 'add:turnLeft', 'add:turnRight'].filter(a => document.querySelector('.cq-library [data-action=\"' + a + '\"]')).length === 3"""))
+                audit_picker('q01')
+                page.screenshot(path=str(out / f'picker-q01-{tag}.png'))
+                open_level('q15')
+                tabs = page.evaluate("[...document.querySelectorAll('.cq-picker-tabs button')].map(b => b.dataset.action)")
+                check(f'{tag}: q15 (64 offered) shows tabs for its groups', tabs[0] == 'picker:walk' and 'picker:fight' in tabs and tabs[-1] == 'picker:stickers', tabs)
+                tap('.cq-picker [data-action="picker:fight"]')
+                fight = page.evaluate("[...document.querySelectorAll('.cq-library button')].map(b => b.classList.contains('cat-attack'))")
+                check(f'{tag}: Fight tab shows only attack cards', fight and all(fight), fight)
+                tap('.cq-picker [data-action="picker:stickers"]')
+                stickers = page.evaluate("[...document.querySelectorAll('.cq-library button')].map(b => b.dataset.action)")
+                check(f'{tag}: Stickers tab shows only stickers', stickers and all(a.startswith('sticker:') for a in stickers), stickers[:4])
+                check(f'{tag}: the picker list scrolls inside itself', page.evaluate("(() => { const l = document.querySelector('.cq-library'); return l.scrollHeight > l.clientHeight && getComputedStyle(l).overflowY === 'auto'; })()"))
+                audit_picker('q15 stickers')
+                page.screenshot(path=str(out / f'picker-q15-{tag}.png'))
+                open_level('q01')
+                open_level('q15')
+                check(f'{tag}: the open tab is remembered per room', state()['pickerTab'] == 'stickers')
+                for name in ['fight', 'use', 'care', 'walk']:
+                    if f'picker:{name}' in tabs:
+                        tap(f'.cq-picker [data-action="picker:{name}"]')
+                        audit_picker(f'q15 {name}')
+                check(f'{tag}: picker buttons ≥ 48 px, on screen, hittable; no page scroll; scene clear of the column', not picker_problems, picker_problems[:8])
+
+                # ---- Simple cards slice 04: two rows for the Rune. ----
                 def coach():
                     return page.evaluate("""() => { const c = document.querySelector('.cq-coach');
                       if (!c || c.hidden) return null;
@@ -315,82 +405,67 @@ def run(args):
                         tail: r.left + parseFloat(c.style.getPropertyValue('--tail')), action: b.dataset.action, w: q.width, h: q.height,
                         hit: b.contains(document.elementFromPoint(q.x + q.width / 2, q.y + q.height / 2)), vw: innerWidth, vh: innerHeight}; }""")
 
-                def coach_ok(c, target):
-                    t = page.locator(target).first.bounding_box()
-                    return (c and c['w'] >= 47.5 and c['h'] >= 47.5 and c['hit'] and c['top'] >= 0 and c['left'] >= 0 and c['right'] <= c['vw'] + 1
-                            and c['bottom'] <= t['y'] + 1 and t['x'] - 2 <= c['tail'] <= t['x'] + t['width'] + 2)
-
-                steps = []
-                for i, (target, editor) in enumerate([('.cq-strip-tabs [data-action="strip:rune"]', 'main'), ('.cq-strip', 'rune'),
-                                                      ('.cq-library [data-action="logic:callRune"]', 'main')]):
-                    c = coach()
-                    steps.append(bool(coach_ok(c, target)) and state()['editor'] == editor)
-                    page.screenshot(path=str(out / f'coach-{tag}-{i + 1}.png'))
-                    if c:
-                        act(c['action'])
-                check(f'{tag}: Rune coach walks tab → Rune strip → Rune card, each card above its target with a ≥ 48 px button', steps == [True] * 3, steps)
+                open_level('q10')
+                c = coach()
+                row = page.locator('.cq-row[data-row="rune"]').bounding_box()
+                check(f'{tag}: q10 coach is one card above the Rune row with a ≥ 48 px Got it',
+                      c and c['action'] == 'coach:done' and 'Rune row' in c['text'] and c['w'] >= 47.5 and c['h'] >= 47.5 and c['hit']
+                      and c['top'] >= 0 and c['bottom'] <= row['y'] + 1 and row['x'] - 2 <= c['tail'] <= row['x'] + row['width'] + 2, c)
+                page.screenshot(path=str(out / f'coach-{tag}.png'))
+                tap('.cq-coach [data-action="coach:done"]')
                 check(f'{tag}: Got it hides the coach and saves it on the profile', coach() is None and 'rune' in state()['profile'].get('coach', []))
-                act('map')
-                page.wait_for_selector(f'[data-action="level:{q10}"]', state='attached')
-                act(f'level:{q10}')
-                page.wait_for_function(SNAPSHOT + ".level === 'q10' && !" + SNAPSHOT + ".dialog")
+                open_level('q10')
                 check(f'{tag}: the coach does not come back', coach() is None)
+                tap('.cq-row[data-row="rune"] [data-action="row:rune"]')
+                pin = page.evaluate("(() => { const b = document.querySelector('.cq-picker-pin [data-action=\"logic:callRune\"]'); return {dim: b.classList.contains('dim'), aria: b.getAttribute('aria-disabled'), text: b.textContent}; })()")
+                check(f'{tag}: the 🪨 card is dimmed while the Rune row glows', state()['editor'] == 'rune' and pin['dim'] and pin['aria'] == 'true' and 'Hero row' in pin['text'], pin)
+                tap('.cq-library [data-action="add:move"]')
+                tap('.cq-picker-pin [data-action="logic:callRune"]')
+                check(f'{tag}: a 🪨 card never lands in the Rune row', program('runeProgram') == [('action', 'move')] and notice() == "A Rune can't use itself. Use it from Main.")
+                tap('.cq-row[data-row="main"] [data-action="row:main"]')
+                check(f'{tag}: back on the Hero row the 🪨 card is bright', state()['editor'] == 'main' and not page.evaluate("document.querySelector('.cq-picker-pin button').classList.contains('dim')"))
 
-                # Slice 01: Rune can't call itself.
-                check(f'{tag}: q10 library offers the Rune card on Main', library_has('logic:callRune'))
-                act('strip:rune')
-                act('add:move')
-                check(f'{tag}: editing Rune hides the Rune card', state()['editor'] == 'rune' and not library_has('logic:callRune'))
-                rune_before = state()['runeProgram']
-                page.evaluate("""() => { const b = document.createElement('button'); b.dataset.action = 'logic:callRune'; b.hidden = true;
-                  document.querySelector('.cq-library').appendChild(b); b.dispatchEvent(new MouseEvent('click', {bubbles:true, detail:0})); }""")
-                page.wait_for_timeout(60)
-                check(f'{tag}: a Rune call can never land inside Rune', state()['runeProgram'] == rune_before)
-                act('strip:main')
-                check(f'{tag}: back on Main the Rune card returns', state()['editor'] == 'main' and library_has('logic:callRune'))
-                # Slice 03: the strip follows a running Rune and lights exactly the running card.
-                act('strip:rune')
-                act('add:move')
-                act('strip:main')
-                for a_id in ('logic:callRune', 'add:turnRight', 'logic:callRune'):
-                    act(a_id)
-                check(f'{tag}: q10 program built (Rune = Move ×2; Main = Rune, Right, Rune)',
-                      [n['type'] for n in state()['program']] == ['call', 'action', 'call'] and len(state()['runeProgram']) == 2)
-                # Slice 04: two visible tabs, ≥ 48 px, clear of the first card and Run; dots count the Rune's cards.
-                tabs = page.evaluate("""() => {
-                  const run = document.querySelector('[data-action="run"]').getBoundingClientRect();
-                  const first = document.querySelector('.cq-strip [data-action="select:0"]').getBoundingClientRect();
-                  const over = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5;
-                  return [...document.querySelectorAll('.cq-strip-tab')].map(b => { const r = b.getBoundingClientRect();
-                    return {a: b.dataset.action, on: b.classList.contains('on'), w: r.width, h: r.height, hit: b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)),
-                      clear: !over(r, run) && !over(r, first), dots: b.querySelectorAll('.cq-tab-dots i:not(.hollow)').length}; });
-                }""")
-                check(f'{tag}: Main and Rune tabs both visible, ≥ 48 px, hittable, clear of the strip and Run',
-                      [t['a'] for t in tabs] == ['strip:main', 'strip:rune'] and all(t['w'] >= 47.5 and t['h'] >= 47.5 and t['hit'] and t['clear'] for t in tabs), tabs)
-                check(f'{tag}: the edited tab is filled and the Rune tab shows 2 dots', tabs[0]['on'] and not tabs[1]['on'] and tabs[1]['dots'] == 2, tabs)
-                page.screenshot(path=str(out / f'rune-tabs-{tag}.png'))
-                act('strip:rune')
-                trail = []
-                for _ in range(3):
+                open_level('q11')
+                rows = page.evaluate("""() => [...document.querySelectorAll('.cq-row')].map(r => { const q = r.getBoundingClientRect(), l = r.querySelector('.cq-row-label').getBoundingClientRect();
+                  return {row: r.dataset.row, hidden: r.hidden, on: q.top >= 0 && q.bottom <= innerHeight + 1 && q.height > 40, label: l.width >= 47.5 && l.height >= 47.5}; })""")
+                check(f'{tag}: q11 shows the Rune row above the Hero row, both on screen', [r['row'] for r in rows] == ['rune', 'main'] and all(not r['hidden'] and r['on'] and r['label'] for r in rows), rows)
+                tap('.cq-row[data-row="rune"] [data-action="row:rune"]')
+                tap('.cq-library [data-action="add:attack"]')
+                tap('.cq-library [data-action="sticker:repeat:2"]')
+                tap('.cq-row[data-row="main"] [data-action="row:main"]')
+                tap('.cq-runbox [data-action="run"]')
+                check(f'{tag}: Rune built, Hero row empty: Run says the Rune is ready', notice() == 'Your Rune is ready! Put the 🪨 card in the Hero row.' and state()['model']['phase'] == 'programming')
+                for sel in ['.cq-picker-pin [data-action="logic:callRune"]', '.cq-library [data-action="add:move"]', '.cq-library [data-action="add:turnRight"]', '.cq-picker-pin [data-action="logic:callRune"]']:
+                    tap(sel)
+                check(f'{tag}: q11 cards in both rows are fully readable', not cards_readable(), cards_readable())
+                check(f'{tag}: q11 program equals the reference shape', bare(state()['program']) == refs['q11'] and bare(state()['runeProgram']) == refs['q11:rune'])
+                page.screenshot(path=str(out / f'rows-q11-{tag}.png'))
+                trail, editors = [], set()
+                for _ in range(60):
+                    if state()['model']['phase'] != 'programming' and state()['model']['phase'] != 'executing':
+                        break
                     act('step')
-                    trail.append((state()['editor'], page.evaluate("document.querySelectorAll('.cq-strip .executing').length")))
-                page.screenshot(path=str(out / f'rune-step-{tag}.png'))
-                check(f'{tag}: stepping shows Rune while it runs, then Main, one lit card each time',
-                      trail == [('rune', 1), ('rune', 1), ('main', 1)], trail)
-                act('reset')
-                check(f'{tag}: reset hands the strip back to the tab being edited before Step', state()['editor'] == 'rune')
-                act('strip:main')
-                page.screenshot(path=str(out / f'rune-call-cards-{tag}.png'))
-                check(f'{tag}: a Rune call card shows the cards inside the Rune', page.evaluate(
-                    "[...document.querySelectorAll('.cq-strip .cq-bracket.cat-func')].map(b => b.querySelectorAll('.cq-bracket-body .cq-mini').length).join()") == '2,2')
-                act('run')
-                page.wait_for_function(SNAPSHOT + ".model.phase === 'won' || " + SNAPSHOT + ".dialog === 'win'", timeout=30000)
-                check(f'{tag}: q10 wins with the Rune program and the strip is back on Main', state()['editor'] == 'main')
-                page.wait_for_selector('[data-action="win:continue"]', state='attached')
-                act('win:continue')
-                page.wait_for_function('!' + SNAPSHOT + '.dialog')
+                    s = state()
+                    editors.add(s['editor'])
+                    trail.append(page.evaluate("""() => ({calling: document.querySelectorAll('.cq-strip[data-row="main"] .calling').length,
+                      lit: document.querySelectorAll('.cq-strip .executing').length, rune: document.querySelectorAll('.cq-strip[data-row="rune"] .executing').length})"""))
+                    if len(trail) == 2:
+                        page.screenshot(path=str(out / f'rows-step-{tag}.png'))
+                    if s['model']['phase'] == 'won' or s['dialog'] == 'win':
+                        break
+                # Rune = Attack ×2, called twice: four Rune steps. Every step lights exactly one card; while a 🪨 card rings, the lit card is in the Rune row.
+                check(f'{tag}: at every Rune step exactly one card is lit and it is in the Rune row',
+                      sum(t['rune'] for t in trail) == 4 and all(t['lit'] == 1 for t in trail) and all(t['rune'] == 1 for t in trail if t['calling']), trail)
+                check(f'{tag}: the glowing row never changes during the run', editors == {'main'}, editors)
+                win('q11 with two rows')
 
-                problems, sides = [], {}
+                open_level('q05')
+                check(f'{tag}: q05 has one row and no row-label tap target', page.evaluate("""() => document.querySelector('.cq-row[data-row="rune"]').hidden
+                  && document.querySelector('[data-action="row:main"]').getClientRects().length === 0"""))
+                open_level('q11')
+                page.screenshot(path=str(out / f'picker-q11-{tag}.png'))
+
+                problems, sides, shots, small = [], {}, [], []
 
                 def assert_bubble(where):
                     page.wait_for_timeout(120)
@@ -408,6 +483,9 @@ def run(args):
                             problems.append(f"{where}: covers {r['sel']}")
                     if hero and s.get('bubbleSide') != 'caption' and intersects(b, hero):
                         problems.append(f'{where}: covers the hero')
+                    if problems and not shots:
+                        shots.append(where)
+                        page.screenshot(path=str(out / f'bubble-fail-{tag}.png'))
 
                 for index, level_id in enumerate(level_ids):
                     act('map')
@@ -415,6 +493,9 @@ def run(args):
                     act(f'level:{index}')
                     page.wait_for_function(SNAPSHOT + f".level === '{level_id}' && !" + SNAPSHOT + ".dialog")
                     assert_bubble(f'{level_id} start')
+                    # The program rows and picker never squeeze a room below a 2× pixel scale (simple-cards D7).
+                    if (state().get('roomScale') or 0) < 2:
+                        small.append(f"{level_id} ×{state().get('roomScale')}")
                     # Goal popover open (+ debug panel where the room has one), then a notice.
                     act('goal')
                     if page.evaluate("!document.querySelector('[data-action=\"debug\"]').hidden"):
@@ -425,6 +506,7 @@ def run(args):
                         page.screenshot(path=str(out / f'bubble-{tag}-{level_id}.png'))
                     act('goal')
                 report['bubbles'][tag] = sides
+                check(f'{tag}: every room draws at 2× or more beside the picker and program rows', not small, small[:8])
                 check(f'{tag}: bubble inside the scene, clear of HUD / debug / hero in all {len(level_ids)} rooms', not problems, problems[:8])
                 page.close(); context.close()
             check('No page errors', not report['pageErrors'], report['pageErrors'][:3])

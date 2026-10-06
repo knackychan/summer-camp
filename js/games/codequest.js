@@ -1,7 +1,7 @@
 import { createScheduler } from '../game-services/scheduler.js';
 import { CodeQuestModel } from './codequest/model.js';
 import { LEVELS, generateEndless } from './codequest/levels.js';
-import { action, repeat, ifNode, call, combinedBlockCount, toJavaScript } from './codequest/ast.js';
+import { action, call, combinedBlockCount, toJavaScript } from './codequest/ast.js';
 import { parseJavaScript, CODE_API } from './codequest/parser.js';
 import { markCoachSeen, normalizeProfile, recordLevelComplete, recordEndlessClear, modeFor, equipmentDescriptor, equipmentFor, weaponFor, combatStatsFor, equip, claimLoot, consumePotion, scoreForProfile, setActiveDungeonRun, finishDungeonRun, abandonDungeonRun, saveRuneLibrary, loadRuneLibrary, saveBehaviorSource, setBehaviorEnabled, behaviorFor, CODEQUEST_EQUIPMENT } from './codequest/progression.js';
 import { createDungeonRun, normalizeDungeonRun, roomMeta, roomGraph, nextRooms, enterDungeonRoom, resolveRunChoice, completeCombatRoom, failDungeonRun, expeditionLevel, dungeonRunSummary, hazardInfo, sigilsRequired, saveRunLoadout, activateRunLoadout } from './codequest/run.js';
@@ -9,8 +9,9 @@ import { spriteURL } from './codequest/pixel-art.js';
 import { previewPath } from './codequest/preview.js';
 import { drawRoom, MAX_ZOOM, ROOM_VIEW } from './codequest/room-view.js';
 import { placeBubbleRect } from './codequest/bubble.js';
-import { IF_TESTS, repeatCounts, ifTests, insertAfter, canUnwrap, unwrap, setRepeatCount, nextRepeatCount, setCondition, extendSelection } from './codequest/strip-edit.js';
-import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, COACH, pairHTML, setLanguage, language, t } from './codequest/strings.js';
+import { repeatCounts, ifTests, insertAfter } from './codequest/strip-edit.js';
+import { cardView, withSticker, withoutStickers } from './codequest/stickers.js';
+import { COMMANDS, CONDITIONS, LOGIC, UI, ITEM_LABELS, MESSAGES, SHORT, LAB, FACING, COACH, STICKER, PICKER, pairHTML, setLanguage, language, t } from './codequest/strings.js';
 import { mountLab } from './codequest/lab/lab-screen.js';
 
 let S = null;
@@ -173,7 +174,6 @@ function actionIcon(op) {
   if (op.startsWith('companion')) return sprite('companion');
   return glyph('data');
 }
-function logicIcon(id) { return glyph(id.startsWith('repeat') ? 'repeat' : id.startsWith('if') ? 'if' : 'call'); }
 
 /** Colour family of a card (redesign design.md, Screen): move blue, turn purple, attack red,
     interact gold, care green, companion teal, loops/logic violet, functions magenta. */
@@ -193,7 +193,6 @@ function nodeCategory(node) {
   if (node.type === 'call' || node.type === 'on') return 'func';
   return 'data';
 }
-function logicCategory(id) { return id.startsWith('repeat') ? 'loop' : id.startsWith('if') ? 'logic' : 'func'; }
 
 function nodeTitle(node) {
   if (node.type === 'action') return COMMANDS[node.op] || [node.op, node.op];
@@ -223,7 +222,9 @@ function nodeIcon(node) {
   if (node.type === 'call' || node.type === 'on') return glyph('call');
   return glyph('data');
 }
-const running = node => !!(node.uid && (node.uid === S.activeUid || (S.activeCalls || []).includes(node.uid)));
+/* The one card being run lights up; a 🪨 card whose Rune is running only rings (simple-cards D5). */
+const running = node => !!(node.uid && node.uid === S.activeUid);
+const calls = node => !!(node.uid && (S.activeCalls || []).includes(node.uid));
 
 function codeUnlocked() { return modeFor(S.profile) === 'architect'; }
 function allowedRepresentations() {
@@ -239,91 +240,103 @@ function defaultRepresentation() {
   return 'hybrid';
 }
 
-/* ---------- program strip (redesign slice 04) ---------- */
-/** `lit` false keeps a copy's cards dark: a call card's mini row lights only while that call runs. */
-function miniCards(nodes, lit = true) {
+/* ---------- program rows (redesign slice 04; simple-cards D1, D2, D5) ---------- */
+/* A room that offers the Rune shows two rows at once: Rune above, Hero below. The glowing
+   row (S.editor) is where new cards and stickers go. Other rooms show the Hero row only. */
+const ROWS = ['rune', 'main'];
+function hasRune() { return !!(S.level && S.level.available.logic.includes('callRune')); }
+function rowProgram(row) { return row === 'rune' ? S.runeProgram : S.program; }
+function rowSelection(row) { return row === 'rune' ? S.selectedRune : S.selectedMain; }
+const replaceAt = (list, index, node) => list.slice(0, index).concat(node, list.slice(index + 1));
+
+/* Picture on an if sticker: the thing the hero checks for. */
+const CONDITION_SPRITES = {
+  enemyAhead: 'goblin', enemyArmoredAhead: 'bulwark', enemyWeakAhead: 'slime', dangerIncoming: 'archer', heroPoisoned: 'viper',
+  chestAhead: 'chest-closed', doorAhead: 'door-closed', trapAhead: 'trap-active', hasKey: 'key', hpLow: 'potion',
+  multipleEnemies: 'goblin', targetInRange: 'archer', targetWeak: 'slime', targetElementWeak: 'emberImp', leverAhead: 'lever-off',
+  breakableAhead: 'crate', npcAhead: 'npc', runeGateAhead: 'rune-gate-closed', pushableAhead: 'push-block', cycleTrapAhead: 'cycle-trap-safe',
+  cycleTrapActiveAhead: 'cycle-trap-active', platformAhead: 'moving-platform', onPlatform: 'moving-platform', questTokenAhead: 'quest-token',
+  companionNear: 'companion', carryableAhead: 'rune-core', heroCarrying: 'rune-core', heroOnPlate: 'plate-on',
+  companionCarryableAhead: 'rune-core', companionCarrying: 'rune-core', companionOnPlate: 'plate-on'
+};
+function conditionPicture(test) { return CONDITION_SPRITES[test] ? sprite(CONDITION_SPRITES[test]) : glyph('if'); }
+/** The tags under a card's name; the words always show (D1). */
+function stickerTagsHTML(view) {
+  let out = '';
+  if (view.times > 1) out += '<span class="cq-sticker cat-loop">' + glyph('repeat') + label(STICKER.times(view.times)) + '</span>';
+  if (view.test) out += '<span class="cq-sticker cat-logic">' + conditionPicture(view.test) + label(STICKER.short[view.test] || CONDITIONS[view.test] || SHORT.if) + '</span>';
+  return out ? '<span class="cq-stickers">' + out + '</span>' : '';
+}
+/** "Move, 5 times, only if: Trap ahead" — for the screen reader and the card's label. */
+function cardWords(node) {
+  const view = node && cardView(node);
+  if (!view) return node ? nodeTitle(node) : ['', ''];
+  const name = view.card.type === 'action' ? nodeShort(view.card) : view.card.type === 'call' && view.card.name === 'rune' ? SHORT.call : nodeTitle(view.card);
+  const parts = [name];
+  if (view.times > 1) parts.push(STICKER.times(view.times));
+  if (view.test) parts.push(STICKER.onlyIf(view.test));
+  return [parts.map(p => p[0]).join(', '), parts.map(p => p[1]).join('，')];
+}
+
+function miniCards(nodes) {
   if (!nodes.length) return '<span class="cq-mini empty">' + glyph('data') + '</span>';
   return nodes.map(node => {
-    const cls = 'cat-' + nodeCategory(node) + (lit && running(node) ? ' executing' : '');
-    if (node.type === 'repeat' || node.type === 'forOf') return '<span class="cq-mini-bracket ' + cls + '"><i>' + label(nodeShort(node)) + '</i>' + miniCards(node.body, lit) + '</span>';
-    if (node.type === 'if') return '<span class="cq-mini-bracket ' + cls + '"><i>?</i>' + miniCards(node.then, lit) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else, lit) : '') + '</span>';
+    const cls = 'cat-' + nodeCategory(node) + (running(node) ? ' executing' : '');
+    if (node.type === 'repeat' || node.type === 'forOf') return '<span class="cq-mini-bracket ' + cls + '"><i>' + label(nodeShort(node)) + '</i>' + miniCards(node.body) + '</span>';
+    if (node.type === 'if') return '<span class="cq-mini-bracket ' + cls + '"><i>?</i>' + miniCards(node.then) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else) : '') + '</span>';
     return '<span class="cq-mini ' + cls + '" title="' + esc(t(nodeTitle(node))) + '">' + nodeIcon(node) + '</span>';
   }).join('');
 }
-function stripCard(node, index, selected) {
-  const cls = 'cat-' + nodeCategory(node) + (selected ? ' selected' : '') + (running(node) ? ' executing' : '') + (node.uid && node.uid === S.justAdded ? ' just-added' : '');
-  const head = '<i class="cq-num">' + (index + 1) + '</i>' + nodeIcon(node) + '<b>' + label(nodeShort(node)) + '</b>';
-  const attrs = 'aria-pressed="' + selected + '" aria-label="' + esc((index + 1) + '. ' + t(nodeTitle(node))) + '"';
-  // A Rune call shows the Rune's own cards, the way Repeat shows its body (facing-and-rune D6).
-  const runeCall = node.type === 'call' && node.name === 'rune';
-  if (node.type === 'repeat' || node.type === 'forOf' || node.type === 'if' || runeCall) {
-    const body = runeCall ? miniCards(S.runeProgram, running(node)) : node.type === 'if' ? miniCards(node.then) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else) : '') : miniCards(node.body);
-    return '<div class="cq-bracket ' + cls + '">' + button('select:' + index, head, 'class="cq-bracket-head" ' + attrs) + '<div class="cq-bracket-body">' + body + '</div></div>';
+/* One card, stickers and all (D1, D2). The 🪨 card is one card too, with no mini row (D5):
+   while its Rune runs it only gets a quiet "calling" ring; the lit card is in the Rune row. */
+function stripCard(node, index, selected, row) {
+  const view = cardView(node), action = 'select:' + row + ':' + index;
+  const attrs = 'aria-pressed="' + selected + '" aria-label="' + esc((index + 1) + '. ' + t(cardWords(node))) + '"';
+  if (view) {
+    const card = view.card, lit = running(card), calling = !lit && card.type === 'call' && calls(card);
+    const added = S.justAdded && (node.uid === S.justAdded || card.uid === S.justAdded);
+    const cls = 'cat-' + nodeCategory(card) + (selected ? ' selected' : '') + (lit ? ' executing' : '') + (calling ? ' calling' : '') + (added ? ' just-added' : '');
+    const head = '<i class="cq-num">' + (index + 1) + '</i>' + nodeIcon(card) + '<b>' + label(nodeShort(card)) + '</b>' + stickerTagsHTML(view);
+    return button(action, head, 'class="cq-card ' + cls + '" ' + attrs);
   }
-  return button('select:' + index, head, 'class="cq-card ' + cls + '" ' + attrs);
+  // A legacy bracket (only the Code sheet or a loadout makes one): drawn as before, takes no stickers.
+  const cls = 'cat-' + nodeCategory(node) + (selected ? ' selected' : '') + (running(node) ? ' executing' : '');
+  const head = '<i class="cq-num">' + (index + 1) + '</i>' + nodeIcon(node) + '<b>' + label(nodeShort(node)) + '</b>';
+  const body = node.type === 'if' ? miniCards(node.then) + (node.else.length ? '<em>' + label(SHORT.else) + '</em>' + miniCards(node.else) : '') : miniCards(node.body || []);
+  return '<div class="cq-bracket ' + cls + '">' + button(action, head, 'class="cq-bracket-head" ' + attrs) + '<div class="cq-bracket-body">' + body + '</div></div>';
 }
-function stripHTML() {
-  const nodes = currentProgram(), selected = currentSelection();
+function stripHTML(row) {
+  const nodes = rowProgram(row), selected = rowSelection(row);
   const free = Math.max(0, S.level.maxBlocks - combinedBlockCount(S.program, functions()));
   const shown = Math.min(free, 6);
   const slots = Array.from({ length: shown }, (_, i) => '<span class="cq-slot" aria-hidden="true">' + (i === 0 ? '+' : '') + '</span>').join('') + (free > shown ? '<span class="cq-slot more" aria-hidden="true">+' + (free - shown) + '</span>' : '');
-  return nodes.map((node, i) => stripCard(node, i, selected.has(i))).join('') + slots;
+  return nodes.map((node, i) => stripCard(node, i, selected.has(i), row)).join('') + slots;
 }
-/* Two visible tabs (facing-and-rune D6): both programs are always on screen; the one being
-   edited is filled. The Rune tab counts its cards with dots (a hollow dot when empty). */
-function stripTabsHTML() {
-  if (!S.level.available.logic.includes('callRune')) return '';
-  const n = S.runeProgram.length;
-  const dots = '<span class="cq-tab-dots" aria-hidden="true">' + (n ? '<i></i>'.repeat(Math.min(4, n)) : '<i class="hollow"></i>') + '</span>';
-  const tab = (id, icon, words, extra, aria) => button('strip:' + id, glyph(icon) + '<b>' + label(words) + '</b>' + extra,
-    'class="cq-strip-tab' + (S.editor === id ? ' on' : '') + '" aria-pressed="' + (S.editor === id) + '" aria-label="' + esc(t(aria)) + '"');
-  return '<div class="cq-strip-tabs" role="group">' +
-    tab('main', 'play', ['Main', '主程式'], '', ['Main program', '主程式']) +
-    tab('rune', 'call', SHORT.call, dots, ['Rune: ' + n + ' cards inside', '符文：裡面有 ' + n + ' 張卡片']) + '</div>';
+function rowLabelHTML(row) {
+  return row === 'rune' ? glyph('call') + '<b>' + label(UI.runeRow) + '</b>' : glyph('play') + '<b>' + label(UI.heroRow) + '</b>';
 }
-/* Card tools live on the card menu (UX polish U3); the strip end keeps only program-level tools. */
+/* Card tools live on the card menu (UX polish U3); the dock end keeps only program-level tools. */
 function toolsHTML() {
   return button('undo', glyph('undo'), 'class="cq-tool" aria-label="' + esc(t(UI.undo)) + '" ' + (S.undo.length ? '' : 'disabled')) +
     button('clear', glyph('trash'), 'class="cq-tool" aria-label="' + esc(t(UI.clear)) + '" ' + (currentProgram().length ? '' : 'disabled'));
 }
-/* Floating card menu (UX polish slice 08): opens over the tapped card(s). One card:
-   move, remove, and Wrap (action cards) or count / test / Unwrap (brackets). A run of
-   cards: Wrap and remove. Wrap choices are only the room's own logic cards. */
+/* Floating card menu (simple-cards D4): over the one tapped card — ◀, ▶, Take stickers off
+   (only when it has any), 🗑. Brackets are no longer built here; stickers do that. */
 function menuVisible() {
   return !!(S.menuOpen && currentSelection().size && !S.dialog && !S.paused && !S.autoRun && S.model.phase === 'programming');
 }
 function menuButton(actionId, inner, aria, extra = '') {
   return button(actionId, inner, 'class="cq-menu-btn' + (extra ? ' ' + extra : '') + '" aria-label="' + esc(t(aria)) + '"' + (/\boff\b/.test(extra) ? ' disabled' : ''));
 }
-function wrapWords(id) {
-  const n = Number(id.replace('repeat', '')) || 2;
-  return id.startsWith('repeat') ? ['×' + n, '×' + n] : IF_TESTS[id] && CONDITIONS[IF_TESTS[id]] ? CONDITIONS[IF_TESTS[id]] : LOGIC[id];
-}
 function cardMenuHTML() {
-  const list = currentProgram(), picked = [...currentSelection()].sort((a, b) => a - b);
-  const one = picked.length === 1 ? picked[0] : -1, node = one >= 0 ? list[one] : null;
-  const logicIds = S.level.available.logic, counts = repeatCounts(logicIds), tests = ifTests(logicIds);
-  const wrapIds = logicIds.filter(id => id !== 'callRune');
-  const bracket = node && (node.type === 'repeat' || node.type === 'if' || node.type === 'forOf');
-  const row = [];
-  if (node) row.push(menuButton('nudge:-1', glyph('left'), UI.moveLeft, one === 0 ? 'off' : ''));
-  if (node && node.type === 'repeat' && typeof node.times === 'number' && counts.length > 1) row.push(menuButton('menu:count', glyph('repeat') + '<b>×' + node.times + '</b>', UI.repeatCount, 'wide'));
-  if (node && canUnwrap(node)) row.push(menuButton('menu:unwrap', glyph('data') + '<b>' + label(UI.unwrap) + '</b>', UI.unwrap, 'wide'));
-  if (!bracket && wrapIds.length) row.push(menuButton('menu:wrap', glyph('repeat') + '<b>' + label(UI.wrap) + '</b>', UI.wrap, 'wide' + (S.menuWrap ? ' on' : '')));
-  row.push(menuButton('delete', glyph('remove'), UI.removeCard));
-  if (node) row.push(menuButton('nudge:1', glyph('right'), UI.moveRight, one === list.length - 1 ? 'off' : ''));
-  let second = '';
-  if (node && node.type === 'if' && tests.length > 1) {
-    second = tests.map(([id, test]) => button('menu:test:' + id, glyph('if') + '<b>' + label(CONDITIONS[test] || LOGIC[id]) + '</b>',
-      'class="cq-menu-btn wide cat-logic' + (node.test === test ? ' on' : '') + '" aria-pressed="' + (node.test === test) + '" aria-label="' + esc(t(LOGIC[id] || CONDITIONS[test])) + '"')).join('');
-  } else if (!bracket && S.menuWrap && wrapIds.length) {
-    second = wrapIds.map(id => button('logic:' + id, logicIcon(id) + '<b>' + label(wrapWords(id)) + '</b>',
-      'class="cq-menu-btn wide cat-' + logicCategory(id) + '" aria-label="' + esc(t(LOGIC[id])) + '"')).join('');
-  }
-  return '<div class="cq-menu-row">' + row.join('') + '</div>' + (second ? '<div class="cq-menu-row cq-menu-choices">' + second + '</div>' : '');
+  const list = currentProgram(), one = [...currentSelection()][0], view = list[one] ? cardView(list[one]) : null;
+  const row = [menuButton('nudge:-1', glyph('left'), UI.moveLeft, one === 0 ? 'off' : ''), menuButton('nudge:1', glyph('right'), UI.moveRight, one === list.length - 1 ? 'off' : '')];
+  if (view && (view.times > 1 || view.test)) row.push(menuButton('menu:unstick', '<b>' + label(UI.stickersOff) + '</b>', UI.stickersOff, 'wide'));
+  row.push(menuButton('delete', glyph('trash'), UI.removeCard));
+  return '<div class="cq-menu-row">' + row.join('') + '</div>';
 }
 function cardElement(index) {
-  const head = S.root.querySelector('.cq-strip [data-action="select:' + index + '"]');
+  const head = S.root.querySelector('.cq-strip[data-row="' + S.editor + '"] [data-action="select:' + S.editor + ':' + index + '"]');
   return head && head.classList.contains('cq-bracket-head') ? head.parentElement : head;
 }
 function renderMenu() {
@@ -335,26 +348,28 @@ function renderMenu() {
   menu.innerHTML = cardMenuHTML();
   placeMenu();
 }
-/** Sit the menu above the selected cards, clamped to the play area; it follows the strip's scroll. */
+/** Right edge for floating cards: the picker column's left side, so they never cover it (D7). */
+function floatRight(box) {
+  const picker = S.root.querySelector('.cq-picker');
+  const r = picker && picker.getBoundingClientRect();
+  return r && r.width && r.left - box.left > box.width / 2 ? r.left - box.left - 4 : box.width;
+}
+/** Sit the menu above the selected card, clamped left of the picker; it follows the strip's scroll. */
 function placeMenu() {
   const menu = S.root.querySelector('.cq-card-menu'), play = S.root.querySelector('.cq-play');
   if (!menu || menu.hidden || !play) return;
   const rects = [...currentSelection()].map(cardElement).filter(Boolean).map(el => el.getBoundingClientRect());
   if (!rects.length) { menu.hidden = true; return; }
-  const box = play.getBoundingClientRect();
-  const left = Math.min(...rects.map(r => r.left)), right = Math.max(...rects.map(r => r.right)), top = Math.min(...rects.map(r => r.top));
-  const w = menu.offsetWidth, h = menu.offsetHeight, cx = (left + right) / 2 - box.left;
-  const x = Math.max(4, Math.min(box.width - w - 4, cx - w / 2)), y = Math.max(4, top - box.top - h - 12);
+  const box = play.getBoundingClientRect(), right = floatRight(box);
+  const left = Math.min(...rects.map(r => r.left)), end = Math.max(...rects.map(r => r.right)), top = Math.min(...rects.map(r => r.top));
+  const w = menu.offsetWidth, h = menu.offsetHeight, cx = (left + end) / 2 - box.left;
+  const x = Math.max(4, Math.min(right - w - 4, cx - w / 2)), y = Math.max(4, top - box.top - h - 12);
   menu.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
   menu.style.setProperty('--tail', Math.round(Math.max(18, Math.min(w - 18, cx - x))) + 'px');
 }
-/* Rune coach (facing-and-rune D10): three short cards, once per kid, the first time a room
-   offers the Rune. Not modal: the room stays playable while it shows. */
-const COACH_STEPS = [
-  { text: COACH.rune1, target: '.cq-strip-tabs [data-action="strip:rune"]', editor: null },
-  { text: COACH.rune2, target: '.cq-strip', editor: 'rune' },
-  { text: COACH.rune3, target: '.cq-library [data-action="logic:callRune"]', editor: 'main' }
-];
+/* Rune coach (simple-cards D6): one card on the Rune row, once per kid, the first time a
+   room offers the Rune. Not modal: the room stays playable while it shows. */
+const COACH_STEPS = [{ text: COACH.runeRow, target: '.cq-row[data-row="rune"]' }];
 function runeCoachDue(level) {
   return !!(level && level.available.logic.includes('callRune') && !level.expedition && !level.endless && level.codingView !== 'code'
     && !(S.profile.coach || []).includes('rune'));
@@ -370,63 +385,80 @@ function renderCoach() {
   if (!show) return;
   const step = COACH_STEPS[S.coach], last = S.coach === COACH_STEPS.length - 1;
   card.setAttribute('aria-label', t(COACH.title));
-  card.innerHTML = '<p>' + label(step.text) + '</p><div class="cq-coach-row"><i>' + (S.coach + 1) + ' / ' + COACH_STEPS.length + '</i>' +
+  card.innerHTML = '<p>' + label(step.text) + '</p><div class="cq-coach-row"><i>' + (COACH_STEPS.length > 1 ? (S.coach + 1) + ' / ' + COACH_STEPS.length : '') + '</i>' +
     button(last ? 'coach:done' : 'coach:next', '<b>' + label(last ? COACH.done : COACH.next) + '</b>', 'class="cq-coach-btn"') + '</div>';
   placeCoach();
 }
-/** Sit the coach card above its target, clamped to the play area, its tail on the target. */
+/** Sit the coach card above its target, clamped left of the picker, its tail on the target. */
 function placeCoach() {
   const card = S.root.querySelector('.cq-coach'), play = S.root.querySelector('.cq-play');
   if (!card || card.hidden || !play) return;
   const target = S.root.querySelector(COACH_STEPS[S.coach].target);
   if (!target) return;
-  const r = target.getBoundingClientRect(), box = play.getBoundingClientRect();
+  const r = target.getBoundingClientRect(), box = play.getBoundingClientRect(), right = floatRight(box);
   const w = card.offsetWidth, h = card.offsetHeight, cx = r.left + Math.min(r.width, 160) / 2 - box.left;
-  const x = Math.max(4, Math.min(box.width - w - 4, cx - w / 2)), y = Math.max(4, r.top - box.top - h - 14);
+  const x = Math.max(4, Math.min(right - w - 4, cx - w / 2)), y = Math.max(4, r.top - box.top - h - 14);
   card.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
   card.style.setProperty('--tail', Math.round(Math.max(18, Math.min(w - 18, cx - x))) + 'px');
 }
 function coachAction(actionId) {
   if (S.coach < 0) return;
-  if (actionId === 'coach:done') {
-    S.coach = -1; S.profile = markCoachSeen(S.profile, 'rune'); saveProfile();
-  } else {
-    S.coach = Math.min(COACH_STEPS.length - 1, S.coach + 1);
-    const editor = COACH_STEPS[S.coach].editor;
-    if (editor && editor !== S.editor) { S.editor = editor; currentSelection().clear(); closeMenu(); }
-  }
+  if (actionId === 'coach:done') { S.coach = -1; S.profile = markCoachSeen(S.profile, 'rune'); saveProfile(); }
+  else S.coach = Math.min(COACH_STEPS.length - 1, S.coach + 1);
   render();
 }
 
 function closeMenu() {
   if (!S || !S.menuOpen) return;
-  S.menuOpen = false; S.menuWrap = false;
+  S.menuOpen = false;
   const menu = S.root.querySelector('.cq-card-menu'); if (menu) menu.hidden = true;
 }
 function menuAction(actionId) {
-  const list = currentProgram(), picked = [...currentSelection()], index = picked.length === 1 ? picked[0] : -1;
-  const logicIds = S.level.available.logic, counts = repeatCounts(logicIds);
-  if (actionId === 'menu:wrap') { S.menuWrap = !S.menuWrap; renderMenu(); return; }
-  let next = null;
-  if (actionId === 'menu:unwrap') next = unwrap(list, index);
-  else if (actionId === 'menu:count' && list[index]) next = setRepeatCount(list, index, nextRepeatCount(list[index].times, counts), counts);
-  else if (actionId.startsWith('menu:test:')) next = setCondition(list, index, IF_TESTS[actionId.slice(10)], ifTests(logicIds).map(pair => pair[1]));
-  if (!next) return;
-  pushUndo(); setCurrentProgram(next);
-  // Count / test edits keep the bracket selected so the kid can keep tapping; Unwrap closes the menu.
-  if (actionId === 'menu:unwrap') { closeMenu(); announce(['Cards unwrapped.', '卡片已拆開。']); }
-  else { currentSelection().add(index); announce(['Card changed.', '卡片已更改。']); }
-  render();
+  if (actionId !== 'menu:unstick') return;
+  const list = currentProgram(), index = [...currentSelection()][0], node = list[index], bare = node && withoutStickers(node);
+  if (!bare || bare === node) return;
+  pushUndo(); setCurrentProgram(replaceAt(list, index, bare));
+  currentSelection().add(index);
+  announce(cardWords(bare)); render();
 }
-function libraryHTML() {
-  const level = S.level;
-  const actions = level.available.actions.map(op => button('add:' + op, actionIcon(op) + '<b>' + label(SHORT[op] || COMMANDS[op]) + '</b>', 'class="cq-cmd cat-' + opCategory(op) + '" aria-label="' + esc(t(COMMANDS[op])) + '"')).join('');
-  const logic = level.available.logic.filter(id => !(id === 'callRune' && S.editor === 'rune')).map(id => {
-    const n = Number(id.replace('repeat', '')) || 2;
-    const words = id.startsWith('repeat') ? ['×' + n, '×' + n] : id === 'callRune' ? SHORT.call : LOGIC[id];
-    return button('logic:' + id, logicIcon(id) + '<b>' + label(words) + '</b>', 'class="cq-cmd cat-' + logicCategory(id) + '" aria-label="' + esc(t(LOGIC[id])) + '"');
-  }).join('');
-  return actions + logic;
+
+/* ---------- picker column (simple-cards D7) ---------- */
+/* Groups follow the card colours; a tab shows only when its group has something. Up to
+   8 cards + stickers stay one list with no tabs. */
+const PICKER_TABS = [['walk', '🚶'], ['fight', '⚔️'], ['use', '✋'], ['care', '🧪'], ['friend', '🐾'], ['stickers', '🏷️']];
+const PICKER_GROUP = { move: 'walk', turn: 'walk', attack: 'fight', use: 'use', care: 'care', ally: 'friend' };
+function pickerGroups() {
+  const level = S.level, logicIds = level.available.logic, groups = { walk: [], fight: [], use: [], care: [], friend: [], stickers: [] };
+  for (const op of level.available.actions) groups[PICKER_GROUP[opCategory(op)]].push(
+    button('add:' + op, actionIcon(op) + '<b>' + label(SHORT[op] || COMMANDS[op]) + '</b>', 'class="cq-cmd cat-' + opCategory(op) + '" aria-label="' + esc(t(COMMANDS[op])) + '"'));
+  for (const n of repeatCounts(logicIds)) groups.stickers.push(
+    button('sticker:repeat:' + n, glyph('repeat') + '<b>' + label(STICKER.times(n)) + '</b>', 'class="cq-cmd cq-sticker-btn cat-loop" aria-label="' + esc(t(STICKER.times(n))) + '"'));
+  for (const [, test] of ifTests(logicIds)) groups.stickers.push(
+    button('sticker:if:' + test, conditionPicture(test) + '<b>' + label(STICKER.onlyIf(test)) + '</b>', 'class="cq-cmd cq-sticker-btn wide cat-logic" aria-label="' + esc(t(STICKER.onlyIf(test))) + '"'));
+  return groups;
+}
+function pickerTab(groups) {
+  const open = PICKER_TABS.map(([id]) => id).filter(id => groups[id].length);
+  const saved = S.pickerTabs[S.level.id];
+  return open.includes(saved) ? saved : open[0];
+}
+const pickerTabbed = groups => Object.values(groups).reduce((n, list) => n + list.length, 0) > 8;
+function pickerTabsHTML(groups) {
+  if (!pickerTabbed(groups)) return '';
+  const on = pickerTab(groups);
+  return PICKER_TABS.filter(([id]) => groups[id].length).map(([id, icon]) => button('picker:' + id, '<i aria-hidden="true">' + icon + '</i><b>' + label(PICKER[id]) + '</b>',
+    'class="cq-tab' + (id === on ? ' on' : '') + '" aria-pressed="' + (id === on) + '" aria-label="' + esc(t(PICKER[id])) + '"')).join('');
+}
+function libraryHTML(groups) {
+  if (!pickerTabbed(groups)) return PICKER_TABS.map(([id]) => groups[id].join('')).join('');
+  return groups[pickerTab(groups)].join('');
+}
+/* The 🪨 card is pinned above the tabs; while the Rune row glows it is dimmed (a Rune can't use itself). */
+function runePinHTML() {
+  if (!hasRune()) return '';
+  const dim = S.editor === 'rune';
+  return button('logic:callRune', glyph('call') + '<span><b>' + label(SHORT.call) + '</b>' + (dim ? '<small>' + label(UI.useInHeroRow) + '</small>' : '') + '</span>',
+    'class="cq-cmd cq-rune-card cat-func' + (dim ? ' dim' : '') + '" aria-disabled="' + dim + '" aria-label="' + esc(t(dim ? UI.useInHeroRow : LOGIC.callRune)) + '"');
 }
 
 function runeLibraryHTML() {
@@ -587,14 +619,27 @@ function render() {
   const debugAllowed = behaviorAllowedForLevel();
   root.querySelector('[data-action="debug"]').hidden = !debugAllowed;
   const panel = root.querySelector('.cq-debug'); panel.hidden = !(debugAllowed && S.debugOpen); if (!panel.hidden) panel.innerHTML = debuggerHTML();
-  html('.cq-strip-tabs-slot', stripTabsHTML());
-  html('.cq-strip', stripHTML());
+  const rune = hasRune(), dock = root.querySelector('.cq-dock');
+  if (!rune && S.editor === 'rune') S.editor = 'main';
+  dock.classList.toggle('two', rune);
+  // Rooms that offer stickers keep room for their tag line, so adding one never jumps the layout.
+  dock.style.setProperty('--tagline', repeatCounts(S.level.available.logic).length || ifTests(S.level.available.logic).length ? '1' : '0');
+  for (const row of ROWS) {
+    const el = root.querySelector('.cq-row[data-row="' + row + '"]');
+    el.hidden = row === 'rune' && !rune;
+    el.classList.toggle('on', rune && S.editor === row);
+    html('.cq-row[data-row="' + row + '"] .cq-row-label', rowLabelHTML(row));
+    html('.cq-strip[data-row="' + row + '"]', stripHTML(row));
+    root.querySelector('.cq-strip[data-row="' + row + '"]').setAttribute('aria-label', t(row === 'rune' ? UI.runeRowLabel : rune ? UI.heroRowLabel : UI.program));
+  }
   html('.cq-tools', toolsHTML());
   renderMenu();
   renderZoom();
-  html('.cq-library', libraryHTML());
+  const groups = pickerGroups(), pin = runePinHTML(), tabs = pickerTabsHTML(groups);
+  html('.cq-picker-pin', pin); root.querySelector('.cq-picker-pin').hidden = !pin;
+  html('.cq-picker-tabs', tabs); root.querySelector('.cq-picker-tabs').hidden = !tabs;
+  html('.cq-library', libraryHTML(groups));
   renderCoach();
-  root.querySelector('.cq-strip').setAttribute('aria-label', t(S.editor === 'rune' ? UI.rune : UI.program));
   html('.cq-runbox', button('run', glyph('play') + '<b>' + label(['Run', '執行']) + '</b>', 'class="cq-run"') +
     '<div>' + button('step', glyph('step') + '<b>' + label(UI.step) + '</b>', 'class="cq-small"') + button('reset', glyph('reset') + '<b>' + label(['Reset', '重設']) + '</b>', 'class="cq-small"') + '</div>');
   root.querySelector('.cq-debug-toggle').setAttribute('aria-label', t(['Event debugger', '事件除錯器']));
@@ -605,8 +650,7 @@ function render() {
   root.querySelector('.cq-notice').innerHTML = label(S.notice || MESSAGES.intro);
   if (S.bubble) { S.bubble.innerHTML = label(S.notice || MESSAGES.intro); if (S.dialog || S.paused) S.bubble.hidden = true; }
   if (S.dialog === 'code') root.querySelector('.cq-dialog').innerHTML = codeSheetHTML();
-  const executing = root.querySelector('.cq-strip .executing');
-  if (executing && executing.scrollIntoView) executing.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  for (const executing of root.querySelectorAll('.cq-strip .executing')) if (executing.scrollIntoView) executing.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   S.preview = previewFor();
   draw();
 }
@@ -737,46 +781,48 @@ function addAction(op) {
   if (added && added.scrollIntoView) added.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
-function selectedRange() {
-  const selected = [...currentSelection()].sort((a, b) => a - b), nodes = currentProgram();
-  if (!nodes.length) return null;
-  if (!selected.length) return [nodes.length - 1, nodes.length - 1];
-  for (let i = 1; i < selected.length; i++) if (selected[i] !== selected[i - 1] + 1) return false;
-  return [selected[0], selected[selected.length - 1]];
-}
-
-function wrap(kind, value) {
-  const range = selectedRange();
-  if (range === null) { notify(MESSAGES.wrapEmpty); return; }
-  if (range === false) { notify(MESSAGES.selectContiguous); return; }
-  const nodes = currentProgram(), body = nodes.slice(range[0], range[1] + 1);
-  let wrapper;
-  if (kind === 'repeat') wrapper = repeat(value, body, uid('r'));
-  else wrapper = ifNode(value, body, [], uid('i'));
-  pushUndo();
-  setCurrentProgram(nodes.slice(0, range[0]).concat(wrapper, nodes.slice(range[1] + 1)));
-  notify(['Cards wrapped into one logic block.', '卡片已包成一個邏輯積木。']); render();
+/* Sticker tap (simple-cards D3): on the selected card, else on the last card of the glowing row. */
+function applySticker(kind, value) {
+  const logicIds = S.level.available.logic;
+  let sticker = null;
+  if (kind === 'repeat' && repeatCounts(logicIds).includes(Number(value))) sticker = { kind, times: Number(value) };
+  else if (kind === 'if' && ifTests(logicIds).some(([, test]) => test === value)) sticker = { kind, test: value };
+  if (!sticker) return;
+  const list = currentProgram();
+  if (!list.length) { notify(MESSAGES.stickerNeedsCard); return; }
+  const picked = [...currentSelection()], index = picked.length === 1 ? picked[0] : list.length - 1;
+  const next = withSticker(list[index], sticker, uid);
+  if (!next) { notify(MESSAGES.stickerNoBracket); return; }
+  pushUndo(); setCurrentProgram(replaceAt(list, index, next));
+  if (picked.length === 1) currentSelection().add(index);
+  S.justAdded = withoutStickers(next).uid; announce(cardWords(next)); render(); S.justAdded = null;
 }
 
 function logic(id) {
-  if (!S.level.available.logic.includes(id)) return;
-  if (id === 'callRune') {
-    // A Rune can't hold a call to itself (it would only fail at Run).
-    if (S.editor === 'rune') { notify(MESSAGES.noSelfCall); return; }
-    if (!S.runeProgram.length) { S.editor = 'rune'; notify(MESSAGES.missingFunction); render(); return; }
-    pushUndo(); setCurrentProgram(currentProgram().concat(call('rune', uid('c')))); notify(['Rune call added.', '已加入符文呼叫。']); render(); return;
-  }
-  if (id.startsWith('repeat')) wrap('repeat', Number(id.replace('repeat', '')) || 2);
-  else if (IF_TESTS[id]) wrap('if', IF_TESTS[id]);
+  if (id !== 'callRune' || !hasRune()) return;
+  // A Rune can't hold a call to itself (it would only fail at Run).
+  if (S.editor === 'rune') { notify(MESSAGES.noSelfCall); return; }
+  if (!S.runeProgram.length) { setRow('rune'); notify(MESSAGES.missingFunction); render(); return; }
+  const picked = [...currentSelection()], node = call('rune', uid('c'));
+  pushUndo(); setCurrentProgram(insertAfter(currentProgram(), picked.length === 1 ? picked[0] : -1, node));
+  closeMenu(); S.justAdded = node.uid; announce(['Rune card added.', '已加入符文卡片。']); render(); S.justAdded = null;
 }
 
-function selectIndex(index) {
+function setRow(row) {
+  if (row === S.editor) return;
+  S.editor = row; S.selectedMain.clear(); S.selectedRune.clear(); closeMenu();
+}
+/** Tapping a card selects that one card (simple-cards D4); tapping it again lets go. */
+function selectIndex(row, index) {
+  if (row !== 'main' && !(row === 'rune' && hasRune())) return;
+  setRow(row);
   const list = currentProgram(), selection = currentSelection();
   if (index < 0 || index >= list.length) return;
-  const next = extendSelection(selection, index);
-  selection.clear(); for (const i of next) selection.add(i);
-  S.menuOpen = selection.size > 0; S.menuWrap = false;
-  announce(MESSAGES.selected); render();
+  const again = selection.size === 1 && selection.has(index);
+  selection.clear(); if (!again) selection.add(index);
+  S.menuOpen = selection.size > 0;
+  if (!again) announce(MESSAGES.selected);
+  render();
 }
 function removeIndex(index) {
   const list = currentProgram(); if (index < 0 || index >= list.length) return;
@@ -855,7 +901,7 @@ function beginIfNeeded() {
   if (S.model.phase !== 'programming') return false;
   const result = S.model.begin(S.program, functions(), persistentBehaviors());
   if (result.ok) return true;
-  if (result.reason === 'empty-program') notify(MESSAGES.empty);
+  if (result.reason === 'empty-program') notify(S.runeProgram.length ? MESSAGES.runeReady : MESSAGES.empty);
   else if (result.reason === 'too-many-blocks') notify(MESSAGES.tooMany);
   else if (result.reason === 'missing-concept') notify(result.concept === 'repeat' ? MESSAGES.needRepeat : result.concept === 'if' ? MESSAGES.needIf : MESSAGES.needCall);
   else if (result.reason === 'missing-function') notify(MESSAGES.missingFunction);
@@ -961,32 +1007,20 @@ function turnFx(event, now) {
   return { kind: 'turn', target: turn[0], from, to, side: turn[1], start: now, duration: 560 };
 }
 
-/* The strip follows the running program (facing-and-rune D5): while a Rune call's body runs
-   the strip shows Rune, and it goes back to Main when the call returns. */
-function followRune() {
+/* Both rows stay on screen while a program runs (simple-cards D5): the open calls only ring
+   the 🪨 card that is running, the card being run lights up in its own row. */
+function trackCalls() {
   const calls = S.model.runner && S.model.runner.activeCalls ? S.model.runner.activeCalls() : [];
   S.activeCalls = calls.map(call => call.uid).filter(Boolean);
-  if (S.model.phase !== 'executing' || !S.level.available.logic.includes('callRune')) return;
-  const next = calls.some(call => call.name === 'rune') ? 'rune' : 'main';
-  if (next === S.editor) return;
-  S.editor = next; closeMenu();
-  notify(next === 'rune' ? MESSAGES.runeRunning : MESSAGES.runeDone);
-}
-/** A finished, stopped or reset run hands the strip back to what the kid was editing. */
-function restoreEditor() {
-  S.activeCalls = [];
-  if (S.editorBeforeRun == null) return;
-  S.editor = S.editorBeforeRun; S.editorBeforeRun = null;
 }
 
 function executeOne(auto) {
   if (!S || S.paused || S.dialog || !beginIfNeeded()) return;
   S.autoRun = !!auto;
-  if (S.editorBeforeRun == null) S.editorBeforeRun = S.editor;
   const event = S.model.step();
   const now = performance.now();
   S.activeUid = event.uid || null;
-  followRune();
+  trackCalls();
   if (event.type === 'action') {
     if (event.detail && event.detail.source === 'inventory' && event.detail.item) {
       S.profile = consumePotion(S.profile, event.detail.item, 1); saveProfile();
@@ -1037,7 +1071,7 @@ function executeOne(auto) {
     if (!auto) notify(S.fx.side === 'left' ? MESSAGES.turnLeftStep : MESSAGES.turnRightStep);
     else announce(FACING[S.fx.to]);
   }
-  if (S.model.phase !== 'executing') restoreEditor();
+  if (S.model.phase !== 'executing') S.activeCalls = [];
   render();
   if (S.model.phase === 'won') { completeQuest(); return; }
   if (S.model.phase === 'resting' || S.model.phase === 'programming') {
@@ -1111,7 +1145,7 @@ function startLevel(level, options = {}) {
   S.level = level; S.model = createModel(level);
   if (!preserveProgram) { S.program = []; S.runeProgram = []; S.extraFunctions = {}; S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
   else { S.selectedMain.clear(); S.selectedRune.clear(); S.undo = []; }
-  S.editor = 'main'; S.editorBeforeRun = null; S.activeCalls = []; S.coach = runeCoachDue(level) ? 0 : -1; S.goalOpen = false; S.debugOpen = false; S.menuOpen = false; S.menuWrap = false; S.camera = HOME();
+  S.editor = 'main'; S.activeCalls = []; S.coach = runeCoachDue(level) ? 0 : -1; S.goalOpen = false; S.debugOpen = false; S.menuOpen = false; S.camera = HOME();
   S.representation = level.codingView === 'hybrid' && allowedRepresentations().includes('hybrid') ? 'hybrid' : defaultRepresentation();
   S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false;
   const activeBehaviors=behaviorAllowedForLevel(level)&&['hero','companion'].some(owner=>{const saved=behaviorFor(S.profile,owner);return saved.enabled&&saved.source.trim();});
@@ -1333,7 +1367,9 @@ function closeLab() {
 
 function perform(actionId) {
   if (!S || !actionId) return;
-  if (actionId === 'strip:main' || actionId === 'strip:rune') { S.editor = actionId === 'strip:rune' ? 'rune' : 'main'; currentSelection().clear(); if (S.editor === 'rune' && !S.runeProgram.length) notify(UI.functionHint); render(); return; }
+  if (actionId === 'row:main' || actionId === 'row:rune') { const row = actionId.slice(4); if (row === 'main' || hasRune()) { setRow(row); render(); } return; }
+  if (actionId.startsWith('picker:')) { S.pickerTabs[S.level.id] = actionId.slice(7); render(); return; }
+  if (actionId.startsWith('sticker:')) { const [, kind, value] = actionId.split(':'); applySticker(kind, value); return; }
   if (actionId.startsWith('nudge:')) { const selected = [...currentSelection()]; if (selected.length === 1) moveIndex(selected[0], Number(actionId.slice(6))); return; }
   if (actionId === 'delete') { const selected = [...currentSelection()].sort((a, b) => b - a); if (!selected.length) return; pushUndo(); let list = currentProgram().slice(); for (const i of selected) list.splice(i, 1); setCurrentProgram(list); currentSelection().clear(); render(); return; }
   if (actionId === 'coach:next' || actionId === 'coach:done') { coachAction(actionId); return; }
@@ -1362,7 +1398,7 @@ function perform(actionId) {
   if (actionId === 'zoom:in') { setZoom(S.camera.zoom + 1); return; }
   if (actionId === 'zoom:out') { setZoom(S.camera.zoom - 1); return; }
   if (actionId === 'zoom:home') { setZoom(0); return; }
-  if (actionId.startsWith('select:')) { selectIndex(Number(actionId.slice(7))); return; }
+  if (actionId.startsWith('select:')) { const [, row, index] = actionId.split(':'); selectIndex(row, Number(index)); return; }
   if (actionId.startsWith('remove:')) { removeIndex(Number(actionId.slice(7))); return; }
   if (actionId.startsWith('up:')) { moveIndex(Number(actionId.slice(3)), -1); return; }
   if (actionId.startsWith('down:')) { moveIndex(Number(actionId.slice(5)), 1); return; }
@@ -1370,7 +1406,7 @@ function perform(actionId) {
   if (actionId === 'clear') { if (currentProgram().length) { pushUndo(); setCurrentProgram([]); currentSelection().clear(); render(); } return; }
   if (actionId === 'run') { closeMenu(); executeOne(true); return; }
   if (actionId === 'step') { closeMenu(); executeOne(false); return; }
-  if (actionId === 'reset') { closeMenu(); restoreEditor(); S.camera = HOME(); S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']); render(); return; }
+  if (actionId === 'reset') { closeMenu(); S.activeCalls = []; S.camera = HOME(); S.model = createModel(S.level); S.autoRun = false; S.heroState = 'idle'; S.heroMotion = null; S.enemyMotions = {}; S.fx = null; S.activeUid = null; S.completing = false; notify(['Room reset. Your program stayed on the table.', '房間已重設，程式仍保留在桌上。']); render(); return; }
   if (actionId === 'map') { openDialog('map'); return; }
   if (actionId === 'camp') { openDialog('camp'); return; }
   if (actionId === 'lab') { openLab(); return; }
@@ -1441,9 +1477,11 @@ function init(ctx) {
     '<div class="cq-hud"><div class="cq-hud-left"><button type="button" class="cq-goal" data-action="goal" aria-expanded="false"></button><div class="cq-goal-pop" hidden></div></div><div class="cq-vitals"></div></div>' +
     '<button type="button" class="cq-debug-toggle" data-action="debug" aria-label="Event debugger 事件除錯器" hidden>' + glyph('bug') + '</button><aside class="cq-debug" hidden></aside>' +
     '<div class="cq-zoom" role="group"></div><div class="cq-bubble" hidden></div></section>' +
-    '<section class="cq-dock"><div class="cq-program"><div class="cq-strip-tabs-slot"></div><div class="cq-strip cq-scroll" role="group"></div><div class="cq-tools"></div></div>' +
-    '<div class="cq-library cq-scroll" role="group" aria-label="Command cards 指令卡"></div>' +
-    '<div class="cq-runbox"></div></section><div class="cq-card-menu" role="toolbar" hidden></div><div class="cq-coach" role="group" hidden></div></main>' +
+    '<section class="cq-dock"><div class="cq-rows">' + ['rune', 'main'].map(row => '<div class="cq-row" data-row="' + row + '"><button type="button" class="cq-row-label" data-action="row:' + row + '"></button><div class="cq-strip cq-scroll" data-row="' + row + '" role="group"></div></div>').join('') +
+    '</div><div class="cq-tools"></div></section>' +
+    '<aside class="cq-picker"><div class="cq-picker-pin"></div><div class="cq-picker-tabs" role="group" aria-label="Card groups 卡片分類"></div>' +
+    '<div class="cq-library cq-vscroll" role="group" aria-label="Command cards 指令卡"></div><div class="cq-runbox"></div></aside>' +
+    '<div class="cq-card-menu" role="toolbar" hidden></div><div class="cq-coach" role="group" hidden></div></main>' +
     '<p class="cq-notice cq-sr" role="status" aria-live="polite"></p><dialog class="cq-dialog"></dialog>';
 
   const saved = ctx.settings.codequest && ctx.settings.codequest.profiles && ctx.settings.codequest.profiles[ctx.kid];
@@ -1454,7 +1492,7 @@ function init(ctx) {
   const initialRepresentation = initial.codingView === 'hybrid' && (initialMode === 'coder' || initialMode === 'architect') ? 'hybrid' : initialMode === 'explorer' ? 'picture' : initialMode === 'builder' ? 'blocks' : 'hybrid';
   S = {
     root, ctx, profile, level: initial, model: null, program: [], runeProgram: [], extraFunctions: {}, selectedMain: new Set(), selectedRune: new Set(),
-    editor: 'main', representation: initialRepresentation, goalOpen: false, debugOpen: false, noticeAt: 0, preview: null, view: null, bubbleSide: null, menuOpen: false, menuWrap: false, justAdded: null, camera: HOME(),
+    editor: 'main', representation: initialRepresentation, goalOpen: false, debugOpen: false, noticeAt: 0, preview: null, view: null, bubbleSide: null, menuOpen: false, justAdded: null, camera: HOME(), pickerTabs: {},
     codeDraft: '', codeDirty: false, codeError: null,
     undo: [], serial: 0, scheduler: createScheduler(), paused: false, dialog: null, autoRun: false,
     canvas: root.querySelector('canvas'), bubble: root.querySelector('.cq-bubble'), best: Number(ctx.best) || 0, notice: MESSAGES.intro, heroState: 'idle', heroStateUntil: 0, heroMotion: null, enemyMotions: {}, fx: null, activeUid: null,
@@ -1475,17 +1513,20 @@ function init(ctx) {
   root.addEventListener('pointerdown', e => {
     if (S && S.menuOpen && !e.target.closest('.cq-card-menu, .cq-strip')) closeMenu();
     const target = e.target.closest('button[data-action]');
+    // A tap on a row's empty space makes that row glow (simple-cards D5).
+    const row = !target && e.target.closest('.cq-row');
+    if (S && row && e.button === 0 && row.dataset.row !== S.editor) { perform('row:' + row.dataset.row); return; }
     if (!target || target.disabled || e.button !== 0) return;
-    if (target.closest('.cq-scroll')) return;
+    if (target.closest('.cq-scroll, .cq-vscroll')) return;
     e.preventDefault(); target.focus({ preventScroll: true }); perform(target.dataset.action);
   });
   root.addEventListener('click', e => {
     const target = e.target.closest('button[data-action]');
-    if (target && !target.disabled && (e.detail === 0 || target.closest('.cq-scroll'))) perform(target.dataset.action);
+    if (target && !target.disabled && (e.detail === 0 || target.closest('.cq-scroll, .cq-vscroll'))) perform(target.dataset.action);
   });
   sceneGestures(S.canvas);
   root.querySelector('.cq-zoom').setAttribute('aria-label', 'Zoom 縮放');
-  root.querySelector('.cq-strip').addEventListener('scroll', () => { if (S) placeMenu(); }, { passive: true });
+  for (const strip of root.querySelectorAll('.cq-strip')) strip.addEventListener('scroll', () => { if (S) placeMenu(); }, { passive: true });
   root.querySelector('.cq-dialog').addEventListener('cancel', e => { e.preventDefault(); if (S.dialog === 'win') return; if (S.paused) resume(); else closeDialog(); });
   document.addEventListener('keydown', keydown, true); document.addEventListener('visibilitychange', visibility);
   window.addEventListener('blur', pause); window.addEventListener('summerquest:native-pause', pause);
@@ -1514,5 +1555,5 @@ export default {
   settings, init, stop,
   /** Host Back: inside the Lab it closes the script sheet, then returns to the dungeon — one press never leaves Code Quest from the Lab. */
   back() { if (!S || !S.lab) return false; if (!S.lab.closeSheet()) closeLab(); return true; },
-  snapshot() { return S ? { level: S.level.id, lab: S.lab ? S.lab.snapshot() : { open: false }, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog, lang: language(), goalOpen: !!S.goalOpen, preview: S.preview, notice: S.notice, bubbleSide: S.bubbleSide, heroBox: S.view ? S.view.heroBox : null, menuOpen: menuVisible(), selection: [...currentSelection()].sort((a, b) => a - b), camera: { zoom: S.camera.zoom, cx: S.camera.cx, cy: S.camera.cy } } : null; }
+  snapshot() { return S ? { level: S.level.id, lab: S.lab ? S.lab.snapshot() : { open: false }, model: S.model.snapshot(), profile: S.profile, run:S.run, program: S.program, runeProgram: S.runeProgram, editor: S.editor, representation: S.representation, codeDirty: S.codeDirty, paused: S.paused, dialog: S.dialog, lang: language(), goalOpen: !!S.goalOpen, preview: S.preview, notice: S.notice, bubbleSide: S.bubbleSide, heroBox: S.view ? S.view.heroBox : null, menuOpen: menuVisible(), selection: [...currentSelection()].sort((a, b) => a - b), pickerTab: pickerTabbed(pickerGroups()) ? pickerTab(pickerGroups()) : null, camera: { zoom: S.camera.zoom, cx: S.camera.cx, cy: S.camera.cy }, roomScale: S.view ? S.view.scale : null } : null; }
 };

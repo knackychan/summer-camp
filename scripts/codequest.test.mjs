@@ -1054,3 +1054,58 @@ console.log('Code Quest UX polish: card-menu strip edits verified.');
   assert.deepEqual(markCoachSeen(seen, 'rune').coach, ['rune']);
   assert.deepEqual(normalizeProfile(JSON.parse(JSON.stringify(seen))).coach, ['rune']);
 }
+
+// Simple-cards plan slice 01: stickers are only a view of the existing AST.
+{
+  const { cardView, buildCard, withSticker, withoutStickers, isPlainCard } = await import('../js/games/codequest/stickers.js');
+  const { forOfNode } = await import('../js/games/codequest/ast.js');
+  let n = 0;
+  const uid = prefix => prefix + '-' + (++n);
+  const move = A('move', 'a-1'), rune = CALL('rune', 'c-1');
+  const same = (a, b) => assert.deepEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(b)));
+  // Round trip for plain, ×N, if, and ×N + if; the card keeps its uid.
+  for (const view of [{ card: move, times: 1, test: null }, { card: move, times: 5, test: null },
+    { card: A('attack', 'a-2'), times: 1, test: 'enemyAhead' }, { card: A('heavyAttack', 'a-3'), times: 2, test: 'enemyArmoredAhead' },
+    { card: rune, times: 3, test: null }]) {
+    const node = buildCard(view, uid);
+    same(cardView(node), view);
+    assert.equal(cardView(node).card.uid, view.card.uid);
+  }
+  // q16's shape: repeat outside if.
+  const q16 = buildCard({ card: A('heavyAttack'), times: 2, test: 'enemyArmoredAhead' }, uid);
+  assert.equal(q16.type, 'repeat'); assert.equal(q16.body[0].type, 'if'); assert.equal(q16.body[0].then[0].op, 'heavyAttack');
+  // withSticker replaces one kind and keeps the other.
+  const both = buildCard({ card: move, times: 3, test: 'trapAhead' }, uid);
+  same(cardView(withSticker(both, { kind: 'repeat', times: 5 }, uid)), { card: move, times: 5, test: 'trapAhead' });
+  same(cardView(withSticker(both, { kind: 'if', test: 'enemyAhead' }, uid)), { card: move, times: 3, test: 'enemyAhead' });
+  same(cardView(withSticker(move, { kind: 'if', test: 'enemyAhead' }, uid)), { card: move, times: 1, test: 'enemyAhead' });
+  assert.equal(withoutStickers(both).uid, 'a-1');
+  assert.equal(both.body[0].then[0].uid, 'a-1', 'inputs are never mutated');
+  assert.ok(isPlainCard(move) && isPlainCard(rune) && isPlainCard(T(0)) && !isPlainCard(both));
+  // Legacy brackets: several cards, else, forOf, an expression count, ×1, nested deeper.
+  const legacy = [R(2, [A('attack'), A('attack')]), IF('enemyAhead', [A('attack')], [A('move')]), forOfNode('foe', [A('attack')]),
+    R(L(5), [A('move')]), R(1, [A('move')]), R(2, [R(2, [A('move')])]), IF('enemyAhead', [R(2, [A('attack')])]),
+    R(2, [IF('enemyAhead', [A('attack'), A('move')])]), IF(B('<', P('hero.hp'), L(3)), [A('usePotion')])];
+  for (const node of legacy) {
+    assert.equal(cardView(node), null, JSON.stringify(node));
+    assert.equal(withSticker(node, { kind: 'repeat', times: 2 }, uid), null);
+    assert.equal(withoutStickers(node), null);
+  }
+  // Every card-room reference solution rebuilt card by card keeps its block count; only q12's Rune
+  // R2[attack, attack] and q45's expression-count repeat stay legacy brackets.
+  const legacyIn = [];
+  const rebuild = (nodes, where) => nodes.map(node => {
+    const view = cardView(node);
+    if (!view) { legacyIn.push(where); return node; }
+    return buildCard(view, uid);
+  });
+  const cardRooms = LEVELS.filter(level => level.codingView !== 'code');
+  assert.equal(cardRooms.length, 24);
+  for (const level of cardRooms) {
+    const { main, functions = {} } = level.reference;
+    const fns = Object.fromEntries(Object.entries(functions).map(([name, body]) => [name, rebuild(body, level.id + ':' + name)]));
+    assert.equal(combinedBlockCount(rebuild(main, level.id), fns), combinedBlockCount(main, functions), level.id + ' block count');
+  }
+  assert.deepEqual(legacyIn, ['q12:rune', 'q45']);
+}
+console.log('Code Quest simple cards: sticker model verified.');

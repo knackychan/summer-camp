@@ -56,6 +56,11 @@ export function placeBubbleRect({ box, size, hero, hard = [], soft = [], previou
   // Every side collides: a caption along the scene's bottom (then top) edge, no tail.
   const blocked = hard.concat(hero && hero.box ? [hero.box] : []);
   const xs = [(box.w - size.w) / 2, INSET, box.w - size.w - INSET], ys = [box.h - size.h - INSET, INSET];
+  // Then any other gap along the edge, nearest the middle first: the scene beside the picker
+  // column (simple-cards D7) is narrow enough that the goal and debug panels can block all three.
+  const middle = (box.w - size.w) / 2, sweep = [];
+  for (let x = INSET; x <= box.w - size.w - INSET; x += 8) sweep.push(x);
+  xs.push(...sweep.sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle)));
   const spots = [];
   for (const y of ys) for (const x of xs) spots.push({ x: Math.max(INSET, x), y: Math.max(INSET, y), w: size.w, h: size.h });
   const spot = spots.find(r => fits(r, box, blocked)) || spots[0];
