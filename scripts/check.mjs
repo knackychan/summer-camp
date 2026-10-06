@@ -563,6 +563,23 @@ try {
   }
 }
 
+// Origami 中文 (plan 2026-10-05-origami-audit slice 04): folding is 摺 everywhere, as the
+// Atelier's own 摺紙 / 摺線 say; the step text mixed in 折 (237 times) until then. Paper colour
+// names are read out by screen readers, so each needs its 中文 too.
+{
+  const origami = await import(new URL("js/vendor/origami-atelier/origami-data.js", root));
+  const zh = [];
+  const walk = (v) => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) { if (k === "zhHant" && typeof x === "string") zh.push(x); else walk(x); }
+  };
+  walk(origami.ORIGAMI_MODELS);
+  const bad = zh.filter((s) => s.includes("折"));
+  if (bad.length) fail("origami 摺", `${bad.length} 中文 strings use 折 for folding, e.g. "${bad[0]}" — use 摺`);
+  const unnamed = origami.PAPER_COLORS.filter((c) => !c.labelZh);
+  if (unnamed.length) fail("origami 中文", `paper colours without labelZh: ${unnamed.map((c) => c.id).join(", ")}`);
+}
+
 // Brain gate (plan 2026-07-26-brain-gym slice 11): the daily three are the door to the games
 if (!schemaSql.includes("create table if not exists brain_done")) {
   fail("brain gate", "schema missing brain_done table");

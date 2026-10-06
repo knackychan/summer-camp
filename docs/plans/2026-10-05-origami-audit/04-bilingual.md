@@ -23,3 +23,9 @@
 
 **DONE WHEN:** `node scripts/check.mjs` green with the new gate; `python scripts/check-origami-ui.py`
 passes.
+
+**Shipped 2026-10-06.** 255 × 折 → 摺 in `origami-data.js` (every one was a folding verb: 對摺, 反摺,
+往上摺, 摺到 …); `labelZh` on the 8 paper colours; "約 N 分鐘", 語言 and 摺紙步驟圖 in 中文. New
+`check.mjs` gate (no 折 in any `zhHant` string, every colour has `labelZh`) — green;
+`check-origami-ui.py` 55/55 with three new 中文 checks (library card, language switch label, diagram
+label). Cache `v185-origami-zh`.

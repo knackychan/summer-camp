@@ -280,7 +280,11 @@ def run(args):
                 check('Back from a model returns to the library, which offers Continue',
                       page.locator('.oa-root .oa-model-card').count() == 28
                       and page.locator('.oa-root [data-action="continue"]').count() == 1)
+                meta = page.locator('.oa-root .oa-model-meta').first.inner_text()
+                check(f'中文 library cards say 約 … 分鐘, not "min" ({meta})', '約' in meta and '分鐘' in meta and 'min' not in meta)
+                check('中文 language switch is labelled 語言', page.locator('.oa-root .oa-locale').get_attribute('aria-label') == '語言')
                 page.locator('.oa-root [data-action="continue"]').click()
+                check('中文 fold diagram is labelled 摺紙步驟圖', page.locator('.oa-root .oa-fold-svg').get_attribute('aria-label') == '摺紙步驟圖')
                 check('Continue reopens the lesson', page.locator('.oa-root.oa-lesson-mode').count() == 1)
                 check('No page errors', not report['pageErrors'] and not report['consoleErrors'])
             except Exception:

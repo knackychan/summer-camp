@@ -326,6 +326,7 @@ export class OrigamiFoldEngine {
     this.host = host;
     this.front = options.front || "#ef8f9f";
     this.back = options.back || "#ffe6e9";
+    this.label = options.label || "Origami folding diagram";
     this.reducedMotion = options.reducedMotion ?? window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
     this.anims = [];
     this.cycleMs = 0;
@@ -337,7 +338,7 @@ export class OrigamiFoldEngine {
 
   renderShell() {
     this.host.innerHTML = "";
-    this.svg = svgEl("svg", { viewBox:"0 0 300 210", role:"img", "aria-label":"Origami folding diagram" });
+    this.svg = svgEl("svg", { viewBox:"0 0 300 210", role:"img", "aria-label":this.label });
     this.svg.classList.add("oa-fold-svg");
     const shadow = svgEl("ellipse", {cx:150,cy:193,rx:88,ry:8,class:"oa-paper-shadow"});
     this.base = svgEl("polygon", {class:"oa-paper-base"});

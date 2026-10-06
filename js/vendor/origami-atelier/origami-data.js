@@ -16,11 +16,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Diagonal fold",
-          "zhHant": "對角折"
+          "zhHant": "對角摺"
         },
         "instruction": {
           "en": "Bring the top corner to the bottom corner.",
-          "zhHant": "把上方角折到下方角。"
+          "zhHant": "把上方角摺到下方角。"
         },
         "hint": {
           "en": "Match the corners first, then make the crease.",
@@ -37,7 +37,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left corner upward.",
-          "zhHant": "把左邊的角往上折。"
+          "zhHant": "把左邊的角往上摺。"
         },
         "hint": {
           "en": "Leave a little point above the head.",
@@ -54,7 +54,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right corner upward.",
-          "zhHant": "把右邊的角往上折。"
+          "zhHant": "把右邊的角往上摺。"
         },
         "hint": {
           "en": "Try to make it match the other ear.",
@@ -71,11 +71,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left edge slightly inward.",
-          "zhHant": "把左側邊緣稍微往內折。"
+          "zhHant": "把左側邊緣稍微往內摺。"
         },
         "hint": {
           "en": "A small fold is enough.",
-          "zhHant": "折一點點就可以。"
+          "zhHant": "摺一點點就可以。"
         },
         "diagram": "side-left",
         "operation": "valley-fold"
@@ -88,7 +88,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right edge slightly inward.",
-          "zhHant": "把右側邊緣稍微往內折。"
+          "zhHant": "把右側邊緣稍微往內摺。"
         },
         "hint": {
           "en": "Make both sides feel balanced.",
@@ -105,7 +105,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the bottom tip upward.",
-          "zhHant": "把下方尖角往上折。"
+          "zhHant": "把下方尖角往上摺。"
         },
         "hint": {
           "en": "Press the small crease gently.",
@@ -135,7 +135,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Simple valley folds",
-        "zhHant": "基本谷折"
+        "zhHant": "基本谷摺"
       },
       {
         "en": "Corner matching",
@@ -160,11 +160,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Make a triangle",
-          "zhHant": "折成三角形"
+          "zhHant": "摺成三角形"
         },
         "instruction": {
           "en": "Fold the square corner to corner.",
-          "zhHant": "把正方形沿對角線折成三角形。"
+          "zhHant": "把正方形沿對角線摺成三角形。"
         },
         "hint": {
           "en": "Line up the corners.",
@@ -181,7 +181,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left point downward.",
-          "zhHant": "把左側尖角往下折。"
+          "zhHant": "把左側尖角往下摺。"
         },
         "hint": {
           "en": "Let the ear hang beside the face.",
@@ -198,7 +198,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right point downward.",
-          "zhHant": "把右側尖角往下折。"
+          "zhHant": "把右側尖角往下摺。"
         },
         "hint": {
           "en": "Match the first ear.",
@@ -215,7 +215,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top point slightly backward.",
-          "zhHant": "把頂端尖角稍微往後折。"
+          "zhHant": "把頂端尖角稍微往後摺。"
         },
         "hint": {
           "en": "This is only a tiny fold.",
@@ -232,7 +232,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the lower point upward.",
-          "zhHant": "把下方尖角往上折。"
+          "zhHant": "把下方尖角往上摺。"
         },
         "hint": {
           "en": "This makes the muzzle shorter.",
@@ -262,7 +262,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Simple valley folds",
-        "zhHant": "基本谷折"
+        "zhHant": "基本谷摺"
       },
       {
         "en": "Corner matching",
@@ -287,11 +287,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Make a triangle",
-          "zhHant": "折成三角形"
+          "zhHant": "摺成三角形"
         },
         "instruction": {
           "en": "Fold the square diagonally.",
-          "zhHant": "把正方形沿對角線折起來。"
+          "zhHant": "把正方形沿對角線摺起來。"
         },
         "hint": {
           "en": "Keep the long edge at the bottom.",
@@ -308,7 +308,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Make a light center crease.",
-          "zhHant": "輕輕折出中間線。"
+          "zhHant": "輕輕摺出中間線。"
         },
         "hint": {
           "en": "Open it again after marking the middle.",
@@ -325,11 +325,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left corner upward.",
-          "zhHant": "把左邊的角往上折。"
+          "zhHant": "把左邊的角往上摺。"
         },
         "hint": {
           "en": "Aim toward the center line.",
-          "zhHant": "朝中間線方向折。"
+          "zhHant": "朝中間線方向摺。"
         },
         "diagram": "ear-left",
         "operation": "valley-fold"
@@ -342,7 +342,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right corner upward.",
-          "zhHant": "把右邊的角往上折。"
+          "zhHant": "把右邊的角往上摺。"
         },
         "hint": {
           "en": "Match the height of the first ear.",
@@ -359,11 +359,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top tip downward.",
-          "zhHant": "把最上面的尖角往下折。"
+          "zhHant": "把最上面的尖角往下摺。"
         },
         "hint": {
           "en": "Keep the fold small.",
-          "zhHant": "不要折太多。"
+          "zhHant": "不要摺太多。"
         },
         "diagram": "top-down",
         "operation": "valley-fold"
@@ -376,7 +376,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the bottom point backward.",
-          "zhHant": "把下方尖角往後折。"
+          "zhHant": "把下方尖角往後摺。"
         },
         "hint": {
           "en": "This rounds the face.",
@@ -406,7 +406,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Simple valley folds",
-        "zhHant": "基本谷折"
+        "zhHant": "基本谷摺"
       },
       {
         "en": "Corner matching",
@@ -431,11 +431,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Diagonal fold",
-          "zhHant": "對角折"
+          "zhHant": "對角摺"
         },
         "instruction": {
           "en": "Fold the square into a triangle.",
-          "zhHant": "把正方形折成三角形。"
+          "zhHant": "把正方形摺成三角形。"
         },
         "hint": {
           "en": "Press the diagonal crease.",
@@ -469,7 +469,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left corner toward the center.",
-          "zhHant": "把左邊角折向中心。"
+          "zhHant": "把左邊角摺向中心。"
         },
         "hint": {
           "en": "Let the edge meet the diagonal guide.",
@@ -486,11 +486,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right corner toward the center.",
-          "zhHant": "把右邊角折向中心。"
+          "zhHant": "把右邊角摺向中心。"
         },
         "hint": {
           "en": "Make a kite shape.",
-          "zhHant": "折出風箏形。"
+          "zhHant": "摺出風箏形。"
         },
         "diagram": "side-right",
         "operation": "valley-fold"
@@ -503,7 +503,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the lower section to one side.",
-          "zhHant": "把下半部往一側折。"
+          "zhHant": "把下半部往一側摺。"
         },
         "hint": {
           "en": "This becomes the tail fin.",
@@ -537,11 +537,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the front tip slightly backward.",
-          "zhHant": "把前方尖角稍微往後折。"
+          "zhHant": "把前方尖角稍微往後摺。"
         },
         "hint": {
           "en": "A tiny fold softens the nose.",
-          "zhHant": "小小一折就好。"
+          "zhHant": "小小一摺就好。"
         },
         "diagram": "nose-back",
         "operation": "valley-fold"
@@ -567,7 +567,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Simple valley folds",
-        "zhHant": "基本谷折"
+        "zhHant": "基本谷摺"
       },
       {
         "en": "Corner matching",
@@ -592,11 +592,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Fold in half",
-          "zhHant": "對折"
+          "zhHant": "對摺"
         },
         "instruction": {
           "en": "Fold the square in half from top to bottom.",
-          "zhHant": "把正方形由上往下對折。"
+          "zhHant": "把正方形由上往下對摺。"
         },
         "hint": {
           "en": "Match the top and bottom edges.",
@@ -613,7 +613,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold it in half again, then open that last fold.",
-          "zhHant": "再對折一次，然後把這一步打開。"
+          "zhHant": "再對摺一次，然後把這一步打開。"
         },
         "hint": {
           "en": "The center crease guides the next folds.",
@@ -630,11 +630,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the upper-left corner to the center line.",
-          "zhHant": "把左上角折到中線。"
+          "zhHant": "把左上角摺到中線。"
         },
         "hint": {
           "en": "Make a clean triangle.",
-          "zhHant": "折出整齊三角形。"
+          "zhHant": "摺出整齊三角形。"
         },
         "diagram": "corner-top-left",
         "operation": "valley-fold"
@@ -647,7 +647,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the upper-right corner to the center line.",
-          "zhHant": "把右上角折到中線。"
+          "zhHant": "把右上角摺到中線。"
         },
         "hint": {
           "en": "Both corners should meet.",
@@ -660,11 +660,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-05",
         "title": {
           "en": "Bottom flap up",
-          "zhHant": "下方往上折"
+          "zhHant": "下方往上摺"
         },
         "instruction": {
           "en": "Fold the front bottom strip upward.",
-          "zhHant": "把前面的下方長條往上折。"
+          "zhHant": "把前面的下方長條往上摺。"
         },
         "hint": {
           "en": "Press along the base of the triangle.",
@@ -698,7 +698,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the other bottom strip upward.",
-          "zhHant": "把另一側下方長條往上折。"
+          "zhHant": "把另一側下方長條往上摺。"
         },
         "hint": {
           "en": "Now both sides wrap the triangle.",
@@ -774,7 +774,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold corner to corner, then open.",
-          "zhHant": "沿對角線折一下再打開。"
+          "zhHant": "沿對角線摺一下再打開。"
         },
         "hint": {
           "en": "This makes a center guide.",
@@ -791,7 +791,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the other diagonal, then open.",
-          "zhHant": "另一個方向也沿對角線折一下再打開。"
+          "zhHant": "另一個方向也沿對角線摺一下再打開。"
         },
         "hint": {
           "en": "You now have a center point.",
@@ -808,7 +808,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top corner down to the center.",
-          "zhHant": "把上方尖角折到中央。"
+          "zhHant": "把上方尖角摺到中央。"
         },
         "hint": {
           "en": "Place the tip exactly on the center.",
@@ -825,7 +825,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the bottom corner up to the top edge.",
-          "zhHant": "把下方尖角往上折到最上方。"
+          "zhHant": "把下方尖角往上摺到最上方。"
         },
         "hint": {
           "en": "Press the long crease.",
@@ -842,7 +842,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left lower edge toward the middle.",
-          "zhHant": "把左下邊往中間折。"
+          "zhHant": "把左下邊往中間摺。"
         },
         "hint": {
           "en": "This makes one half of the heart.",
@@ -859,7 +859,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right lower edge toward the middle.",
-          "zhHant": "把右下邊往中間折。"
+          "zhHant": "把右下邊往中間摺。"
         },
         "hint": {
           "en": "Meet the first side at the center.",
@@ -876,7 +876,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the sharp top corners slightly backward.",
-          "zhHant": "把上方尖角稍微往後折。"
+          "zhHant": "把上方尖角稍微往後摺。"
         },
         "hint": {
           "en": "Small folds make the heart rounder.",
@@ -931,11 +931,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Make a triangle",
-          "zhHant": "折三角形"
+          "zhHant": "摺三角形"
         },
         "instruction": {
           "en": "Fold the square diagonally.",
-          "zhHant": "把正方形沿對角線折起來。"
+          "zhHant": "把正方形沿對角線摺起來。"
         },
         "hint": {
           "en": "Keep the point facing upward.",
@@ -952,7 +952,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left corner upward.",
-          "zhHant": "把左側尖角往上折。"
+          "zhHant": "把左側尖角往上摺。"
         },
         "hint": {
           "en": "Let it lean slightly outward.",
@@ -969,7 +969,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right corner upward.",
-          "zhHant": "把右側尖角往上折。"
+          "zhHant": "把右側尖角往上摺。"
         },
         "hint": {
           "en": "Match the other petal loosely.",
@@ -986,7 +986,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the bottom tip backward.",
-          "zhHant": "把下方尖角往後折。"
+          "zhHant": "把下方尖角往後摺。"
         },
         "hint": {
           "en": "This flattens the base.",
@@ -1003,11 +1003,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold a tiny left corner backward.",
-          "zhHant": "把左側小尖角往後折。"
+          "zhHant": "把左側小尖角往後摺。"
         },
         "hint": {
           "en": "Only a small fold.",
-          "zhHant": "只折一點點。"
+          "zhHant": "只摺一點點。"
         },
         "diagram": "corner-back-left",
         "operation": "valley-fold"
@@ -1020,7 +1020,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold a tiny right corner backward.",
-          "zhHant": "把右側小尖角往後折。"
+          "zhHant": "把右側小尖角往後摺。"
         },
         "hint": {
           "en": "Keep it similar to the left.",
@@ -1079,7 +1079,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold one diagonal and open it.",
-          "zhHant": "沿一條對角線折好再打開。"
+          "zhHant": "沿一條對角線摺好再打開。"
         },
         "hint": {
           "en": "Keep the crease.",
@@ -1096,7 +1096,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the other diagonal and open it.",
-          "zhHant": "另一條對角線也折好再打開。"
+          "zhHant": "另一條對角線也摺好再打開。"
         },
         "hint": {
           "en": "The creases cross in the center.",
@@ -1109,11 +1109,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-03",
         "title": {
           "en": "Horizontal fold",
-          "zhHant": "水平對折"
+          "zhHant": "水平對摺"
         },
         "instruction": {
           "en": "Fold the square in half.",
-          "zhHant": "把正方形水平對折。"
+          "zhHant": "把正方形水平對摺。"
         },
         "hint": {
           "en": "Press the middle crease.",
@@ -1126,7 +1126,7 @@ export const ORIGAMI_MODELS = [
         "id": "step-04",
         "title": {
           "en": "Collapse inward",
-          "zhHant": "向內收折"
+          "zhHant": "向內收摺"
         },
         "instruction": {
           "en": "Bring the side corners inward.",
@@ -1147,7 +1147,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left lower point upward.",
-          "zhHant": "把左下尖角往上折。"
+          "zhHant": "把左下尖角往上摺。"
         },
         "hint": {
           "en": "Aim near the top point.",
@@ -1164,7 +1164,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right lower point upward.",
-          "zhHant": "把右下尖角往上折。"
+          "zhHant": "把右下尖角往上摺。"
         },
         "hint": {
           "en": "Match the first wing.",
@@ -1198,7 +1198,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top tip over the center.",
-          "zhHant": "把最上方尖角折過中心。"
+          "zhHant": "把最上方尖角摺過中心。"
         },
         "hint": {
           "en": "This holds the layers together.",
@@ -1215,7 +1215,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the butterfly gently in half and open the wings.",
-          "zhHant": "輕輕把蝴蝶對折，再把翅膀打開。"
+          "zhHant": "輕輕把蝴蝶對摺，再把翅膀打開。"
         },
         "hint": {
           "en": "Pinch only the center.",
@@ -1228,7 +1228,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Collapse base",
-        "zhHant": "收折底形"
+        "zhHant": "收摺底形"
       },
       {
         "en": "Layer shaping",
@@ -1251,7 +1251,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Simple valley folds",
-        "zhHant": "基本谷折"
+        "zhHant": "基本谷摺"
       },
       {
         "en": "Symmetry",
@@ -1263,11 +1263,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Make a triangle",
-          "zhHant": "折成三角形"
+          "zhHant": "摺成三角形"
         },
         "instruction": {
           "en": "Fold the square diagonally.",
-          "zhHant": "沿對角線把正方形折成三角形。"
+          "zhHant": "沿對角線把正方形摺成三角形。"
         },
         "hint": {
           "en": "Match the corners before pressing.",
@@ -1301,7 +1301,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left corner upward.",
-          "zhHant": "把左角往上折。"
+          "zhHant": "把左角往上摺。"
         },
         "hint": {
           "en": "Leave a narrow gap near the middle.",
@@ -1318,7 +1318,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right corner upward.",
-          "zhHant": "把右角往上折。"
+          "zhHant": "把右角往上摺。"
         },
         "hint": {
           "en": "Try to match the first ear.",
@@ -1335,7 +1335,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top edge slightly backward.",
-          "zhHant": "把上方邊緣稍微往後折。"
+          "zhHant": "把上方邊緣稍微往後摺。"
         },
         "hint": {
           "en": "A small fold softens the head shape.",
@@ -1352,7 +1352,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the bottom point upward.",
-          "zhHant": "把下方尖角往上折。"
+          "zhHant": "把下方尖角往上摺。"
         },
         "hint": {
           "en": "Keep the fold small.",
@@ -1399,7 +1399,7 @@ export const ORIGAMI_MODELS = [
       },
       {
         "en": "Inside shaping",
-        "zhHant": "內折塑形"
+        "zhHant": "內摺塑形"
       }
     ],
     "steps": [
@@ -1428,7 +1428,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left edge toward the center crease.",
-          "zhHant": "把左側邊緣折向中央線。"
+          "zhHant": "把左側邊緣摺向中央線。"
         },
         "hint": {
           "en": "Stop at the guide line.",
@@ -1445,7 +1445,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right edge toward the center crease.",
-          "zhHant": "把右側邊緣折向中央線。"
+          "zhHant": "把右側邊緣摺向中央線。"
         },
         "hint": {
           "en": "Make a long kite shape.",
@@ -1462,11 +1462,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top point downward.",
-          "zhHant": "把上方尖角往下折。"
+          "zhHant": "把上方尖角往下摺。"
         },
         "hint": {
           "en": "About one quarter of the model is enough.",
-          "zhHant": "大約折下四分之一即可。"
+          "zhHant": "大約摺下四分之一即可。"
         },
         "diagram": "top-down",
         "operation": "valley-fold"
@@ -1479,11 +1479,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse a tiny part of the point outward.",
-          "zhHant": "把尖端做一個小內反折，讓尖端朝外。"
+          "zhHant": "把尖端做一個小內反摺，讓尖端朝外。"
         },
         "hint": {
           "en": "Pinch the crease before reversing it.",
-          "zhHant": "先捏出摺痕再翻折。"
+          "zhHant": "先捏出摺痕再翻摺。"
         },
         "diagram": "inside-reverse-top",
         "operation": "inside-reverse"
@@ -1496,7 +1496,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the lower tip slightly backward.",
-          "zhHant": "把下方尖角稍微往後折。"
+          "zhHant": "把下方尖角稍微往後摺。"
         },
         "hint": {
           "en": "This lets the penguin stand visually flatter.",
@@ -1543,7 +1543,7 @@ export const ORIGAMI_MODELS = [
       },
       {
         "en": "Reverse fold",
-        "zhHant": "反折"
+        "zhHant": "反摺"
       }
     ],
     "steps": [
@@ -1572,7 +1572,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left edge to the center crease.",
-          "zhHant": "把左側邊緣折到中央線。"
+          "zhHant": "把左側邊緣摺到中央線。"
         },
         "hint": {
           "en": "Smooth from the middle outward.",
@@ -1589,7 +1589,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right edge to the center crease.",
-          "zhHant": "把右側邊緣折到中央線。"
+          "zhHant": "把右側邊緣摺到中央線。"
         },
         "hint": {
           "en": "You now have a kite.",
@@ -1606,7 +1606,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top point down to the center.",
-          "zhHant": "把上方尖角折到中央。"
+          "zhHant": "把上方尖角摺到中央。"
         },
         "hint": {
           "en": "Make a crisp horizontal crease.",
@@ -1619,11 +1619,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-05",
         "title": {
           "en": "Fold in half",
-          "zhHant": "整體對折"
+          "zhHant": "整體對摺"
         },
         "instruction": {
           "en": "Fold the whole model in half lengthwise.",
-          "zhHant": "把整個模型沿長邊對折。"
+          "zhHant": "把整個模型沿長邊對摺。"
         },
         "hint": {
           "en": "Keep the pointed end forward.",
@@ -1636,11 +1636,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-06",
         "title": {
           "en": "Raise the tail",
-          "zhHant": "尾巴上折"
+          "zhHant": "尾巴上摺"
         },
         "instruction": {
           "en": "Fold the rear point upward.",
-          "zhHant": "把後方尖角往上折。"
+          "zhHant": "把後方尖角往上摺。"
         },
         "hint": {
           "en": "Crease where you want the tail to rise.",
@@ -1653,11 +1653,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-07",
         "title": {
           "en": "Reverse the tail",
-          "zhHant": "尾巴反折"
+          "zhHant": "尾巴反摺"
         },
         "instruction": {
           "en": "Open the tail slightly and inside-reverse it upward.",
-          "zhHant": "稍微打開尾巴，做內反折讓它向上。"
+          "zhHant": "稍微打開尾巴，做內反摺讓它向上。"
         },
         "hint": {
           "en": "Follow the crease you just made.",
@@ -1674,7 +1674,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Round the nose with a tiny backward fold.",
-          "zhHant": "在前端做一個很小的後折，讓頭部更圓。"
+          "zhHant": "在前端做一個很小的後摺，讓頭部更圓。"
         },
         "hint": {
           "en": "Add an eye after folding if you like.",
@@ -1700,7 +1700,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Blintz folds",
-        "zhHant": "四角向心折"
+        "zhHant": "四角向心摺"
       },
       {
         "en": "Layer shaping",
@@ -1750,7 +1750,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top corner to the center.",
-          "zhHant": "把上方角折到中心點。"
+          "zhHant": "把上方角摺到中心點。"
         },
         "hint": {
           "en": "Touch the exact center if possible.",
@@ -1767,7 +1767,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the bottom corner to the center.",
-          "zhHant": "把下方角折到中心點。"
+          "zhHant": "把下方角摺到中心點。"
         },
         "hint": {
           "en": "Keep the edges neat.",
@@ -1784,7 +1784,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left corner to the center.",
-          "zhHant": "把左角折到中心點。"
+          "zhHant": "把左角摺到中心點。"
         },
         "hint": {
           "en": "This starts a blintz base.",
@@ -1801,7 +1801,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right corner to the center.",
-          "zhHant": "把右角折到中心點。"
+          "zhHant": "把右角摺到中心點。"
         },
         "hint": {
           "en": "All four tips now meet.",
@@ -1835,7 +1835,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold two small top corners outward.",
-          "zhHant": "把上方兩個小角往外折。"
+          "zhHant": "把上方兩個小角往外摺。"
         },
         "hint": {
           "en": "Keep them symmetrical.",
@@ -1852,7 +1852,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the lower tip behind to make a flat base.",
-          "zhHant": "把底部尖角往後折，形成平底。"
+          "zhHant": "把底部尖角往後摺，形成平底。"
         },
         "hint": {
           "en": "The center flap becomes the beak.",
@@ -1882,7 +1882,7 @@ export const ORIGAMI_MODELS = [
       },
       {
         "en": "Reverse folds",
-        "zhHant": "反折"
+        "zhHant": "反摺"
       },
       {
         "en": "Layer control",
@@ -1932,7 +1932,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold in half horizontally and reopen.",
-          "zhHant": "水平對折後再打開。"
+          "zhHant": "水平對摺後再打開。"
         },
         "hint": {
           "en": "Keep this crease light.",
@@ -1966,7 +1966,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left flap outward.",
-          "zhHant": "把左側紙層往外折。"
+          "zhHant": "把左側紙層往外摺。"
         },
         "hint": {
           "en": "Angle it slightly downward.",
@@ -1983,7 +1983,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right flap outward.",
-          "zhHant": "把右側紙層往外折。"
+          "zhHant": "把右側紙層往外摺。"
         },
         "hint": {
           "en": "Match the other side.",
@@ -2017,7 +2017,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold one lower point outward.",
-          "zhHant": "把一個下方尖角向外折。"
+          "zhHant": "把一個下方尖角向外摺。"
         },
         "hint": {
           "en": "Keep it shorter than the front leg.",
@@ -2034,7 +2034,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the other lower point outward.",
-          "zhHant": "把另一個下方尖角向外折。"
+          "zhHant": "把另一個下方尖角向外摺。"
         },
         "hint": {
           "en": "Balance both sides.",
@@ -2051,7 +2051,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse the top point forward.",
-          "zhHant": "把上方尖角做內反折向前。"
+          "zhHant": "把上方尖角做內反摺向前。"
         },
         "hint": {
           "en": "Pinch the neck crease first.",
@@ -2068,7 +2068,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the four shell corners slightly behind.",
-          "zhHant": "把龜殼四個尖角稍微往後折。"
+          "zhHant": "把龜殼四個尖角稍微往後摺。"
         },
         "hint": {
           "en": "Small folds make a rounder shell.",
@@ -2169,7 +2169,7 @@ export const ORIGAMI_MODELS = [
         },
         "hint": {
           "en": "This prepares the collapse.",
-          "zhHant": "這會準備下一步收折。"
+          "zhHant": "這會準備下一步收摺。"
         },
         "diagram": "half-down-open",
         "operation": "precrease"
@@ -2199,7 +2199,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left flap upward and outward.",
-          "zhHant": "把左側紙層往上、往外折。"
+          "zhHant": "把左側紙層往上、往外摺。"
         },
         "hint": {
           "en": "Make a narrow leg.",
@@ -2250,7 +2250,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left body edge to the center.",
-          "zhHant": "把身體左側折向中央。"
+          "zhHant": "把身體左側摺向中央。"
         },
         "hint": {
           "en": "Do not trap the front leg.",
@@ -2267,7 +2267,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right body edge to the center.",
-          "zhHant": "把身體右側折向中央。"
+          "zhHant": "把身體右側摺向中央。"
         },
         "hint": {
           "en": "Keep the body symmetrical.",
@@ -2284,7 +2284,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the lower section upward.",
-          "zhHant": "把下半部往上折。"
+          "zhHant": "把下半部往上摺。"
         },
         "hint": {
           "en": "This creates the first spring crease.",
@@ -2301,7 +2301,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold half of that section back downward.",
-          "zhHant": "把剛才折上的部分再往下折一半。"
+          "zhHant": "把剛才摺上的部分再往下摺一半。"
         },
         "hint": {
           "en": "This Z-shaped pleat powers the jump.",
@@ -2318,7 +2318,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the two rear corners slightly outward.",
-          "zhHant": "把後方兩角稍微向外折。"
+          "zhHant": "把後方兩角稍微向外摺。"
         },
         "hint": {
           "en": "Small angles are enough.",
@@ -2386,7 +2386,7 @@ export const ORIGAMI_MODELS = [
       },
       {
         "en": "Inside reverse folds",
-        "zhHant": "內反折"
+        "zhHant": "內反摺"
       }
     ],
     "steps": [
@@ -2428,11 +2428,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-03",
         "title": {
           "en": "Horizontal fold",
-          "zhHant": "水平對折"
+          "zhHant": "水平對摺"
         },
         "instruction": {
           "en": "Fold in half horizontally and reopen.",
-          "zhHant": "水平對折後打開。"
+          "zhHant": "水平對摺後打開。"
         },
         "hint": {
           "en": "Align the edges carefully.",
@@ -2445,11 +2445,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-04",
         "title": {
           "en": "Vertical fold",
-          "zhHant": "垂直對折"
+          "zhHant": "垂直對摺"
         },
         "instruction": {
           "en": "Fold in half vertically and reopen.",
-          "zhHant": "垂直對折後打開。"
+          "zhHant": "垂直對摺後打開。"
         },
         "hint": {
           "en": "You now have four main guide lines.",
@@ -2470,7 +2470,7 @@ export const ORIGAMI_MODELS = [
         },
         "hint": {
           "en": "Let the creases guide the collapse.",
-          "zhHant": "讓原本的摺痕引導收折。"
+          "zhHant": "讓原本的摺痕引導收摺。"
         },
         "diagram": "square-base",
         "operation": "collapse"
@@ -2483,11 +2483,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left top edge to the center line.",
-          "zhHant": "把上層左邊折到中央線。"
+          "zhHant": "把上層左邊摺到中央線。"
         },
         "hint": {
           "en": "Work only on the top layer.",
-          "zhHant": "只折最上層。"
+          "zhHant": "只摺最上層。"
         },
         "diagram": "side-left",
         "operation": "valley-fold"
@@ -2500,7 +2500,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right top edge to the center line.",
-          "zhHant": "把上層右邊折到中央線。"
+          "zhHant": "把上層右邊摺到中央線。"
         },
         "hint": {
           "en": "Make a narrow kite.",
@@ -2513,11 +2513,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-08",
         "title": {
           "en": "Top triangle down",
-          "zhHant": "頂部三角下折"
+          "zhHant": "頂部三角下摺"
         },
         "instruction": {
           "en": "Fold the top triangle down to mark a crease.",
-          "zhHant": "把上方三角形折下做定位摺痕。"
+          "zhHant": "把上方三角形摺下做定位摺痕。"
         },
         "hint": {
           "en": "Reopen after pressing.",
@@ -2568,7 +2568,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold one lower edge to the center.",
-          "zhHant": "把一側下方邊緣折向中央。"
+          "zhHant": "把一側下方邊緣摺向中央。"
         },
         "hint": {
           "en": "This prepares a thin neck.",
@@ -2585,7 +2585,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the other lower edge to the center.",
-          "zhHant": "另一側下方邊緣也折向中央。"
+          "zhHant": "另一側下方邊緣也摺向中央。"
         },
         "hint": {
           "en": "Keep both sides slim.",
@@ -2602,7 +2602,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse both long points upward.",
-          "zhHant": "把兩個長尖角都做內反折向上。"
+          "zhHant": "把兩個長尖角都做內反摺向上。"
         },
         "hint": {
           "en": "One side becomes the neck, one the tail.",
@@ -2619,11 +2619,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse the neck tip downward.",
-          "zhHant": "把脖子尖端再做一次小內反折向下。"
+          "zhHant": "把脖子尖端再做一次小內反摺向下。"
         },
         "hint": {
           "en": "Keep the head small.",
-          "zhHant": "頭部不要折太大。"
+          "zhHant": "頭部不要摺太大。"
         },
         "diagram": "inside-reverse-beak",
         "operation": "inside-reverse"
@@ -2666,7 +2666,7 @@ export const ORIGAMI_MODELS = [
       },
       {
         "en": "Inside reverse fold",
-        "zhHant": "內反折"
+        "zhHant": "內反摺"
       }
     ],
     "steps": [
@@ -2691,11 +2691,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-02",
         "title": {
           "en": "Left edge inward",
-          "zhHant": "左邊內折"
+          "zhHant": "左邊內摺"
         },
         "instruction": {
           "en": "Fold the left edge to the center.",
-          "zhHant": "把左側邊緣折到中央。"
+          "zhHant": "把左側邊緣摺到中央。"
         },
         "hint": {
           "en": "Make a long kite.",
@@ -2708,11 +2708,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-03",
         "title": {
           "en": "Right edge inward",
-          "zhHant": "右邊內折"
+          "zhHant": "右邊內摺"
         },
         "instruction": {
           "en": "Fold the right edge to the center.",
-          "zhHant": "把右側邊緣折到中央。"
+          "zhHant": "把右側邊緣摺到中央。"
         },
         "hint": {
           "en": "Keep the point sharp.",
@@ -2729,11 +2729,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left edge inward once more.",
-          "zhHant": "左側再往中央折一次。"
+          "zhHant": "左側再往中央摺一次。"
         },
         "hint": {
           "en": "Only fold the upper layer.",
-          "zhHant": "只折上層。"
+          "zhHant": "只摺上層。"
         },
         "diagram": "side-left-narrow",
         "operation": "valley-fold"
@@ -2759,11 +2759,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-06",
         "title": {
           "en": "Fold in half",
-          "zhHant": "整體對折"
+          "zhHant": "整體對摺"
         },
         "instruction": {
           "en": "Fold the model in half along the center.",
-          "zhHant": "沿中央線把模型整體對折。"
+          "zhHant": "沿中央線把模型整體對摺。"
         },
         "hint": {
           "en": "Keep the narrow point outside.",
@@ -2780,7 +2780,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse the long point upward.",
-          "zhHant": "把長尖角做內反折向上。"
+          "zhHant": "把長尖角做內反摺向上。"
         },
         "hint": {
           "en": "Choose a graceful angle.",
@@ -2797,7 +2797,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse the very tip downward.",
-          "zhHant": "把最尖端再做小內反折向下。"
+          "zhHant": "把最尖端再做小內反摺向下。"
         },
         "hint": {
           "en": "A tiny fold makes the beak.",
@@ -2814,7 +2814,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the back point slightly upward.",
-          "zhHant": "把後方尖角稍微往上折。"
+          "zhHant": "把後方尖角稍微往上摺。"
         },
         "hint": {
           "en": "This lifts the tail.",
@@ -2857,7 +2857,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Reverse fold",
-        "zhHant": "反折"
+        "zhHant": "反摺"
       },
       {
         "en": "Wing shaping",
@@ -2869,11 +2869,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Make a triangle",
-          "zhHant": "折三角形"
+          "zhHant": "摺三角形"
         },
         "instruction": {
           "en": "Fold the square diagonally.",
-          "zhHant": "沿對角線把正方形對折。"
+          "zhHant": "沿對角線把正方形對摺。"
         },
         "hint": {
           "en": "Align the corners.",
@@ -2886,11 +2886,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-02",
         "title": {
           "en": "Fold in half again",
-          "zhHant": "再次對折"
+          "zhHant": "再次對摺"
         },
         "instruction": {
           "en": "Fold the triangle in half and reopen.",
-          "zhHant": "把三角形再對折後打開。"
+          "zhHant": "把三角形再對摺後打開。"
         },
         "hint": {
           "en": "This marks the middle.",
@@ -2907,7 +2907,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right point upward at an angle.",
-          "zhHant": "把右側尖角斜向上折。"
+          "zhHant": "把右側尖角斜向上摺。"
         },
         "hint": {
           "en": "This becomes the neck.",
@@ -2920,11 +2920,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-04",
         "title": {
           "en": "Inside reverse neck",
-          "zhHant": "脖子內反折"
+          "zhHant": "脖子內反摺"
         },
         "instruction": {
           "en": "Open that fold and inside-reverse it.",
-          "zhHant": "打開剛才的摺痕並做內反折。"
+          "zhHant": "打開剛才的摺痕並做內反摺。"
         },
         "hint": {
           "en": "Let the new neck sit between layers.",
@@ -2941,7 +2941,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse the tip downward.",
-          "zhHant": "把尖端做小內反折向下。"
+          "zhHant": "把尖端做小內反摺向下。"
         },
         "hint": {
           "en": "Keep the beak short.",
@@ -2958,7 +2958,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top layer downward to form a wing.",
-          "zhHant": "把最上層往下折成翅膀。"
+          "zhHant": "把最上層往下摺成翅膀。"
         },
         "hint": {
           "en": "Leave part of the body visible.",
@@ -2975,7 +2975,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Flip over and repeat for the other wing.",
-          "zhHant": "翻面後重複折另一片翅膀。"
+          "zhHant": "翻面後重複摺另一片翅膀。"
         },
         "hint": {
           "en": "Match the wing angle.",
@@ -2992,7 +2992,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Make a small reverse fold at the tail.",
-          "zhHant": "尾端做一個小反折。"
+          "zhHant": "尾端做一個小反摺。"
         },
         "hint": {
           "en": "A tiny fold gives the tail more shape.",
@@ -3047,11 +3047,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-01",
         "title": {
           "en": "Make a triangle",
-          "zhHant": "折成三角形"
+          "zhHant": "摺成三角形"
         },
         "instruction": {
           "en": "Fold the square diagonally.",
-          "zhHant": "沿對角線折成三角形。"
+          "zhHant": "沿對角線摺成三角形。"
         },
         "hint": {
           "en": "Put the long edge at the top.",
@@ -3064,11 +3064,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-02",
         "title": {
           "en": "Left corner down",
-          "zhHant": "左角下折"
+          "zhHant": "左角下摺"
         },
         "instruction": {
           "en": "Fold the left corner to the bottom point.",
-          "zhHant": "把左角折到下方尖點。"
+          "zhHant": "把左角摺到下方尖點。"
         },
         "hint": {
           "en": "Line up the edge.",
@@ -3081,11 +3081,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-03",
         "title": {
           "en": "Right corner down",
-          "zhHant": "右角下折"
+          "zhHant": "右角下摺"
         },
         "instruction": {
           "en": "Fold the right corner to the bottom point.",
-          "zhHant": "把右角也折到下方尖點。"
+          "zhHant": "把右角也摺到下方尖點。"
         },
         "hint": {
           "en": "You now have a diamond.",
@@ -3098,11 +3098,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-04",
         "title": {
           "en": "Left flap up",
-          "zhHant": "左紙層上折"
+          "zhHant": "左紙層上摺"
         },
         "instruction": {
           "en": "Fold the left lower flap back up.",
-          "zhHant": "把左側下方紙層往上折。"
+          "zhHant": "把左側下方紙層往上摺。"
         },
         "hint": {
           "en": "Point it toward the top.",
@@ -3115,11 +3115,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-05",
         "title": {
           "en": "Right flap up",
-          "zhHant": "右紙層上折"
+          "zhHant": "右紙層上摺"
         },
         "instruction": {
           "en": "Fold the right lower flap back up.",
-          "zhHant": "把右側下方紙層往上折。"
+          "zhHant": "把右側下方紙層往上摺。"
         },
         "hint": {
           "en": "Match the left side.",
@@ -3136,7 +3136,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left top point outward.",
-          "zhHant": "把左上尖角向外折。"
+          "zhHant": "把左上尖角向外摺。"
         },
         "hint": {
           "en": "This becomes a helmet horn.",
@@ -3153,7 +3153,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right top point outward.",
-          "zhHant": "把右上尖角向外折。"
+          "zhHant": "把右上尖角向外摺。"
         },
         "hint": {
           "en": "Try to match the angle.",
@@ -3166,11 +3166,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-08",
         "title": {
           "en": "Raise front plate",
-          "zhHant": "前片上折"
+          "zhHant": "前片上摺"
         },
         "instruction": {
           "en": "Fold the upper front layer upward.",
-          "zhHant": "把前方上層往上折。"
+          "zhHant": "把前方上層往上摺。"
         },
         "hint": {
           "en": "Stop a little below the horns.",
@@ -3183,11 +3183,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-09",
         "title": {
           "en": "Fold front plate down",
-          "zhHant": "前片回折"
+          "zhHant": "前片回摺"
         },
         "instruction": {
           "en": "Fold its tip back down.",
-          "zhHant": "再把尖端往下折。"
+          "zhHant": "再把尖端往下摺。"
         },
         "hint": {
           "en": "Create a narrow band.",
@@ -3204,7 +3204,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the remaining lower flap behind.",
-          "zhHant": "把剩下的下方紙層折到背面。"
+          "zhHant": "把剩下的下方紙層摺到背面。"
         },
         "hint": {
           "en": "Tuck it neatly behind the helmet.",
@@ -3284,7 +3284,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold in half horizontally and reopen.",
-          "zhHant": "水平對折後打開。"
+          "zhHant": "水平對摺後打開。"
         },
         "hint": {
           "en": "Mark the center only.",
@@ -3301,7 +3301,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold in half vertically and reopen.",
-          "zhHant": "垂直對折後打開。"
+          "zhHant": "垂直對摺後打開。"
         },
         "hint": {
           "en": "The center point is now clear.",
@@ -3318,7 +3318,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top corner to the center point.",
-          "zhHant": "把上角折到中心點。"
+          "zhHant": "把上角摺到中心點。"
         },
         "hint": {
           "en": "Make the point touch the center.",
@@ -3335,7 +3335,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the bottom corner to the center.",
-          "zhHant": "把下角折到中心。"
+          "zhHant": "把下角摺到中心。"
         },
         "hint": {
           "en": "Keep the fold flat.",
@@ -3352,7 +3352,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left corner to the center.",
-          "zhHant": "把左角折到中心。"
+          "zhHant": "把左角摺到中心。"
         },
         "hint": {
           "en": "Align at the same point.",
@@ -3369,7 +3369,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right corner to the center.",
-          "zhHant": "把右角折到中心。"
+          "zhHant": "把右角摺到中心。"
         },
         "hint": {
           "en": "You now have a smaller square.",
@@ -3386,7 +3386,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top edge to the center line.",
-          "zhHant": "把上方邊緣折到中央線。"
+          "zhHant": "把上方邊緣摺到中央線。"
         },
         "hint": {
           "en": "Press through all layers.",
@@ -3403,7 +3403,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the bottom edge to the center line.",
-          "zhHant": "把下方邊緣折到中央線。"
+          "zhHant": "把下方邊緣摺到中央線。"
         },
         "hint": {
           "en": "Reopen both wall folds after creasing.",
@@ -3420,7 +3420,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left edge to the center line.",
-          "zhHant": "把左側邊緣折到中央線。"
+          "zhHant": "把左側邊緣摺到中央線。"
         },
         "hint": {
           "en": "Crease and reopen.",
@@ -3437,7 +3437,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right edge to the center line.",
-          "zhHant": "把右側邊緣折到中央線。"
+          "zhHant": "把右側邊緣摺到中央線。"
         },
         "hint": {
           "en": "Crease and reopen.",
@@ -3471,7 +3471,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top flap over the corner folds into the box.",
-          "zhHant": "把上方紙層跨過角落摺痕，折進盒內。"
+          "zhHant": "把上方紙層跨過角落摺痕，摺進盒內。"
         },
         "hint": {
           "en": "The tip lands near the center.",
@@ -3514,7 +3514,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Simple valley folds",
-        "zhHant": "基本谷折"
+        "zhHant": "基本谷摺"
       },
       {
         "en": "Pocket opening",
@@ -3530,7 +3530,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the square diagonally into a triangle.",
-          "zhHant": "把正方形沿對角線折成三角形。"
+          "zhHant": "把正方形沿對角線摺成三角形。"
         },
         "hint": {
           "en": "Put the long edge at the top.",
@@ -3543,11 +3543,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-02",
         "title": {
           "en": "Left corner across",
-          "zhHant": "左角斜折"
+          "zhHant": "左角斜摺"
         },
         "instruction": {
           "en": "Fold the left corner across to the right side.",
-          "zhHant": "把左角斜折到右側。"
+          "zhHant": "把左角斜摺到右側。"
         },
         "hint": {
           "en": "Aim for the opposite edge.",
@@ -3560,11 +3560,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-03",
         "title": {
           "en": "Right corner across",
-          "zhHant": "右角斜折"
+          "zhHant": "右角斜摺"
         },
         "instruction": {
           "en": "Fold the right corner across to the left side.",
-          "zhHant": "把右角斜折到左側。"
+          "zhHant": "把右角斜摺到左側。"
         },
         "hint": {
           "en": "Match the height of the first fold.",
@@ -3581,7 +3581,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the front top flap downward.",
-          "zhHant": "把前方上層往下折。"
+          "zhHant": "把前方上層往下摺。"
         },
         "hint": {
           "en": "Fold it over the crossed corners.",
@@ -3598,7 +3598,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Turn over and fold the back top flap downward.",
-          "zhHant": "翻面後，把後方上層也往下折。"
+          "zhHant": "翻面後，把後方上層也往下摺。"
         },
         "hint": {
           "en": "Make both rim folds similar.",
@@ -3691,7 +3691,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the bottom corner slightly above the center.",
-          "zhHant": "把下角折到稍微超過中心的位置。"
+          "zhHant": "把下角摺到稍微超過中心的位置。"
         },
         "hint": {
           "en": "This becomes the lower pocket.",
@@ -3708,7 +3708,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left corner toward the center.",
-          "zhHant": "把左角折向中央。"
+          "zhHant": "把左角摺向中央。"
         },
         "hint": {
           "en": "Overlap the bottom flap a little.",
@@ -3725,7 +3725,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right corner toward the center.",
-          "zhHant": "把右角折向中央。"
+          "zhHant": "把右角摺向中央。"
         },
         "hint": {
           "en": "Overlap the left flap slightly.",
@@ -3755,11 +3755,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-06",
         "title": {
           "en": "Fold the lid",
-          "zhHant": "折上蓋"
+          "zhHant": "摺上蓋"
         },
         "instruction": {
           "en": "Fold the top corner downward.",
-          "zhHant": "把上方尖角往下折。"
+          "zhHant": "把上方尖角往下摺。"
         },
         "hint": {
           "en": "Let it cover the center seam.",
@@ -3802,7 +3802,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Blintz folds",
-        "zhHant": "四角向心折"
+        "zhHant": "四角向心摺"
       },
       {
         "en": "Pocket shaping",
@@ -3852,11 +3852,11 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold all four corners to the center.",
-          "zhHant": "把四個角都折到中心點。"
+          "zhHant": "把四個角都摺到中心點。"
         },
         "hint": {
           "en": "Work one corner at a time.",
-          "zhHant": "一次折一個角。"
+          "zhHant": "一次摺一個角。"
         },
         "diagram": "blintz-all",
         "operation": "blintz"
@@ -3886,7 +3886,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold all four corners to the center again.",
-          "zhHant": "再次把四個角都折到中心。"
+          "zhHant": "再次把四個角都摺到中心。"
         },
         "hint": {
           "en": "The model becomes much smaller.",
@@ -3903,7 +3903,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold in half horizontally and reopen.",
-          "zhHant": "水平對折後打開。"
+          "zhHant": "水平對摺後打開。"
         },
         "hint": {
           "en": "This makes the finger movement easier.",
@@ -3920,7 +3920,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold in half vertically and reopen.",
-          "zhHant": "垂直對折後打開。"
+          "zhHant": "垂直對摺後打開。"
         },
         "hint": {
           "en": "Crease firmly.",
@@ -4013,7 +4013,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left edge to the center line.",
-          "zhHant": "把左邊折到中央線。"
+          "zhHant": "把左邊摺到中央線。"
         },
         "hint": {
           "en": "Keep the corners sharp.",
@@ -4030,7 +4030,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right edge to the center line.",
-          "zhHant": "把右邊折到中央線。"
+          "zhHant": "把右邊摺到中央線。"
         },
         "hint": {
           "en": "You have a tall rectangle.",
@@ -4047,7 +4047,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold top and bottom edges toward the center.",
-          "zhHant": "把上下邊緣都折向中央。"
+          "zhHant": "把上下邊緣都摺向中央。"
         },
         "hint": {
           "en": "The paper becomes a smaller square.",
@@ -4153,15 +4153,15 @@ export const ORIGAMI_MODELS = [
         "id": "step-03",
         "title": {
           "en": "Horizontal fold",
-          "zhHant": "水平對折"
+          "zhHant": "水平對摺"
         },
         "instruction": {
           "en": "Fold in half horizontally and reopen.",
-          "zhHant": "水平對折後打開。"
+          "zhHant": "水平對摺後打開。"
         },
         "hint": {
           "en": "This prepares the collapse.",
-          "zhHant": "準備收折底形。"
+          "zhHant": "準備收摺底形。"
         },
         "diagram": "half-down-open",
         "operation": "precrease"
@@ -4187,11 +4187,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-05",
         "title": {
           "en": "Front corners up",
-          "zhHant": "前層兩角上折"
+          "zhHant": "前層兩角上摺"
         },
         "instruction": {
           "en": "Fold the two front bottom corners to the top.",
-          "zhHant": "把前層兩個下角折到頂端。"
+          "zhHant": "把前層兩個下角摺到頂端。"
         },
         "hint": {
           "en": "Make a diamond on the front.",
@@ -4204,7 +4204,7 @@ export const ORIGAMI_MODELS = [
         "id": "step-06",
         "title": {
           "en": "Back corners up",
-          "zhHant": "後層兩角上折"
+          "zhHant": "後層兩角上摺"
         },
         "instruction": {
           "en": "Flip and repeat on the back.",
@@ -4225,7 +4225,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold side points to the center on both sides.",
-          "zhHant": "把左右尖角折到中央，前後都做。"
+          "zhHant": "把左右尖角摺到中央，前後都做。"
         },
         "hint": {
           "en": "These form locking pockets.",
@@ -4318,7 +4318,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold all four corners to the center.",
-          "zhHant": "把四個角全部折到中心。"
+          "zhHant": "把四個角全部摺到中心。"
         },
         "hint": {
           "en": "Keep every tip touching the center.",
@@ -4335,7 +4335,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the new four corners to the center again.",
-          "zhHant": "把新的四個角再次折到中心。"
+          "zhHant": "把新的四個角再次摺到中心。"
         },
         "hint": {
           "en": "Crease carefully through the layers.",
@@ -4369,7 +4369,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold all four corners to the center once more.",
-          "zhHant": "再一次把四角折到中心。"
+          "zhHant": "再一次把四角摺到中心。"
         },
         "hint": {
           "en": "This fold will feel thicker.",
@@ -4514,7 +4514,7 @@ export const ORIGAMI_MODELS = [
     "skills": [
       {
         "en": "Reverse folds",
-        "zhHant": "反折"
+        "zhHant": "反摺"
       },
       {
         "en": "Squash fold",
@@ -4547,11 +4547,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-02",
         "title": {
           "en": "Make a kite",
-          "zhHant": "折風箏形"
+          "zhHant": "摺風箏形"
         },
         "instruction": {
           "en": "Fold left and right edges to the center.",
-          "zhHant": "把左右邊緣折到中央。"
+          "zhHant": "把左右邊緣摺到中央。"
         },
         "hint": {
           "en": "Keep the long point sharp.",
@@ -4564,11 +4564,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-03",
         "title": {
           "en": "Fold in half",
-          "zhHant": "整體對折"
+          "zhHant": "整體對摺"
         },
         "instruction": {
           "en": "Fold the kite in half lengthwise.",
-          "zhHant": "把風箏形沿長邊對折。"
+          "zhHant": "把風箏形沿長邊對摺。"
         },
         "hint": {
           "en": "Keep the layers aligned.",
@@ -4585,7 +4585,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the front long point upward.",
-          "zhHant": "把前方長尖角往上折。"
+          "zhHant": "把前方長尖角往上摺。"
         },
         "hint": {
           "en": "Choose where the neck begins.",
@@ -4598,11 +4598,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-05",
         "title": {
           "en": "Reverse the head section",
-          "zhHant": "頭部反折"
+          "zhHant": "頭部反摺"
         },
         "instruction": {
           "en": "Inside-reverse that fold upward.",
-          "zhHant": "把剛才的摺痕做內反折向上。"
+          "zhHant": "把剛才的摺痕做內反摺向上。"
         },
         "hint": {
           "en": "The point should sit between layers.",
@@ -4619,7 +4619,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the head point downward.",
-          "zhHant": "把頭部尖端往下折。"
+          "zhHant": "把頭部尖端往下摺。"
         },
         "hint": {
           "en": "Leave enough length for the trunk.",
@@ -4632,15 +4632,15 @@ export const ORIGAMI_MODELS = [
         "id": "step-07",
         "title": {
           "en": "Reverse the trunk",
-          "zhHant": "象鼻反折"
+          "zhHant": "象鼻反摺"
         },
         "instruction": {
           "en": "Inside-reverse the trunk downward.",
-          "zhHant": "把象鼻做內反折向下。"
+          "zhHant": "把象鼻做內反摺向下。"
         },
         "hint": {
           "en": "Pinch both sides before reversing.",
-          "zhHant": "先捏住兩側再翻折。"
+          "zhHant": "先捏住兩側再翻摺。"
         },
         "diagram": "inside-reverse-top",
         "operation": "inside-reverse"
@@ -4653,7 +4653,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Outside-reverse the very tip upward.",
-          "zhHant": "把象鼻最末端做外反折向上。"
+          "zhHant": "把象鼻最末端做外反摺向上。"
         },
         "hint": {
           "en": "Use a tiny crease.",
@@ -4687,7 +4687,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold a small top section behind.",
-          "zhHant": "把背部上方小區域往後折。"
+          "zhHant": "把背部上方小區域往後摺。"
         },
         "hint": {
           "en": "This rounds the back.",
@@ -4738,7 +4738,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Reverse-fold a tiny rear point outward.",
-          "zhHant": "把後方小尖角反折向外。"
+          "zhHant": "把後方小尖角反摺向外。"
         },
         "hint": {
           "en": "Keep it small.",
@@ -4785,7 +4785,7 @@ export const ORIGAMI_MODELS = [
       },
       {
         "en": "Multiple reverse folds",
-        "zhHant": "多次反折"
+        "zhHant": "多次反摺"
       },
       {
         "en": "3D shaping",
@@ -4818,7 +4818,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold horizontally and reopen.",
-          "zhHant": "水平對折後打開。"
+          "zhHant": "水平對摺後打開。"
         },
         "hint": {
           "en": "Align edge to edge.",
@@ -4835,7 +4835,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold vertically and reopen.",
-          "zhHant": "垂直對折後打開。"
+          "zhHant": "垂直對摺後打開。"
         },
         "hint": {
           "en": "You now have a full crease grid.",
@@ -4869,7 +4869,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left upper edge to center.",
-          "zhHant": "把上層左邊折向中央。"
+          "zhHant": "把上層左邊摺向中央。"
         },
         "hint": {
           "en": "Only the top layer moves.",
@@ -4886,7 +4886,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right upper edge to center.",
-          "zhHant": "把上層右邊折向中央。"
+          "zhHant": "把上層右邊摺向中央。"
         },
         "hint": {
           "en": "Make a long kite.",
@@ -4937,7 +4937,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse one long lower point upward steeply.",
-          "zhHant": "把一個下方長尖角大幅內反折向上。"
+          "zhHant": "把一個下方長尖角大幅內反摺向上。"
         },
         "hint": {
           "en": "This side will become the neck.",
@@ -4954,7 +4954,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse the other long point backward.",
-          "zhHant": "另一個長尖角內反折向後。"
+          "zhHant": "另一個長尖角內反摺向後。"
         },
         "hint": {
           "en": "Keep the tail lower than the neck.",
@@ -4971,7 +4971,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Outside-reverse the neck tip forward.",
-          "zhHant": "把脖子尖端做外反折向前。"
+          "zhHant": "把脖子尖端做外反摺向前。"
         },
         "hint": {
           "en": "Use a short fold for a small head.",
@@ -5005,7 +5005,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the two front leg flaps downward.",
-          "zhHant": "把兩片前腳紙層往下折。"
+          "zhHant": "把兩片前腳紙層往下摺。"
         },
         "hint": {
           "en": "Match the lengths.",
@@ -5039,7 +5039,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the rear leg flaps downward.",
-          "zhHant": "把後腳紙層往下折。"
+          "zhHant": "把後腳紙層往下摺。"
         },
         "hint": {
           "en": "Aim for a stable stance.",
@@ -5090,7 +5090,7 @@ export const ORIGAMI_MODELS = [
       },
       {
         "en": "Reverse folds",
-        "zhHant": "反折"
+        "zhHant": "反摺"
       },
       {
         "en": "Wing shaping",
@@ -5123,7 +5123,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold horizontally and reopen.",
-          "zhHant": "水平對折後打開。"
+          "zhHant": "水平對摺後打開。"
         },
         "hint": {
           "en": "Press the full crease.",
@@ -5140,7 +5140,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold vertically and reopen.",
-          "zhHant": "垂直對折後打開。"
+          "zhHant": "垂直對摺後打開。"
         },
         "hint": {
           "en": "The base grid is complete.",
@@ -5174,7 +5174,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top left edge to center.",
-          "zhHant": "把上層左邊折到中央。"
+          "zhHant": "把上層左邊摺到中央。"
         },
         "hint": {
           "en": "Crease firmly.",
@@ -5191,7 +5191,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the top right edge to center.",
-          "zhHant": "把上層右邊折到中央。"
+          "zhHant": "把上層右邊摺到中央。"
         },
         "hint": {
           "en": "Keep both sides symmetric.",
@@ -5242,7 +5242,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse one long point upward.",
-          "zhHant": "把一個長尖角內反折向上。"
+          "zhHant": "把一個長尖角內反摺向上。"
         },
         "hint": {
           "en": "Use a steep angle.",
@@ -5259,7 +5259,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Inside-reverse the opposite long point backward.",
-          "zhHant": "另一個長尖角內反折向後。"
+          "zhHant": "另一個長尖角內反摺向後。"
         },
         "hint": {
           "en": "Keep the tail nearly horizontal.",
@@ -5276,7 +5276,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Outside-reverse the neck tip forward.",
-          "zhHant": "把脖子尖端外反折向前。"
+          "zhHant": "把脖子尖端外反摺向前。"
         },
         "hint": {
           "en": "Keep a pointed snout.",
@@ -5310,7 +5310,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the left body flap outward.",
-          "zhHant": "把身體左側紙層向外折。"
+          "zhHant": "把身體左側紙層向外摺。"
         },
         "hint": {
           "en": "Start the wing near the shoulder.",
@@ -5327,7 +5327,7 @@ export const ORIGAMI_MODELS = [
         },
         "instruction": {
           "en": "Fold the right body flap outward.",
-          "zhHant": "把右側紙層向外折。"
+          "zhHant": "把右側紙層向外摺。"
         },
         "hint": {
           "en": "Match the first wing angle.",
@@ -5374,11 +5374,11 @@ export const ORIGAMI_MODELS = [
         "id": "step-17",
         "title": {
           "en": "Tail crimp",
-          "zhHant": "尾巴折節"
+          "zhHant": "尾巴摺節"
         },
         "instruction": {
           "en": "Add a small crimp halfway along the tail.",
-          "zhHant": "在尾巴中段做一個小折節。"
+          "zhHant": "在尾巴中段做一個小摺節。"
         },
         "hint": {
           "en": "This gives the tail a bend.",
@@ -5487,48 +5487,56 @@ export const PAPER_COLORS = [
   {
     "id": "sakura",
     "label": "Sakura",
+    "labelZh": "櫻花粉",
     "front": "#ef8f9f",
     "back": "#ffe6e9"
   },
   {
     "id": "sky",
     "label": "Sky",
+    "labelZh": "天空藍",
     "front": "#76a9df",
     "back": "#e5f1ff"
   },
   {
     "id": "leaf",
     "label": "Leaf",
+    "labelZh": "葉子綠",
     "front": "#84b884",
     "back": "#edf7eb"
   },
   {
     "id": "sun",
     "label": "Sun",
+    "labelZh": "陽光黃",
     "front": "#efbc5b",
     "back": "#fff3ce"
   },
   {
     "id": "violet",
     "label": "Violet",
+    "labelZh": "紫羅蘭",
     "front": "#aa90cf",
     "back": "#f1eafb"
   },
   {
     "id": "paper",
     "label": "Paper",
+    "labelZh": "白紙",
     "front": "#f4ead7",
     "back": "#fffaf0"
   },
   {
     "id": "ink",
     "label": "Indigo",
+    "labelZh": "靛藍",
     "front": "#516b8a",
     "back": "#e7edf5"
   },
   {
     "id": "matcha",
     "label": "Matcha",
+    "labelZh": "抹茶綠",
     "front": "#9aa56f",
     "back": "#f0f1df"
   }

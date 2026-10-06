@@ -62,7 +62,7 @@ export function mountOrigamiAtelier(root, options = {}) {
   }
 
   function localeControls() {
-    return `<div class="oa-locale" aria-label="Language">
+    return `<div class="oa-locale" aria-label="${t("Language","語言")}">
       <button type="button" data-action="locale-en" aria-pressed="${locale==="en"}">EN</button>
       <button type="button" data-action="locale-zh" aria-pressed="${locale==="zhHant"}">中文</button>
     </div>`;
@@ -95,7 +95,7 @@ export function mountOrigamiAtelier(root, options = {}) {
         ${complete ? `<span class="oa-complete-stamp">✓ ${t("MADE","完成")}</span>` : ""}
         <div class="oa-model-icon" aria-hidden="true">${model.icon}</div>
         <div class="oa-model-name">${escapeHtml(modelName(model))}</div>
-        <div class="oa-model-meta"><span class="oa-difficulty">${stars(model.difficulty)}</span><br><strong>${escapeHtml(difficultyName(model))}</strong> · ${model.steps.length} ${t("folds","步")} · ~${model.minutes} min</div>
+        <div class="oa-model-meta"><span class="oa-difficulty">${stars(model.difficulty)}</span><br><strong>${escapeHtml(difficultyName(model))}</strong> · ${model.steps.length} ${t("folds","步")} · ${t(`~${model.minutes} min`,`約 ${model.minutes} 分鐘`)}</div>
       </button>`;
     }).join("");
     const resumed = progress.lastModelId ? getOrigamiModel(progress.lastModelId) : null;
@@ -116,7 +116,7 @@ export function mountOrigamiAtelier(root, options = {}) {
   function renderPrep() {
     setScreen("prep");
     const model = getOrigamiModel(selectedModelId) || ORIGAMI_MODELS[0];
-    const colors = PAPER_COLORS.map(color => `<button type="button" class="oa-color" style="background:${color.front}" data-paper="${color.id}" aria-label="${color.label}" aria-pressed="${progress.paperColorId===color.id}"></button>`).join("");
+    const colors = PAPER_COLORS.map(color => `<button type="button" class="oa-color" style="background:${color.front}" data-paper="${color.id}" aria-label="${t(color.label, color.labelZh || color.label)}" aria-pressed="${progress.paperColorId===color.id}"></button>`).join("");
     const skills = (model.skills || []).map(skill => `<span class="oa-skill-chip">${escapeHtml(textFor(skill, locale))}</span>`).join("");
     view.innerHTML = `
       ${topbar(modelName(model), t(`${model.steps.length} folds · one square sheet`,`${model.steps.length} 步 · 一張正方形紙`))}
@@ -175,7 +175,7 @@ export function mountOrigamiAtelier(root, options = {}) {
       </div>`;
     const paper = PAPER_COLORS.find(c=>c.id===progress.paperColorId) || PAPER_COLORS[0];
     engine?.destroy();
-    engine = new OrigamiFoldEngine(view.querySelector("[data-fold-stage]"), { front:paper.front, back:paper.back });
+    engine = new OrigamiFoldEngine(view.querySelector("[data-fold-stage]"), { front:paper.front, back:paper.back, label:t("Origami folding diagram","摺紙步驟圖") });
     if (keep) engine.played = keep.played;
     engine.show(step, keep ? { autoplay:!keep.paused, time:keep.time } : {});
     view.querySelector('[data-legend="crease"]').hidden = !engine.parts.crease;
