@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v194-origami-pictures";
+const CACHE_NAME = "summer-quest-v195-codequest-hints";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -207,6 +207,7 @@ const APP_SHELL = [
   "./js/games/codequest/bubble.js",
   "./js/games/codequest/strip-edit.js",
   "./js/games/codequest/stickers.js",
+  "./js/games/codequest/hints.js",
   "./js/games/codequest/preview.js",
   "./js/games/codequest/room-view.js",
   "./js/games/codequest/sprites-world.js",

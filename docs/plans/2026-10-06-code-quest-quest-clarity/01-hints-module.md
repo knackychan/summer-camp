@@ -1,6 +1,6 @@
 # Slice 01: Hints module
 
-**Status:** Design approved by Papa 2026-10-06 (`design.md` D1, D4, D5, D6). Not started.
+**Status:** Design approved by Papa 2026-10-06 (`design.md` D1, D4, D5, D6). Built 2026-10-06; unit tests green.
 **Goal:** One pure module that knows, for any quest, which skills it needs, how hard it is, its three hints and a peek at its solution.
 **Depends on:** —
 **Files:** `js/games/codequest/hints.js` (new), `js/games/codequest/model.js` (one `export`), `sw.js`, `scripts/codequest-hints.test.mjs` (new).

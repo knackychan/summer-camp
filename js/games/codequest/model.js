@@ -83,7 +83,7 @@ function parseLevel(level) {
   return { width, height, walls, pits, hero, companion, exit, enemies, chests, doors, keys, traps, cycleTraps, levers, plates, runeGates, crates, npcs, pushBlocks, questTokens, orbs, movingPlatforms };
 }
 
-function requirementPresent(program, functions, requirement) {
+export function requirementPresent(program, functions, requirement) {
   const safeFns = normalizeFunctions(functions);
   const bodies = [program, ...Object.values(safeFns).map(value => functionDescriptor(value).body)];
   if (requirement === 'repeat' || requirement === 'if' || requirement === 'call' || requirement === 'let' || requirement === 'return' || requirement === 'target' || requirement === 'forOf' || requirement === 'on' || requirement === 'signal' || requirement === 'state') return bodies.some(body => containsNodeType(body, requirement));
