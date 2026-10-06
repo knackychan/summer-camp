@@ -118,6 +118,9 @@
 .oa-companion{position:absolute;left:10px;bottom:10px;max-width:calc(100% - 20px);pointer-events:none;
   background:rgba(226,239,249,.92);border:2px solid #9ab5c7;padding:5px 10px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
 .oa-companion span{font-size:22px}
+.oa-companion-text{margin:0}
+/* Drag to scrub (origami-audit slice 10): sideways drags on the picture move the fold. */
+.oa-stage{touch-action:none}
 /* 🐢 Slow (origami-audit slice 09): top-left of the picture, clear of the flip / rotate symbols. */
 .oa-slow{position:absolute;left:10px;top:10px;z-index:2;min-height:48px;min-width:48px;padding:0 12px;border:3px solid var(--oa-wood-dark);
   background:#fff8e9;color:var(--oa-ink);font:inherit;font-weight:900;font-size:15px;cursor:pointer;box-shadow:2px 2px 0 rgba(78,50,41,.18)}

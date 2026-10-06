@@ -18,3 +18,10 @@
 - `sw.js` — bump `CACHE_NAME`.
 
 **DONE WHEN:** `node scripts/check.mjs` green; `python scripts/check-origami-ui.py` passes.
+
+**Shipped 2026-10-06.** `engine.seek()` / `engine.time`; pointer drag on the stage (8 px threshold,
+relative, one loop per stage width); the companion line switches to the scrub hint while the fold is
+still (paused or resting); `touch-action: none` on the stage. `check-origami-ui.py` 87/87 (new: drag
+right pauses and moves ¼ loop, drag left moves back, hint in EN + 中文 with the frame kept, Resume
+carries on from the dragged frame). The companion is hidden on frames ≤ 620 px tall (as before), so
+the hint shows on taller tablets only. Cache `v192-origami-scrub`.

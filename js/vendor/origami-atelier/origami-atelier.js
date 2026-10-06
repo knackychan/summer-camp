@@ -165,7 +165,7 @@ export function mountOrigamiAtelier(root, options = {}) {
         <div class="oa-stage-wrap">
           <div class="oa-stage" data-fold-stage></div>
           <button type="button" class="oa-slow" data-action="slow" aria-pressed="${Boolean(progress.slow)}">🐢 ${t("Slow","慢慢看")}</button>
-          <div class="oa-companion"><span aria-hidden="true">🐈</span>${t("Pause anytime to compare with your paper.","隨時按暫停，和你的紙比一比。")}</div>
+          <div class="oa-companion"><span aria-hidden="true">🐈</span><p class="oa-companion-text"></p></div>
         </div>
         <div class="oa-controls">
           <button type="button" class="oa-play" data-action="pause"></button>
@@ -193,6 +193,7 @@ export function mountOrigamiAtelier(root, options = {}) {
       notation.querySelector(".oa-legend-sym").innerHTML = NOTATION[kind].sym;
       notation.querySelector(".oa-legend-text").textContent = t(...NOTATION[kind].text);
     }
+    bindScrub(view.querySelector("[data-fold-stage]"));
     syncPlayButton();
     announce(`${modelName(model)}. ${t("Step","步驟")} ${stepIndex+1}. ${textFor(step.instruction,locale)}`);
   }
@@ -214,9 +215,37 @@ export function mountOrigamiAtelier(root, options = {}) {
       sym:'<svg viewBox="0 0 44 22"><path d="M32 13 A9 9 0 1 1 23 3" fill="none" stroke="#3276b1" stroke-width="2.6" stroke-linecap="round"/><path d="M20 0 L28 3 L21 8 Z" fill="#3276b1"/></svg>' },
   };
 
+  /* Drag to scrub (docs/plans/2026-10-05-origami-audit/ slice 10): a sideways drag on the picture
+     pauses the fold and moves it; the whole width is one loop, from wherever it was. */
+  function bindScrub(stage) {
+    let drag = null;
+    stage.addEventListener("pointerdown", (e) => {
+      if (!engine?.hasMotion) return;
+      drag = { id:e.pointerId, x:e.clientX, from:engine.time, width:Math.max(1, stage.clientWidth), moving:false };
+    });
+    stage.addEventListener("pointermove", (e) => {
+      if (!drag || e.pointerId !== drag.id || !engine) return;
+      const dx = e.clientX - drag.x;
+      if (!drag.moving) {
+        if (Math.abs(dx) < 8) return;
+        drag.moving = true;
+        stage.setPointerCapture?.(e.pointerId);
+      }
+      engine.seek(drag.from + dx / drag.width * engine.cycleMs);
+      syncPlayButton();
+    });
+    const end = (e) => { if (drag && e.pointerId === drag.id) drag = null; };
+    stage.addEventListener("pointerup", end);
+    stage.addEventListener("pointercancel", end);
+  }
+
   function syncPlayButton() {
     const btn = view.querySelector(".oa-play");
     if (!btn || !engine) return;
+    const still = engine.hasMotion && (engine.paused || engine.resting);
+    const companion = view.querySelector(".oa-companion-text");
+    if (companion) companion.textContent = still ? t("Slide your finger on the picture to move the fold.","在圖上左右滑動手指，就能前後移動摺紙。")
+      : t("Pause anytime to compare with your paper.","隨時按暫停，和你的紙比一比。");
     if (engine.resting) {
       btn.dataset.action = "watch-again";
       btn.disabled = false;

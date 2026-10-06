@@ -811,6 +811,18 @@ export class OrigamiFoldEngine {
 
   get hasMotion() { return this.anims.length > 0; }
 
+  /* Drag to scrub (slice 10, design O12): hold the fold at `ms` (fold time since the first loop),
+     clamped to the end of the last loop; Resume carries on from there. */
+  get time() { return this.anims[0]?.currentTime ?? 0; }
+
+  seek(ms) {
+    if (!this.anims.length) return;
+    const t = Math.max(0, Math.min(ms, this.endMs));
+    this.anims.forEach(x => { x.pause(); x.currentTime = t; });
+    this.paused = true;
+    this.played = true;
+  }
+
   /* currentTime stays in fold time at any rate, so snapshot() and the loop count don't change. */
   setSlow(on) {
     this.rate = on ? SLOW_RATE : 1;

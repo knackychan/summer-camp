@@ -454,6 +454,40 @@ def run(args):
                 check('Slow off goes back to normal speed', rates and all(r == 1 for r in rates)
                       and page.locator(SLOW).get_attribute('aria-pressed') == 'false')
                 page.locator('.oa-root [data-action="prev-step"]').click()
+                # Drag to scrub (slice 10): a sideways drag pauses and moves the fold by the dragged
+                # share of one loop, from wherever it was.
+                page.wait_for_timeout(300)
+                box = page.locator('.oa-root .oa-stage').bounding_box()
+                cx, cy = box['x'] + box['width'] * 0.4, box['y'] + box['height'] * 0.5
+                cycle = page.evaluate(FLAP_T + ".effect.getTiming().duration")
+                t_down = page.evaluate(FLAP_T + ".currentTime")
+                page.mouse.move(cx, cy)
+                page.mouse.down()
+                page.mouse.move(cx + box['width'] * 0.1, cy, steps=4)
+                page.mouse.move(cx + box['width'] * 0.25, cy, steps=4)
+                page.mouse.up()
+                t_drag = page.evaluate(FLAP_T + ".currentTime")
+                check(f'Dragging right on the picture pauses and moves the fold forward a quarter loop ({t_drag - t_down:.0f} of {cycle * 0.25:.0f} ms)',
+                      page.evaluate(FLAP_T + ".playState") == 'paused' and abs((t_drag - t_down) - cycle * 0.25) < 120
+                      and page.locator('.oa-root [data-action="resume"]').count() == 1)
+                page.mouse.move(cx, cy)
+                page.mouse.down()
+                page.mouse.move(cx - box['width'] * 0.1, cy, steps=4)
+                page.mouse.up()
+                t_back = page.evaluate(FLAP_T + ".currentTime")
+                check(f'Dragging left moves it back ({t_back - t_drag:.0f} of {-cycle * 0.1:.0f} ms)', abs((t_back - t_drag) + cycle * 0.1) < 40)
+                hint = page.locator('.oa-root .oa-companion-text').text_content()
+                check(f'While paused the companion says how to scrub ({hint})', 'Slide your finger' in hint or '滑動手指' in hint)
+                was_zh = page.locator('.oa-root [data-action="locale-zh"]').get_attribute('aria-pressed') == 'true'
+                page.locator('.oa-root [data-action="locale-en"]' if was_zh else '.oa-root [data-action="locale-zh"]').click()
+                other = page.locator('.oa-root .oa-companion-text').text_content()
+                check(f'The scrub hint is bilingual ({hint} / {other})', ('Slide your finger' in hint + other) and ('滑動手指' in hint + other)
+                      and abs(page.evaluate(FLAP_T + ".currentTime") - t_back) < 1)
+                page.locator('.oa-root [data-action="locale-zh"]' if was_zh else '.oa-root [data-action="locale-en"]').click()
+                page.locator('.oa-root [data-action="resume"]').click()
+                page.wait_for_timeout(200)
+                check('Resume continues from the dragged frame', page.evaluate(FLAP_T + ".playState") == 'running'
+                      and 0 < page.evaluate(FLAP_T + ".currentTime") - t_back < 600)
                 steps = page.evaluate(EVERY_STEP)
                 check(f'Every step of all 28 models draws without an error {steps["broken"][:3]}', steps['count'] == 276 and not steps['broken'])
                 check(f'Every step but the finish has something to play {steps["still"][:5]}', not steps['still'])
