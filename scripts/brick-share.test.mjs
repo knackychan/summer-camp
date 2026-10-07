@@ -206,8 +206,88 @@ test("a removed posed piece comes back posed; expect sees a pose change", () => 
   assert.equal(checkOp({ type: "move", id: "f", x: 2, y: 2.025, z: 0.5, rotation: 0, expect: { ...before, pose: JSON.stringify({ p: "wave" }) } }, world, rules), "changed");
 });
 
-test("PROTO is 5: walking minifigs are new on the wire (brick-lab-walk W12)", () => {
-  assert.equal(PROTO, 5);
+test("PROTO is 6: the batch op is new on the wire (brick-lab-assemblies A6)", () => {
+  assert.equal(PROTO, 6);
+});
+
+/* Assemblies plan slice 02 (A6): a wall is one atomic batch of adds. */
+const batchOf = (n, from = 0) => ({ type: "batch", ops: Array.from({ length: n }, (_, i) => ({ type: "add", piece: brick(`w${from + i}`, -20.5 + (i % 16) * 2, 10 + Math.floor(i / 16) * 4) })) });
+
+test("a batch of adds applies all; its inverse removes all in one step", () => {
+  const world = worldOf(brick("a"));
+  const host = createSequencer({ world, rules });
+  const done = host.submit("maya", { id: "1", op: batchOf(8) });
+  assert.equal(done.t, "apply");
+  assert.equal(done.seq, 1, "one batch, one number");
+  assert.equal(world.size, 9);
+  assert.ok(done.op.ops.every((member) => member.piece.by === "maya"), "every brick is the asker's");
+  assert.equal(done.inverse.type, "batch");
+  assert.deepEqual(done.inverse.ops.map((member) => member.type), Array(8).fill("remove"));
+  assert.equal(done.inverse.ops[0].id, "w7", "last first");
+  assert.ok(done.inverse.ops.every((member) => member.expect && member.expect.partId === "brick_2x4"));
+  const undo = host.submit("maya", { id: "2", op: done.inverse });
+  assert.equal(undo.t, "apply");
+  assert.deepEqual(Array.from(world.keys()), ["a"]);
+});
+
+test("one bad member rejects the whole batch and leaves the world unchanged", () => {
+  const world = worldOf(brick("a"));
+  const before = clone(world);
+  const host = createSequencer({ world, rules });
+  const bad = batchOf(4);
+  bad.ops[2] = { type: "add", piece: brick("far", 40) };
+  assert.deepEqual([host.submit("maya", { id: "1", op: bad }).why, world], ["place", before]);
+  const taken = batchOf(4);
+  taken.ops[3] = { type: "add", piece: brick("a", 6) };
+  assert.equal(checkOp(taken, world, rules), "id", "an id already on the plate");
+  const twice = batchOf(3);
+  twice.ops[2] = { type: "add", piece: brick("w0", 9) };
+  assert.equal(checkOp(twice, world, rules), "id", "the same id twice inside a batch");
+  assert.deepEqual(world, before);
+  assert.equal(host.seq, 0);
+});
+
+test("a batch is 1–64 adds or removes, never mixed or nested", () => {
+  const world = worldOf(brick("a"), brick("b", 4.5));
+  assert.equal(checkOp(batchOf(64), world, rules), null);
+  assert.equal(checkOp(batchOf(65), world, rules), "shape");
+  assert.equal(checkOp({ type: "batch", ops: [] }, world, rules), "shape");
+  assert.equal(checkOp({ type: "batch" }, world, rules), "shape");
+  assert.equal(checkOp({ type: "batch", ops: [{ type: "add", piece: brick("n", 8.5) }, { type: "remove", id: "a" }] }, world, rules), "shape");
+  assert.equal(checkOp({ type: "batch", ops: [{ type: "move", id: "a", x: 2.5, y: 0.6, z: 0, rotation: 0 }] }, world, rules), "shape");
+  assert.equal(checkOp({ type: "batch", ops: [batchOf(2)] }, world, rules), "shape");
+  assert.equal(checkOp({ type: "batch", ops: [{ type: "remove", id: "a" }, { type: "remove", id: "b" }] }, world, rules), null);
+  assert.equal(checkOp({ type: "batch", ops: [{ type: "remove", id: "a" }, { type: "remove", id: "a" }] }, world, rules), "id");
+});
+
+test("a sibling changes one brick of the wall: the undo fails as a whole", () => {
+  const world = worldOf();
+  const host = createSequencer({ world, rules });
+  const done = host.submit("maya", { id: "1", op: batchOf(5) });
+  host.submit("leo", { id: "2", op: { type: "recolor", id: "w2", colorId: "blue" } });
+  const before = clone(world);
+  const undo = host.submit("maya", { id: "3", op: done.inverse });
+  assert.deepEqual([undo.t, undo.why], ["reject", "changed"]);
+  assert.deepEqual(world, before, "nothing removed");
+});
+
+test("an undo batch that takes a walked figure is busy for the others (W13)", () => {
+  const claims = createClaims();
+  claims.claim("fig", "leo", ["fig", "hat"]);
+  assert.equal(claims.busy({ type: "batch", ops: [{ type: "remove", id: "w1" }, { type: "remove", id: "hat" }] }, "maya"), "leo");
+  assert.equal(claims.busy({ type: "batch", ops: [{ type: "remove", id: "w1" }] }, "maya"), null);
+  assert.equal(claims.busy(batchOf(3), "maya"), null, "adds are never busy");
+});
+
+test("a guest applies a batch like any op", () => {
+  const hostWorld = worldOf();
+  const host = createSequencer({ world: hostWorld, rules });
+  const guestWorld = worldOf();
+  const guest = createClient({ world: guestWorld });
+  const m1 = host.submit("maya", { id: "1", op: batchOf(6) });
+  assert.equal(guest.apply(m1).type, "batch");
+  assert.deepEqual(guestWorld, hostWorld);
+  assert.ok(m1.op.ops.every((member) => !("expect" in member)), "the broadcast carries no expects");
 });
 
 test("walk messages: claims, positions and releases are checked and cleaned (W12)", () => {

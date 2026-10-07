@@ -12,6 +12,7 @@
      { type: "remove", id }
      { type: "recolor", id, colorId }
      { type: "pose", id, pose, x, y, z }   (pose null = rest; sitting moves the piece)
+     { type: "batch", ops }                (1–BATCH_MAX adds, or removes: all or none)
    An op may carry `expect`: the state the asker last saw. Undo sends the
    inverse op with `expect`; if the piece has changed since (a sibling moved
    it), the op is refused instead of undoing someone else's work.
@@ -22,7 +23,8 @@
      { t: "walk-pos", id, x, y, z, yaw, view, moving }
      { t: "walk-release", id } */
 
-export const PROTO = 5; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint · 4: poses (moving-parts M9) · 5: walking minifigs (brick-lab-walk W12) */
+export const PROTO = 6; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint · 4: poses (moving-parts M9) · 5: walking minifigs (brick-lab-walk W12) · 6: batch op (brick-lab-assemblies A6) */
+export const BATCH_MAX = 64;
 const ID_MAX = 64;
 const Y_MAX = 200;
 const FIELDS = ["partId", "colorId", "x", "y", "z", "rotation"];
@@ -93,6 +95,24 @@ export function checkOp(op, world, rules) {
       if (rules.pose && !rules.pose(current.partId, op.pose)) return "catalog";
       return placeOk({ ...current, x: op.x, y: op.y, z: op.z }, rules) ? null : "place";
     }
+    case "batch": {
+      /* All adds or all removes, each id once; every member is checked on
+         the world as the members before it leave it: one bad member and
+         nothing applies (brick-lab-assemblies A6). */
+      const ops = op.ops;
+      if (!Array.isArray(ops) || !ops.length || ops.length > BATCH_MAX) return "shape";
+      const kind = ops[0] && ops[0].type;
+      if ((kind !== "add" && kind !== "remove") || ops.some((member) => !member || member.type !== kind)) return "shape";
+      const ids = ops.map((member) => (kind === "add" ? member.piece && member.piece.id : member.id));
+      if (new Set(ids).size !== ids.length) return "id";
+      const scratch = new Map(world);
+      for (const member of ops) {
+        const why = checkOp(member, scratch, rules);
+        if (why) return why;
+        applyOp(member, scratch);
+      }
+      return null;
+    }
     default:
       return "shape";
   }
@@ -135,6 +155,9 @@ export function applyOp(op, world) {
       back.expect = stateOf(piece);
       return back;
     }
+    case "batch":
+      /* One inverse for the lot, last member first: Undo is one step. */
+      return { type: "batch", ops: op.ops.map((member) => applyOp(member, world)).reverse() };
     default:
       throw new Error(`unknown op ${op.type}`);
   }
@@ -149,12 +172,14 @@ export function createSequencer({ world, rules, seq = 0 }) {
     submit(kid, req) {
       const reqId = req && goodId(req.id) ? req.id : null;
       if (!reqId || !goodId(kid)) return { t: "reject", req: reqId, why: "shape" };
-      let op = req.op;
       /* A new piece is the asker's; an undone delete keeps its first owner. */
-      if (op && op.type === "add" && op.piece && op.piece.by === undefined) op = { ...op, piece: { ...op.piece, by: kid } };
+      const own = (op) => (op && op.type === "add" && op.piece && op.piece.by === undefined ? { ...op, piece: { ...op.piece, by: kid } } : op);
+      let op = own(req.op);
+      if (op && op.type === "batch" && Array.isArray(op.ops)) op = { ...op, ops: op.ops.map(own) };
       const why = checkOp(op, world, rules);
       if (why) return { t: "reject", req: reqId, why };
       const { expect, ...clean } = op;
+      if (clean.type === "batch") clean.ops = clean.ops.map(({ expect: seen, ...member }) => member);
       const inverse = applyOp(clean, world);
       seq += 1;
       return { t: "apply", seq, by: kid, req: reqId, op: clean, inverse };
@@ -236,6 +261,13 @@ export function createClaims() {
       return who && who !== kid ? who : null;
     },
     busy(op, kid) {
+      if (op && op.type === "batch") {
+        for (const member of Array.isArray(op.ops) ? op.ops : []) {
+          const who = api.busy(member, kid);
+          if (who) return who;
+        }
+        return null;
+      }
       return op && op.type !== "add" ? api.busyFor(op.id, kid) : null;
     },
     get(id) { return claims.get(id) || null; },
