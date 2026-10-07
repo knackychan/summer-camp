@@ -12,7 +12,10 @@
    icon ends up on a transparent background. Icons are data URLs, cached per
    key, so they outlive a lost GL context. */
 
-const SIZE = { width: 56, height: 36 }; /* CSS pixels */
+const SIZE = { width: 76, height: 52 }; /* CSS pixels */
+/* Icons are drawn at least this many pixels per CSS pixel, so they stay sharp
+   on a tablet whose 3D view runs at pixel ratio 1 (cheap or stepped down). */
+const MIN_SCALE = 2;
 const VIEW = [1, 0.95, 1.35]; /* camera direction: from the front right, above */
 const MARGIN = 1.08;
 const CACHE_MAX = 480;
@@ -87,11 +90,13 @@ export function createThumbs({ THREE, renderer, cheap = false, perFrame = 3 }) {
 
   function pixels() {
     const ratio = renderer.getPixelRatio();
-    return { w: Math.round(SIZE.width * ratio), h: Math.round(SIZE.height * ratio) };
+    const scale = Math.max(ratio, Math.min(MIN_SCALE, window.devicePixelRatio || 1));
+    /* The viewport is set in the renderer's CSS pixels (× its ratio). */
+    return { w: Math.round(SIZE.width * scale), h: Math.round(SIZE.height * scale), cw: SIZE.width * scale / ratio, ch: SIZE.height * scale / ratio };
   }
 
   function draw(object) {
-    const { w, h } = pixels();
+    const { w, h, cw, ch } = pixels();
     if (!pad || pad.canvas.width !== w || pad.canvas.height !== h) {
       const c = document.createElement("canvas");
       c.width = w;
@@ -107,8 +112,8 @@ export function createThumbs({ THREE, renderer, cheap = false, perFrame = 3 }) {
     const keepAlpha = renderer.getClearAlpha();
     const keepShadows = renderer.shadowMap.enabled;
     renderer.shadowMap.enabled = false;
-    renderer.setViewport(0, 0, SIZE.width, SIZE.height);
-    renderer.setScissor(0, 0, SIZE.width, SIZE.height);
+    renderer.setViewport(0, 0, cw, ch);
+    renderer.setScissor(0, 0, cw, ch);
     renderer.setScissorTest(true);
     let dark;
     let light;
