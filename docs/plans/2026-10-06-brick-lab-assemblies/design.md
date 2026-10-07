@@ -47,3 +47,11 @@
 | [03](03-assembly-menu-and-placement.md) | Assembly tile, menu card, ghost, placement, Undo, together | 01 (category list), 02, brick-lab 15 |
 
 Slices 01 and 02 ship independently. Slice 03 is the only one that edits the render path.
+
+## Build notes (2026-10-07)
+Slices 01–03 built. Choices made where the slices left a detail open; none changes a decision above:
+- **Turning (A3).** All four shapes are symmetric, so ↻ alternates between "along runs along x" and "along runs along z"; 180° and 270° build the same blocks as 0° and 90°.
+- **Snapping (A5).** Like a single part, the shape is centred on the finger and its anchor corner is clamped onto the island, so it never hangs off the edge; "off the plate" in practice means over the sea, where nothing shows. A spot shows no ghost only when a block would cut into a piece — in practice a bridge deck through something taller between its pillars. Stacking on top of things is the normal rule.
+- **Drag from the card (A4, A5).** The card's preview is the count chip (pattern icon + "24 bricks · 24 塊 · 32 × 2"). It starts a drag after 10 px in any direction, with pointer capture: unlike the rail, the card doesn't scroll, so the slice-15 "sideways only" rule has nothing to protect. The Assembly tile itself also slides out of the rail like a part.
+- **Swapping the block (A4).** Tapping the armed-brick tile on the card steps to the next part of the same category that tiles (plain boxes only: `assemblyParts()`).
+- **Undo (A6).** Solo Undo restores the snapshot and leaves the assembly armed, so the kid can build it again somewhere else.

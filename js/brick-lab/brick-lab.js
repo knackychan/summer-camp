@@ -15,7 +15,8 @@ import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
 import { createSequencer } from "./brick-share.js";
-import { JOINT_LABELS, cleanPose, isSitting, jointAngles, jointDef, jointKeys, posesFor, poseShape, samePose, sitOffset, sitShift, stopsOf } from "./brick-pose.js";
+import { ASSEMBLY_KEYS, ASSEMBLY_PATTERNS, assemblyParts, blockRotation, buildAssembly, cleanAssemblyPrefs, placeAssembly, stepSize } from "./brick-assembly.js";
+import { JOINT_LABELS, REACT_SECONDS, cleanPose, isSitting, jointAngles, jointDef, jointKeys, posesFor, poseShape, reactAngles, samePose, seedOf, sitOffset, sitShift, stopsOf } from "./brick-pose.js";
 import { createLanSession } from "../game-services/lan-session.js";
 import { BrickTogether } from "./brick-together.js";
 
@@ -49,6 +50,29 @@ const HINTS = {
   walk: ["Walk with the circle. Point the ＋ and press Place.", "用圓圈走路。把＋對準，再按「放上去」。"],
 };
 
+/* Assemblies: a wall, floor, tower or bridge in one go (docs/plans/2026-10-06-brick-lab-assemblies/). */
+const ASSEMBLY = {
+  tile: ["Build a wall", "一次蓋牆"],
+  wall: ["Wall", "牆"],
+  floor: ["Floor", "地板"],
+  tower: ["Tower", "塔"],
+  bridge: ["Bridge", "橋"],
+  along: ["Long", "長"],
+  across: ["Wide", "寬"],
+  up: ["Tall", "高"],
+  count: (n) => [`${n} bricks`, `${n} 塊`],
+  turn: ["Turn", "旋轉"],
+  swap: ["Change brick", "換積木"],
+  less: ["Less", "少一點"],
+  more: ["More", "多一點"],
+  place: ["Tap the baseplate, or drag the wall there.", "點底板，或把牆拖過去。"],
+  drag: ["Let go where it should go", "拖到想放的地方再放手"],
+  placed: ["Built! Tap again to build another.", "蓋好了！再點一下可以再蓋一個。"],
+  retry: ["Something moved — try again.", "有東西動了，再試一次。"],
+};
+const ASSEMBLY_ICONS = Object.freeze({ wall: "🧱", floor: "▦", tower: "🗼", bridge: "🌉", along: "↔", across: "⤢", up: "↕" });
+const ASSEMBLY_CATEGORIES = Object.freeze(["bricks", "plates", "tiles"]);
+
 /* Walking a minifig (docs/plans/2026-10-06-brick-lab-walk/). */
 const WALK = {
   walk: ["Walk", "走走看"],
@@ -79,6 +103,7 @@ const TRAY = {
   favorites: ["Favourites", "最愛"],
   recents: ["Recent", "最近用過"],
   favorite: ["Favourite", "最愛"],
+  favoritesEmpty: ["Parts you use show up here.", "用過的積木會出現在這裡。"],
   none: ["No parts match.", "沒有符合的積木。"],
   close: ["Close", "關閉"],
   size: ["Size", "尺寸"],
@@ -136,7 +161,11 @@ const SNAP_GUIDES = {
   seat: ["Put a minifigure on it to sit or ride.", "把小人偶放上去，就能坐或騎。"],
 };
 
-const RECENT_MAX = 5;
+const RECENT_MAX = 12;
+/* Favourites ⭐ is a rail category of its own (assemblies plan A1): starred
+   parts, then recents. No part lives in it, so it stays out of the catalog. */
+const FAVORITES_CATEGORY = Object.freeze({ id: "favorites", label: TRAY.favorites, icon: "⭐" });
+const RAIL_CATEGORIES = Object.freeze([FAVORITES_CATEGORY, ...CATEGORIES]);
 
 const TAU = Math.PI * 2;
 /* Rail end dots float just above the track; at most this many show. */
@@ -1395,7 +1424,9 @@ function makeJointedPiece(part, colorHex, kit, pose) {
       holder.rotation[def.axis] = angles[joint] * DEG * (side && def.axis !== "x" ? -1 : 1);
       if (def.nod) holder.rotation[def.nod.axis] = angles[`${joint}.nod`] * DEG * (side && def.nod.axis !== "x" ? -1 : 1);
       holder.userData.sqblJoint = joint;
+      holder.userData.sqblSide = side ? -1 : 1;
       inner.add(holder);
+      root.userData.sqblHolders = (root.userData.sqblHolders || []).concat([holder]);
     }
     const mirrored = joint && part.joints[joint].mirror;
     modelSlots(part).forEach((slot) => {
@@ -1566,11 +1597,16 @@ export class BrickLabRuntime {
     this.walk = null; /* walking a minifig: { id, riders, standIn, view, fov } */
     this.walkAsk = null; /* a guest waiting for the host to give it a figure (W12) */
     this.remoteWalks = new Map(); /* figures other tablets walk: id → { kid, ids, standIn, at, to, limbs } */
+    /* Assemblies (A2–A7): the armed wall / floor / tower / bridge, or null;
+       the part last armed in each category (the Assembly tile starts from it). */
+    this.assembly = null;
+    this.lastArmed = {};
   }
 
   cleanPrefs(prefs) {
     const known = (list, max) => Array.from(new Set(list)).filter((id) => PARTS.some((part) => part.id === id)).slice(0, max);
-    return { favorites: known(prefs.favorites, PARTS.length), recents: known(prefs.recents, RECENT_MAX), walkView: prefs.walkView === "eyes" ? "eyes" : "behind" };
+    return { favorites: known(prefs.favorites, PARTS.length), recents: known(prefs.recents, RECENT_MAX), walkView: prefs.walkView === "eyes" ? "eyes" : "behind",
+      assembly: cleanAssemblyPrefs(prefs.assembly) };
   }
 
   async mount() {
@@ -1601,7 +1637,7 @@ export class BrickLabRuntime {
 
   renderShell() {
     const pre = this.preReader;
-    const categoryButtons = CATEGORIES.map((category) => `
+    const categoryButtons = RAIL_CATEGORIES.map((category) => `
       <button type="button" class="sqbl-category" data-category="${category.id}" aria-label="${escapeHtml(label(category.label))}">
         <span aria-hidden="true">${category.icon}</span><b>${pre ? "" : `${escapeHtml(category.label[0])}<small>${escapeHtml(category.label[1])}</small>`}</b>
       </button>`).join("");
@@ -1686,6 +1722,7 @@ export class BrickLabRuntime {
               <button type="button" class="sqbl-cam-btn" data-cam="${b.id}" aria-label="${escapeHtml(label(b.label))}"><svg viewBox="0 0 32 32" aria-hidden="true">${b.icon}</svg></button>`).join("")}
             </div>
             <div class="sqbl-info" data-info role="dialog" aria-modal="false" hidden></div>
+            <div class="sqbl-asm" data-asm role="dialog" aria-modal="false" aria-label="${escapeHtml(label(ASSEMBLY.tile))}" hidden></div>
             <div class="sqbl-explore-badge">🌍 ${pre ? "" : "Explore 探索"}</div>
             <div class="sqbl-crew" data-crew aria-live="polite" hidden></div>
             <div class="sqbl-lost" data-lost role="status" hidden></div>
@@ -1726,8 +1763,10 @@ export class BrickLabRuntime {
     this.focusPosesEl = this.root.querySelector("[data-focus-poses]");
     this.focus = null;
     this.focusHidden = new Set();
+    this.alive = new Map(); /* piece id → when its tap reaction started (slice 04) */
     this.leftRail = this.root.querySelector(".sqbl-left-rail");
     this.infoEl = this.root.querySelector("[data-info]");
+    this.asmEl = this.root.querySelector("[data-asm]");
     this.searchEl = this.root.querySelector("[data-search]");
     this.sizeEl = this.root.querySelector("[data-size]");
     this.menuEl = this.root.querySelector("[data-menu]");
@@ -2056,7 +2095,9 @@ export class BrickLabRuntime {
     this.root.querySelectorAll("[data-category]").forEach((button) => {
       button.addEventListener("click", () => {
         this.activeCategory = button.dataset.category;
-        this.activePartId = (PARTS.find((part) => part.category === this.activeCategory) || PARTS[0]).id;
+        this.activePartId = this.activeCategory === FAVORITES_CATEGORY.id
+          ? (this.favoriteIds()[0] || this.activePartId)
+          : (PARTS.find((part) => part.category === this.activeCategory) || PARTS[0]).id;
         /* Picking a category leaves a search: the tray shows that category again. */
         this.setFilters("", "", false);
         this.setFinding(false);
@@ -2065,6 +2106,7 @@ export class BrickLabRuntime {
         this.partsEl.scrollTop = 0;
         this.setRailView("parts");
         this.placementArmed = false;
+        this.disarmAssembly();
         this.ghost.visible = false;
         this.snap = null;
         this.updateRailMarks();
@@ -2127,6 +2169,7 @@ export class BrickLabRuntime {
       if (this.trayDragEnded) { this.trayDragEnded = false; return; }
       const star = event.target.closest("[data-fav]");
       if (star) { this.toggleFavorite(star.dataset.fav); return; }
+      if (event.target.closest("[data-assembly]")) { this.openAssembly(); return; }
       const tile = event.target.closest("[data-part]");
       if (!tile) return;
       this.activePartId = tile.dataset.part;
@@ -2136,6 +2179,7 @@ export class BrickLabRuntime {
       if (!this.walk) this.showInfo(this.activePartId);
     });
     this.bindTrayDrag();
+    this.bindAssembly();
     /* A list with more below fades out at its foot, so a kid knows to scroll. */
     this.categoryListEl = this.root.querySelector(".sqbl-category-list");
     [this.categoryListEl, this.partsEl].forEach((list) => list.addEventListener("scroll", () => this.markScrollable(list), { passive: true }));
@@ -2297,9 +2341,9 @@ export class BrickLabRuntime {
     };
     this.partsEl.addEventListener("pointerdown", (event) => {
       this.trayDragEnded = false;
-      const tile = event.target.closest("[data-part]");
+      const tile = event.target.closest("[data-part],[data-assembly]");
       if (!tile || this.mode !== "build" || event.button > 0) return;
-      this.trayDrag = { tile, partId: tile.dataset.part, x: event.clientX, y: event.clientY, id: event.pointerId, active: false };
+      this.trayDrag = { tile, partId: tile.dataset.part || null, x: event.clientX, y: event.clientY, id: event.pointerId, active: false };
     });
     this.partsEl.addEventListener("pointermove", (event) => {
       const drag = this.trayDrag;
@@ -2311,12 +2355,18 @@ export class BrickLabRuntime {
         drag.active = true;
         try { drag.tile.setPointerCapture(event.pointerId); } catch (error) { /* already released */ }
         this.hideInfo();
-        this.activePartId = drag.partId;
-        this.markActivePart();
-        this.armPlacement(drag.partId);
-        this.setHint("☝️", HINTS.dragDrop);
+        if (drag.partId) {
+          this.activePartId = drag.partId;
+          this.markActivePart();
+          this.armPlacement(drag.partId);
+          this.setHint("☝️", HINTS.dragDrop);
+        } else {
+          /* The Assembly tile slides out like a part: the ghost wall follows (A5). */
+          this.openAssembly();
+          this.setHint("☝️", ASSEMBLY.drag);
+        }
       }
-      if (overCanvas(event)) this.ghostAt(event);
+      if (overCanvas(event) && !this.overAssemblyCard(event)) this.ghostAt(event);
       else this.ghost.visible = false;
     });
     const end = (event, cancelled) => {
@@ -2325,7 +2375,7 @@ export class BrickLabRuntime {
       this.trayDrag = null;
       if (!drag.active) return;
       this.trayDragEnded = true;
-      if (!cancelled && overCanvas(event) && this.placementArmed) this.onTap(event);
+      if (!cancelled && overCanvas(event) && !this.overAssemblyCard(event) && this.placementArmed) this.onTap(event);
       else {
         this.ghost.visible = false;
         this.setHint("☝️", HINTS.place);
@@ -2343,7 +2393,7 @@ export class BrickLabRuntime {
     this.root.querySelectorAll("[data-category]").forEach((button) => {
       button.classList.toggle("is-active", button.dataset.category === this.activeCategory);
     });
-    const category = CATEGORIES.find((item) => item.id === this.activeCategory);
+    const category = RAIL_CATEGORIES.find((item) => item.id === this.activeCategory);
     const title = this.root.querySelector("[data-tray-title]");
     if (!title) return;
     const searching = !!(this.query || this.sizeFilter);
@@ -2360,9 +2410,16 @@ export class BrickLabRuntime {
     title.setAttribute("aria-label", this.railView === "parts" ? `${label(name)}: ${label(TRAY.parts(count))}` : label(name));
   }
 
-  /* Slice 11: favourites and recents pinned at the front of the tray, then
-     the category; a search or size filter shows matches from every category
-     instead. The rail keeps its fixed width (D14, D23), the grid only scrolls. */
+  /* Starred parts, then recents not already starred (assemblies plan A1). */
+  favoriteIds() {
+    const { favorites, recents } = this.prefs;
+    return favorites.concat(recents.filter((id) => !favorites.includes(id)));
+  }
+
+  /* The parts of the active category, or the matches of a search or size
+     filter from every category. Favourites ⭐ lists starred parts, then
+     recents (assemblies plan A1). The rail keeps its fixed width (D14, D23),
+     the grid only scrolls. */
   renderPartTray() {
     const filtering = !!(this.query || this.sizeFilter);
     const sections = [];
@@ -2371,13 +2428,20 @@ export class BrickLabRuntime {
       const found = PARTS.filter((part) => partMatches(part, this.query) && (!this.sizeFilter || partDims(part) === this.sizeFilter));
       count = found.length;
       sections.push({ id: "results", parts: found });
-    } else {
+    } else if (this.activeCategory === FAVORITES_CATEGORY.id) {
       const byId = (ids) => ids.map((id) => getPart(id));
-      if (this.prefs.favorites.length) sections.push({ id: "favorites", icon: "★", title: TRAY.favorites, parts: byId(this.prefs.favorites) });
-      if (this.prefs.recents.length) sections.push({ id: "recents", icon: "🕘", title: TRAY.recents, parts: byId(this.prefs.recents) });
+      const { favorites, recents } = this.prefs;
+      const later = recents.filter((id) => !favorites.includes(id));
+      count = favorites.length + later.length;
+      if (favorites.length) sections.push({ id: "favorites", icon: "★", title: TRAY.favorites, parts: byId(favorites) });
+      if (later.length) sections.push({ id: "recents", icon: "🕘", title: TRAY.recents, parts: byId(later) });
+      if (!count) sections.push({ id: "empty", parts: [], empty: TRAY.favoritesEmpty });
+    } else {
       const parts = PARTS.filter((part) => part.category === this.activeCategory);
       count = parts.length;
-      sections.push({ id: "category", parts });
+      /* A2: Bricks, Plates and Tiles open with the Assembly tile. */
+      const lead = ASSEMBLY_CATEGORIES.includes(this.activeCategory) ? this.assemblyTile() : "";
+      sections.push({ id: "category", parts, lead });
     }
     const tile = (part) => {
       const fav = this.prefs.favorites.includes(part.id);
@@ -2395,8 +2459,8 @@ export class BrickLabRuntime {
         ? `<span class="sqbl-tray-sep" data-section="${section.id}" title="${escapeHtml(label(section.title))}"><span aria-hidden="true">${section.icon}</span><small>${this.preReader ? "" : escapeHtml(label(section.title))}</small>${this.preReader ? `<span class="sqbl-sr">${escapeHtml(label(section.title))}</span>` : ""}</span>`
         : "";
       const body = section.parts.length ? section.parts.map(tile).join("")
-        : `<p class="sqbl-tray-empty">${this.preReader ? "🔍 ∅" : escapeHtml(say(TRAY.none))}</p>`;
-      return head + body;
+        : `<p class="sqbl-tray-empty">${this.preReader ? (section.empty ? "⭐ ∅" : "🔍 ∅") : escapeHtml(say(section.empty || TRAY.none))}</p>`;
+      return head + (section.lead || "") + body;
     }).join("");
     this.trayCount = count;
     this.watchPreviews(this.partsEl, true);
@@ -2437,12 +2501,300 @@ export class BrickLabRuntime {
     if (list.join() === this.prefs.recents.join()) return;
     this.prefs.recents = list;
     this.storage.savePrefs(this.prefs);
-    /* Re-render only outside a search: the recents row is not shown then. */
-    if (!this.query && !this.sizeFilter) {
-      const scroll = this.partsEl.scrollTop;
-      this.renderPartTray();
-      this.partsEl.scrollTop = scroll;
+    /* No re-render: Favourites ⭐ is drawn when it is opened, so the tiles a kid
+       is tapping in it never shuffle under their finger. */
+  }
+
+  /* ---------- Assemblies (docs/plans/2026-10-06-brick-lab-assemblies/) ---------- */
+
+  /* A2: the first tile of Bricks, Plates and Tiles; it opens the menu card. */
+  assemblyTile() {
+    const pattern = this.prefs.assembly.pattern;
+    const on = this.assembly ? " is-active" : "";
+    return `
+      <div class="sqbl-part-slot">
+        <button type="button" class="sqbl-part sqbl-asm-tile${on}" data-assembly="${pattern}" aria-label="${escapeHtml(label(ASSEMBLY.tile))}">
+          <span class="sqbl-asm-tile-icon" aria-hidden="true">${ASSEMBLY_ICONS[pattern]}</span>
+          <b>${this.preReader ? "" : `${escapeHtml(ASSEMBLY.tile[0])}<br>${escapeHtml(ASSEMBLY.tile[1])}`}</b>
+        </button>
+      </div>`;
+  }
+
+  /* Arm the assembly with the part last armed in this category (or its first
+     tiling part) and open the card (A2, A4). */
+  openAssembly() {
+    if (this.mode !== "build" || this.walk || this.focus) return;
+    const category = ASSEMBLY_CATEGORIES.includes(this.activeCategory) ? this.activeCategory : "bricks";
+    const last = this.lastArmed[category] && getPart(this.lastArmed[category]);
+    const part = last && last.category === category && assemblyParts(last) ? last
+      : PARTS.find((item) => item.category === category && assemblyParts(item));
+    const saved = this.prefs.assembly;
+    this.hideInfo();
+    this.selectPiece(null);
+    this.moveId = null;
+    this.snap = null;
+    this.assembly = { pattern: saved.pattern, ...saved[saved.pattern], rotation: saved.rotation, partId: part.id };
+    this.fitAssembly();
+    this.placementArmed = true;
+    this.updateRailMarks();
+    this.refreshGhost();
+    this.asmEl.hidden = false;
+    this.renderAssemblyCard();
+    this.markAssemblyTile();
+    this.setHint("☝️", ASSEMBLY.place);
+  }
+
+  /* Picking an ordinary part (or leaving Build) puts the assembly away (A4). */
+  disarmAssembly() {
+    if (!this.assembly) return;
+    this.assembly = null;
+    this.asmDrag = null;
+    this.asmEl.hidden = true;
+    this.markAssemblyTile();
+    this.refreshGhost();
+  }
+
+  markAssemblyTile() {
+    this.partsEl.querySelectorAll("[data-assembly]").forEach((tile) => tile.classList.toggle("is-active", !!this.assembly));
+  }
+
+  /* The armed shape, built once per settings (A7). */
+  assemblyBuilt() {
+    const a = this.assembly;
+    const key = `${a.pattern}:${a.along}:${a.across}:${a.up}:${a.rotation}:${a.partId}`;
+    if (!this.asmBuilt || this.asmBuilt.key !== key) {
+      this.asmBuilt = { key, built: buildAssembly({ ...a, part: getPart(a.partId), half: BASE_HALF }) };
     }
+    return this.asmBuilt.built;
+  }
+
+  /* Sizes a part can't hold on the island come down to what it can (A3). */
+  fitAssembly() {
+    const built = buildAssembly({ ...this.assembly, part: getPart(this.assembly.partId), half: BASE_HALF });
+    Object.assign(this.assembly, { along: built.along, across: built.across, up: built.up });
+  }
+
+  saveAssembly() {
+    const a = this.assembly;
+    const saved = this.prefs.assembly;
+    saved.pattern = a.pattern;
+    saved.rotation = a.rotation;
+    saved[a.pattern] = { along: a.along, across: a.across, up: a.up };
+    this.storage.savePrefs(this.prefs);
+  }
+
+  /* A4: pattern icons, − / + per size, ↻, the armed brick and the count.
+     Pre-readers get icons only. An overlay: the canvas and rail keep their size. */
+  renderAssemblyCard() {
+    const a = this.assembly;
+    if (!a) return;
+    const pre = this.preReader;
+    const part = getPart(a.partId);
+    const built = this.assemblyBuilt();
+    const words = (pair) => (pre ? "" : `<span>${escapeHtml(pair[0])}<small lang="zh-TW">${escapeHtml(pair[1])}</small></span>`);
+    const patterns = ASSEMBLY_PATTERNS.map((pattern) => `
+        <button type="button" class="sqbl-asm-pattern${pattern === a.pattern ? " is-on" : ""}" data-asm-pattern="${pattern}" aria-pressed="${pattern === a.pattern}" aria-label="${escapeHtml(label(ASSEMBLY[pattern]))}">
+          <b aria-hidden="true">${ASSEMBLY_ICONS[pattern]}</b>${words(ASSEMBLY[pattern])}
+        </button>`).join("");
+    const steppers = ASSEMBLY_KEYS[a.pattern].map((key) => `
+        <div class="sqbl-asm-step">
+          <span class="sqbl-asm-name">${pre ? `<b aria-hidden="true">${ASSEMBLY_ICONS[key]}</b>` : `${escapeHtml(ASSEMBLY[key][0])}<small lang="zh-TW">${escapeHtml(ASSEMBLY[key][1])}</small>`}</span>
+          <button type="button" data-asm-step="${key}" data-delta="-1" aria-label="${escapeHtml(label(ASSEMBLY[key]))} · ${escapeHtml(label(ASSEMBLY.less))}">−</button>
+          <output data-asm-value="${key}">${a[key]}</output>
+          <button type="button" data-asm-step="${key}" data-delta="1" aria-label="${escapeHtml(label(ASSEMBLY[key]))} · ${escapeHtml(label(ASSEMBLY.more))}">＋</button>
+        </div>`).join("");
+    const count = ASSEMBLY.count(built.count);
+    this.asmEl.innerHTML = `
+      <div class="sqbl-asm-head">
+        <button type="button" class="sqbl-asm-brick" data-asm-act="swap" aria-label="${escapeHtml(label(ASSEMBLY.swap))} · ${escapeHtml(label(part.label))}">
+          <span class="sqbl-part-preview" data-shape="${part.shape}" data-preview="${part.id}" aria-hidden="true"></span>
+        </button>
+        <div class="sqbl-asm-drag" data-asm-drag role="button" aria-label="${escapeHtml(label(ASSEMBLY.drag))}">
+          <b aria-hidden="true">${ASSEMBLY_ICONS[a.pattern]}</b>
+          <span data-asm-count>${pre ? built.count : `${escapeHtml(count[0])}<small lang="zh-TW">${escapeHtml(count[1])} · ${built.studs.w} × ${built.studs.d}</small>`}</span>
+        </div>
+        <button type="button" class="sqbl-asm-icon" data-asm-act="turn" aria-label="${escapeHtml(label(ASSEMBLY.turn))}">↻</button>
+        <button type="button" class="sqbl-asm-icon sqbl-asm-close" data-asm-act="close" aria-label="${escapeHtml(label(TRAY.close))}">✕</button>
+      </div>
+      <div class="sqbl-asm-patterns" role="group" aria-label="${escapeHtml(label(ASSEMBLY.tile))}">${patterns}</div>
+      <div class="sqbl-asm-steps">${steppers}</div>`;
+    this.watchPreviews(this.asmEl, false);
+  }
+
+  /* One delegated listener (≥ 56 px targets, pointerdown); the count chip is
+     the card's preview and slides onto the plate like a part (slice 15). */
+  bindAssembly() {
+    const canvas = this.renderer.domElement;
+    const overCanvas = (event) => {
+      const r = canvas.getBoundingClientRect();
+      return event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
+    };
+    this.asmEl.addEventListener("pointerdown", (event) => {
+      if (!this.assembly || event.button > 0) return;
+      const handle = event.target.closest("[data-asm-drag]");
+      if (handle) {
+        this.asmDrag = { handle, x: event.clientX, y: event.clientY, id: event.pointerId, active: false };
+        return;
+      }
+      const button = event.target.closest("[data-asm-pattern],[data-asm-step],[data-asm-act]");
+      if (!button) return;
+      event.preventDefault();
+      this.assemblyAct(button);
+    });
+    this.asmEl.addEventListener("pointermove", (event) => {
+      const drag = this.asmDrag;
+      if (!drag || drag.id !== event.pointerId) return;
+      if (!drag.active) {
+        if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_START) return;
+        drag.active = true;
+        try { drag.handle.setPointerCapture(event.pointerId); } catch (error) { /* already released */ }
+        this.setHint("☝️", ASSEMBLY.drag);
+      }
+      if (overCanvas(event) && !this.overAssemblyCard(event)) this.ghostAt(event);
+      else this.ghost.visible = false;
+    });
+    const end = (event, cancelled) => {
+      const drag = this.asmDrag;
+      if (!drag || drag.id !== event.pointerId) return;
+      this.asmDrag = null;
+      if (!drag.active) return;
+      if (!cancelled && this.assembly && overCanvas(event) && !this.overAssemblyCard(event)) this.onTap(event);
+      else this.ghost.visible = false;
+    };
+    this.asmEl.addEventListener("pointerup", (event) => end(event, false));
+    this.asmEl.addEventListener("pointercancel", (event) => end(event, true));
+  }
+
+  overAssemblyCard(event) {
+    if (!this.asmEl || this.asmEl.hidden) return false;
+    const r = this.asmEl.getBoundingClientRect();
+    return event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
+  }
+
+  assemblyAct(button) {
+    const a = this.assembly;
+    const part = getPart(a.partId);
+    const { asmPattern, asmStep, asmAct } = button.dataset;
+    if (asmPattern) {
+      if (asmPattern === a.pattern) return;
+      Object.assign(a, { pattern: asmPattern }, this.prefs.assembly[asmPattern]);
+      this.fitAssembly();
+    } else if (asmStep) {
+      const next = stepSize({ pattern: a.pattern, along: a.along, across: a.across, up: a.up, rotation: a.rotation }, asmStep, Number(button.dataset.delta), part, BASE_HALF);
+      /* A3: the stepper that would pass 64 or the island does nothing. */
+      if (next[asmStep] === a[asmStep]) return;
+      a[asmStep] = next[asmStep];
+    } else if (asmAct === "turn") {
+      a.rotation = (a.rotation + 90) % 360;
+      this.fitAssembly();
+    } else if (asmAct === "swap") {
+      /* The next part of this category that tiles. */
+      const list = PARTS.filter((item) => item.category === part.category && assemblyParts(item));
+      a.partId = list[(list.indexOf(part) + 1) % list.length].id;
+      this.lastArmed[part.category] = a.partId;
+      this.fitAssembly();
+    } else if (asmAct === "close") {
+      /* Closing keeps it armed: tap the plate to build again (A4). */
+      this.asmEl.hidden = true;
+      this.haptic("tap");
+      return;
+    }
+    this.saveAssembly();
+    this.refreshGhost();
+    this.renderAssemblyCard();
+    this.markAssemblyTile();
+    this.haptic("tap");
+  }
+
+  /* A7: one merged see-through mesh per shape, moved (never rebuilt) while the
+     finger moves. The reduced tier draws the outline box instead. */
+  assemblyPreview() {
+    const a = this.assembly;
+    const part = getPart(a.partId);
+    const built = this.assemblyBuilt();
+    const colorHex = getColorHex(this.activeColorId);
+    if (this.kit.cheap) {
+      const height = built.layers * part.height;
+      const box = new THREE.BoxGeometry(built.studs.w, height, built.studs.d);
+      const lines = new THREE.LineSegments(new THREE.EdgesGeometry(box), new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.9 }));
+      box.dispose();
+      lines.position.set(built.studs.w / 2, height / 2 - part.height / 2, built.studs.d / 2);
+      lines.raycast = () => {};
+      return lines;
+    }
+    const turn = blockRotation(part, a.rotation);
+    const { w, d } = footprint(part, turn);
+    const single = makePieceMesh(part, colorHex, this.kit).children[0];
+    const geometry = mergeGeometries(built.blocks.map((block) => {
+      const g = single.geometry.clone();
+      g.rotateY(turn * DEG);
+      g.translate(block.dx * w + w / 2, block.layer * part.height, block.dz * d + d / 2);
+      return g;
+    }));
+    const material = single.material.clone();
+    material.transparent = true;
+    material.opacity = 0.48;
+    material.depthWrite = false;
+    const preview = mesh(geometry, material, false);
+    /* The finger's ray looks through the ghost: 64 bricks of triangles are never hit-tested. */
+    preview.raycast = () => {};
+    return preview;
+  }
+
+  /* Where the armed shape goes for a point under the finger: the anchor corner
+     on the stud grid with the shape centred on the point, its base at the
+     highest landing under any bottom-layer block (A5). null when a block would
+     leave the plate or cut into a piece. */
+  assemblyFit(point) {
+    const a = this.assembly;
+    const part = getPart(a.partId);
+    const built = this.assemblyBuilt();
+    const { w: width, d: depth } = built.studs;
+    const x = clamp(Math.round(point.x - width / 2), -BASE_HALF, BASE_HALF - width);
+    const z = clamp(Math.round(point.z - depth / 2), -BASE_HALF, BASE_HALF - depth);
+    const turn = blockRotation(part, a.rotation);
+    const { w, d } = footprint(part, turn);
+    /* Only pieces under the shape count: one pass over the plate per move. */
+    const area = { minX: x, maxX: x + width, minZ: z, maxZ: z + depth };
+    const near = new Map();
+    const boxes = [];
+    this.pieces.forEach((piece, id) => {
+      const box = pieceBounds(piece, shapeOf(piece));
+      if (!overlap2D(area, box)) return;
+      near.set(id, piece);
+      boxes.push(box);
+    });
+    let y = part.height / 2;
+    built.blocks.forEach((block) => {
+      if (block.layer) return;
+      const spot = { x: x + block.dx * w + w / 2, z: z + block.dz * d + d / 2 };
+      y = Math.max(y, this.landing(spot, part, turn, null, near).pos.y);
+    });
+    const ops = placeAssembly(built.blocks, { x, y, z }, part, a.rotation, this.activeColorId, (i) => `ghost-${i}`);
+    const clear = ops.every(({ piece }) => {
+      const box = pieceBounds(piece, part);
+      if (box.minX < -BASE_HALF || box.maxX > BASE_HALF || box.minZ < -BASE_HALF || box.maxZ > BASE_HALF) return false;
+      return boxes.every((other) => !(overlap2D(box, other) && box.minY < other.maxY - 0.01 && box.maxY > other.minY + 0.01));
+    });
+    return clear ? { x, y, z, ops } : null;
+  }
+
+  /* One atomic batch (A6): solo, one Undo snapshot; together, one inverse.
+     It stays armed for the next one. */
+  placeAssemblyAt(point) {
+    const fit = this.assemblyFit(point);
+    this.ghost.visible = false;
+    if (!fit) return false;
+    const part = getPart(this.assembly.partId);
+    const ops = fit.ops.map((op) => ({ ...op, piece: { ...op.piece, id: uid() } }));
+    if (!this.change({ type: "batch", ops })) {
+      this.setHint("🤝", ASSEMBLY.retry);
+      return false;
+    }
+    this.setHint("✓", ASSEMBLY.placed);
+    this.haptic("tap");
+    this.rememberRecent(part.id);
+    return true;
   }
 
   /* Small card over the bottom-left of the view: an overlay, so it never
@@ -2631,6 +2983,7 @@ export class BrickLabRuntime {
     this.moveId = null;
     this.snap = null;
     this.placementArmed = false;
+    this.disarmAssembly();
     this.ghost.visible = false;
     for (const id of Array.from(this.pieces.keys())) this.removePiece(id, false);
     this.history = [];
@@ -2767,6 +3120,7 @@ export class BrickLabRuntime {
     this.selectPiece(null);
     this.moveId = null;
     this.placementArmed = false;
+    this.disarmAssembly();
     this.ghost.visible = false;
     if (this.drag) { this.drag = null; this.cam.enabled = true; }
     this.showLost(hostKid);
@@ -2871,6 +3225,7 @@ export class BrickLabRuntime {
     }
     if (why === "changed") this.setHint("🤝", HINTS.changed);
     else if (why === "busy") this.setHint("🚶", WALK.busy);
+    else if (op.type === "batch") this.setHint("🤝", ASSEMBLY.retry);
     else this.setHint("🛤️", HINTS.railBusy);
     this.updateUndoUI();
     this.invalidate();
@@ -2932,7 +3287,7 @@ export class BrickLabRuntime {
   /* The 3D object for a piece already in `pieces`. */
   addObject(piece) {
     const part = getPart(piece.partId);
-    const jointed = part.joints && (piece.pose || (this.focus && this.focus.id === piece.id));
+    const jointed = part.joints && (piece.pose || (this.focus && this.focus.id === piece.id) || this.alive.has(piece.id));
     const object = jointed ? makeJointedPiece(part, getColorHex(piece.colorId), this.kit, piece.pose)
       : makePieceMesh(part, getColorHex(piece.colorId), this.kit);
     const paint = this.kit.mat(getColorHex(piece.colorId));
@@ -3001,6 +3356,7 @@ export class BrickLabRuntime {
   /* Bring the 3D scene in line with an op already applied to `pieces`. */
   showOp(op) {
     this.freeEndsCache = null;
+    if (op.type === "batch") { op.ops.forEach((member) => this.showOp(member)); return; }
     if (op.type === "add") this.addObject(this.pieces.get(op.piece.id));
     else if (op.type === "remove") {
       const object = this.sceneObjects.get(op.id);
@@ -3050,7 +3406,9 @@ export class BrickLabRuntime {
 
   armPlacement(partId) {
     if (this.mode !== "build") return;
+    this.disarmAssembly();
     this.activePartId = getPart(partId).id;
+    this.lastArmed[getPart(partId).category] = this.activePartId;
     this.moveId = null;
     this.placementArmed = true;
     this.snap = null;
@@ -3066,6 +3424,13 @@ export class BrickLabRuntime {
     while (this.ghost.children.length) {
       const child = this.ghost.children.pop();
       disposeTree(child);
+    }
+    if (this.assembly) {
+      this.ghost.add(this.assemblyPreview());
+      this.ghost.rotation.y = 0;
+      this.ghost.visible = false;
+      this.ghostBlocked = false;
+      return;
     }
     const part = getPart(this.activePartId);
     const preview = makePieceMesh(part, getColorHex(this.activeColorId), this.kit);
@@ -3292,6 +3657,13 @@ export class BrickLabRuntime {
       this.ghost.visible = false;
       return;
     }
+    if (this.assembly && !this.moveId) {
+      const fit = this.assemblyFit(groundHit.point);
+      /* A5: a spot where it can't go shows nothing — never red, no message. */
+      this.ghost.visible = !!fit;
+      if (fit) this.ghost.position.set(fit.x, fit.y, fit.z);
+      return;
+    }
     const instance = this.moveId && this.pieces.get(this.moveId);
     const part = instance ? shapeOf(instance) : getPart(this.activePartId);
     const land = this.landing(groundHit.point, part, instance ? instance.rotation : 0, this.moveId);
@@ -3432,6 +3804,12 @@ export class BrickLabRuntime {
       return;
     }
 
+    if (this.placementArmed && this.assembly) {
+      const targetHit = hits.find((hit) => isGround(hit) || this.getPieceIdFromIntersection(hit));
+      if (targetHit) this.placeAssemblyAt(targetHit.point);
+      return;
+    }
+
     if (this.placementArmed) {
       const targetHit = hits.find((hit) => isGround(hit) || this.getPieceIdFromIntersection(hit));
       if (!targetHit) return;
@@ -3467,6 +3845,7 @@ export class BrickLabRuntime {
   selectPiece(id) {
     if (id && !this.pieces.has(id)) id = null;
     const changed = id !== this.selectedId;
+    if (changed && id && !this.focus) this.startAlive(id);
     this.selectedId = id;
     this.selectionHelper.visible = !!id && !this.focus;
     if (id) {
@@ -3632,6 +4011,41 @@ export class BrickLabRuntime {
     return !!done;
   }
 
+  /* Alive on tap (moving-parts slice 04, T1–T4): a figure, animal or machine
+     the kid selects reacts for REACT_SECONDS, then settles back into its pose. */
+  startAlive(id) {
+    const piece = this.pieces.get(id);
+    if (!piece || !getPart(piece.partId).joints) return;
+    const fresh = !this.alive.has(id);
+    this.alive.set(id, performance.now());
+    if (fresh) this.refreshObject(id);
+    this.invalidate();
+  }
+
+  /* T2: each reacting piece's joints this frame; T4: back to its still look after. */
+  animateAlive(time) {
+    const scale = this.reducedMotion ? 0.5 : 1;
+    this.alive.forEach((start, id) => {
+      const piece = this.pieces.get(id);
+      const object = this.sceneObjects.get(id);
+      const seconds = (time - start) / 1000;
+      if (!piece || !object || seconds >= REACT_SECONDS) {
+        this.alive.delete(id);
+        if (piece) this.refreshObject(id);
+        return;
+      }
+      const part = getPart(piece.partId);
+      const angles = reactAngles(part, piece.pose, seconds, seedOf(id), scale);
+      (object.userData.sqblHolders || []).forEach((holder) => {
+        const joint = holder.userData.sqblJoint;
+        const def = part.joints[joint];
+        const flip = holder.userData.sqblSide < 0;
+        holder.rotation[def.axis] = angles[joint] * DEG * (flip && def.axis !== "x" ? -1 : 1);
+        if (def.nod) holder.rotation[def.nod.axis] = angles[`${joint}.nod`] * DEG * (flip && def.nod.axis !== "x" ? -1 : 1);
+      });
+    });
+  }
+
   /* Rebuild a piece's 3D object in place (jointed in focus mode, M2). */
   refreshObject(id) {
     const old = this.sceneObjects.get(id);
@@ -3652,8 +4066,10 @@ export class BrickLabRuntime {
     if (!piece || this.focus || this.mode !== "build" || !getPart(piece.partId).joints) return;
     this.hideInfo();
     this.placementArmed = false;
+    this.disarmAssembly();
     this.moveId = null;
     this.ghost.visible = false;
+    this.alive.delete(id);
     this.focus = { id, joint: null };
     this.app.classList.add("is-focus");
     this.focusEl.hidden = false;
@@ -3820,6 +4236,7 @@ export class BrickLabRuntime {
     this.hideInfo();
     this.selectPiece(null);
     this.placementArmed = false;
+    this.disarmAssembly();
     this.moveId = null;
     this.snap = null;
     this.ghost.visible = false;
@@ -4157,6 +4574,7 @@ export class BrickLabRuntime {
     this.mode = mode;
     this.moveId = null;
     this.snap = null;
+    this.disarmAssembly();
     this.ghost.visible = false;
     if (mode === "explore") {
       this.selectPiece(null);
@@ -4224,7 +4642,9 @@ export class BrickLabRuntime {
     if (!snapshot) return;
     this.selectPiece(null);
     this.moveId = null;
-    this.placementArmed = false;
+    /* An armed assembly stays armed: build it again somewhere else (A5). */
+    this.placementArmed = !!this.assembly;
+    this.ghost.visible = false;
     for (const id of Array.from(this.pieces.keys())) this.removePiece(id, false);
     snapshot.forEach((piece) => this.addPiece(piece, false));
     if (this.focus) {
@@ -4308,7 +4728,10 @@ export class BrickLabRuntime {
       if (this.focus && moved) this.hideOccluders();
       /* Part icons draw into the canvas corner; the scene then covers it. */
       const icons = this.thumbs ? this.thumbs.pump() : 0;
-      if (!icons && !moved && !glowing && performance.now() > this.renderUntil) return;
+      /* T3: something reacting to a tap draws every frame until it settles. */
+      const reacting = this.alive.size > 0;
+      if (reacting) this.animateAlive(performance.now());
+      if (!icons && !moved && !glowing && !reacting && performance.now() > this.renderUntil) return;
       if (this.selectedId && this.selectionHelper.visible) {
         const object = this.sceneObjects.get(this.selectedId);
         if (object) this.selectionBox.setFromObject(object);
@@ -4352,6 +4775,8 @@ export class BrickLabRuntime {
       preReader: this.preReader,
       selectedId: this.selectedId,
       /* The selected piece's material colours: a recolour must leave fixed parts (a window pane) alone. */
+      /* Alive on tap (slice 04): the pieces reacting right now. */
+      alive: Array.from(this.alive.keys()),
       /* Focus mode (slice 02): the piece, the picked joint and where each joint is on screen. */
       focus: this.focus ? (() => {
         const joints = {};
@@ -4398,6 +4823,15 @@ export class BrickLabRuntime {
       })() : [],
       placementArmed: this.placementArmed,
       moving: !!this.moveId,
+      /* Assemblies (slice 03): the armed shape, its card and its ghost. */
+      assembly: this.assembly ? (() => {
+        const a = this.assembly;
+        const built = this.assemblyBuilt();
+        return { open: !this.asmEl.hidden, pattern: a.pattern, along: a.along, across: a.across, up: a.up, count: built.count, studs: built.studs,
+          partId: a.partId, rotation: a.rotation, ghost: this.ghost.visible,
+          anchor: this.ghost.visible ? { x: this.ghost.position.x, y: this.ghost.position.y, z: this.ghost.position.z } : null,
+          tris: this.ghost.children[0] && this.ghost.children[0].geometry ? this.ghost.children[0].geometry.attributes.position.count / 3 : 0 };
+      })() : null,
       /* Walking a minifig (walk plan): the walker, its riders, where it is and where it looks. */
       /* Walking together (W12): figures other tablets walk, where they are drawn. */
       remoteWalks: Array.from(this.remoteWalks, ([id, r]) => ({ id, kid: r.kid, ids: r.ids.slice(), x: r.at.x, y: r.at.y, z: r.at.z, visible: r.standIn.visible })),

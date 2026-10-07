@@ -233,16 +233,27 @@ def lab_slices_09_11(page, snap, check, out):
     check('Picking a category opens its parts', snap()['tray']['category'] == 'bricks' and snap()['tray']['view'] == 'parts')
     page.locator('.sqbl-fav[data-fav="brick_1x3"]').first.click()
     s = snap()
-    check('Star pins a favourite at the front of the tray', s['tray']['favorites'] == ['brick_1x3'] and s['tray']['parts'][0] == 'brick_1x3'
-          and page.locator('.sqbl-tray-sep[data-section="favorites"]').count() == 1)
+    check('A star saves the part, and the category shows no pinned sections', s['tray']['favorites'] == ['brick_1x3']
+          and s['tray']['category'] == 'bricks' and page.locator('.sqbl-tray-sep').count() == 0)
     app = page.locator('.sqbl-app').bounding_box()
     check('A long parts list scrolls inside the rail instead of widening the app', page.locator('.sqbl-parts').evaluate('e => e.scrollHeight > e.clientHeight')
           and app['x'] + app['width'] <= page.viewport_size['width'] + 1
           and page.locator('.sqbl-save-btn').bounding_box()['x'] + page.locator('.sqbl-save-btn').bounding_box()['width'] <= app['x'] + app['width'])
     check('Favourites and recents are saved per kid', page.evaluate(
           "JSON.parse(localStorage.getItem('sq:brick-lab:prefs:v1:luis')).favorites") == ['brick_1x3'])
+    # Assemblies plan slice 01 (A1): Favourites ⭐ = starred first, then recents (newest first, at most 12), each part once.
+    pick(page, 'favorites')
+    s = snap()
+    want = s['tray']['favorites'] + [r for r in s['tray']['recents'] if r not in s['tray']['favorites']]
+    check('Favourites lists the starred part first, then recents, each once', s['tray']['parts'] == want
+          and want[0] == 'brick_1x3' and len(set(want)) == len(want) and len(s['tray']['recents']) >= 2
+          and s['tray']['count'] == len(want) and s['tray']['category'] == 'favorites')
+    check('…under a ★ header and a 🕘 header, with the rail and view unchanged', page.locator('.sqbl-tray-sep[data-section="favorites"]').count() == 1
+          and page.locator('.sqbl-tray-sep[data-section="recents"]').count() == 1
+          and page.locator('.sqbl-stage canvas').bounding_box() == canvas0)
+    check('Recents keep the newest placed part first', s['tray']['recents'][0] == 'rail_curve_90' and len(s['tray']['recents']) <= 12)
     page.locator('.sqbl-fav[data-fav="brick_1x3"]').first.click()
-    check('Star again removes it', snap()['tray']['favorites'] == [])
+    check('Star again removes it', snap()['tray']['favorites'] == [] and 'brick_1x3' not in snap()['tray']['parts'])
     page.screenshot(path=str(out / 'library.png'))
 
 
@@ -452,8 +463,8 @@ def catalog_checks(page, snap, check, out):
 
     pieces0 = len(snap()['pieces'])
     box = page.locator('.sqbl-stage canvas').bounding_box()
-    check('Twenty categories in build order', page.evaluate(
-          "Array.from(document.querySelectorAll('.sqbl-category'), e => e.dataset.category)") == list(CATEGORIES))
+    check('Favourites first, then twenty categories in build order', page.evaluate(
+          "Array.from(document.querySelectorAll('.sqbl-category'), e => e.dataset.category)") == ['favorites'] + list(CATEGORIES))
     slow, bare, seen = [], [], set()
     for cat in CATEGORIES:
         pick(page, cat)
@@ -822,6 +833,209 @@ def animal_checks(page, snap, check, out):
     sheet.close()
 
 
+def alive_checks(page, snap, check, out):
+    """Moving parts slice 04 (docs/plans/2026-10-05-brick-lab-moving-parts/04-alive-on-tap.md): a tap that
+    selects a figure makes it react for 2 s, then it settles back into its pose and the frames stop; a brick
+    doesn't react; a cheering figure ends in its cheer."""
+    def tap(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(120)
+
+    def selected():
+        s = snap()
+        return next(p for p in s['pieces'] if p['id'] == s['selectedId'])
+
+    box = page.locator('.sqbl-stage canvas').bounding_box()
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+    pick(page, 'figures')
+    page.locator('.sqbl-part[data-part="fig_boy"]').first.click()
+    page.locator('.sqbl-tray-title').click()
+    tap(box['x'] + box['width'] * 0.55, box['y'] + box['height'] * 0.45)
+    fig = selected()
+    seen = []
+    for _ in range(6):
+        page.wait_for_timeout(180)
+        seen.append(json.dumps(snap()['poseAngles'], sort_keys=True))
+    check(f"Placing (selecting) a figure makes it react", fig['id'] in snap()['alive'] or len(set(seen)) > 1)
+    check('Its joints move during the reaction', len(set(seen)) > 2)
+    page.wait_for_timeout(2200)
+    s = snap()
+    f0 = s['render']['frames']
+    page.wait_for_timeout(500)
+    s2 = snap()
+    check(f"After 2 s it is back at its pose and the frames stop {s2['poseAngles']} alive={s2['alive']} frames {f0}->{s2['render']['frames']}", not s2['alive'] and s2['render']['frames'] == f0
+          and all(abs(v) < 1e-6 for v in s2['poseAngles'].values()))
+    page.evaluate("([id, pose]) => SQGames.get('bricklab').pose(id, pose)", [fig['id'], {'p': 'cheer'}])
+    page.wait_for_timeout(200)
+    check('Posing the selected figure starts no reaction', not snap()['alive'])
+    pick(page, 'bricks')
+    page.locator('.sqbl-part[data-part="brick_2x2"]').first.click()
+    page.locator('.sqbl-tray-title').click()
+    tap(box['x'] + box['width'] * 0.3, box['y'] + box['height'] * 0.45)
+    check('A brick does not react', selected()['partId'] == 'brick_2x2' and not snap()['alive'])
+    tap(fig['screen']['x'], fig['screen']['y'] - 10)
+    s = snap()
+    check('Tapping the figure again selects it and it reacts', s['selectedId'] == fig['id'] and fig['id'] in s['alive'])
+    page.wait_for_timeout(700)
+    p = selected()['screen']
+    page.mouse.move(p['x'], p['y'])
+    for _ in range(3):
+        page.mouse.wheel(0, -380)
+        page.wait_for_timeout(40)
+    page.screenshot(path=str(out / 'alive-mid.png'))
+    page.wait_for_timeout(2400)
+    a = snap()['poseAngles']
+    check(f'A cheering figure ends back in its cheer {a}', not snap()['alive'] and a.get('armL') == -180 and a.get('armR') == -180)
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+
+
+def assembly_checks(page, snap, check, out):
+    """Assemblies plan slice 03 (docs/plans/2026-10-06-brick-lab-assemblies/): the Assembly tile opens Bricks,
+    Plates and Tiles only; the menu card's steppers count blocks and stop at 64; a drag from the card moves one
+    ghost and letting go places every block as ordinary pieces; one Undo takes them all back; a bridge deck that
+    would cut into a tower places nothing; the card never resizes the view or the rail; settings survive a reload."""
+    page.evaluate('SQPlatform.triggerBack()')
+    page.wait_for_function(f"{SNAP}.menu")
+    page.locator('.sqbl-world-new').click()
+    page.wait_for_function(f"{SNAP} && !{SNAP}.menu && {SNAP}.world")
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+    canvas0 = page.locator('.sqbl-stage canvas').bounding_box()
+    rail0 = page.locator('.sqbl-left-rail').bounding_box()['width']
+    box = canvas0
+    spot = (box['x'] + box['width'] * 0.6, box['y'] + box['height'] * 0.45)
+
+    def lead(cat):
+        pick(page, cat)
+        return page.locator('.sqbl-parts .sqbl-part').first.get_attribute('data-assembly') is not None
+    check('The Assembly tile is first in Bricks, Plates and Tiles', all(lead(cat) for cat in ('bricks', 'plates', 'tiles')))
+    pick(page, 'doors')
+    absent = page.locator('[data-assembly]').count() == 0
+    pick(page, 'favorites')
+    absent = absent and page.locator('[data-assembly]').count() == 0
+    page.locator('.sqbl-rail-find').click()
+    page.locator('.sqbl-search input').fill('brick')
+    absent = absent and page.locator('[data-assembly]').count() == 0 and len(snap()['tray']['parts']) > 0
+    page.locator('.sqbl-rail-find').click()
+    check('…and nowhere else: not in Doors, Favourites or a search', absent)
+
+    pick(page, 'bricks')
+    page.locator('.sqbl-part[data-part="brick_2x2"]').click()
+    page.locator('.sqbl-tray-title').click()
+    page.locator('.sqbl-parts [data-assembly]').click()
+    s = snap()
+    a = s['assembly']
+    card = page.locator('.sqbl-asm')
+    text = card.inner_text()
+    check(f'Tapping it arms a wall of the last brick and opens the card {a}', a and a['open'] and a['pattern'] == 'wall'
+          and a['partId'] == 'brick_2x2' and (a['along'], a['up'], a['count']) == (8, 3, 24) and s['placementArmed']
+          and card.is_visible())
+    check('The card speaks both languages', all(w in text for w in ('Wall', '牆', 'Floor', '地板', 'Tower', '塔', 'Bridge', '橋',
+          'Long', '長', 'Tall', '高', '24 bricks', '24 塊')))
+    check('Card targets are at least 56 px', all(b['width'] >= 55.5 and b['height'] >= 55.5 for b in
+          (card.locator(sel).first.bounding_box() for sel in ('[data-asm-step]', '[data-asm-pattern]', '[data-asm-act="turn"]', '[data-asm-drag]'))))
+    check('Opening the card resizes neither the view nor the rail', page.locator('.sqbl-stage canvas').bounding_box() == canvas0
+          and page.locator('.sqbl-left-rail').bounding_box()['width'] == rail0)
+
+    # Steppers count blocks; the one that would pass 64 does nothing (A3).
+    card.locator('[data-asm-pattern="tower"]').click()
+    a = snap()['assembly']
+    check('Tower: 2 × 2 × 8 = 32 blocks, with Long, Wide and Tall', (a['pattern'], a['count']) == ('tower', 32)
+          and card.locator('[data-asm-step]').count() == 6)
+    for _ in range(9):
+        card.locator('[data-asm-step="up"][data-delta="1"]').click()
+    a = snap()['assembly']
+    check(f'+ Tall stops at 64 blocks {a["up"]} {a["count"]}', a['up'] == 16 and a['count'] == 64 and '64' in card.inner_text())
+    card.locator('[data-asm-step="along"][data-delta="1"]').click()
+    check('…and + Long does nothing at the cap', snap()['assembly']['count'] == 64 and snap()['assembly']['along'] == 2)
+    for _ in range(12):
+        card.locator('[data-asm-step="up"][data-delta="-1"]').click()
+    check('− Tall comes down to 4 layers', snap()['assembly']['up'] == 4 and snap()['assembly']['count'] == 16)
+
+    # Drag from the card: the ghost follows; letting go places every block as ordinary pieces (A5, A6).
+    n0 = len(snap()['pieces'])
+    undo0 = snap()['undo']
+    drag = card.locator('[data-asm-drag]').bounding_box()
+    sx, sy = drag['x'] + drag['width'] / 2, drag['y'] + drag['height'] / 2
+    page.mouse.move(sx, sy)
+    page.mouse.down()
+    anchors = []
+    for i in range(1, 15):
+        page.mouse.move(sx + (spot[0] - sx) * i / 14, sy + (spot[1] - sy) * i / 14)
+        a = snap()['assembly']
+        if a['ghost']:
+            anchors.append((a['anchor']['x'], a['anchor']['z']))
+    check(f'The ghost tower follows the finger, as one mesh ({len(set(anchors))} spots)', len(set(anchors)) >= 2
+          and snap()['assembly']['ghost'] and snap()['assembly']['tris'] > 0)
+    page.screenshot(path=str(out / 'assembly-ghost.png'))
+    page.mouse.up()
+    page.wait_for_timeout(150)
+    s = snap()
+    tower = s['pieces'][n0:]
+    check(f'Letting go places all 16 blocks as ordinary pieces ({len(s["pieces"]) - n0})', len(s['pieces']) == n0 + 16
+          and all(p['partId'] == 'brick_2x2' and p['colorId'] == tower[0]['colorId'] for p in tower)
+          and len({p['y'] for p in tower}) == 4 and s['assembly'] and s['placementArmed'])
+    check('One build is one Undo step', s['undo'] == undo0 + 1)
+
+    # A bridge whose deck would cut into the tower shows no ghost and places nothing (A5: no red, no message).
+    card.locator('[data-asm-pattern="bridge"]').click()
+    a = snap()['assembly']
+    check('Bridge: a deck on two pillars, 6 + 2 × 2 = 10 blocks', (a['pattern'], a['count']) == ('bridge', 10))
+    t = next(p for p in snap()['pieces'] if p['id'] == tower[0]['id'])['screen']
+    hint0 = page.locator('.sqbl-stage-hint').inner_text()
+    page.mouse.move(t['x'], t['y'])
+    page.wait_for_timeout(60)
+    blocked_ghost = snap()['assembly']['ghost']
+    page.mouse.click(t['x'], t['y'])
+    page.wait_for_timeout(150)
+    check('…over the tower: no ghost, nothing placed, no message', not blocked_ghost
+          and len(snap()['pieces']) == n0 + 16 and page.locator('.sqbl-stage-hint').inner_text() == hint0)
+    page.mouse.click(box['x'] + 30, box['y'] + 30)
+    page.wait_for_timeout(150)
+    check('…off the plate (the sea): nothing placed', len(snap()['pieces']) == n0 + 16)
+    card.locator('[data-asm-pattern="wall"]').click()
+    card.locator('[data-asm-act="turn"]').click()
+    a = snap()['assembly']
+    check(f'↻ turns the wall: along runs the other way {a["studs"]}', a['rotation'] == 90 and a['studs'] == {'w': 2, 'd': 16})
+    far = (box['x'] + box['width'] * 0.45, box['y'] + box['height'] * 0.3)
+    page.mouse.click(*far)
+    page.wait_for_timeout(150)
+    check('Tapping the plate builds the wall too, and stays armed', len(snap()['pieces']) == n0 + 16 + 24 and snap()['placementArmed'])
+    page.screenshot(path=str(out / 'assembly-built.png'))
+    page.locator('.sqbl-app [data-action="undo"]').click()
+    page.wait_for_timeout(150)
+    check('One Undo removes the whole wall', len(snap()['pieces']) == n0 + 16)
+    page.locator('.sqbl-app [data-action="undo"]').click()
+    page.wait_for_timeout(150)
+    check('…and the next the whole tower', len(snap()['pieces']) == n0)
+    check('Recents get the brick once', snap()['tray']['recents'][0] == 'brick_2x2'
+          and snap()['tray']['recents'].count('brick_2x2') == 1)
+
+    # Close keeps it armed; picking an ordinary part puts it away (A4).
+    card.locator('[data-asm-act="close"]').click()
+    check('✕ closes the card and keeps the wall armed', not card.is_visible() and snap()['assembly'] and snap()['placementArmed'])
+    page.locator('.sqbl-part[data-part="brick_1x2"]').click()
+    page.locator('.sqbl-tray-title').click()
+    check('Picking a part disarms the assembly', snap()['assembly'] is None and not card.is_visible())
+    check('The view and the rail never changed size', page.locator('.sqbl-stage canvas').bounding_box() == canvas0
+          and page.locator('.sqbl-left-rail').bounding_box()['width'] == rail0)
+
+    # Settings per pattern survive a reload (prefs `assembly`).
+    page.reload(wait_until='domcontentloaded')
+    RECOVERY['ready'](page)
+    page.evaluate("SummerQuest.openGame('bricklab')")
+    enter_world(page)
+    pick(page, 'bricks')
+    page.locator('.sqbl-parts [data-assembly]').click()
+    a = snap()['assembly']
+    check(f'After a reload the card opens as it was left {a}', a['pattern'] == 'wall' and a['rotation'] == 90 and a['count'] == 24)
+    card.locator('[data-asm-pattern="tower"]').click()
+    check('…and the tower kept its 4 layers', snap()['assembly']['up'] == 4)
+    card.locator('[data-asm-act="close"]').click()
+
+
 def seed_worlds(page, worlds):
     """Write worlds straight to this kid's storage before Brick Lab opens (grid 2: no re-settling)."""
     page.evaluate("""async (worlds) => {
@@ -1020,6 +1234,22 @@ def lab_together(browser, base, report, console, check, out):
           and sib(f"return !S.lili.pieces.has('{mine}') && S.lili.pieces.has('lili-1')")
           and any(p['id'] == 'lili-1' for p in snap()['pieces']))
 
+    # Assemblies plan A6: a wall is one batch op. Lili's tablet gets the whole wall; one Undo here takes it from both.
+    pick(pg, 'bricks')
+    pg.locator('.sqbl-parts [data-assembly]').click()
+    count = snap()['assembly']['count']
+    n1, l1 = len(snap()['pieces']), sib("return S.lili.pieces.size")
+    pg.mouse.click(box['x'] + box['width'] * 0.62, box['y'] + box['height'] * 0.4)
+    pg.wait_for_timeout(250)
+    check(f'A wall of {count} reaches Lili whole, as ours', len(snap()['pieces']) == n1 + count
+          and sib("return S.lili.pieces.size") == l1 + count
+          and sib(f"return Array.from(S.lili.pieces.values()).filter((p) => p.by === 'luis').length") >= count)
+    pg.locator('.sqbl-app [data-action="undo"]').dispatch_event('pointerdown')
+    pg.wait_for_timeout(250)
+    check('One Undo removes the whole wall here and on Lili\'s tablet', len(snap()['pieces']) == n1
+          and sib("return S.lili.pieces.size") == l1 and pg.locator('.sqbl-app [data-action="undo"]').is_disabled())
+    pick(pg, 'plates')  # a category puts the assembly away
+
     # Lili leaves: chips go, the world (with her brick) is saved here.
     sib("S.lili.together.leave(); await new Promise((r) => setTimeout(r, 80)); return true;")
     pg.wait_for_timeout(150)
@@ -1203,7 +1433,16 @@ def run(args):
                 # Slice 08 / 12: neither switching category nor switching rail view resizes the 3D view (flash).
                 sizes = {(round(b['width']), round(b['height']))}
                 rail = page.locator('.sqbl-left-rail').bounding_box()['width']
-                for cat in CATEGORIES[1:] + CATEGORIES[:1]:
+                # Assemblies plan slice 01: Favourites ⭐ is the first category; empty on a fresh save, it says so (EN + 中文).
+                check('Favourites ⭐ is the first tile in the category list', page.evaluate(
+                      "document.querySelector('.sqbl-category').dataset.category") == 'favorites')
+                pick(page, 'favorites')
+                s = snap()
+                check('A fresh save has an empty Favourites with the hint in EN + 中文', s['tray']['category'] == 'favorites'
+                      and s['tray']['view'] == 'parts' and s['tray']['parts'] == [] and s['tray']['count'] == 0
+                      and 'Parts you use' in page.locator('.sqbl-tray-empty').inner_text()
+                      and '用過的積木' in page.locator('.sqbl-tray-empty').inner_text())
+                for cat in ('favorites',) + CATEGORIES[1:] + CATEGORIES[:1]:
                     pick(page, cat)
                     b = page.locator('.sqbl-stage canvas').bounding_box()
                     sizes.add((round(b['width']), round(b['height'])))
@@ -1382,6 +1621,8 @@ def run(args):
                 dx, dy = cb['x'] + cb['width'] * 0.56, cb['y'] + cb['height'] * 0.66
                 page.mouse.move(tx, ty)
                 page.mouse.down()
+                # A mouse is not captured until the drag starts: first slide a little inside the tile (it may sit in the right column).
+                page.mouse.move(tx + 14, ty)
                 for i in range(1, 13):
                     page.mouse.move(tx + (dx - tx) * i / 12, ty + (dy - ty) * i / 12)
                 s = snap()
@@ -1452,6 +1693,8 @@ def run(args):
                 pose_checks(page, snap, check, out)
                 focus_checks(page, snap, check, out)
                 animal_checks(page, snap, check, out)
+                alive_checks(page, snap, check, out)
+                assembly_checks(page, snap, check, out)
                 leave_lab(page)
 
                 # Same door as Paint: through the Games category lock, stopped only by a Papa app pause.

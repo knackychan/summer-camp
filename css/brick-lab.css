@@ -110,6 +110,27 @@
 /* Info card: an overlay in the stage (no canvas resize), tap elsewhere closes it. */
 .sqbl-info{position:absolute;left:12px;bottom:58px;z-index:4;width:min(320px,calc(100% - 24px));padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.97);border:1px solid var(--sqbl-line);box-shadow:0 12px 30px rgba(42,60,74,.22);font-size:13px}
 .sqbl-info[hidden]{display:none}
+/* Assemblies (docs/plans/2026-10-06-brick-lab-assemblies/ A2, A4): the tile that
+   opens Bricks, Plates and Tiles, and the menu card, an overlay like the info
+   card (the canvas and the rail never resize). Every control is >= 56 px. */
+.sqbl-asm-tile{background:#fff8e8;border-style:dashed}.sqbl-asm-tile-icon{font-size:28px;line-height:36px}
+.sqbl-asm{position:absolute;left:12px;bottom:58px;z-index:4;width:min(312px,calc(100% - 24px));padding:10px;border-radius:18px;background:rgba(255,255,255,.97);border:1px solid var(--sqbl-line);box-shadow:0 12px 30px rgba(42,60,74,.22);display:grid;gap:8px;font-size:13px;touch-action:none}
+.sqbl-asm[hidden]{display:none}
+.sqbl-asm button{min-width:56px;min-height:56px;border:1px solid var(--sqbl-line);border-radius:14px;background:#fff;padding:0;font:inherit;font-weight:800;color:var(--sqbl-ink);touch-action:manipulation}
+.sqbl-asm button:active{transform:scale(.94);background:#eef6ff}
+.sqbl-asm-head{display:flex;align-items:center;gap:6px}
+.sqbl-asm-brick{display:grid;place-items:center;flex:0 0 56px}
+.sqbl-asm-drag{flex:1;min-width:0;min-height:56px;display:flex;align-items:center;gap:6px;padding:0 10px;border-radius:14px;background:#eef6ff;border:2px dashed var(--sqbl-blue);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.sqbl-asm-drag>b{font-size:24px}.sqbl-asm-drag span{min-width:0;font-weight:900;font-size:14px;line-height:1.15}.sqbl-asm-drag small{display:block;font-size:11px;color:var(--sqbl-muted);white-space:nowrap}
+.sqbl-asm-icon{flex:0 0 56px;font-size:22px!important}
+.sqbl-asm-patterns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.sqbl-asm-pattern{display:grid;place-items:center;align-content:center;gap:1px;padding:4px 2px!important}.sqbl-asm-pattern b{font-size:20px;line-height:1}.sqbl-asm-pattern span{font-size:11px;line-height:1.1}.sqbl-asm-pattern small{display:block;font-size:10px;color:var(--sqbl-muted)}
+.sqbl-asm-pattern.is-on{border:2px solid var(--sqbl-blue);background:#eef6ff;color:var(--sqbl-blue-deep)}
+.sqbl-asm-steps{display:grid;gap:6px}
+.sqbl-asm-step{display:grid;grid-template-columns:minmax(0,1fr) 56px 44px 56px;align-items:center;gap:6px}
+.sqbl-asm-name{font-weight:900;font-size:14px}.sqbl-asm-name small{display:inline;margin-left:4px;font-size:12px;color:var(--sqbl-muted)}.sqbl-asm-name b{font-size:22px}
+.sqbl-asm-step button{font-size:24px}.sqbl-asm-step output{text-align:center;font-size:20px;font-weight:900;font-variant-numeric:tabular-nums}
+.sqbl-app.is-pre-reader .sqbl-asm-pattern b{font-size:26px}
 .sqbl-info-head{display:flex;align-items:center;gap:10px}
 .sqbl-info-head>div{flex:1;min-width:0}.sqbl-info-head strong{display:block;font-size:16px;line-height:1.2}.sqbl-info-head strong[lang]{font-size:14px;color:var(--sqbl-muted)}
 .sqbl-info-head .sqbl-part-preview{flex:0 0 auto}
