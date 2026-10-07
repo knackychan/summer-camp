@@ -197,7 +197,7 @@ export function sitOffset() {
   return { y: -SIT.drop / 2, z: -SIT.back };
 }
 
-/* ── Play (slice 04, P1, P2): figures and animals alive in place ── */
+/* ── Alive loops (slice 04): what a figure or animal does when it reacts ── */
 
 /* A stable number from a piece id: each piece starts its loop at its own moment. */
 export function seedOf(id) {
@@ -248,7 +248,20 @@ export function aliveAngles(part, pose, seconds, seed, scale = 1) {
   return out;
 }
 
-/* The ids of up to `cap` points nearest (x, z): the pieces that move in Play. */
-export function nearestIds(points, x, z, cap) {
-  return new Set(points.slice().sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z)).slice(0, cap).map((p) => p.id));
+/* A tap reaction (slice 04, alive on tap): REACT_SECONDS of the alive loop,
+   faded in and out so it starts and ends exactly at the pose. The loop clock
+   is shifted by the piece's slot so its occasional moves (a wave, a flap, a
+   snap, a hop) land inside the reaction. */
+export const REACT_SECONDS = 2;
+
+export function reactAngles(part, pose, seconds, seed, scale = 1) {
+  const still = jointAngles(part, pose);
+  if (seconds <= 0 || seconds >= REACT_SECONDS) return still;
+  const fade = Math.sin(Math.PI * seconds / REACT_SECONDS);
+  const alive = aliveAngles(part, pose, seconds - (seed % 10), seed, scale);
+  const out = {};
+  Object.keys(still).forEach((key) => {
+    out[key] = Math.round((still[key] + (alive[key] - still[key]) * fade) * 1000) / 1000;
+  });
+  return out;
 }

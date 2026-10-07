@@ -164,7 +164,7 @@ test("legs split by side of the body: front legs forward of the middle, back leg
 
 /* Moving parts slice 04 (P1, P2): alive loops are pure maths, seeded per piece;
    the nearest pieces move, the rest stay still. */
-import { aliveAngles, nearestIds, seedOf } from "../js/brick-lab/brick-pose.js";
+import { REACT_SECONDS, aliveAngles, reactAngles, seedOf } from "../js/brick-lab/brick-pose.js";
 
 test("alive angles: on top of the pose, inside every joint's range, the same at the same moment", () => {
   PARTS.filter((p) => p.joints).forEach((part) => {
@@ -202,10 +202,21 @@ test("reduced motion moves half as far; the pose is the starting point", () => {
   assert.ok(cheer.armL < -150, "a cheering figure keeps its arms up");
 });
 
-test("the nearest pieces move, up to the cap", () => {
-  const points = Array.from({ length: 50 }, (_, i) => ({ id: "p" + i, x: i, z: 0 }));
-  const near = nearestIds(points, 0, 0, 40);
-  assert.equal(near.size, 40);
-  assert.ok(near.has("p0") && near.has("p39") && !near.has("p40"));
-  assert.equal(nearestIds(points, 49, 0, 3).has("p49"), true);
+test("a tap reaction (slice 04, T2) starts and ends exactly at the pose and moves in between", () => {
+  PARTS.filter((p) => p.joints).forEach((part) => {
+    const seed = seedOf("tap-" + part.id);
+    const pose = { p: posesFor(part)[1] ? posesFor(part)[1].id : posesFor(part)[0].id };
+    const still = jointAngles(part, pose);
+    assert.deepEqual(reactAngles(part, pose, 0, seed, 1), still, `${part.id} at 0`);
+    assert.deepEqual(reactAngles(part, pose, REACT_SECONDS, seed, 1), still, `${part.id} at the end`);
+    const moved = [0.3, 0.6, 0.9, 1.2, 1.5].some((t) => JSON.stringify(reactAngles(part, pose, t, seed, 1)) !== JSON.stringify(still));
+    assert.ok(moved, `${part.id} doesn't react`);
+  });
+});
+
+test("a figure's tap reaction includes its wave", () => {
+  const fig = getPart("fig_boy");
+  const seed = seedOf("someone");
+  const peak = Math.min(...[0.4, 0.6, 0.8, 1.0, 1.2].map((t) => reactAngles(fig, null, t, seed, 1).armR));
+  assert.ok(peak < -60, `the right arm goes up (${peak})`);
 });
