@@ -56,6 +56,60 @@
         ["Put the pile where it belongs.","把這一小堆放回正確的位置。"]
       ]
     },
+    /* home-help quests for the games points gate (2026-10-08-games-gate-ai-guide
+       slice 02). `since` lets a family's saved catalog pick them up too. */
+    {
+      id:"shoe_tidy", enabled:true, type:"quest", required:false, since:"2026-10-08",
+      icon:"👟", category:"help", priority:57,
+      title:["Shoe Line-up","鞋子排排站"],
+      blurb:["Put the shoes at the door in neat pairs.","把門口的鞋子一雙雙排整齊。"],
+      duration:5, energy:"low", after:8*60, before:20*60+30, oncePerDay:true,
+      frequency:{type:"daily"}, allowedKids:ALL_KIDS, rewardPoints:5,
+      steps:[
+        ["Find each shoe's partner.","幫每隻鞋子找到另一半。"],
+        ["Put each pair side by side.","把每一雙並排放好。"],
+        ["Line them up along the wall.","沿著牆排成一排。"]
+      ]
+    },
+    {
+      id:"garden_tidy", enabled:true, type:"quest", required:false, verification:"parent", since:"2026-10-08",
+      icon:"🌿", category:"help", priority:56,
+      title:["Garden Tidy","整理花園"],
+      blurb:["Pick up leaves and put the garden tools away.","撿落葉，把園藝工具收好。"],
+      duration:15, energy:"medium", after:8*60, before:18*60, oncePerDay:true,
+      frequency:{type:"daily"}, allowedKids:ALL_KIDS, rewardPoints:15,
+      steps:[
+        ["Ask a grown-up which part of the garden to tidy.","先問大人要整理花園的哪一塊。"],
+        ["Pick up leaves and sticks into the bin.","把落葉和樹枝撿進垃圾桶。"],
+        ["Put every tool back in its place.","把每樣工具放回原位。"]
+      ]
+    },
+    {
+      id:"living_tidy", enabled:true, type:"quest", required:false, verification:"parent", since:"2026-10-08",
+      icon:"🛋️", category:"help", priority:55,
+      title:["Living Room Tidy","整理客廳"],
+      blurb:["Put cushions, toys and books back where they live.","把抱枕、玩具和書放回原位。"],
+      duration:10, energy:"medium", after:8*60, before:20*60+30, oncePerDay:true,
+      frequency:{type:"daily"}, allowedKids:ALL_KIDS, rewardPoints:10,
+      steps:[
+        ["Put the cushions back on the sofa.","把抱枕放回沙發上。"],
+        ["Take toys and books back to their homes.","把玩具和書送回它們的家。"],
+        ["Clear the table and check the floor.","清好桌面，再檢查一次地板。"]
+      ]
+    },
+    {
+      id:"office_tidy", enabled:true, type:"quest", required:false, verification:"parent", since:"2026-10-08",
+      icon:"🗂️", category:"help", priority:54,
+      title:["Office Tidy","整理辦公室"],
+      blurb:["Help keep Papa's office neat.","幫忙把爸爸的辦公室整理好。"],
+      duration:10, energy:"low", after:8*60, before:20*60+30, oncePerDay:true,
+      frequency:{type:"daily"}, allowedKids:ALL_KIDS, rewardPoints:10,
+      steps:[
+        ["Ask Papa what may be moved.","先問爸爸哪些東西可以動。"],
+        ["Put pens in the cup and stack the papers.","把筆放回筆筒，把紙疊好。"],
+        ["Leave the desk the way Papa likes it.","把桌面整理成爸爸習慣的樣子。"]
+      ]
+    },
     {
       id:"table_helper", enabled:true, type:"quest", required:false,
       icon:"🍽️", category:"help", priority:61,

@@ -10,6 +10,11 @@
     plant_patrol:{points:10,limit:1,category:"help",label:["Plant Patrol","植物巡邏"]},
     room_rescue:{points:10,limit:1,category:"help",parent:true,label:["Room Rescue","房間救援"]},
     laundry_helper:{points:15,limit:1,category:"help",parent:true,label:["Laundry Helper","洗衣小幫手"]},
+    /* home-help kinds for the games points gate (2026-10-08-games-gate-ai-guide D3) */
+    shoe_tidy:{points:5,limit:1,category:"help",label:["Tidy the shoes","整理鞋子"]},
+    garden_tidy:{points:15,limit:1,category:"help",parent:true,label:["Tidy the garden","整理花園"]},
+    living_tidy:{points:10,limit:1,category:"help",parent:true,label:["Tidy the living room","整理客廳"]},
+    office_tidy:{points:10,limit:1,category:"help",parent:true,label:["Tidy the office","整理辦公室"]},
     housework:{points:20,limit:1,category:"help",parent:true,label:["Extra housework","額外家事"]},
     reading:{points:20,limit:1,category:"learn",parent:true,label:["Reading Nest","閱讀小窩"]},
     brain:{points:10,limit:3,category:"learn",label:["Assigned Brain Gym exercise","指定頭腦體操"]},

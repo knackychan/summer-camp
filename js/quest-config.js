@@ -60,7 +60,12 @@
     const fs=familyMap(source), fallback=(typeof window!=="undefined"&&window.SQQuestData&&window.SQQuestData.all)?window.SQQuestData.all():[];
     const parsed=parse(fs[KEYS.catalog],fallback);
     if(!Array.isArray(parsed)||!parsed.length)return fallback.map(normalizeQuest);
-    return parsed.map(function(q,i){const out=normalizeQuest(q,i), policy=points(); if(out.awardKind){out.rewardPoints=policy.amount(out.awardKind,fs);out.rewardStars=out.rewardPoints;}return out;});
+    /* A seed quest marked `since` was added after families could save their own
+       catalog; a saved catalog that predates it still gets it (Papa can pause it
+       like any other — the editor has no delete, so absence means "never saw it"). */
+    const known=new Set(parsed.map(function(q){return q&&q.id;}));
+    const added=fallback.filter(function(q){return q.since&&!known.has(q.id);});
+    return parsed.concat(added).map(function(q,i){const out=normalizeQuest(q,i), policy=points(); if(out.awardKind){out.rewardPoints=policy.amount(out.awardKind,fs);out.rewardStars=out.rewardPoints;}return out;});
   }
   function normalizeReward(r,i){
     const base={id:"reward_"+(i+1),enabled:true,icon:"🎁",cost:10,title:["Reward","獎勵"],blurb:["A parent-approved reward.","爸爸核准的獎勵。"]};

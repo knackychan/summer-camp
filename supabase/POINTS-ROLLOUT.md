@@ -42,6 +42,14 @@ add every authenticated account.
    publication includes `points_claims`, `points_assignments`, `points_requests`
    when the normal `supabase_realtime` publication exists.
 
+7. **Games gate home-help kinds (2026-10-08):** after step 3 succeeded, run
+   [migrations/20261008_games_gate_kinds.sql](migrations/20261008_games_gate_kinds.sql)
+   once as the database owner (safe to re-run). It adds `shoe_tidy` (5,
+   self-checked), `garden_tidy` (15), `living_tidy` (10) and `office_tidy` (10,
+   parent-checked) to `points_policy` and `points_claim`. Tablets with the
+   matching app offer those four jobs; before this step, the server rejects their claims
+   with "Unknown award kind", so run it before deploying the app.
+
 The exact remaining deployment action is step 3 on the family's live Supabase,
 followed by the build/tablet rollout and live smoke check in steps 4–6. The local
 test does not prove the production project has run any of these steps.

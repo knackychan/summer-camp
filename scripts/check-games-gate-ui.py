@@ -88,13 +88,20 @@ def run(browser, base, out):
     soon = [c for c in cards if not c["ready"]]
     assert any("Help clean the table" in c["t"] and "+5" in c["t"] for c in ready), cards
     assert any("Homework practice" in c["t"] for c in ready), cards
-    assert soon and all("Coming soon" in c["t"] for c in soon), cards
-    assert cards.index(soon[0]) == len(ready), "unready items come last"
+    assert len(cards) == 8 and not soon, cards  # slice 02: all eight are startable
+    assert any("Tidy the shoes" in c["t"] and "+5" in c["t"] and "Papa will check" not in c["t"] for c in ready), cards
+    assert any("Tidy the garden" in c["t"] and "+15" in c["t"] and "Papa will check" in c["t"] for c in ready), cards
     page.screenshot(path=str(out / "games-gate-chooser-lili.png"))
     page.locator(".hhcard:has-text('Help clean the table')").click()
     page.wait_for_selector("#questOverlay")
     assert "Table Helper" in page.locator("#questOverlay").inner_text()
     recovery.close_overlays(page)
+    for label, quest in (("Tidy the living room", "Living Room Tidy"), ("Tidy the office", "Office Tidy")):
+        page.evaluate("showHomeHelpChooser()")
+        page.locator(".hhcard:has-text('%s')" % label).click()
+        page.wait_for_selector("#questOverlay")
+        assert quest in page.locator("#questOverlay").inner_text()
+        recovery.close_overlays(page)
     page.evaluate(CLAIM, ["lili", "room_rescue", "default", 10, "pending"])
     assert "10 / 50" in card_text(page)
     page.evaluate(CLAIM, ["lili", "homework", "default", 40, "confirmed"])

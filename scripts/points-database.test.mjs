@@ -198,4 +198,19 @@ await rpc('reset_season', '');
 assert.deepEqual(await rows('select * from point_totals order by kid_id'), beforeReset);
 assert.equal((await one(`select count(*)::int as n from points_refunds`)).n, 1);
 assert.ok((await one(`select count(*)::int as n from points_migration_backup`)).n > 0);
-console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation.');
+// Games points gate slice 02: four home-help kinds, applied after the points migration, twice.
+const kindsSql = readFileSync(new URL('../supabase/migrations/20261008_games_gate_kinds.sql', import.meta.url), 'utf8');
+await run(kindsSql); await run(kindsSql);
+const lucienBefore = (await wallet('lucien')).total_earned;
+const garden = await claim('lucien', today, 'garden_tidy', 'default', { amount: 999 });
+assert.deepEqual([garden.amount, garden.status, garden.category], [15, 'pending', 'helping']);
+assert.equal((await claim('lucien', today, 'garden_tidy', 'forged-slot')).id, garden.id, 'once a day, slot forced to default');
+const shoes = await claim('lucien', today, 'shoe_tidy');
+assert.deepEqual([shoes.amount, shoes.status], [5, 'confirmed'], 'shoes are self-checked');
+for (const kind of ['living_tidy', 'office_tidy']) {
+  const c = await claim('lucien', today, kind);assert.deepEqual([c.amount, c.status], [10, 'pending'], kind);
+}
+await approve(garden.id);
+assert.equal((await wallet('lucien')).total_earned, lucienBefore + 20, 'shoes + approved garden');
+assert.equal((await wallet('lucien')).pending, 20, 'living room + office wait for Papa');
+console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation, games-gate home-help kinds.');

@@ -2460,14 +2460,17 @@ function pointBlockTasks(i){
   if(effective===12)return [pointActivityTask("house")];
   return i===PRACTICE_IDX&&source==null&&SQDrills.isPracticeDay(todayStr())?[{kind:"music",slot:"default"}]:SQPoints.block(effective);
 }
+/* House Help / Tidy patrol: the agreed job picks the award. The four tidy jobs
+   are the games-gate home-help kinds (2026-10-08-games-gate-ai-guide slice 02). */
+var HOUSE_POINT_KINDS=["room_rescue","laundry_helper","shoe_tidy","garden_tidy","living_tidy","office_tidy","housework"];
 function pointActivityTask(category){
-  const allowed=category==="house"?["room_rescue","laundry_helper","housework"]:category==="computer"?["learning","creative"]:null;
+  const allowed=category==="house"?HOUSE_POINT_KINDS:category==="computer"?["learning","creative"]:null;
   if(!allowed)return SQPoints.activity(category);
   const chosen=localStorage.getItem("sq:point-choice:"+hubKid+":"+todayStr()+":"+category);
   return SQPoints.quest(allowed.includes(chosen)?chosen:allowed[0]);
 }
 function pointChoiceHtml(category){
-  const kinds=category==="house"?["room_rescue","laundry_helper","housework"]:category==="computer"?["learning","creative"]:[];
+  const kinds=category==="house"?HOUSE_POINT_KINDS:category==="computer"?["learning","creative"]:[];
   if(!kinds.length)return "";
   const current=pointActivityTask(category);
   return `<label>Which job did you agree? · 約定做哪件事？ <select data-point-choice="${category}">${kinds.map(kind=>`<option value="${kind}" ${current.kind===kind?"selected":""}>${SQPoints.rules[kind].label.join(" · ")} · ${SQPoints.amount(kind,store&&store.familySettings)}</option>`).join("")}</select></label>`;

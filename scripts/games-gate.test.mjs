@@ -1,7 +1,7 @@
 // Daily points gate + home-help data (docs/plans/2026-10-08-games-gate-ai-guide/ slice 01).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -102,15 +102,40 @@ test("home-help data: 8 activities, bilingual, unique, windows parse", () => {
   for (const line of Help.LINES) assert.ok(pair(line) && hasHan(line[1]) && line.every((s) => s.includes("{n}")));
 });
 
-test("home-help kinds that exist resolve to real awards and quests", () => {
-  const quests = new Set(SQQuestData.all().map((q) => q.id));
-  for (const id of ["homework", "room", "clothes", "table"]) {
-    const item = Help.ITEMS.find((i) => i.id === id);
+test("every home-help activity resolves to a real award and quest", () => {
+  const quests = new Map(SQQuestData.all().map((q) => [q.id, q]));
+  for (const item of Help.ITEMS) {
     assert.ok(SQPoints.rules[item.kind], item.kind + " is a points kind");
     const qs = item.quest && typeof item.quest === "object" ? Object.values(item.quest) : item.quest ? [item.quest] : [];
-    for (const q of qs) assert.ok(quests.has(q), q + " is a quest");
+    for (const q of qs) {
+      assert.ok(quests.has(q), q + " is a quest");
+      assert.equal(SQPoints.quest(quests.get(q)).kind, item.kind, q + " pays " + item.kind);
+    }
     if (!qs.length) assert.equal(item.route, "day");
+    assert.equal(!!SQPoints.rules[item.kind].parent, item.verify === "parent", item.id + " check matches the award rule");
   }
+});
+
+/* The database repeats the award policy (points_policy + the snapshot defaults in
+   points_claim). The newest migration that defines them must agree with js/points.js. */
+test("award kinds agree between js/points.js and the newest SQL policy", () => {
+  const dir = new URL("../supabase/migrations/", import.meta.url);
+  const files = readdirSync(dir).filter((f) => f.endsWith(".sql")).sort();
+  const policySql = files.map((f) => readFileSync(new URL(f, dir), "utf8")).filter((t) => t.includes("function public.points_policy(")).pop();
+  const claimSql = files.map((f) => readFileSync(new URL(f, dir), "utf8")).filter((t) => t.includes("function public.points_claim(")).pop();
+  const rules = JSON.parse(policySql.match(/rules:='(\{[^']+\})'/)[1]);
+  const defaults = Object.fromEntries([...claimSql.matchAll(/when '([a-z_]+)' then (\d+)/g)].map((m) => [m[1], +m[2]]));
+  const category = { care: "care", help: "helping", learn: "learning", move: "movement", create: "creative", bonus: "bonus" };
+  for (const [kind, rule] of Object.entries(SQPoints.rules)) {
+    assert.ok(rules[kind], kind + " missing from SQL points_policy");
+    const [amount, limit, cat, verify] = rules[kind];
+    assert.deepEqual([amount, limit, cat], [rule.points, rule.limit, category[rule.category]], kind + " amount/limit/category");
+    if (rule.category !== "bonus" && kind !== "brain") {
+      assert.equal(verify, rule.parent ? "parent" : "self", kind + " verification");
+      assert.equal(defaults[kind], rule.points, kind + " snapshot default in points_claim");
+    }
+  }
+  assert.deepEqual(Object.keys(rules).sort(), Object.keys(SQPoints.rules).sort());
 });
 
 const meals = [{ slot: "breakfast", start: 495 }, { slot: "lunch", start: 720 }, { slot: "dinner", start: 1110 }];
@@ -128,8 +153,11 @@ test("available: windows, meal slot, claimed dropped, unknown kinds last as soon
   const noon = Help.available(ctx(12 * 60 + 10));
   const table = noon.find((x) => x.item.id === "table");
   assert.deepEqual([table.slot, table.quest, table.points], ["lunch", "table_helper", 5]);
-  const firstSoon = noon.findIndex((x) => !x.ready);
-  assert.ok(firstSoon > 0 && noon.slice(firstSoon).every((x) => !x.ready));
+  assert.ok(noon.every((x) => x.ready), "all 8 kinds are startable since slice 02");
+  // a kind or quest the app doesn't know (e.g. an older catalog) lists as "soon", last
+  const older = Help.available(ctx(12 * 60 + 10, { known: (kind) => kind !== "garden_tidy" && kind !== "office_tidy" }));
+  const firstSoon = older.findIndex((x) => !x.ready);
+  assert.ok(firstSoon > 0 && older.slice(firstSoon).every((x) => !x.ready) && older.length - firstSoon === 2);
   const evening = Help.available(ctx(18 * 60 + 30)).map((x) => x.item.id);
   assert.ok(!evening.includes("homework") && !evening.includes("garden") && evening.includes("table"));
   assert.equal(Help.available(ctx(21 * 60)).length, 0);
@@ -154,4 +182,22 @@ test("the points card and its styles never use red (coach, not cop)", () => {
   const fn = html.slice(html.indexOf("function pointsLockHtml(){"), html.indexOf("function sayPointsLine(){"));
   assert.ok(fn.length > 0);
   assert.doesNotMatch(fn, /--bad|\bred\b|late|遲到/i);
+});
+
+test("a family's saved quest catalog picks up the new home-help quests once", () => {
+  const SQQuestConfig = require("../js/quest-config.js");
+  globalThis.window = { SQQuestData, SQPoints };
+  try {
+    const saved = SQQuestData.all().filter((q) => !q.since).map((q) => Object.assign({}, q, { since: undefined }));
+    saved.push(Object.assign({}, SQQuestData.byId("shoe_tidy"), { enabled: false }));
+    const ids = SQQuestConfig.catalog({ quest_catalog_v1: JSON.stringify(saved) }).map((q) => q.id);
+    for (const id of ["garden_tidy", "living_tidy", "office_tidy"]) assert.equal(ids.filter((x) => x === id).length, 1, id);
+    assert.equal(ids.filter((x) => x === "shoe_tidy").length, 1, "a saved copy wins and is not duplicated");
+    const catalog = SQQuestConfig.catalog({ quest_catalog_v1: JSON.stringify(saved) });
+    assert.equal(catalog.find((q) => q.id === "shoe_tidy").enabled, false, "Papa's pause is kept");
+    assert.equal(catalog.find((q) => q.id === "garden_tidy").verification, "parent");
+    assert.equal(catalog.find((q) => q.id === "garden_tidy").rewardPoints, 15);
+  } finally {
+    delete globalThis.window;
+  }
 });

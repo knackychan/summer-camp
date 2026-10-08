@@ -108,10 +108,10 @@ test("root projection covers real catalogs, stable aliases and shared lock excep
   `, context);
   const registry = context.SQContentRegistry;
   await registry.ready();
-  const counts = { game: MANIFEST.filter(entry => !entry.music).length, music: MANIFEST.filter(entry => entry.music).length, book: 8, activity: 11, guide: 3, lesson: 18, learning: 2, quest: 15, reward: 4, section: 9 };
+  const counts = { game: MANIFEST.filter(entry => !entry.music).length, music: MANIFEST.filter(entry => entry.music).length, book: 8, activity: 11, guide: 3, lesson: 18, learning: 2, quest: 19, reward: 4, section: 9 };
   for (const [kind, count] of Object.entries(counts)) assert.equal(registry.list({ kind }).length, count, kind);
   assert.equal(new Set(registry.list().map((row) => row.id)).size, Object.values(counts).reduce((sum, count) => sum + count, 0));
-  for (const id of ["dressing", "table_helper", "table_helper_breakfast", "table_helper_dinner"]) assert.ok(registry.get("quest:" + id), id);
+  for (const id of ["dressing", "table_helper", "table_helper_breakfast", "table_helper_dinner", "shoe_tidy", "garden_tidy", "living_tidy", "office_tidy"]) assert.ok(registry.get("quest:" + id), id);
   assert.equal(registry.get("game:kitchen").title[1], "廚房冒險");
   assert.equal(registry.get("game:city"), null);
   assert.equal((await registry.open("game:city")).reason, "content_not_found");
