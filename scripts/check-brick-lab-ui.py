@@ -892,6 +892,63 @@ def alive_checks(page, snap, check, out):
     page.wait_for_timeout(900)
 
 
+def swing_checks(page, snap, check, out):
+    """Moving parts M8 (2026-10-08): a tap on a door, window or gate opens it in about 300 ms and the next tap
+    shuts it; the state is the saved pose (Undo puts it back), the box and footprint never change, and the frames
+    stop when it settles."""
+    def tap(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(120)
+
+    def piece(pid):
+        return next(p for p in snap()['pieces'] if p['id'] == pid)
+
+    box = page.locator('.sqbl-stage canvas').bounding_box()
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+    spots = {'door_1x4x6': (0.42, 0.5), 'door_round': (0.62, 0.62), 'window_1x2': (0.35, 0.68), 'portcullis': (0.66, 0.38),
+             'treasure_chest': (0.5, 0.75)}
+    cats = {'portcullis': 'castle', 'treasure_chest': 'pirates'}
+    opened = {'door_1x4x6': 90, 'door_round': 90, 'window_1x2': 90, 'portcullis': 180, 'treasure_chest': -105}
+    for part_id, (fx, fy) in spots.items():
+        pick(page, cats.get(part_id, 'doors'))
+        page.locator(f'.sqbl-part[data-part="{part_id}"]').first.click()
+        page.locator('.sqbl-tray-title').click()
+        tap(box['x'] + box['width'] * fx, box['y'] + box['height'] * fy)
+        s = snap()
+        pid = s['selectedId']
+        p0 = piece(pid)
+        check(f'{part_id}: placing it leaves it shut {s["poseAngles"]}', p0['partId'] == part_id and not p0.get('pose')
+              and abs(s['poseAngles'].get('swing', 0)) < 1e-6)
+        undo0 = s['undo']
+        tap(p0['screen']['x'], p0['screen']['y'])
+        mid = snap()
+        page.wait_for_timeout(450)
+        s = snap()
+        p1 = piece(pid)
+        check(f'{part_id}: a tap swings it open {s["poseAngles"]} (swinging {pid in mid["swinging"]})', pid in mid['swinging']
+              and s['poseAngles'].get('swing') == opened[part_id] and p1.get('pose') == {'p': 'open'} and not s['swinging']
+              and s['selectedId'] == pid and s['undo'] == undo0 + 1)
+        check(f'{part_id}: opening moves nothing (same spot, same turn)', all(p1[k] == p0[k] for k in ('x', 'y', 'z', 'rotation')))
+        if part_id == 'door_1x4x6':
+            check('Its hint says a tap opens and shuts it (EN + 中文)', '打開' in page.locator('.sqbl-stage-hint').inner_text())
+            page.screenshot(path=str(out / 'swing-door-open.png'))
+            f0 = snap()['render']['frames']
+            page.wait_for_timeout(500)
+            check('Settled: no more frames', snap()['render']['frames'] == f0)
+        tap(p1['screenTop']['x'], p1['screenTop']['y'])  # an open door's middle is the empty doorway
+        page.wait_for_timeout(450)
+        s = snap()
+        check(f'{part_id}: the next tap shuts it {s["poseAngles"]}', abs(s['poseAngles'].get('swing', 0)) < 1e-6
+              and not piece(pid).get('pose') and s['selectedId'] == pid)
+        page.locator('.sqbl-app [data-action="undo"]').click()
+        page.wait_for_timeout(450)
+        check(f'{part_id}: Undo opens it again', piece(pid).get('pose') == {'p': 'open'})
+    page.screenshot(path=str(out / 'swing-open.png'))
+    page.locator('.sqbl-app [data-action="home-view"]').click()
+    page.wait_for_timeout(900)
+
+
 def assembly_checks(page, snap, check, out):
     """Assemblies plan slice 03 (docs/plans/2026-10-06-brick-lab-assemblies/): the Assembly tile opens Bricks,
     Plates and Tiles only; the menu card's steppers count blocks and stop at 64; a drag from the card moves one
@@ -1733,6 +1790,7 @@ def run(args):
                 focus_checks(page, snap, check, out)
                 animal_checks(page, snap, check, out)
                 alive_checks(page, snap, check, out)
+                swing_checks(page, snap, check, out)
                 assembly_checks(page, snap, check, out)
                 leave_lab(page)
 

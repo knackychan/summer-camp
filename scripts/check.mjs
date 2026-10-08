@@ -1223,7 +1223,11 @@ try {
         fail("bricklab", part.id + " joint " + name + " needs at[3], an axis x/y/z, step > 0 and min ≤ 0 ≤ max");
         return;
       }
-      if (!part.model.some(function (p) { return p.j === name; })) fail("bricklab", part.id + " joint " + name + " moves nothing");
+      // A hand-built door or window (no model) hangs its own leaf on `swing` in brick-lab.js.
+      if (part.model && !part.model.some(function (p) { return p.j === name; })) fail("bricklab", part.id + " joint " + name + " moves nothing");
+      if (!part.model && !(name === "swing" && (part.shape === "door" || part.shape === "window"))) fail("bricklab", part.id + " joint " + name + " is on a hand-built part that can't move it");
+      // Machines (moving-parts M8, X1): Open puts the joint at its own `open`, which must be a stop.
+      if (part.body === "machine" && !(d.open != null && poseMod.stopsOf(d).some(function (a) { return Math.abs(a - d.open) < 1e-6 && Math.abs(a) > 1e-6; }))) fail("bricklab", part.id + " joint " + name + " needs an `open` stop other than 0");
       if (!poseMod.JOINT_LABELS[name]) fail("bricklab", part.id + " joint " + name + " has no EN + 中文 chip name (JOINT_LABELS)");
       if (d.nod) {
         var n = d.nod;

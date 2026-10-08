@@ -16,7 +16,7 @@ import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
 import { createSequencer, groupIds } from "./brick-share.js";
 import { ASSEMBLY_KEYS, ASSEMBLY_PATTERNS, assemblyParts, blockRotation, buildAssembly, cleanAssemblyPrefs, placeAssembly, stepSize } from "./brick-assembly.js";
-import { JOINT_LABELS, REACT_SECONDS, cleanPose, isSitting, jointAngles, jointDef, jointKeys, posesFor, poseShape, reactAngles, samePose, seedOf, sitOffset, sitShift, stopsOf } from "./brick-pose.js";
+import { JOINT_LABELS, REACT_SECONDS, SLIDE_UNIT, SWING_MS, cleanPose, isOpen, isSitting, isSwingPart, jointAngles, jointDef, jointKeys, posesFor, poseShape, reactAngles, samePose, seedOf, sitOffset, sitShift, stopsOf, swingAngles } from "./brick-pose.js";
 import { createLanSession } from "../game-services/lan-session.js";
 import { BrickTogether } from "./brick-together.js";
 
@@ -42,6 +42,7 @@ const HINTS = {
   explore: ["Slide to look around. Tap something to edit it.", "滑動來看看四周。點任何東西就能修改。"],
   backInBuild: ["Back in Build — edit the piece you tapped.", "回到建造——修改你點的積木。"],
   saved: ["Saved on this tablet", "已儲存在這台平板"],
+  swing: ["Tap it to open or shut it.", "點一下就能打開或關上。"],
   railSelected: ["Glowing dots are rail ends — turn or drag to join them.", "發光的點是軌道接頭，轉一轉或拖過去接起來。"],
   railBusy: ["Rails can't overlap — try a free spot.", "軌道不能疊在一起，換個空位試試。"],
   railJoined: ["Rails connected!", "軌道接上了！"],
@@ -611,7 +612,7 @@ const WINDOW_HEAD = 0.3;
 const WINDOW_JAMB = 0.2;
 const WINDOW_GLASS = 0x9fd3ee;
 
-function makeWindowPiece(part, colorHex, kit) {
+function makeWindowPiece(part, colorHex, kit, pose) {
   const hw = part.width / 2 - SEAM;
   const hd = part.depth / 2 - SEAM;
   const hh = part.height / 2;
@@ -625,15 +626,47 @@ function makeWindowPiece(part, colorHex, kit) {
     addStuds(list, studRow(part.width), studRow(part.depth), hh);
     return mergeGeometries(list);
   });
+  const pivot = swingPivot(part);
   const pane = kit.geo(`${part.id}:pane`, () => boxAt(0.06, part.height - WINDOW_SILL - WINDOW_HEAD + 0.04,
-    hd * 2 - WINDOW_JAMB * 2 + 0.04, 0, (WINDOW_SILL - WINDOW_HEAD) / 2, 0));
+    hd * 2 - WINDOW_JAMB * 2 + 0.04, 0, (WINDOW_SILL - WINDOW_HEAD) / 2, 0).translate(-pivot[0], -pivot[1], -pivot[2]));
   const glass = kit.custom("window:pane", () => litMaterial(kit.cheap, {
     color: WINDOW_GLASS, roughness: 0.12, metalness: 0, transparent: true, opacity: 0.45, depthWrite: false,
   }));
   const group = new THREE.Group();
   group.add(mesh(frame, kit.mat(colorHex)));
-  group.add(mesh(pane, glass, false));
+  swingHolder(group, part, pose).add(mesh(pane, glass, false));
   return group;
+}
+
+/* Put a joint holder at a value: a turn in degrees, or for a slide joint a
+   move along its axis (moving-parts X2). A holder on the mirrored side turns
+   the mirrored way (y and z turns flip sign across x = 0; x turns don't). */
+function setHolder(holder, def, value, nod = null) {
+  const mirrored = holder.userData.sqblSide < 0;
+  holder.userData.sqblValue = value;
+  if (def.slide) holder.position[def.axis] = holder.userData.sqblRest[def.axis] + value / SLIDE_UNIT;
+  else holder.rotation[def.axis] = value * DEG * (mirrored && def.axis !== "x" ? -1 : 1);
+  if (def.nod && nod != null) holder.rotation[def.nod.axis] = nod * DEG * (mirrored && def.nod.axis !== "x" ? -1 : 1);
+}
+
+/* A hand-built door or window's hinge (moving-parts M8), in its group's
+   centred space: [x, y, z]. */
+function swingPivot(part) {
+  const at = part.joints.swing.at;
+  return [at[0], at[1] - part.height / 2, at[2]];
+}
+
+/* The holder its leaf or pane hangs in, at the pose's angle. */
+function swingHolder(group, part, pose) {
+  const holder = new THREE.Group();
+  holder.position.set(...swingPivot(part));
+  holder.userData.sqblJoint = "swing";
+  holder.userData.sqblSide = 1;
+  holder.userData.sqblRest = { x: holder.position.x, y: holder.position.y, z: holder.position.z };
+  setHolder(holder, part.joints.swing, jointAngles(part, pose).swing);
+  group.add(holder);
+  group.userData.sqblHolders = [holder];
+  return holder;
 }
 
 /* A small seeded random (mulberry32): the same numbers on every tablet. */
@@ -952,34 +985,41 @@ function makeArchPiece(part, colorHex, kit) {
 /* Door (parts-survey slice 04): a frame — two jambs and a studded head, no
    sill — round a closed door with raised panels, all in the picked colour,
    and a small dark knob on each face that recolouring leaves alone (D7). The
-   frame runs along z; the door doesn't open (D6). */
-function makeDoorPiece(part, colorHex, kit) {
+   frame runs along z. The leaf swings open on its −z edge (D6 reversed
+   2026-10-08, moving-parts M8). */
+function makeDoorPiece(part, colorHex, kit, pose) {
   const hw = part.width / 2 - SEAM;
   const hd = part.depth / 2 - SEAM;
   const hh = part.height / 2;
   const jamb = 0.3;
   const head = 0.4;
+  const pivot = swingPivot(part);
   const frame = kit.geo(part.id, () => {
     const list = [boxAt(hw * 2, head, hd * 2, 0, hh - head / 2, 0)];
     [-1, 1].forEach((sz) => list.push(boxAt(hw * 2, part.height - head, jamb, 0, -head / 2, sz * (hd - jamb / 2))));
+    addStuds(list, studRow(part.width), studRow(part.depth), hh);
+    return mergeGeometries(list);
+  });
+  const leaf = kit.geo(`${part.id}:leaf`, () => {
     const door = part.height - head;
     const width = hd * 2 - jamb * 2;
-    list.push(boxAt(0.16, door, width, 0, -head / 2, 0));
+    const list = [boxAt(0.16, door, width, 0, -head / 2, 0)];
     /* Two raised panels on each face. */
     [-1, 1].forEach((sx) => [0.28, 0.72].forEach((at) => {
       list.push(boxAt(0.04, door * 0.36, width * 0.7, sx * 0.1, -hh + door * at, 0));
     }));
-    addStuds(list, studRow(part.width), studRow(part.depth), hh);
-    return mergeGeometries(list);
+    return mergeGeometries(list).translate(-pivot[0], -pivot[1], -pivot[2]);
   });
   const knobs = kit.geo(`${part.id}:knob`, () => mergeGeometries([-1, 1].map((sx) => {
     const g = new THREE.SphereGeometry(0.07, 10, 8);
     g.translate(sx * 0.13, -hh + (part.height - head) * 0.48, hd - jamb - 0.22);
     return g;
-  })));
+  })).translate(-pivot[0], -pivot[1], -pivot[2]));
   const group = new THREE.Group();
   group.add(mesh(frame, kit.mat(colorHex)));
-  group.add(mesh(knobs, kit.mat(0x3d4246, 0.4, 0.3), false));
+  const holder = swingHolder(group, part, pose);
+  holder.add(mesh(leaf, kit.mat(colorHex)));
+  holder.add(mesh(knobs, kit.mat(0x3d4246, 0.4, 0.3), false));
   return group;
 }
 
@@ -1422,10 +1462,10 @@ function makeJointedPiece(part, colorHex, kit, pose) {
       holder.position.set(pivot[0], pivot[1] - half, pivot[2]);
       /* A head turns, then nods within that turn. */
       holder.rotation.order = "YXZ";
-      holder.rotation[def.axis] = angles[joint] * DEG * (side && def.axis !== "x" ? -1 : 1);
-      if (def.nod) holder.rotation[def.nod.axis] = angles[`${joint}.nod`] * DEG * (side && def.nod.axis !== "x" ? -1 : 1);
       holder.userData.sqblJoint = joint;
       holder.userData.sqblSide = side ? -1 : 1;
+      holder.userData.sqblRest = { x: holder.position.x, y: holder.position.y, z: holder.position.z };
+      setHolder(holder, def, angles[joint], def.nod ? angles[`${joint}.nod`] : null);
       inner.add(holder);
       root.userData.sqblHolders = (root.userData.sqblHolders || []).concat([holder]);
     }
@@ -1449,7 +1489,7 @@ function makeJointedPiece(part, colorHex, kit, pose) {
   return root;
 }
 
-function makePieceMesh(part, colorHex, kit) {
+function makePieceMesh(part, colorHex, kit, pose = null) {
   if (part.model) return makeModelPiece(part, colorHex, kit);
   if (part.shape === "wheel") return makeWheelPiece(part, colorHex, kit);
   if (part.shape === "rail") return makeRailPiece(part, kit);
@@ -1461,7 +1501,7 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "roundPlate") return makeRoundPlatePiece(part, colorHex, kit);
   if (part.shape === "grille") return makeGrillePiece(part, colorHex, kit);
   if (part.shape === "arch") return makeArchPiece(part, colorHex, kit);
-  if (part.shape === "door") return makeDoorPiece(part, colorHex, kit);
+  if (part.shape === "door") return makeDoorPiece(part, colorHex, kit, pose);
   if (part.shape === "leaves") return makeLeavesPiece(part, kit);
   if (part.shape === "cone") return makeConePiece(part, colorHex, kit);
   if (part.shape === "slopeCurved") return makeSlopeCurvedPiece(part, colorHex, kit);
@@ -1473,7 +1513,7 @@ function makePieceMesh(part, colorHex, kit) {
   if (part.shape === "slopeInv") return makeSlopeInvPiece(part, colorHex, kit);
   if (part.shape === "frame") return makeFramePiece(part, colorHex, kit);
   if (part.shape === "brace") return makeBracePiece(part, colorHex, kit);
-  if (part.shape === "window") return makeWindowPiece(part, colorHex, kit);
+  if (part.shape === "window") return makeWindowPiece(part, colorHex, kit, pose);
   if (part.shape === "rock") return makeRockPiece(part, kit);
   if (part.shape === "mushroom") return makeMushroomPiece(part, kit);
   if (part.shape === "log") return makeLogPiece(part, kit);
@@ -1766,6 +1806,7 @@ export class BrickLabRuntime {
     this.focus = null;
     this.focusHidden = new Set();
     this.alive = new Map(); /* piece id → when its tap reaction started (slice 04) */
+    this.swings = new Map(); /* piece id → { start, from, to }: a door or lid swinging open or shut (M8) */
     this.leftRail = this.root.querySelector(".sqbl-left-rail");
     this.infoEl = this.root.querySelector("[data-info]");
     this.asmEl = this.root.querySelector("[data-asm]");
@@ -3293,9 +3334,10 @@ export class BrickLabRuntime {
   /* The 3D object for a piece already in `pieces`. */
   addObject(piece) {
     const part = getPart(piece.partId);
-    const jointed = part.joints && (piece.pose || (this.focus && this.focus.id === piece.id) || this.alive.has(piece.id));
+    /* A hand-built door or window always hangs its leaf on a hinge (M8). */
+    const jointed = part.model && part.joints && (piece.pose || (this.focus && this.focus.id === piece.id) || this.alive.has(piece.id) || this.swings.has(piece.id));
     const object = jointed ? makeJointedPiece(part, getColorHex(piece.colorId), this.kit, piece.pose)
-      : makePieceMesh(part, getColorHex(piece.colorId), this.kit);
+      : makePieceMesh(part, getColorHex(piece.colorId), this.kit, piece.pose);
     const paint = this.kit.mat(getColorHex(piece.colorId));
     object.traverse((node) => { if (node.material === paint) node.userData.sqblPaint = true; });
     object.position.set(piece.x, piece.y, piece.z);
@@ -3384,6 +3426,14 @@ export class BrickLabRuntime {
       this.paintObject(this.sceneObjects.get(op.id), this.pieces.get(op.id));
     } else if (op.type === "pose") {
       const old = this.sceneObjects.get(op.id);
+      /* A machine swings from where it was drawn to its new pose (M8), here
+         and on every other tablet. */
+      const part = getPart(this.pieces.get(op.id).partId);
+      if (old && isSwingPart(part)) {
+        const from = jointAngles(part, null);
+        (old.userData.sqblHolders || []).forEach((holder) => { from[holder.userData.sqblJoint] = holder.userData.sqblValue; });
+        this.swings.set(op.id, { start: performance.now(), from, to: jointAngles(part, this.pieces.get(op.id).pose) });
+      }
       if (old) {
         this.scene.remove(old);
         disposeTree(old);
@@ -3838,6 +3888,13 @@ export class BrickLabRuntime {
     }
 
     if (pieceId) {
+      /* A door, window, lid, lever or gate opens or shuts on every tap (M8);
+         ↻ Turn in the bubble still turns it. */
+      if (isSwingPart(getPart(this.pieces.get(pieceId).partId))) {
+        if (pieceId !== this.selectedId) this.selectPiece(pieceId);
+        this.toggleSwing(pieceId);
+        return;
+      }
       /* Tapping the selected piece again turns it — the tool is the piece (D8). */
       if (pieceId === this.selectedId) this.rotateSelected();
       else this.selectPiece(pieceId);
@@ -3860,7 +3917,10 @@ export class BrickLabRuntime {
       const by = this.placer(id);
       this.selectionHelper.material.color.set(by ? by.color : SELECTION_BLUE);
       if (changed && by && this.pieces.get(id).by !== this.kidId) this.setHint(by.av, HINTS.placedBy(by.name));
-      else if (changed) this.setHint("✨", isRail(getPart(this.pieces.get(id).partId)) ? HINTS.railSelected : HINTS.selected);
+      else if (changed) {
+        const part = getPart(this.pieces.get(id).partId);
+        this.setHint("✨", isRail(part) ? HINTS.railSelected : isSwingPart(part) ? HINTS.swing : HINTS.selected);
+      }
     }
     this.updateSelectionUI();
   }
@@ -4037,11 +4097,42 @@ export class BrickLabRuntime {
     return !!done;
   }
 
-  /* Alive on tap (moving-parts slice 04, T1–T4): a figure, animal or machine
-     the kid selects reacts for REACT_SECONDS, then settles back into its pose. */
+  /* Open a shut machine, shut an open one: a saved, shared pose (M8). */
+  toggleSwing(id) {
+    const piece = this.pieces.get(id);
+    if (!piece) return false;
+    const part = getPart(piece.partId);
+    const done = this.setPose(id, isOpen(part, piece.pose) ? null : { p: "open" });
+    if (done) {
+      this.setHint("🚪", HINTS.swing);
+      this.haptic("tap");
+    }
+    return done;
+  }
+
+  /* M8: each swinging piece's joints this frame, SWING_MS from start to end. */
+  animateSwings(time) {
+    this.swings.forEach((swing, id) => {
+      const piece = this.pieces.get(id);
+      const object = this.sceneObjects.get(id);
+      const t = (time - swing.start) / SWING_MS;
+      if (!piece || !object) { this.swings.delete(id); return; }
+      const part = getPart(piece.partId);
+      const angles = swingAngles(swing.from, swing.to, t);
+      (object.userData.sqblHolders || []).forEach((holder) => {
+        const joint = holder.userData.sqblJoint;
+        setHolder(holder, part.joints[joint], angles[joint]);
+      });
+      if (t >= 1) this.swings.delete(id);
+    });
+  }
+
+  /* Alive on tap (moving-parts slice 04, T1–T4): a figure or animal the kid
+     selects reacts for REACT_SECONDS, then settles back into its pose. A
+     machine swings instead (M8). */
   startAlive(id) {
     const piece = this.pieces.get(id);
-    if (!piece || !getPart(piece.partId).joints) return;
+    if (!piece || !getPart(piece.partId).joints || isSwingPart(getPart(piece.partId))) return;
     const fresh = !this.alive.has(id);
     this.alive.set(id, performance.now());
     if (fresh) this.refreshObject(id);
@@ -4065,9 +4156,7 @@ export class BrickLabRuntime {
       (object.userData.sqblHolders || []).forEach((holder) => {
         const joint = holder.userData.sqblJoint;
         const def = part.joints[joint];
-        const flip = holder.userData.sqblSide < 0;
-        holder.rotation[def.axis] = angles[joint] * DEG * (flip && def.axis !== "x" ? -1 : 1);
-        if (def.nod) holder.rotation[def.nod.axis] = angles[`${joint}.nod`] * DEG * (flip && def.nod.axis !== "x" ? -1 : 1);
+        setHolder(holder, def, angles[joint], def.nod ? angles[`${joint}.nod`] : null);
       });
     });
   }
@@ -4213,7 +4302,7 @@ export class BrickLabRuntime {
         const url = this.thumbs.get(key);
         if (url) { this.setThumb(el, key, url); return; }
         el.dataset.thumbWant = key;
-        this.thumbs.want(key, () => (pose ? makeJointedPiece(part, colorHex, this.kit, pose) : makePieceMesh(part, colorHex, this.kit)), (object) => disposeTree(object));
+        this.thumbs.want(key, () => (pose && part.model ? makeJointedPiece(part, colorHex, this.kit, pose) : makePieceMesh(part, colorHex, this.kit, pose)), (object) => disposeTree(object));
       });
     }
   }
@@ -4755,8 +4844,9 @@ export class BrickLabRuntime {
       /* Part icons draw into the canvas corner; the scene then covers it. */
       const icons = this.thumbs ? this.thumbs.pump() : 0;
       /* T3: something reacting to a tap draws every frame until it settles. */
-      const reacting = this.alive.size > 0;
-      if (reacting) this.animateAlive(performance.now());
+      const reacting = this.alive.size > 0 || this.swings.size > 0;
+      if (this.alive.size) this.animateAlive(performance.now());
+      if (this.swings.size) this.animateSwings(performance.now());
       if (!icons && !moved && !glowing && !reacting && performance.now() > this.renderUntil) return;
       if (this.selectedId && this.selectionHelper.visible) {
         const object = this.sceneObjects.get(this.selectedId);
@@ -4788,6 +4878,9 @@ export class BrickLabRuntime {
       const out = Object.assign({}, piece);
       const screen = toScreen(piece.x, piece.y, piece.z);
       if (screen) out.screen = screen;
+      /* Just under its top: an open door's middle is the empty doorway. */
+      const top = toScreen(piece.x, piece.y + shapeOf(piece).height / 2 - 0.15, piece.z);
+      if (top) out.screenTop = top;
       return out;
     });
     return {
@@ -4803,6 +4896,8 @@ export class BrickLabRuntime {
       /* The selected piece's material colours: a recolour must leave fixed parts (a window pane) alone. */
       /* Alive on tap (slice 04): the pieces reacting right now. */
       alive: Array.from(this.alive.keys()),
+      /* M8: doors, windows and lids swinging right now. */
+      swinging: Array.from(this.swings.keys()),
       /* Focus mode (slice 02): the piece, the picked joint and where each joint is on screen. */
       focus: this.focus ? (() => {
         const joints = {};
@@ -4835,7 +4930,8 @@ export class BrickLabRuntime {
         this.sceneObjects.get(this.selectedId).traverse((node) => {
           const joint = node.userData.sqblJoint;
           if (!joint || !joints[joint] || joint in out) return;
-          out[joint] = Math.round(node.rotation[joints[joint].axis] / DEG * 10) / 10;
+          const value = node.userData.sqblValue != null ? node.userData.sqblValue : node.rotation[joints[joint].axis] / DEG;
+          out[joint] = Math.round(value * 10) / 10;
           if (joints[joint].nod) out[`${joint}.nod`] = Math.round(node.rotation[joints[joint].nod.axis] / DEG * 10) / 10;
         });
         return out;

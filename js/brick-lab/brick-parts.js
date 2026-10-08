@@ -181,6 +181,10 @@ const openJaw = (at) => ({ at, axis: "x", step: 15, min: -30, max: 0 });
 /* Four legs → front pair (forward of the middle) and back pair. */
 const legPairs = (list) => flatten(list).map((p) => ({ ...p, j: p.at[2] >= 0 ? "legsF" : "legsB" }));
 const beast = (body, joints, extra = {}) => ({ body, joints: Object.freeze(joints), ...extra });
+/* Machines (moving-parts M8): one `swing` joint with its `open` stop; a tap
+   opens and shuts it. Tag the moving shapes with `swinging()`. */
+const machine = (swing) => ({ body: "machine", joints: Object.freeze({ swing: Object.freeze(swing) }) });
+const swinging = (list) => tag(list, "swing");
 
 /* A horse a minifig can ride: its saddle is `top` (C5). Extras high up and
    forward (a horn) turn with the head; the rest (a saddle) stay on the body. */
@@ -323,11 +327,13 @@ export const MORE_PARTS = Object.freeze([
   /* ── Doors and windows (a minifig fits a 1×4×6 door) ── */
   model("door_round", ["Castle Door 1×4×6", "城堡門 1×4×6"], "doors", 1, 4, B * 6, [
     { prism: archOutline(1.98, 5.0, 1.5, B * 6, 12), len: 0.96, axis: "x" },
-    { prism: [...archOutline(1.5, 5.0, 1.5, 6.5, 12).slice(2, 15), [1.5, 0], [-1.5, 0]], len: 0.16, axis: "x", at: [0.08, 0, 0], c: "wood" },
-    [1.4, 4.2].map((y) => ({ box: [0.06, 0.16, 2.9], at: [0.18, y, 0], c: "black", bevel: 0 })),
-    { torus: [0.16, 0.035], at: [0.2, 3.0, 1.0], rot: [0, 90, 0], c: "black", seg: 10, segT: 4 },
+    swinging([
+      { prism: [...archOutline(1.5, 5.0, 1.5, 6.5, 12).slice(2, 15), [1.5, 0], [-1.5, 0]], len: 0.16, axis: "x", at: [0.08, 0, 0], c: "wood" },
+      [1.4, 4.2].map((y) => ({ box: [0.06, 0.16, 2.9], at: [0.18, y, 0], c: "black", bevel: 0 })),
+      { torus: [0.16, 0.035], at: [0.2, 3.0, 1.0], rot: [0, 90, 0], c: "black", seg: 10, segT: 4 },
+    ]),
     { studs: grid(1, 4), at: [0, B * 6, 0] },
-  ]),
+  ], machine({ at: [0.08, 3.0, -1.5], axis: "y", step: 22.5, min: 0, max: 90, open: 90 })),
   model("window_shutters", ["Window with Shutters", "百葉窗"], "doors", 1, 4, B * 2, [
     { box: [0.98, 0.24, 1.96], at: [0, 0.12, 0], c: "white" }, { box: [0.98, 0.24, 1.96], at: [0, B * 2 - 0.12, 0], c: "white" },
     [-0.89, 0.89].map((z) => ({ box: [0.98, B * 2, 0.2], at: [0, B, z], c: "white" })),
@@ -339,10 +345,12 @@ export const MORE_PARTS = Object.freeze([
   model("garage_door", ["Garage Door 1×4×4", "車庫門 1×4×4"], "doors", 1, 4, B * 4, [
     [-1.8, 1.8].map((z) => ({ box: [0.98, B * 4, 0.36], at: [0, B * 2, z] })),
     { box: [0.98, 0.4, 3.96], at: [0, B * 4 - 0.2, 0] },
-    { box: [0.12, B * 4 - 0.4, 3.24], at: [0, (B * 4 - 0.4) / 2, 0], c: "white" },
-    range(7, (i) => ({ box: [0.2, 0.06, 3.2], at: [0.04, 0.3 + i * 0.62, 0], c: "grey", bevel: 0 })),
+    swinging([
+      { box: [0.12, B * 4 - 0.4, 3.24], at: [0, (B * 4 - 0.4) / 2, 0], c: "white" },
+      range(7, (i) => ({ box: [0.2, 0.06, 3.2], at: [0.04, 0.3 + i * 0.62, 0], c: "grey", bevel: 0 })),
+    ]),
     { studs: grid(1, 4), at: [0, B * 4, 0] },
-  ]),
+  ], machine({ at: [0, B * 4 - 0.4, 0], axis: "z", step: 22.5, min: 0, max: 90, open: 90 })),
 
   /* ── Wheels ── */
   model("wheel_wagon", ["Wagon Wheel", "馬車輪"], "wheels", 1, 2, 1.8, [
@@ -431,16 +439,22 @@ export const MORE_PARTS = Object.freeze([
 
   /* ── Connectors (shapes only: nothing moves yet, C8) ── */
   model("hinge", ["Hinge 2×2", "鉸鏈 2×2"], "connectors", 2, 2, P, [
-    mirror({ box: [0.9, P, 1.96], at: [0.53, P / 2, 0] }),
+    { box: [0.9, P, 1.96], at: [-0.53, P / 2, 0] },
+    { studs: [[-0.53, -0.5], [-0.53, 0.5]], at: [0, P, 0] },
     { cyl: [0.18, 1.96], axis: "z", at: [0, 0.2, 0], c: "dark" },
-    { studs: grid(2, 2).map(([x, z]) => [x * 1.06, z]), at: [0, P, 0] },
-  ]),
+    swinging([
+      { box: [0.9, P, 1.96], at: [0.53, P / 2, 0] },
+      { studs: [[0.53, -0.5], [0.53, 0.5]], at: [0, P, 0] },
+    ]),
+  ], machine({ at: [0, 0.2, 0], axis: "z", step: 45, min: 0, max: 180, open: 90 })),
   model("lever", ["Lever", "控制桿"], "connectors", 1, 1, 1.7, [
     { box: [0.96, P, 0.96], at: [0, P / 2, 0] },
     { dome: 0.3, at: [0, P, 0], c: "dark" },
-    { cyl: [0.06, 1.0], rot: [0, 0, -25], at: [0.21, 1.0, 0], c: "dark" },
-    { ball: 0.2, at: [0.42, 1.45, 0], c: "red" },
-  ]),
+    swinging([
+      { cyl: [0.06, 1.0], rot: [0, 0, -25], at: [0.21, 1.0, 0], c: "dark" },
+      { ball: 0.2, at: [0.42, 1.45, 0], c: "red" },
+    ]),
+  ], machine({ at: [0, 0.55, 0], axis: "z", step: 25, min: 0, max: 50, open: 50 })),
   model("turntable", ["Turntable 2×2", "轉盤 2×2"], "connectors", 2, 2, P * 2, [
     { box: [1.96, P, 1.96], at: [0, P / 2, 0], c: "dark" },
     { cyl: [0.94, P], at: [0, P * 1.5, 0], seg: 24 },
@@ -921,11 +935,11 @@ export const MORE_PARTS = Object.freeze([
     [-1.5, 0.5].map((z) => ({ box: [0.98, B, 0.96], at: [0, B * 1.5, z] })),
     { studs: [[0, -1.5], [0, 0.5]], at: [0, B * 2, 0] },
   ]),
-  model("portcullis", ["Portcullis", "城門柵欄"], "castle", 1, 4, B * 4, [
+  model("portcullis", ["Portcullis", "城門柵欄"], "castle", 1, 4, B * 4, swinging([
     range(5, (i) => ({ cyl: [0.07, B * 4 - 0.3], at: [0, (B * 4 - 0.3) / 2 + 0.3, -1.6 + i * 0.8], c: "dark" })),
     range(5, (i) => ({ cone: [0.1, 0.3], rot: [180, 0, 0], at: [0, 0.15, -1.6 + i * 0.8], c: "dark", seg: 6 })),
     [1.4, 2.8, 4.3].map((y) => ({ box: [0.16, 0.14, 3.9], at: [0, y, 0], c: "dark", bevel: 0 })),
-  ]),
+  ]), machine({ at: [0, 0, 0], axis: "y", slide: true, step: 45, min: 0, max: 180, open: 180 })),
   model("banner", ["Castle Banner", "城堡旗幟"], "castle", 1, 1, 5.6, [
     { cyl: [0.3, 0.2], c: "dark" }, { cyl: [0.07, 5.2], at: [0, 2.8, 0], c: "steel" },
     { ball: 0.14, at: [0, 5.45, 0], c: "gold", seg: 8, segH: 6 },
@@ -985,9 +999,12 @@ export const MORE_PARTS = Object.freeze([
     { box: [1.6, 0.7, 0.9], at: [0, 0.35, 0], c: "wood" },
     [-0.5, 0.5].map((x) => ({ box: [0.12, 0.72, 0.92], at: [x, 0.36, 0], c: "gold", bevel: 0 })),
     [[-0.35, 0.75, 0], [0.3, 0.78, 0.1], [0, 0.82, -0.1], [0.45, 0.72, -0.15], [-0.1, 0.74, 0.2]].map((at) => ({ ball: 0.16, s: [1, 0.5, 1], at, c: "gold", seg: 8, segH: 5 })),
-    { ball: 0.1, at: [0.15, 0.85, 0.2], c: "red", seg: 6, segH: 4 },
-    { cyl: [0.45, 1.6], axis: "x", s: [1, 1, 0.5], rot: [-70, 0, 0], at: [0, 1.0, -0.6], c: "wood" },
-  ]),
+    { ball: 0.1, at: [0.15, 0.78, 0.2], c: "red", seg: 6, segH: 4 },
+    swinging([
+      { cyl: [0.45, 1.6], axis: "x", s: [1, 0.5, 1], at: [0, 0.7, 0], c: "wood" },
+      [-0.5, 0.5].map((x) => ({ cyl: [0.46, 0.12], axis: "x", s: [1, 0.5, 1], at: [x, 0.7, 0], c: "gold" })),
+    ]),
+  ], machine({ at: [0, 0.7, -0.45], axis: "x", step: 15, min: -105, max: 0, open: -105 })),
   model("cannon", ["Cannon", "大砲"], "pirates", 2, 4, 1.8, [
     { box: [1.2, 0.5, 2.6], at: [0, 0.55, -0.3], c: "wood" },
     [-1.0, 0.6].map((z) => mirror({ cyl: [0.4, 0.14], axis: "x", at: [0.7, 0.4, z], c: "wood" })),
@@ -1018,10 +1035,12 @@ export const MORE_PARTS = Object.freeze([
   ]),
   model("pirate_flag", ["Pirate Flag", "海盜旗"], "pirates", 1, 1, 5.2, [
     { cyl: [0.3, 0.2], c: "dark" }, { cyl: [0.07, 5.0], at: [0, 2.7, 0], c: "wood" },
-    { box: [1.8, 1.2, 0.04], at: [0.95, 4.5, 0], c: "black", bevel: 0 },
-    { ball: 0.22, s: [1, 1, 0.3], at: [0.95, 4.62, 0.03], c: "white", seg: 10, segH: 8 },
-    [45, -45].map((a) => ({ box: [0.7, 0.07, 0.03], rot: [0, 0, a], at: [0.95, 4.3, 0.03], c: "white", bevel: 0 })),
-  ]),
+    swinging([
+      { box: [1.8, 1.2, 0.04], at: [0.95, 4.5, 0], c: "black", bevel: 0 },
+      { ball: 0.22, s: [1, 1, 0.3], at: [0.95, 4.62, 0.03], c: "white", seg: 10, segH: 8 },
+      [45, -45].map((a) => ({ box: [0.7, 0.07, 0.03], rot: [0, 0, a], at: [0.95, 4.3, 0.03], c: "white", bevel: 0 })),
+    ]),
+  ], machine({ at: [0, 4.5, 0], axis: "y", step: 45, min: -90, max: 90, open: 90 })),
   model("gold_pile", ["Gold Coins", "金幣堆"], "pirates", 2, 2, 0.8, [
     { dome: 0.85, s: [1, 0.55, 1], c: "gold", seg: 14, segH: 6 },
     [[0.7, 0.05, 0.4], [-0.6, 0.05, 0.6], [0.2, 0.05, -0.8], [0.8, 0.05, -0.4]].map((at) => ({ cyl: [0.16, 0.05], at, c: "gold" })),

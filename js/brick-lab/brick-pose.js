@@ -10,7 +10,13 @@
    Slice 03 adds two things animals need. A joint may carry `nod: { axis,
    step, min, max }`, a second turn on the same pin (a head that looks left
    and nods); its key is "<joint>.nod". A joint may be `mirror: true`: its
-   shapes on the −x side turn the mirrored way, so one angle opens both wings. */
+   shapes on the −x side turn the mirrored way, so one angle opens both wings.
+
+   Machines (moving-parts M8, slice 05 X1, X2): a door, window, lid, lever or
+   gate has one joint, `swing`, with an `open` stop. Its pose list is Shut /
+   Open, and Open means "every joint at its own `open` stop", so each part
+   opens its own way. A joint may be `slide: true`: it moves along its axis
+   instead of turning, one unit per 45 (the portcullis rises). */
 
 /* Sitting (M12): the legs are 0.8 thick, so the body drops by the part of the
    thigh under the hip pivot, and moves half a stud back onto the back row. */
@@ -70,6 +76,10 @@ export const POSES = Object.freeze({
     preset("rest", "Rest", "休息", "😌"),
     preset("jump", "Jump", "跳", "⬆️", { legsB: 45 }),
   ]),
+  machine: Object.freeze([
+    preset("rest", "Shut", "關上", "🚪"),
+    preset("open", "Open", "打開", "🔓", {}, { open: true }),
+  ]),
   minifigSeated: Object.freeze([
     preset("seated", "Sit", "坐好", "💺"),
     preset("wave", "Wave", "揮手", "👋", { armR: -135 }),
@@ -92,7 +102,36 @@ export const JOINT_LABELS = Object.freeze({
   legsB: Object.freeze(["Back legs", "後腳"]),
   wings: Object.freeze(["Wings", "翅膀"]),
   jaw: Object.freeze(["Mouth", "嘴巴"]),
+  swing: Object.freeze(["Moving part", "會動的地方"]),
 });
+
+/* A slide joint moves this far (studs) per 45 of its value (X2). */
+export const SLIDE_UNIT = 45;
+
+/* Machines open and shut with a tap (M8): Shut ↔ Open, saved as the pose. */
+export function isSwingPart(part) {
+  return !!(part && part.body === "machine" && part.joints);
+}
+
+/* Is this piece open at all (any joint off its rest)? */
+export function isOpen(part, pose) {
+  const angles = jointAngles(part, pose);
+  return Object.keys(angles).some((key) => Math.abs(angles[key]) > 1e-6);
+}
+
+/* How long a tap's swing takes, in ms (M8: about 300 ms). */
+export const SWING_MS = 300;
+
+/* The angles `t` (0…1) of the way through a swing, eased out. */
+export function swingAngles(from, to, t) {
+  const k = t >= 1 ? 1 : 1 - (1 - t) * (1 - t);
+  const out = {};
+  Object.keys(to).forEach((key) => {
+    const a = key in from ? from[key] : 0;
+    out[key] = Math.round((a + (to[key] - a) * k) * 1000) / 1000;
+  });
+  return out;
+}
 
 /* Every key a pose can turn: each joint, and "<joint>.nod" after a joint that nods. */
 export function jointKeys(part) {
@@ -164,7 +203,9 @@ export function jointAngles(part, pose) {
   const chosen = presetOf(part, pose);
   jointKeys(part).forEach((joint) => {
     const stops = stopsOf(jointDef(part, joint));
-    const base = chosen && chosen.angles[joint] != null ? chosen.angles[joint] : 0;
+    const def = jointDef(part, joint);
+    const base = chosen && chosen.open && def.open != null ? def.open
+      : chosen && chosen.angles[joint] != null ? chosen.angles[joint] : 0;
     let index = stops.findIndex((a) => Math.abs(a - base) < 1e-6);
     if (index < 0) index = stops.findIndex((a) => Math.abs(a) < 1e-6);
     const steps = pose && pose.t && pose.t[joint] ? pose.t[joint] : 0;

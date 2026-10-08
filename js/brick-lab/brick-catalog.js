@@ -9,6 +9,11 @@ export const BRICK_HEIGHT = 1.2;
 export const PLATE_HEIGHT = 0.4;
 
 /* Lego-like plastic colours; ids are stable (saved builds use them). */
+/* A hand-built door or window that swings open on its edge at z (moving-parts
+   M8): its builder in brick-lab.js hangs the leaf or pane on this joint. */
+const swingOn = (z, height) => ({ body: "machine", joints: Object.freeze({
+  swing: Object.freeze({ at: Object.freeze([0, height / 2, z]), axis: "y", step: 22.5, min: 0, max: 90, open: 90 }) }) });
+
 export const COLORS = Object.freeze({
   red: 0xc91a09,
   orange: 0xfe8a18,
@@ -223,12 +228,14 @@ export const PARTS = Object.freeze([
   /* More-parts slice 02. The window's pane keeps its own see-through colour. */
   { id: "frame_2x4", label: ["Lattice Frame", "格子框架"], size: "", category: "structure", shape: "frame", width: 2, depth: 4, height: BRICK_HEIGHT, studs: true },
   { id: "brace_1x2", label: ["Support Bracket", "支架"], size: "", category: "structure", shape: "brace", width: 1, depth: 2, height: BRICK_HEIGHT, studs: true },
-  { id: "window_1x2", label: ["Window", "窗戶"], size: "", category: "doors", shape: "window", width: 1, depth: 2, height: BRICK_HEIGHT * 2, studs: true },
+  { id: "window_1x2", label: ["Window", "窗戶"], size: "", category: "doors", shape: "window", width: 1, depth: 2, height: BRICK_HEIGHT * 2, studs: true, ...swingOn(-0.78, BRICK_HEIGHT * 2) },
   /* Parts-survey slice 04. The space under the arch and the doorway count as
-     taken (parts-survey D5); the door doesn't open (D6). */
+     taken (parts-survey D5). D6 ("the door doesn't open") is reversed
+     (2026-10-08): the door and the windows swing open on a tap (moving-parts
+     M8); the opening still counts as taken, open or shut. */
   { id: "arch_1x4", label: ["Arch 1×4", "拱形積木 1×4"], size: "", category: "structure", shape: "arch", width: 1, depth: 4, height: BRICK_HEIGHT, studs: true },
-  { id: "door_1x4x6", label: ["Door", "門"], size: "", category: "doors", shape: "door", width: 1, depth: 4, height: BRICK_HEIGHT * 6, studs: true },
-  { id: "window_1x4x3", label: ["Big Window", "大窗戶"], size: "", category: "doors", shape: "window", width: 1, depth: 4, height: BRICK_HEIGHT * 3, studs: true },
+  { id: "door_1x4x6", label: ["Door", "門"], size: "", category: "doors", shape: "door", width: 1, depth: 4, height: BRICK_HEIGHT * 6, studs: true, ...swingOn(-1.68, BRICK_HEIGHT * 6) },
+  { id: "window_1x4x3", label: ["Big Window", "大窗戶"], size: "", category: "doors", shape: "window", width: 1, depth: 4, height: BRICK_HEIGHT * 3, studs: true, ...swingOn(-1.78, BRICK_HEIGHT * 3) },
   /* The two that plant straight into the baseplate (catalog C5: `ground`). */
   { id: "tree_small", label: ["Small Tree", "小樹"], size: "", category: "nature", shape: "tree", width: 2, depth: 2, height: 4, studs: false, ground: true },
   { id: "flower", label: ["Flower", "花"], size: "", category: "nature", shape: "flower", width: 1, depth: 1, height: 0.9, studs: false, ground: true },

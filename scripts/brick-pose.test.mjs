@@ -181,7 +181,8 @@ test("alive angles: on top of the pose, inside every joint's range, the same at 
 });
 
 test("alive loops move something on every jointed part, and differ between pieces", () => {
-  PARTS.filter((p) => p.joints).forEach((part) => {
+  /* Machines swing on a tap instead (M8). */
+  PARTS.filter((p) => p.joints && p.body !== "machine").forEach((part) => {
     const seed = seedOf("a");
     const moved = [0.5, 1.3, 2.9, 4.1, 6.6].some((t) => JSON.stringify(aliveAngles(part, null, t, seed, 1)) !== JSON.stringify(aliveAngles(part, null, 0, seed, 1)));
     assert.ok(moved, `${part.id} never moves`);
@@ -203,7 +204,7 @@ test("reduced motion moves half as far; the pose is the starting point", () => {
 });
 
 test("a tap reaction (slice 04, T2) starts and ends exactly at the pose and moves in between", () => {
-  PARTS.filter((p) => p.joints).forEach((part) => {
+  PARTS.filter((p) => p.joints && p.body !== "machine").forEach((part) => {
     const seed = seedOf("tap-" + part.id);
     const pose = { p: posesFor(part)[1] ? posesFor(part)[1].id : posesFor(part)[0].id };
     const still = jointAngles(part, pose);
@@ -219,4 +220,45 @@ test("a figure's tap reaction includes its wave", () => {
   const seed = seedOf("someone");
   const peak = Math.min(...[0.4, 0.6, 0.8, 1.0, 1.2].map((t) => reactAngles(fig, null, t, seed, 1).armR));
   assert.ok(peak < -60, `the right arm goes up (${peak})`);
+});
+
+import { SWING_MS, isOpen, isSwingPart, swingAngles } from "../js/brick-lab/brick-pose.js";
+
+/* Moving parts M8 (2026-10-08): doors, windows, lids, levers and gates open
+   and shut on a tap; Open is each part's own `open` stop. */
+const SWINGERS = ["door_1x4x6", "window_1x2", "window_1x4x3", "door_round", "garage_door", "hinge", "lever", "treasure_chest", "portcullis", "pirate_flag"];
+
+test("every swing part is a machine with Shut and Open; Open is its own open stop", () => {
+  SWINGERS.forEach((id) => {
+    const part = getPart(id);
+    assert.equal(part.id, id);
+    assert.ok(isSwingPart(part), `${id} swings`);
+    assert.deepEqual(posesFor(part).map((p) => p.id), ["rest", "open"], id);
+    assert.equal(isOpen(part, null), false, `${id} rests shut`);
+    const open = cleanPose(part, { p: "open" });
+    assert.deepEqual(open, { p: "open" }, id);
+    assert.equal(jointAngles(part, open).swing, part.joints.swing.open, id);
+    assert.ok(isOpen(part, open), id);
+    assert.ok(stopsOf(part.joints.swing).includes(part.joints.swing.open), `${id} open is a stop`);
+  });
+  assert.equal(isSwingPart(getPart("fig_boy")), false);
+  assert.equal(isSwingPart(getPart("brick_2x4")), false);
+});
+
+test("a swing eases from where it was to where it goes, and lands exactly", () => {
+  const from = { swing: 0 };
+  const to = { swing: 90 };
+  assert.deepEqual(swingAngles(from, to, 0), from);
+  assert.deepEqual(swingAngles(from, to, 1), to);
+  assert.deepEqual(swingAngles(from, to, 2), to);
+  const half = swingAngles(from, to, 0.5).swing;
+  assert.ok(half > 45 && half < 90, `eased out (${half})`);
+  assert.ok(SWING_MS >= 200 && SWING_MS <= 400);
+});
+
+test("opening never changes a part's box or what stacks on it", () => {
+  SWINGERS.forEach((id) => {
+    const part = getPart(id);
+    assert.deepEqual(poseShape(part, { p: "open" }), part, id);
+  });
 });
