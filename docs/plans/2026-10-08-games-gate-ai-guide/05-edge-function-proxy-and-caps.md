@@ -15,7 +15,7 @@
 - **SQL** `2026xxxx_guide_usage.sql`: `guide_usage(day date, kid_id text, calls int, cost_usd numeric(10,6), primary key(day,kid_id))`. RLS: read admin only; no anon or authenticated write (only the function writes, using its hosted service role).
 - **Secrets / deploy doc** `supabase/functions/games-guide/README.md`: create a **dedicated OpenAI API project** for the guide (separate from the ChatGPT subscription, which doesn't cover API use) and add prepaid credits. Set that project's monthly budget, and note whether it hard-stops or only alerts. Then `supabase secrets set OPENAI_API_KEY=…` from Papa's own terminal. `supabase functions deploy games-guide`. How to rotate the key. **No key, `.env` or service-role value is ever written to the repo**; `.gitignore` gains `supabase/functions/**/.env*`.
 - **`scripts/check.mjs`**:
-  - Secret scan extended to `supabase/functions/**` (no `sk-proj-` / `sk-` OpenAI key shapes, no `service_role` JWT shape, no `OPENAI_API_KEY=` with a value).
+  - Secret scan extended to `supabase/functions/**` (no `sk-proj-` / `sk-` OpenAI key shapes, no service-role JWT shape, no `OPENAI_API_KEY=` with a value).
   - The id list in the function equals `SQHomeHelp` ids.
 - **`scripts/games-guide-fn.test.mjs`**: runs the handler with a fake `fetch` (canned Responses API bodies) and a fake DB. Cases: cap reached → fallback with no model call; repeat key → cached row with no model call; bad model output (2 ids, missing 中文, an unknown id) → fallback; refusal → fallback; good output → one decision row + usage +1, with cost computed from tokens.
 
