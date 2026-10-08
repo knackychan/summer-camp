@@ -508,6 +508,8 @@ const KIDS = {
 <script src="js/learn-data.js"></script>
 <script src="js/time-core.js?v=63"></script>
 <script src="js/lock-core.js"></script>
+<script src="js/games-gate-core.js"></script>
+<script src="js/home-help-data.js"></script>
 <script src="js/pinpad.js"></script>
 <script src="js/papa-tools.js?v=63"></script>
 <script src="js/drills.js"></script>
@@ -991,6 +993,9 @@ function worldAttention(){
     if(lock.locked&&lock.reason==="brain"){
       const g=brainGate(hubKid);
       out["section:games"]=["Brain Gym first, then games open ("+g.doneCount+"/"+(g.doneCount+g.remaining.length)+")","先做頭腦體操，遊戲就會打開"];
+    }else if(lock.locked&&lock.reason==="points"){
+      const p=pointsGateState(hubKid);
+      out["section:games"]=SQHomeHelp.fill(SQHomeHelp.TEXT.world,{t:p.today,m:p.threshold});
     }else if(lock.locked)out["section:day"]=["Papa asked for a redo","爸爸請你再做一次"];
     const news=window.SQNotify?SQNotify.unread(hubKid):0;
     if(news)out["section:rewards"]=[news+" new in Rewards","獎勵有 "+news+" 則新消息"];
@@ -1528,7 +1533,7 @@ function showBrainResult(res,better,earned){
     <h3>${res.score} / ${res.total}${res.ms?" · "+SQBrain.fmtMs(res.ms):""}</h3>
     <p>${better?"New best! 新紀錄！":"Nice work! 做得好！"}</p>
     ${earned?`<p>${earned.amount} points pending sync · 點數待同步</p>`:""}
-    ${brainGate(kid).open?`<p>All games unlocked 🔓 遊戲全部解鎖</p>`:""}
+    ${brainGate(kid).open?(pointsGateState(kid).open?`<p>All games unlocked 🔓 遊戲全部解鎖</p>`:`<p>🏡 ${hh("brainDone",{n:pointsGateState(kid).need})}</p>`):""}
     <div class="vrow">
       <button class="btn" id="brAgain">Again 再一次</button>
       <button class="btn small" id="brDone">Done 完成</button>
@@ -1603,6 +1608,13 @@ function showLockOverlay(st){
   if(document.getElementById("lockOverlay"))return;
   const o=document.createElement("div");
   o.className="overlay"; o.id="lockOverlay";
+  if(st.reason==="points"){
+    o.innerHTML=`<div class="card" style="text-align:center;max-width:460px;width:100%">${pointsLockHtml()}</div>`;
+    document.body.appendChild(o);
+    bindPointsCard(o,function(){o.remove();});
+    sayPointsLine();
+    return;
+  }
   o.innerHTML=st.reason==="brain"?brainLockHtml():redoLockHtml(st.blockIdx);
   document.body.appendChild(o);
   const day=o.querySelector("#lockGoDay");
@@ -1654,11 +1666,115 @@ function brainLockHtml(){
     <p>${g.doneCount} / ${g.doneCount+g.remaining.length} done today 今天完成 ${g.doneCount}/${g.doneCount+g.remaining.length} 😊<br>
        About 3 minutes 大約三分鐘</p>
     ${brainTrioStrip(id)}
+    ${pointsAlsoWaiting(id)}
     <div class="vrow">
       <button class="btn" id="lockGoGym">▶ Start 開始</button>
       <button class="btn small" id="lockPapa">🔧 Papa 爸爸</button>
     </div>
   </div>`;
+}
+/* The brain gate outranks the points gate, and the trio is itself points —
+   say so, so the kid sees both doors lead the same way. */
+function pointsAlsoWaiting(id){
+  if(!id||pointsGateState(id).open)return "";
+  return `<p>🏡 ${hh("brainToo",{n:brainPointsPerDay()})}</p>`;
+}
+/* Daily points gate card (design.md D4): teal/gold progress, never red, the
+   gap named as a small step, and the gift reminder from the reward catalog.
+   Same body in the lock overlay and on the Games tab; buttons use data-gg
+   (not ids) because both can be on screen at once. */
+function pointsLockHtml(){
+  const id=activeKid(), p=pointsGateState(id), k=KIDS[id]||{};
+  const pct=p.threshold?Math.min(100,Math.round(p.today/p.threshold*100)):100;
+  const filled=p.threshold?Math.min(5,Math.floor(p.today/p.threshold*5)):5;
+  /* pre-readers (Lucien) get brooms filling up instead of a number bar */
+  const bar=(k.age||9)<=5
+    ?`<div class="ggicons" aria-label="${p.today} / ${p.threshold}">${[0,1,2,3,4].map(i=>`<span class="${i<filled?"on":""}">🧹</span>`).join("")}</div>`
+    :`<div class="ggbar"><span style="width:${pct}%"></span></div>`;
+  const ln=SQHomeHelp.line(id,todayStr(),p.need);
+  const gift=SQHomeHelp.giftLine(SQGamesGate.giftReminder(pointsOf(id).available,rewardCatalog()));
+  return `<div class="ggcard">
+    <div style="font-size:2.2em">🏡</div>
+    <h3>${hh("title")}</h3>
+    ${bar}
+    <p><b>${hh("today",{t:p.today,m:p.threshold})}</b></p>
+    <p>${escHtml(ln[0])}<span class="zhs">${escHtml(ln[1])}</span></p>
+    <p class="gggift">${escHtml(gift[0])}<span class="zhs">${escHtml(gift[1])}</span></p>
+    <div class="vrow">
+      <button class="btn" data-gg="help">🧭 ${hhPlain("help")}</button>
+      <button class="btn small" data-gg="day">📅 ${hhPlain("myDay")}</button>
+      <button class="btn small" data-gg="papa">🔧 ${hhPlain("papa")}</button>
+    </div>
+  </div>`;
+}
+function bindPointsCard(root,close){
+  root.querySelectorAll("[data-gg]").forEach(function(b){
+    b.onclick=function(){
+      const what=b.dataset.gg;
+      if(what==="help"){close();showHomeHelpChooser();}
+      else if(what==="day"){close();SummerQuest.navigate("day");}
+      else SQPin.show({title:SQHomeHelp.TEXT.papaOpen.join(" "),subtitle:SQHomeHelp.TEXT.papaOpenSub.join(" "),
+        onOk:function(){close();openGamesToday(activeKid());}});
+    };
+  });
+}
+function sayPointsLine(){
+  const id=activeKid(), k=KIDS[id]||{};
+  if(!id||(k.age||9)>5)return;
+  const ln=SQHomeHelp.line(id,todayStr(),pointsGateState(id).need);
+  say(ln[0]);say(ln[1],"zh-TW",true);
+}
+/* Today's facts for SQHomeHelp.available: meal windows from today's DAY, and
+   which award identities this kid already has today (queued, pending or confirmed). */
+function homeHelpContext(id){
+  const day=todayStr(), fs=(store&&store.familySettings)||{};
+  const claims=((store&&store.pointClaims)||[]).filter(c=>c.kid_id===id&&c.day===day&&["queued","pending","confirmed"].includes(c.status))
+    .concat(((store&&store.queue)||[]).filter(op=>op&&op.type==="pointClaim"&&op.claim&&op.claim.kid_id===id&&op.claim.day===day).map(op=>op.claim));
+  const meals=[];
+  dayFor(id).forEach(function(b,i){
+    SQPoints.block(i).forEach(function(d){
+      const start=SQTime.effMins(dayFor(id),dayOverrides,i);
+      if(d.kind==="table_helper"&&start!=null)meals.push({slot:d.slot,start:start});
+    });
+  });
+  return {minutes:SQ_DAY.nowMins(),meals:meals,
+    known:function(kind,quest){return !!SQPoints.rules[kind]&&(!quest||!!questById(quest));},
+    claimed:function(kind,slot){return claims.some(c=>c.kind===kind&&(c.slot||"default")===slot);},
+    atLimit:function(kind){return claims.filter(c=>c.kind===kind).length>=SQPoints.rules[kind].limit;},
+    amount:function(kind){return SQPoints.amount(kind,fs);}};
+}
+/* Slice 01: the fixed list, filtered by the drop rules only (no ranking, no AI). */
+function showHomeHelpChooser(){
+  const id=activeKid();
+  if(!id||!window.SQHomeHelp)return;
+  const old=document.getElementById("homeHelpOverlay");if(old)old.remove();
+  const list=SQHomeHelp.available(homeHelpContext(id));
+  const o=document.createElement("div");
+  o.className="overlay"; o.id="homeHelpOverlay";
+  const cards=list.map(function(x,i){
+    const goal=x.item.goal[id]||x.item.goal.luis;
+    const right=x.ready?`<b>+${x.points}</b> <small>${hhPlain("pointsWord")}</small>${x.item.verify==="parent"?`<small>${hhPlain("papaChecks")}</small>`:""}`:`<small>${hhPlain("soon")}</small>`;
+    return `<button class="hhcard" data-hh="${i}" ${x.ready?"":"disabled"}>
+      <span class="hhicon">${x.item.icon}</span>
+      <span class="hhtext"><b>${escHtml(x.item.label[0])} · ${escHtml(x.item.label[1])}</b><small>${escHtml(goal[0])}</small><small>${escHtml(goal[1])}</small></span>
+      <span class="hhpts">${right}</span></button>`;
+  }).join("");
+  o.innerHTML=`<div class="card hhpick">
+    <h3>🧭 ${hh("pickTitle")}</h3>
+    ${list.length?`<div class="hhlist">${cards}</div>`:`<p>🌙 ${hh("rest")}</p>`}
+    <div class="vrow"><button class="btn small" id="hhBack">${hhPlain("back")}</button></div>
+  </div>`;
+  document.body.appendChild(o);
+  o.querySelector("#hhBack").onclick=function(){o.remove();};
+  o.querySelectorAll("[data-hh]").forEach(function(b){
+    b.onclick=function(){
+      const x=list[+b.dataset.hh];
+      if(!x||!x.ready)return;
+      o.remove();
+      if(x.item.route==="day")SummerQuest.navigate("day");
+      else SummerQuest.openQuest(x.quest);
+    };
+  });
 }
 function brainTrioStrip(id){
   const done=brainToday(id);
@@ -1863,6 +1979,29 @@ function brainBypass(id){
 function brainGate(id){
   return SQBrainCore.gateState({trio:brainTrio(id),done:brainToday(id),bypass:brainBypass(id)});
 }
+/* ---- Daily points gate (docs/plans/2026-10-08-games-gate-ai-guide/ D1, D2):
+   today's points from this tablet's claims + queue; once reached, Games stay
+   open for the rest of the day even if a pending claim is later declined. ---- */
+function pointsGateState(kidId){
+  const id=kidId||activeKid(), day=todayStr(), fs=(store&&store.familySettings)||{};
+  if(!id||!window.SQGamesGate)return {open:true,reason:"off",today:0,threshold:0,need:0};
+  const key="sq:gamesgate:open:"+id;
+  let remembered=false;
+  try{remembered=localStorage.getItem(key)===day;}catch(e){}
+  const today=SQGamesGate.todayPoints(id,day,{claims:store&&store.pointClaims,queue:store&&store.queue});
+  const st=SQGamesGate.state(id,{settings:fs.games_gate_v1,today:today,papaOpen:isTestMode()||fs["braingate_"+id]===day,remembered:remembered});
+  if(st.reason==="reached"&&!remembered){try{localStorage.setItem(key,day);}catch(e){}}
+  return st;
+}
+/* one EN + 中文 line from SQHomeHelp.TEXT, escaped */
+function hh(key,vars){
+  const p=SQHomeHelp.fill(SQHomeHelp.TEXT[key],vars);
+  return `${escHtml(p[0])} <span class="zhs">${escHtml(p[1])}</span>`;
+}
+function hhPlain(key,vars){return escHtml(SQHomeHelp.fill(SQHomeHelp.TEXT[key],vars).join(" "));}
+function brainPointsPerDay(){
+  return window.SQPoints?SQPoints.amount("brain",store&&store.familySettings)*SQPoints.rules.brain.limit:0;
+}
 function gameLockState(kidId){
   if(isTestMode())return {locked:false,blockIdx:null,reason:null};
   const id=kidId||activeKid();
@@ -1870,11 +2009,12 @@ function gameLockState(kidId){
   const st=SQLock.computeLock({
     done:done,passOk:function(i){return passOkFor(id,i);},
     redos:(id&&store&&store.redos&&store.redos[id])||{},
-    brainOpen:id?brainGate(id).open:true
+    brainOpen:id?brainGate(id).open:true,
+    pointsOpen:id?pointsGateState(id).open:true
   });
   /* the PIN override frees one redo block only — it must not open the brain
-     gate, whose blockIdx is also null (Papa has clearBrainGate for that) */
-  if(st.locked&&st.reason!=="brain"&&lockOverride&&lockOverride.day===todayStr()&&lockOverride.blockIdx===st.blockIdx)
+     or points gate, whose blockIdx is also null (Papa has clearBrainGate for that) */
+  if(st.locked&&st.reason!=="brain"&&st.reason!=="points"&&lockOverride&&lockOverride.day===todayStr()&&lockOverride.blockIdx===st.blockIdx)
     return {locked:false,blockIdx:null,reason:null};
   if(!st.locked&&lockOverride){lockOverride=null;saveLockOverride(null);}
   return st;
@@ -2004,9 +2144,14 @@ function screenStatus(i,d){
   if(!String(blockFor(hubKid,i).title).includes("Screen"))return "";
   const needed=SQTime.neededBefore(dayFor(hubKid),dayOverrides,i);
   const earned=needed.every(idx=>d.done[idx]||passOkFor(hubKid,idx));
-  return earned
+  /* the games points gate, indicated here (design.md §5) — enforced only at the Games door */
+  const p=pointsGateState(hubKid);
+  const gate=p.reason==="off"?"":p.open
+    ? `<span class="screenflag">🎮 ${hhPlain("open")}</span>`
+    : `<span class="screenflag">🏡 ${hhPlain("today",{t:p.today,m:p.threshold})}</span>`;
+  return (earned
     ? `<span class="screenflag">🔓 Earned screen window 螢幕時間已解鎖</span>`
-    : `<span class="screenflag locked">🔒 Tick earlier boxes first 先完成前面的格子</span>`;
+    : `<span class="screenflag locked">🔒 Tick earlier boxes first 先完成前面的格子</span>`)+gate;
 }
 function passFor(id,i,statuses){
   const wanted=statuses||["requested","granted","spent","denied"];
@@ -2814,15 +2959,25 @@ function refreshLockUI(){
         :`🧠 Brain Gym first! 先做頭腦體操！ ${count} — games open after today's three. 完成今天的三個練習，遊戲就會打開。 <button class="btn small" id="lockToPractice">🧠 Go to Practice 去練習</button>`;
       const go=document.getElementById("lockToPractice");
       if(go)go.onclick=()=>SummerQuest.navigate("practice");
+    }else if(ls.reason==="points"){
+      /* Games tab: the full card (the tiles behind it are disabled). Practice:
+         one line — Brain Gym there stays open and pays points. */
+      const p=pointsGateState(hubKid);
+      card.innerHTML=hubTab==="practice"
+        ?`🏡 ${hhPlain("title")} ${hhPlain("today",{t:p.today,m:p.threshold})} — ${hhPlain("practice")} <button class="btn small" data-gg="help">🧭 ${hhPlain("help")}</button>`
+        :pointsLockHtml();
+      bindPointsCard(card,function(){});
     }else{
       const b=blockFor(hubKid,ls.blockIdx);
       card.innerHTML=`${b.icon} Papa asked for a redo 爸爸請你再做一次: ${b.title.split("—")[0].trim()} — tick it in My Day to open games! 在「我的一天」打勾就能玩遊戲！`+brainAlsoWaiting();
     }
     /* the brain lock must leave the brain games reachable — dimming the whole
        Practice row would lock the kid out of the very thing that opens the door */
+    /* the points gate leaves Brain Gym open too — it pays points */
+    const brainOpenRow=ls.reason==="brain"||ls.reason==="points";
     games.classList.toggle("gameslocked",true);
-    practice.classList.toggle("gameslocked",ls.reason!=="brain");
-    practice.classList.toggle("brainlocked",ls.reason==="brain");
+    practice.classList.toggle("gameslocked",!brainOpenRow);
+    practice.classList.toggle("brainlocked",brainOpenRow);
   }else{
     if(card)card.remove();
     [games,practice].forEach(t=>{t.classList.remove("gameslocked");t.classList.remove("brainlocked");});

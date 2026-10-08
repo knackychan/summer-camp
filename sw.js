@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v197-brick-assemblies";
+const CACHE_NAME = "summer-quest-v198-games-gate";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -113,6 +113,8 @@ const APP_SHELL = [
   "./js/time-core.js?v=63",
   "./js/chat-core.js",
   "./js/lock-core.js",
+  "./js/games-gate-core.js",
+  "./js/home-help-data.js",
   "./js/pinpad.js",
   "./js/papa-tools.js?v=63",
   "./js/drills.js",

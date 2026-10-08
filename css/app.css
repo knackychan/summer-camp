@@ -751,6 +751,25 @@ body.music-mode{overflow:hidden}
 .gameslocked .gamerow .gamecard{opacity:.58;filter:saturate(.7)}
 /* Brain gate: the trio stays tappable; the rest stays visible and opens the nudge. */
 .brainlocked #practiceRow .gamecard:not(.brain){opacity:.58;filter:saturate(.7)}
+/* Daily points gate (games-gate-ai-guide D4): teal → gold, never red. */
+.ggcard{text-align:center}
+.ggcard h3{margin:4px 0}
+.ggbar{height:16px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden;margin:10px 0 6px}
+.ggbar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#2BB5A0,var(--gold))}
+.ggicons{font-size:2em;letter-spacing:4px;margin:8px 0}
+.ggicons span{opacity:.28;filter:grayscale(1)}
+.ggicons span.on{opacity:1;filter:none}
+.gggift{background:rgba(255,201,60,.1);border:1px solid rgba(255,201,60,.3);border-radius:14px;padding:8px 10px}
+.hhpick{max-width:520px;width:100%}
+.hhlist{display:grid;gap:8px;margin:10px 0;max-height:62vh;overflow-y:auto}
+.hhcard{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;min-height:64px;width:100%;
+  text-align:left;font:inherit;color:inherit;border:1px solid rgba(255,255,255,.14);border-radius:16px;
+  background:rgba(255,255,255,.06);padding:10px 12px;cursor:pointer}
+.hhcard:active{transform:translateY(2px)}
+.hhcard[disabled]{opacity:.55;cursor:default}
+.hhicon{font-size:1.9em}
+.hhtext small,.hhpts small{display:block;color:var(--muted);font-size:12px;font-weight:700}
+.hhpts{text-align:right;white-space:nowrap}
 .brainnudge{display:block;width:100%;text-align:left;font:inherit;color:inherit;border:none;cursor:pointer;
   background:linear-gradient(135deg,#3D5E8C,#5B7FB8)}
 .brainnudge:active{transform:translateY(2px)}
