@@ -67,6 +67,9 @@ assert.deepEqual(await wallet('luis'), { kid_id: 'luis', total_earned: 800, spen
 assert.equal((await one(`select * from points_requests where id='${uuid(2)}'`)).points, 120);
 assert.equal((await one(`select stars from star_totals where kid_id='luis'`)).stars, 80);
 await run(sql); // repeat-safe conversion
+// The trio list in 20261003 predates retiring Change Maker; 20261008 brings it back in line with SQBrainCore.
+const trioSql = readFileSync(new URL('../supabase/migrations/20261008_brain_trio_sync.sql', import.meta.url), 'utf8');
+await run(trioSql); await run(trioSql);
 assert.equal((await wallet('luis')).available, 600);
 assert.equal((await rpc('points_approve_redemption', `'${uuid(3)}'`)).status, 'approved');
 assert.equal((await wallet('luis')).available, 600, 'interrupted old approval cannot charge twice');

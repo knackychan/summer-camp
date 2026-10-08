@@ -42,7 +42,15 @@ add every authenticated account.
    publication includes `points_claims`, `points_assignments`, `points_requests`
    when the normal `supabase_realtime` publication exists.
 
-7. **Games gate home-help kinds (2026-10-08):** after step 3 succeeded, run
+7. **Brain Gym trio sync (2026-10-08) — run right after step 3, before any
+   tablet sends Brain Gym points:**
+   [migrations/20261008_brain_trio_sync.sql](migrations/20261008_brain_trio_sync.sql)
+   (database owner, safe to re-run). The 2026-10-03 function still listed the
+   retired Change Maker, so the server picked a different daily trio than the
+   tablets and refused real Brain Gym claims. Check afterwards:
+   `select points_brain_trio('lili', (now() at time zone 'Asia/Taipei')::date);`
+   must list the three "today" exercises Lili's tablet shows.
+8. **Games gate home-help kinds (2026-10-08):** after step 3 succeeded, run
    [migrations/20261008_games_gate_kinds.sql](migrations/20261008_games_gate_kinds.sql)
    once as the database owner (safe to re-run). It adds `shoe_tidy` (5,
    self-checked), `garden_tidy` (15), `living_tidy` (10) and `office_tidy` (10,
@@ -51,7 +59,7 @@ add every authenticated account.
    with "Unknown award kind", so run it before deploying the app.
 
 The exact remaining deployment action is step 3 on the family's live Supabase,
-followed by the build/tablet rollout and live smoke check in steps 4–6. The local
+followed by steps 7–8 (2026-10-08 migrations), then the build/tablet rollout and live smoke check in steps 4–6. The local
 test does not prove the production project has run any of these steps.
 
 ## Preserved value and older tablets

@@ -18,7 +18,7 @@
 
 ## Build notes (2026-10-08)
 
-**Status:** built and tested against a disposable PostgreSQL 17. **Not applied to the live Supabase.** That needs the 2026-10-03 points rollout first, then `POINTS-ROLLOUT.md` step 7.
+**Status:** built and tested against a disposable PostgreSQL 17. **Not applied to the live Supabase.** That needs the 2026-10-03 points rollout first, then `POINTS-ROLLOUT.md` steps 7 (Brain Gym trio sync) and 8.
 
 - **`js/points.js`:** adds `shoe_tidy` 5 (self-checked), `garden_tidy` 15, `living_tidy` 10 and `office_tidy` 10 (Papa-checked), all category `help` and once a day. Admin's award editor, assignment list and quest award picker pick them up automatically from `SQPoints.rules`.
 - **`supabase/migrations/20261008_games_gate_kinds.sql`:** re-creates `points_policy` and `points_claim`, copied from `20261003_points_system.sql`. A diff confirmed the only changed lines are the rules JSON and the snapshot-default `case`.
@@ -35,3 +35,5 @@
 - Points PostgreSQL test in a disposable `postgres:17` Docker container (removed afterwards): **passed, including the new section.**
 
 **Found while testing, not caused by this slice:** the checked-in points test fails at its Brain assignment check before reaching the new section. `points_brain_trio` in SQL no longer matches `SQBrainCore.dailyThree` (for example `['crunch','stroop','memorymatch']` vs `['lowhigh','stroop','balance']`), because the SQL function hard-codes the exercise list, and that list still includes `change` (Change Maker, retired by the 2026-10-03 games-practice split), so the shuffle picks differently. Live, the server would refuse some legitimate Brain Gym claims ("Complete an assigned Brain Gym exercise first"), so kids would lose part of the 30 Brain Gym points the games gate relies on. The test above ran on a copy that took the trio from the server, to reach the new section. **This needs its own fix before the points rollout:** regenerate the SQL exercise list from `js/brain-data.js` and add a guard.
+
+**Fixed 2026-10-08 (Papa: "in order", before slice 03):** `supabase/migrations/20261008_brain_trio_sync.sql` re-creates `points_brain_trio` with the 16 non-retired exercises in `js/brain-data.js` key order and the same skills, and adds `dailyThree`'s fill pass. A new test, `scripts/brain-trio-sql.test.mjs` (run by `check.mjs`), fails if the SQL list, the skills or the all-tiers assumption drift, and replays the SQL algorithm against `SQBrainCore.dailyThree` for 3 kids × 90 days. `points-database.test.mjs` applies the sync right after the points migration, so its 60-case Brain assignment check runs unmodified. Rollout: `POINTS-ROLLOUT.md` step 7, right after step 3.
