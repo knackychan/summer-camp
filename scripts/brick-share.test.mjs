@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { COLORS, getPart, PARTS } from "../js/brick-lab/brick-catalog.js";
 import {
-  applyOp, checkOp, cleanWalk, createClaims, createClient, createSequencer, createUndo, PROTO, sameState,
+  applyOp, checkOp, cleanWalk, createClaims, createClient, createSequencer, createUndo, groupIds, PROTO, sameState,
 } from "../js/brick-lab/brick-share.js";
 
 const rules = {
@@ -206,8 +206,8 @@ test("a removed posed piece comes back posed; expect sees a pose change", () => 
   assert.equal(checkOp({ type: "move", id: "f", x: 2, y: 2.025, z: 0.5, rotation: 0, expect: { ...before, pose: JSON.stringify({ p: "wave" }) } }, world, rules), "changed");
 });
 
-test("PROTO is 6: the batch op is new on the wire (brick-lab-assemblies A6)", () => {
-  assert.equal(PROTO, 6);
+test("PROTO is 7: a piece's assembly group is new on the wire", () => {
+  assert.equal(PROTO, 7);
 });
 
 /* Assemblies plan slice 02 (A6): a wall is one atomic batch of adds. */
@@ -324,4 +324,30 @@ test("walk claims: first wins, a walked figure and its riders are busy for every
   assert.equal(claims.release("boy", "lili"), true);
   claims.set([["x", "leo", ["x"]], ["bad"]]);
   assert.deepEqual(claims.list(), [["x", "leo", ["x"]]], "a guest mirrors the host's list, cleaned");
+});
+
+/* Remove a whole wall: the pieces of one assembly share a `group`. */
+test("a wall's group rides on its pieces; removing the group is one batch, undone in one step", () => {
+  const world = worldOf(brick("a"));
+  const host = createSequencer({ world, rules });
+  const wall = batchOf(6);
+  wall.ops.forEach((member) => { member.piece.group = "wall-1"; });
+  assert.equal(host.submit("maya", { id: "1", op: wall }).t, "apply");
+  assert.equal(world.get("w3").group, "wall-1");
+  assert.deepEqual(groupIds(world, "w3"), ["w0", "w1", "w2", "w3", "w4", "w5"]);
+  assert.deepEqual(groupIds(world, "a"), [], "a piece placed alone has no group");
+  const gone = host.submit("lucien", { id: "2", op: { type: "batch", ops: groupIds(world, "w3").map((id) => ({ type: "remove", id })) } });
+  assert.equal(gone.t, "apply");
+  assert.deepEqual(Array.from(world.keys()), ["a"]);
+  assert.equal(host.submit("lucien", { id: "3", op: gone.inverse }).t, "apply");
+  assert.equal(world.size, 7);
+  assert.equal(world.get("w0").group, "wall-1", "Undo brings the group back");
+  assert.equal(world.get("w0").by, "maya", "and the first owner");
+});
+
+test("a group id must be a short string", () => {
+  const world = worldOf();
+  assert.equal(checkOp({ type: "add", piece: brick("n", 0.5, 0, { group: 5 }) }, world, rules), "shape");
+  assert.equal(checkOp({ type: "add", piece: brick("n", 0.5, 0, { group: "x".repeat(65) }) }, world, rules), "shape");
+  assert.equal(checkOp({ type: "add", piece: brick("n", 0.5, 0, { group: "wall-2" }) }, world, rules), null);
 });

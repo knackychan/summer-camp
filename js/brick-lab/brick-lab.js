@@ -14,7 +14,7 @@ import { STRIDE, createWalk, limbsOf, swingLimbs } from "./brick-walk-view.js";
 import { BrickLabStorage } from "./brick-storage.js";
 import { createThumbs } from "./brick-thumbs.js";
 import { BrickWorlds } from "./brick-worlds.js";
-import { createSequencer } from "./brick-share.js";
+import { createSequencer, groupIds } from "./brick-share.js";
 import { ASSEMBLY_KEYS, ASSEMBLY_PATTERNS, assemblyParts, blockRotation, buildAssembly, cleanAssemblyPrefs, placeAssembly, stepSize } from "./brick-assembly.js";
 import { JOINT_LABELS, REACT_SECONDS, cleanPose, isSitting, jointAngles, jointDef, jointKeys, posesFor, poseShape, reactAngles, samePose, seedOf, sitOffset, sitShift, stopsOf } from "./brick-pose.js";
 import { createLanSession } from "../game-services/lan-session.js";
@@ -37,6 +37,7 @@ const HINTS = {
   moveTo: ["Tap the new spot for this piece.", "點一個新位置放這塊積木。"],
   moved: ["Moved! Tap a piece or pick another.", "移好了！點一塊或再選一塊。"],
   removed: ["Piece removed.", "積木拿掉了。"],
+  removedGroup: (n) => [`Removed all ${n} pieces. ↶ brings them back.`, `${n} 塊全部拆掉了。按 ↶ 可以放回來。`],
   undone: ["Undone.", "復原了。"],
   explore: ["Slide to look around. Tap something to edit it.", "滑動來看看四周。點任何東西就能修改。"],
   backInBuild: ["Back in Build — edit the piece you tapped.", "回到建造——修改你點的積木。"],
@@ -1692,6 +1693,7 @@ export class BrickLabRuntime {
                 ${tool("pose", "🤸", ["Pose", "姿勢"], " hidden")}
                 ${tool("walk", "🚶", WALK.walk, " hidden")}
                 ${tool("delete", "🗑", ["Remove", "拿掉"], ' class="is-danger"')}
+                ${tool("delete-group", "🧹", ["Remove whole build", "整組拆掉"], ' class="is-danger" hidden')}
               </div>
             </div>
             <div class="sqbl-stage-hint" data-stage-hint aria-live="polite"></div>
@@ -1775,6 +1777,7 @@ export class BrickLabRuntime {
     this.crewEl = this.root.querySelector("[data-crew]");
     this.lostEl = this.root.querySelector("[data-lost]");
     this.walkToolEl = this.root.querySelector("[data-action=walk]");
+    this.groupToolEl = this.root.querySelector("[data-action=delete-group]");
     this.walkEl = this.root.querySelector("[data-walk]");
   }
 
@@ -2127,6 +2130,7 @@ export class BrickLabRuntime {
     this.root.querySelector("[data-action=rotate]").addEventListener("pointerdown", () => this.rotateSelected());
     this.root.querySelector("[data-action=duplicate]").addEventListener("pointerdown", () => this.duplicateSelected());
     this.root.querySelector("[data-action=delete]").addEventListener("pointerdown", () => this.deleteSelected());
+    this.groupToolEl.addEventListener("pointerdown", () => this.deleteSelectedGroup());
     this.root.querySelector("[data-action=move]").addEventListener("pointerdown", () => this.beginMoveSelected());
     this.poseToolEl.addEventListener("pointerdown", () => this.enterFocus(this.selectedId));
     this.walkToolEl.addEventListener("pointerdown", () => this.enterWalk(this.selectedId));
@@ -2786,7 +2790,8 @@ export class BrickLabRuntime {
     this.ghost.visible = false;
     if (!fit) return false;
     const part = getPart(this.assembly.partId);
-    const ops = fit.ops.map((op) => ({ ...op, piece: { ...op.piece, id: uid() } }));
+    const group = uid(this.assembly.pattern);
+    const ops = fit.ops.map((op) => ({ ...op, piece: { ...op.piece, id: uid(), group } }));
     if (!this.change({ type: "batch", ops })) {
       this.setHint("🤝", ASSEMBLY.retry);
       return false;
@@ -3276,6 +3281,7 @@ export class BrickLabRuntime {
       rotation: normalRotation(instance.rotation),
     };
     if (typeof instance.by === "string") clean.by = instance.by;
+    if (typeof instance.group === "string" && instance.group) clean.group = instance.group;
     const pose = cleanPose(getPart(clean.partId), instance.pose);
     if (pose) clean.pose = pose;
     this.pieces.set(clean.id, clean);
@@ -3872,6 +3878,12 @@ export class BrickLabRuntime {
       this.walkToolEl.hidden = !walkable;
       this.bubble.width = 0;
     }
+    /* A piece from an assembly can take its whole wall away with it. */
+    const grouped = !!this.selectedId && groupIds(this.pieces, this.selectedId).length > 1;
+    if (this.groupToolEl.hidden === grouped) {
+      this.groupToolEl.hidden = !grouped;
+      this.bubble.width = 0;
+    }
     if (shown !== this.bubble.shown) {
       this.bubble.shown = shown;
       this.bubbleEl.classList.toggle("is-visible", shown);
@@ -3963,6 +3975,20 @@ export class BrickLabRuntime {
     if (!this.change({ type: "remove", id: this.selectedId })) return;
     this.syncRails();
     this.setHint("🗑️", HINTS.removed);
+    this.haptic("tap");
+  }
+
+  /* Everything one assembly placed, gone as one batch: one Undo step (A6). */
+  deleteSelectedGroup() {
+    if (!this.selectedId) return;
+    const ids = groupIds(this.pieces, this.selectedId);
+    if (ids.length < 2) return;
+    if (!this.change({ type: "batch", ops: ids.map((id) => ({ type: "remove", id })) })) {
+      this.setHint("🤝", ASSEMBLY.retry);
+      return;
+    }
+    this.syncRails();
+    this.setHint("🗑️", HINTS.removedGroup(ids.length));
     this.haptic("tap");
   }
 

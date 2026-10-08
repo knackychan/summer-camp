@@ -602,6 +602,7 @@ def pose_checks(page, snap, check, out):
     tap(box['x'] + box['width'] * 0.35, box['y'] + box['height'] * 0.62)
     boy = selected()
     check('A minifig places', boy['partId'] == 'fig_boy')
+    page.wait_for_timeout(2300)  # placing selects it: let its 2 s tap reaction (alive on tap) settle first
     check('Wave turns the right arm up and keeps the spot', pose(boy['id'], {'p': 'wave'})
           and selected()['pose'] == {'p': 'wave'} and snap()['poseAngles'].get('armR') == -135
           and (selected()['x'], selected()['y'], selected()['z']) == (boy['x'], boy['y'], boy['z']))
@@ -1033,7 +1034,45 @@ def assembly_checks(page, snap, check, out):
     check(f'After a reload the card opens as it was left {a}', a['pattern'] == 'wall' and a['rotation'] == 90 and a['count'] == 24)
     card.locator('[data-asm-pattern="tower"]').click()
     check('…and the tower kept its 4 layers', snap()['assembly']['up'] == 4)
+
+    # Remove a whole wall in one go: its blocks share a group; one block still comes off on its own.
+    card.locator('[data-asm-pattern="wall"]').click()
     card.locator('[data-asm-act="close"]').click()
+    box = page.locator('.sqbl-stage canvas').bounding_box()
+    n0 = len(snap()['pieces'])
+    page.mouse.click(box['x'] + box['width'] * 0.45, box['y'] + box['height'] * 0.3)
+    page.wait_for_timeout(150)
+    wall = snap()['pieces'][n0:]
+    check(f"A wall's 24 blocks share one group ({len(wall)})", len(wall) == 24 and len({p.get('group') for p in wall}) == 1
+          and wall[0].get('group', '').startswith('wall-'))
+    pick(page, 'bricks')
+    group_tool = page.locator('.sqbl-app [data-action="delete-group"]')
+    tops = sorted(wall, key=lambda p: (-p['y'], p['x'], p['z']))
+    top, other = tops[0], tops[3]
+    page.mouse.click(top['screen']['x'], top['screen']['y'])
+    page.wait_for_timeout(150)
+    s = snap()
+    check(f'Tapping a wall block selects it and shows Remove whole build {s["selectedId"]}',
+          s['selectedId'] in {p['id'] for p in wall} and group_tool.is_visible()
+          and 'Remove whole build' in group_tool.inner_text() and '整組拆掉' in group_tool.inner_text())
+    undo0 = s['undo']
+    page.locator('.sqbl-app [data-action="delete"]').click()
+    page.wait_for_timeout(150)
+    check('Remove still takes one block', len(snap()['pieces']) == n0 + 23)
+    page.locator('.sqbl-app [data-action="undo"]').click()
+    page.wait_for_timeout(150)
+    page.mouse.click(other['screen']['x'], other['screen']['y'])
+    page.wait_for_timeout(150)
+    group_tool.click()
+    page.wait_for_timeout(150)
+    s = snap()
+    check(f'Remove whole build takes all 24 in one step, with an Undo hint ({len(s["pieces"]) - n0})', len(s['pieces']) == n0
+          and s['undo'] == undo0 + 1 and '↶' in page.locator('.sqbl-stage-hint').inner_text())
+    page.screenshot(path=str(out / 'assembly-group-removed.png'))
+    page.locator('.sqbl-app [data-action="undo"]').click()
+    page.wait_for_timeout(150)
+    back = snap()['pieces'][n0:]
+    check('One Undo brings the whole wall back, still one group', len(back) == 24 and len({p.get('group') for p in back}) == 1)
 
 
 def seed_worlds(page, worlds):

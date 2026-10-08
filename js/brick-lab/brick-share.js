@@ -6,7 +6,7 @@
    numbers each one (`seq`) so every tablet applies the same changes in the
    same order. Solo play runs the same sequencer in-process.
 
-   Ops (pieces are { id, partId, colorId, x, y, z, rotation, by }):
+   Ops (pieces are { id, partId, colorId, x, y, z, rotation, by, group }):
      { type: "add", piece }
      { type: "move", id, x, y, z, rotation }      (a turn is a move)
      { type: "remove", id }
@@ -16,6 +16,8 @@
    An op may carry `expect`: the state the asker last saw. Undo sends the
    inverse op with `expect`; if the piece has changed since (a sibling moved
    it), the op is refused instead of undoing someone else's work.
+   `group` names the assembly batch a piece came in (a whole wall), so the
+   wall can be taken away again as one batch of removes.
 
    Walking a minifig (docs/plans/2026-10-06-brick-lab-walk/ W12, W13) adds
    messages that are not ops — never numbered, never saved:
@@ -23,7 +25,7 @@
      { t: "walk-pos", id, x, y, z, yaw, view, moving }
      { t: "walk-release", id } */
 
-export const PROTO = 6; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint · 4: poses (moving-parts M9) · 5: walking minifigs (brick-lab-walk W12) · 6: batch op (brick-lab-assemblies A6) */
+export const PROTO = 7; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint · 4: poses (moving-parts M9) · 5: walking minifigs (brick-lab-walk W12) · 6: batch op (brick-lab-assemblies A6) · 7: a piece's assembly `group` */
 export const BATCH_MAX = 64;
 const ID_MAX = 64;
 const Y_MAX = 200;
@@ -36,6 +38,7 @@ const goodRotation = (r) => r === 0 || r === 90 || r === 180 || r === 270;
 function copyPiece(piece) {
   const out = { id: piece.id, partId: piece.partId, colorId: piece.colorId, x: piece.x, y: piece.y, z: piece.z, rotation: piece.rotation };
   if (typeof piece.by === "string") out.by = piece.by;
+  if (goodId(piece.group)) out.group = piece.group;
   if (piece.pose) out.pose = JSON.parse(JSON.stringify(piece.pose));
   return out;
 }
@@ -72,6 +75,7 @@ export function checkOp(op, world, rules) {
       if (!rules.part(piece.partId) || !rules.color(piece.colorId)) return "catalog";
       if (piece.pose !== undefined && rules.pose && !rules.pose(piece.partId, piece.pose)) return "catalog";
       if (piece.by !== undefined && !goodId(piece.by)) return "shape";
+      if (piece.group !== undefined && !goodId(piece.group)) return "shape";
       if (!placeOk(piece, rules)) return "place";
       if (rules.blocked && rules.blocked(piece, null)) return "blocked";
       return null;
@@ -161,6 +165,16 @@ export function applyOp(op, world) {
     default:
       throw new Error(`unknown op ${op.type}`);
   }
+}
+
+/* Every piece placed by the same assembly batch as `id` (its `group`), in
+   placing order; [] for a piece that came alone (or before groups, PROTO 7). */
+export function groupIds(world, id) {
+  const piece = world.get(id);
+  if (!piece || !goodId(piece.group)) return [];
+  const out = [];
+  world.forEach((other, otherId) => { if (other.group === piece.group) out.push(otherId); });
+  return out;
 }
 
 /* The host's loop: one request at a time, in arrival order. */
