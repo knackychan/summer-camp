@@ -901,45 +901,6 @@ export const MORE_PARTS = Object.freeze([
     { box: [1.6, 0.04, 3.6], at: [0, 0.95, 0], c: "water", bevel: 0 },
     { cyl: [0.06, 0.6], rot: [60, 0, 0], at: [0, 1.25, -1.75], c: "silver" },
   ]),
-  /* Plumbing bits (2026-10-08): small, plain pieces a kid puts together into
-     a shower, a tap or a sink, rather than one ready-made shower. They take
-     the palette colour (metal looks like chrome). Shower: Round Pipes up a
-     wall, a Shower Head on top. Tap: a Round Pipe, a Pipe Elbow, a Tap
-     Handle beside it. */
-  model("pipe_1x1", ["Round Pipe", "圓管"], "home", 1, 1, B, [
-    { cyl: [0.17, B], at: [0, B / 2, 0] },
-    [0.06, B - 0.06].map((y) => ({ cyl: [0.24, 0.12], at: [0, y, 0] })),
-  ]),
-  model("pipe_elbow", ["Pipe Elbow", "彎管"], "home", 1, 2, B, [
-    { cyl: [0.24, 0.12], at: [0, 0.06, -0.5] },
-    { cyl: [0.17, 0.95], at: [0, 0.475, -0.5] },
-    { ball: 0.17, at: [0, 0.95, -0.5], seg: 12, segH: 8 },
-    { cyl: [0.17, 1.0], axis: "z", at: [0, 0.95, 0] },
-    { ball: 0.17, at: [0, 0.95, 0.5], seg: 12, segH: 8 },
-    { cyl: [0.13, 0.17, 0.3], at: [0, 0.75, 0.5] },
-  ]),
-  model("shower_head", ["Shower Head", "蓮蓬頭"], "home", 1, 2, B, [
-    { cyl: [0.24, 0.12], at: [0, 0.06, -0.5] },
-    { cyl: [0.13, 1.05], at: [0, 0.525, -0.5] },
-    { cyl: [0.13, 1.0], axis: "z", at: [0, 1.05, 0] },
-    { cone: [0.42, 0.3], at: [0, 0.92, 0.5] },
-    { cyl: [0.42, 0.05], at: [0, 0.745, 0.5] },
-    range(7, (i) => ({ cyl: [0.04, 0.02], at: [i ? Math.sin(i * 60 * Math.PI / 180) * 0.26 : 0, 0.715, 0.5 + (i ? Math.cos(i * 60 * Math.PI / 180) * 0.26 : 0)], c: "dark" })),
-  ]),
-  model("tap_handle", ["Tap Handle", "水龍頭把手"], "home", 1, 1, P * 2, [
-    { cyl: [0.24, 0.12], at: [0, 0.06, 0] },
-    { cyl: [0.1, 0.5], at: [0, 0.35, 0] },
-    { box: [0.8, 0.12, 0.14], at: [0, 0.62, 0] },
-    { box: [0.14, 0.12, 0.8], at: [0, 0.62, 0] },
-    mirror({ ball: 0.09, at: [0.4, 0.62, 0], seg: 8, segH: 6 }),
-    { ball: 0.09, at: [0, 0.62, 0.4], seg: 8, segH: 6 },
-    { ball: 0.09, at: [0, 0.62, -0.4], seg: 8, segH: 6 },
-    { cyl: [0.08, 0.04], at: [0, 0.7, 0], c: "red" },
-  ]),
-  model("basin", ["Sink Basin 2×2", "洗手台 2×2"], "home", 2, 2, P * 2, [
-    { lathe: [[0.01, 0], [0.7, 0], [0.92, 0.7], [0.92, 0.8], [0.8, 0.8], [0.62, 0.12], [0.01, 0.12]], at: [0, 0, 0], seg: 20 },
-    { cyl: [0.62, 0.02], at: [0, 0.14, 0], c: "water" },
-  ]),
   model("plant_pot", ["Potted Plant", "盆栽"], "home", 1, 1, 1.6, [
     { lathe: [[0.01, 0], [0.3, 0], [0.42, 0.55], [0.01, 0.55]], at: [0, 0, 0] },
     { cyl: [0.38, 0.04], at: [0, 0.5, 0], c: "brown" },
