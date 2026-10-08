@@ -751,7 +751,7 @@
       this.enqueue({type:"brainDone",kid,day:dayISO,gameId,score,ms});
       this.flush().catch(()=>{});
     }
-    /* Papa's "open games today" — the anon RLS policy only lets the tablet write
+    /* Papa's "open games today" (Brain Gym and points gates both, games-gate D7) — the anon RLS policy only lets the tablet write
        braingate_* keys, and setFamilySetting already updates locally first, so
        the gate opens instantly with wifi off. */
     async clearBrainGate(kid,dayISO){

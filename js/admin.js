@@ -294,7 +294,7 @@
 
   async function loadAll(skipRouteRender){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts,ledger14,photos14,asks14,pointTotals,pointClaims,pointRequests,pointAssignments]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts,ledger14,photos14,asks14,pointTotals,pointClaims,pointRequests,pointAssignments,pointClaimsToday]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -320,14 +320,17 @@
       client.from("point_totals").select("*"),
       client.from("points_claims").select("*").eq("status","pending").order("created_at").limit(300),
       client.from("points_requests").select("*").order("created_at",{ascending:false}).limit(100),
-      client.from("points_assignments").select("*").gte("day",SQPoints.week(today)).order("day").limit(100)
+      client.from("points_assignments").select("*").gte("day",SQPoints.week(today)).order("day").limit(100),
+      /* games points gate: every claim of today (any status) for today's points */
+      client.from("points_claims").select("kid_id,day,kind,slot,amount,status").eq("day",today).limit(500)
     ]);
     rows={
       ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:(ledger.data||[]).map(pointLedgerRow),asks:asks.data||[],
       passes:passes.data||[],photos:photos.data||[],kids:kids.data||[],history:history.data||[],helpClaims:helpClaims.data||[],
       familySettings:familySettings.data||[],redos:redos.data||[],acts:acts.data||[],
       ledger14:(ledger14.data||[]).map(pointLedgerRow),photos14:photos14.data||[],asks14:asks14.data||[],
-      pointTotals:pointTotals.data||[],pointClaims:pointClaims.data||[],pointRequests:pointRequests.data||[],pointAssignments:pointAssignments.data||[]
+      pointTotals:pointTotals.data||[],pointClaims:pointClaims.data||[],pointRequests:pointRequests.data||[],pointAssignments:pointAssignments.data||[],
+      pointClaimsToday:pointClaimsToday.data||[]
     };
     pointsReady=!pointTotals.error&&!pointClaims.error&&!pointRequests.error;
     if(pointsReady)rows.totals=rows.pointTotals.map(function(r){return {kid_id:r.kid_id,stars:Number(r.total_earned)||0};});
@@ -444,17 +447,57 @@
     el.querySelectorAll('[data-declinepoints]').forEach(function(b){b.onclick=function(){denyRewardRequest(b.dataset.declinepoints);};});
     el.querySelectorAll('[data-refundpoints]').forEach(function(b){b.onclick=async function(){const reason=prompt('Why could this exchange not be delivered?','');if(!reason||!reason.trim())return;if(!await pointsRpc('points_refund_redemption',{p_id:b.dataset.refundpoints,p_reason:reason.trim()}))return;toast('Refund recorded',true);await loadAll();};});
   }
+  /* Games points gate (docs/plans/2026-10-08-games-gate-ai-guide/ slice 03).
+     Same SQGamesGate as the tablets. Admin can't see a tablet's "already
+     reached today" memory (D2), so a kid whose claim was declined after
+     reaching the bar can show "waiting" here while their tablet stays open. */
+  function gamesGateHtml(){
+    if(!window.SQGamesGate)return '';
+    const fs=familySettingsMap(), s=SQGamesGate.parseSettings(fs.games_gate_v1);
+    const kids=Object.keys(KIDS).map(function(kid){
+      const pts=SQGamesGate.todayPoints(kid,today,{claims:rows.pointClaimsToday||[]});
+      const st=SQGamesGate.state(kid,{settings:fs.games_gate_v1,today:pts,papaOpen:fs["braingate_"+kid]===today});
+      const pct=st.threshold?Math.min(100,Math.round(pts/st.threshold*100)):100;
+      const badge=st.reason==="off"?"Gate off":st.reason==="papa"?"Open — Papa today":st.reason==="reached"?"Open":"Waiting · "+st.need+" to go";
+      return '<article class="qs-row gg-row"><div class="qs-title"><b>'+esc(kidName(kid))+' · '+pts+' / '+s.threshold[kid]+' points today</b>'+
+        '<span class="gg-bar"><span style="width:'+pct+'%"></span></span><span>'+esc(badge)+'</span></div>'+
+        '<div class="qs-actions"><label class="gg-threshold">Threshold <input type="number" min="0" max="300" step="5" data-ggthreshold="'+kid+'" value="'+s.threshold[kid]+'"></label>'+
+        (st.reason==="papa"?'<button class="btn btn--sm" data-ggopen="'+kid+':undo">Undo open today</button>':'<button class="btn btn--sm" data-ggopen="'+kid+':open">Open Games today</button>')+'</div></article>';
+    }).join('');
+    return '<h3>Games gate</h3><p>Games open once a child has earned the threshold in points today (Asia/Taipei; points waiting for your check count), then stay open for the day. Brain Gym, Learn, My Day and Ask are never gated. Threshold 0 = no gate for that child. Open Games today also skips the Brain Gym gate for that day.</p>'+
+      '<form id="gamesGateForm"><label class="gg-enabled"><input type="checkbox" id="ggEnabled"'+(s.enabled?' checked':'')+'> Games gate on</label>'+
+      '<div class="qs-list">'+kids+'</div><button class="btn btn--primary" type="submit">Save games gate</button></form>';
+  }
+  function bindGamesGate(body){
+    const form=body.querySelector('#gamesGateForm');if(!form)return;
+    form.onsubmit=async function(e){
+      e.preventDefault();
+      const fs=familySettingsMap(), s=SQGamesGate.parseSettings(fs.games_gate_v1);
+      let bad=false;
+      body.querySelectorAll('[data-ggthreshold]').forEach(function(i){const n=Number(i.value);if(!Number.isInteger(n)||n<0||n>300||n%5!==0)bad=true;else s.threshold[i.dataset.ggthreshold]=n;});
+      if(bad){toast('Thresholds are 0 to 300 in steps of 5');return;}
+      s.enabled=$('ggEnabled').checked;
+      if(!await saveFamilySetting('games_gate_v1',JSON.stringify(s)))return;
+      toast(s.enabled?'Games gate saved — on':'Games gate saved — off',true);renderQuestStudio();
+    };
+    body.querySelectorAll('[data-ggopen]').forEach(function(b){b.onclick=async function(){
+      const p=b.dataset.ggopen.split(':');
+      if(!await saveFamilySetting('braingate_'+p[0],p[1]==='open'?today:''))return;
+      toast(kidName(p[0])+(p[1]==='open'?': Games open for today':': open-today undone'),true);renderQuestStudio();
+    };});
+  }
   function renderPointsSettings(body){
     const fs=familySettingsMap(),economy=SQQuestConfig.economy(fs);
     const kinds=Object.keys(SQPoints.rules).filter(function(k){return !/^balanced|^brain$/.test(k);});
     const kidOptions=Object.keys(KIDS).map(function(k){return '<option value="'+k+'">'+esc(kidName(k))+'</option>';}).join('');
-    body.innerHTML='<div class="qs-callout">Same work earns once across every entrance. Age-appropriate goals earn the same points; help and mistakes do not reduce them. Daily limits use Asia/Taipei.</div>'+
+    body.innerHTML=gamesGateHtml()+'<div class="qs-callout">Same work earns once across every entrance. Age-appropriate goals earn the same points; help and mistakes do not reduce them. Daily limits use Asia/Taipei.</div>'+
       '<h3>Award amounts</h3><p>Changes apply to future claims. Existing pending claims retain their agreed amount. Limits stay fixed.</p><form id="pointsPolicyForm"><div class="qs-form">'+Object.keys(SQPoints.rules).map(function(k){const r=SQPoints.rules[k];return '<div class="qs-field"><label for="pointAmount-'+k+'">'+esc(r.label[0])+'</label><input id="pointAmount-'+k+'" data-pointamount="'+k+'" type="number" min="0" max="1000" step="5" value="'+SQPoints.amount(k,fs)+'"><span>'+esc(String(r.limit||1))+' per '+(k==='project'||k==='balanced_week'?'week':'day')+'</span></div>';}).join('')+'</div><button class="btn btn--primary" type="submit">Save future awards</button></form>'+
       '<h3>Gift and cash conversion</h3><p>Currency, points per currency unit and monthly budget are required for paid gifts and cash. Cash also requires explicit enablement and uses 100-point steps. Experience rewards need no retail price. Changing an established rate announces the previous and new conversion to children; existing requests keep their agreed rate.</p><form id="pointsEconomyForm"><div class="qs-form">'+
       '<div class="qs-field"><label for="pointsCurrency">Currency code</label><input id="pointsCurrency" value="'+esc(economy.currency)+'" maxlength="3" placeholder="e.g. TWD"></div><div class="qs-field"><label for="pointsRate">Points per currency unit</label><input id="pointsRate" type="number" min="0.01" step="0.01" value="'+(economy.pointsPerUnit||'')+'"></div><div class="qs-field"><label for="pointsBudget">Monthly budget per child (currency)</label><input id="pointsBudget" type="number" min="0.01" step="0.01" value="'+(economy.monthlyBudget||'')+'"></div><div class="qs-field"><label for="pointsCash"><input id="pointsCash" type="checkbox"'+(economy.cashEnabled?' checked':'')+'> Enable cash redemption</label></div></div><button class="btn btn--primary" type="submit">Save conversion settings</button></form>'+
       '<h3>Agree an activity</h3><p>Set a specific goal before starting. Reuse a work reference for the same work across learning, an outing or a project. A 50-point project tops up an earlier 20-point milestone by 30.</p><form id="pointsAssignmentForm"><div class="qs-form"><div class="qs-field"><label for="pointsAssignKid">Child</label><select id="pointsAssignKid">'+kidOptions+'</select></div><div class="qs-field"><label for="pointsAssignDay">Day (Taipei)</label><input id="pointsAssignDay" type="date" required value="'+today+'"></div><div class="qs-field"><label for="pointsAssignKind">Activity</label><select id="pointsAssignKind">'+kinds.map(function(k){return '<option value="'+k+'">'+esc(SQPoints.rules[k].label[0])+'</option>';}).join('')+'</select></div><div class="qs-field"><label for="pointsAssignSlot">Slot</label><select id="pointsAssignSlot"><option value="">Daily/default</option><option value="breakfast">Breakfast table</option><option value="lunch">Lunch table</option><option value="dinner">Dinner table</option><option value="1">Learning session 1</option><option value="2">Learning session 2</option></select></div><div class="qs-field w6"><label for="pointsAssignGoalEn">Agreed goal (English)</label><input id="pointsAssignGoalEn" required maxlength="300"></div><div class="qs-field w6"><label for="pointsAssignGoalZh">Agreed goal (Traditional Chinese)</label><input id="pointsAssignGoalZh" required maxlength="300"></div><div class="qs-field w12"><label for="pointsAssignWork">Work reference (optional; reuse for the same work)</label><input id="pointsAssignWork" maxlength="120"></div></div><button class="btn btn--primary" type="submit">Save agreed activity</button></form>'+
       '<div class="qs-list">'+(rows.pointAssignments||[]).map(function(a){return '<article class="qs-row"><div class="qs-title"><b>'+esc(kidName(a.kid_id))+' · '+esc(a.day)+' · '+esc(a.kind)+' / '+esc(a.slot)+'</b><span>'+esc(Array.isArray(a.goal)?a.goal.join(' · '):a.goal||'')+'</span><span>Work: '+esc(a.work_id)+'</span></div></article>';}).join('')+'</div>'+
       '<h3>Excuse an unavailable balanced-day category</h3><form id="pointsExcuseForm"><div class="qs-form"><div class="qs-field"><label for="pointsExcuseKid">Child</label><select id="pointsExcuseKid">'+kidOptions+'</select></div><div class="qs-field"><label for="pointsExcuseDay">Day (Taipei)</label><input id="pointsExcuseDay" type="date" required value="'+today+'"></div><div class="qs-field"><label for="pointsExcuseCategory">Category</label><select id="pointsExcuseCategory"><option value="learning">Learning</option><option value="helping">Helping</option><option value="movement">Movement</option></select></div><div class="qs-field w6"><label for="pointsExcuseReason">Reason</label><input id="pointsExcuseReason" required maxlength="300"></div></div><button class="btn" type="submit">Excuse category</button></form><h3>Review work and exchanges</h3><div id="pointsStudioReviews"></div>';
+    bindGamesGate(body);
     $('pointsPolicyForm').onsubmit=async function(e){e.preventDefault();const awards={};body.querySelectorAll('[data-pointamount]').forEach(function(i){awards[i.dataset.pointamount]=Number(i.value);});if(!await saveFamilySetting(SQQuestConfig.KEYS.policy,JSON.stringify({awards:awards})))return;toast('Future award amounts saved',true);renderQuestStudio();};
     $('pointsEconomyForm').onsubmit=async function(e){
       e.preventDefault();

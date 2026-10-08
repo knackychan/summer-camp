@@ -12,6 +12,7 @@
         <button class="btn" id="ptResched">⏰ Reschedule today 調整今天時間</button>
         <button class="btn" id="ptOuting">🚶 Outing 出遊</button>
         <button class="btn" id="ptBrain">🧠 Open games today 今天開放遊戲</button>
+        ${gateLocal()?`<button class="btn" id="ptGate">🎮 Games gate 遊戲點數門檻</button>`:""}
         <button class="btn" id="ptTest">${on?"🧪 Test mode: ON — tap to turn off":"🧪 Test mode 測試模式（今天解鎖全部）"}</button>
       </div>
       <button class="btn small" id="ptClose" style="margin-top:16px">Close 關閉</button>
@@ -26,9 +27,32 @@
       if(window.sqOpenGamesToday)window.sqOpenGamesToday();
       o.remove();
     };
+    const gate=o.querySelector("#ptGate");
+    if(gate)gate.onclick=function(){gateEditor(o.querySelector("#ptBody"));};
     o.querySelector("#ptTest").onclick=function(){
       if(window.sqTestMode)window.sqTestMode.set(!on);
       o.remove();
+    };
+  }
+  /* Local-only mode has no admin page: the games points gate is set here
+     (games-gate-ai-guide slice 03). With Supabase configured, admin owns it. */
+  function gateLocal(){return !!(window.sqGamesGateLocal&&window.sqGamesGateLocal.available());}
+  function gateEditor(el){
+    const s=window.sqGamesGateLocal.get();
+    el.innerHTML=`<label class="vrow"><input type="checkbox" id="ptGateOn" ${s.enabled?"checked":""}> Games gate on 開啟遊戲點數門檻</label>`+
+      ["lucien","lili","luis"].map(function(k){
+        return `<div class="vrow"><span style="flex:1">${KID_LABELS[k]} — points today 今天點數</span>
+          <input class="qinput" style="width:90px" type="number" min="0" max="300" step="5" data-ptgate="${k}" value="${s.threshold[k]}"></div>`;
+      }).join("")+
+      `<p class="tipline">0 = no gate 不設門檻</p><button class="btn" id="ptGateSave">Save 儲存</button><div class="tipline" id="ptMsg"></div>`;
+    el.querySelector("#ptGateSave").onclick=async function(){
+      const next=window.sqGamesGateLocal.get();
+      let bad=false;
+      el.querySelectorAll("[data-ptgate]").forEach(function(i){const n=Number(i.value);if(!Number.isInteger(n)||n<0||n>300||n%5!==0)bad=true;else next.threshold[i.dataset.ptgate]=n;});
+      if(bad){el.querySelector("#ptMsg").textContent="0–300, steps of 5 · 0 到 300，每次 5";return;}
+      next.enabled=el.querySelector("#ptGateOn").checked;
+      await window.sqGamesGateLocal.set(next);
+      el.querySelector("#ptMsg").textContent="Saved 已儲存";
     };
   }
   function resched(el,scope){

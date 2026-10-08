@@ -216,4 +216,19 @@ for (const kind of ['living_tidy', 'office_tidy']) {
 await approve(garden.id);
 assert.equal((await wallet('lucien')).total_earned, lucienBefore + 20, 'shoes + approved garden');
 assert.equal((await wallet('lucien')).pending, 20, 'living room + office wait for Papa');
-console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation, games-gate home-help kinds.');
+// Games points gate slice 03: games_gate_v1 is seeded off and only a parent can change it, with checked values.
+const gateSql = readFileSync(new URL('../supabase/migrations/20261008_games_gate_settings.sql', import.meta.url), 'utf8');
+await run(gateSql); await run(gateSql);
+const gateValue = async () => JSON.parse((await one(`select value from family_settings where key='games_gate_v1'`)).value);
+assert.equal((await gateValue()).enabled, false, 'seeded switched off');
+const setGate = (v, role = 'authenticated', uid = parent) => run(`update family_settings set value=${quote(JSON.stringify(v))} where key='games_gate_v1';`, role, uid);
+await assert.rejects(() => setGate({ enabled: true, threshold: { lili: 50 } }, 'authenticated', stranger), /Parent setting required/);
+await assert.rejects(() => setGate({ enabled: true, threshold: { lili: 42 } }), /steps of five/);
+await assert.rejects(() => setGate({ enabled: 'yes' }), /true or false/);
+await assert.rejects(() => setGate({ enabled: true, ai: { dailyUsdCap: -1 } }), /zero or more/);
+await setGate({ enabled: true, threshold: { luis: 50, lili: 50, lucien: 40 } });
+assert.deepEqual((await gateValue()).threshold, { luis: 50, lili: 50, lucien: 40 });
+await setGate({ enabled: false }, 'anon', '');
+assert.equal((await gateValue()).enabled, true, 'a tablet cannot switch the gate off');
+await assert.rejects(() => run(`delete from family_settings where key='games_gate_v1';`, 'authenticated'), /cannot be deleted/);
+console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation, games-gate home-help kinds and settings guard.');

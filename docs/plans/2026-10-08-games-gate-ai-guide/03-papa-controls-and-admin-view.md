@@ -15,3 +15,23 @@
 - **`scripts/check.mjs`**: `admin.html` loads `games-gate-core.js`, and admin and tablet compute the same state for a fixture (one shared function, no copy).
 
 **DONE WHEN:** `node scripts/check.mjs` green. From admin: switching the gate on with Lucien = 40 closes Games on Lucien's tablet within 2 s (realtime) when he has fewer points, and leaves the other two alone at threshold 0. Open Games today opens his tablet live. Undo closes it again unless he has since reached 40. A kid client can't write `games_gate_v1` (an RLS / guard error in a SQL test). Admin shows the right today / threshold for all three kids against a seeded fixture.
+
+## Build notes (2026-10-08)
+
+**Status:** built and checked, waiting on Papa trying the admin card with his real login. The admin page needs Supabase sign-in, so the card was tested through the admin test harness, not in a browser.
+
+- **SQL:** `supabase/migrations/20261008_games_gate_settings.sql` seeds `games_gate_v1` switched off. A trigger function of its own, `games_gate_guard_settings` (not a branch inside `points_guard_settings`), lets only the owner or a parent in `admins` (checked through a small security-definer `games_gate_parent()`, because `admins` has RLS — the first test run caught that) write the key, and checks its values (thresholds 0–300 in steps of 5, rerolls 0–10, AI caps ≥ 0, `enabled` a boolean). Deleting the key is refused. It does not depend on the points migration, so the gate can be set up before points go live. `POINTS-ROLLOUT.md` step 9.
+- **Admin, Quests → Points & assignments → "Games gate"** (English):
+  - On/off switch, and per child a bar with "N / M points today", a state ("Gate off", "Open — Papa today", "Open", "Waiting · N to go"), a threshold box (step 5) and **Open Games today** / **Undo open today**.
+  - Today's points come from a new query of today's `points_claims` (any status), counted with the tablets' own `SQGamesGate.todayPoints`. The card refreshes on the existing realtime routes (`family_settings`, `points_claims` → quests).
+- **Open Games today** writes `braingate_<kid>` = today, the same key the tablet PIN writes, and now documented as opening both gates. The tablet already re-renders on `family_settings` realtime, so it opens live.
+- **Local-only mode:** the tablet's 🔧 Papa tools get **🎮 Games gate 遊戲點數門檻** (switch and per-child thresholds), shown only when Supabase isn't configured (`store.configured`). With Supabase, a tablet can't write this key, so admin owns it.
+- **Deviation:** the "Guide decisions (7 days)" table is left for slice 04, which creates `guide_decisions`. An empty placeholder now would show nothing.
+- **Known limit (also in a code comment):** admin can't see a tablet's "already reached today" memory (D2). A child whose claim was declined after reaching the bar shows "Waiting" in admin while their tablet stays open.
+- Cache: `admin.js?v=67`, `sw.js` `summer-quest-v199-games-gate-admin`. Admin styles use the admin colour tokens (the `check.mjs` admin-tokens rule).
+
+**Checks run:**
+- `node scripts/check.mjs`: green.
+- `scripts/points-admin.test.mjs`: the card renders switched off by default; with the gate on: Lili 10 / 50 "Waiting · 40 to go" (pending counts, denied doesn't), Lucien 40 / 40, Luis "Open — Papa today" with Undo.
+- `scripts/check-games-gate-ui.py` on Chrome 138: Papa tools → PIN → Games gate editor saves Lili 30. Then the local setting switches the gate on (card shows 0 / 50), and threshold 0 opens Games.
+- Points PostgreSQL test (Docker `postgres:17`, removed afterwards): the settings section: seeded off, a non-parent refused, 42 refused, `"yes"` refused, a negative cap refused, the parent's valid save stored, a tablet (anon) cannot switch it off, delete refused.

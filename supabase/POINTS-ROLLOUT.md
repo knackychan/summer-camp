@@ -57,6 +57,11 @@ add every authenticated account.
    parent-checked) to `points_policy` and `points_claim`. Tablets with the
    matching app offer those four jobs; before this step, the server rejects their claims
    with "Unknown award kind", so run it before deploying the app.
+9. **Games gate settings (2026-10-08), any time:**
+   [migrations/20261008_games_gate_settings.sql](migrations/20261008_games_gate_settings.sql)
+   seeds `games_gate_v1` switched **off** and lets only a parent in `admins`
+   change it (checked values). It does not depend on the points migration. Then
+   switch the gate on in Admin → Quests → Points & assignments → Games gate.
 
 The exact remaining deployment action is step 3 on the family's live Supabase,
 followed by steps 7–8 (2026-10-08 migrations), then the build/tablet rollout and live smoke check in steps 4–6. The local

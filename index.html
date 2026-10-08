@@ -1783,7 +1783,9 @@ function brainTrioStrip(id){
     return `<span class="btchip${done[x]?" done":""}">${L.icon} ${L.title}<span class="zhs">${L.tz}</span></span>`;
   }).join("")}</div>`;
 }
-/* Papa's PIN-gated skip for today, shared by the lock card and the Papa menu. */
+/* Papa's PIN-gated skip for today, shared by the lock cards, the Papa menu and
+   admin: braingate_<kid> = today now means "Papa opened Games today" and opens
+   both the Brain Gym gate and the points gate (games-gate-ai-guide D7). */
 function openGamesToday(id){
   if(!id)return;
   if(store&&store.clearBrainGate)store.clearBrainGate(id,todayStr());
@@ -1793,6 +1795,16 @@ function openGamesToday(id){
   bigFloat("🔓");
 }
 window.sqOpenGamesToday=function(){openGamesToday(activeKid());};
+/* Local-only mode: Papa sets the games points gate from the tablet's Papa tools
+   (admin owns it when Supabase is configured; anon can't write it there). */
+window.sqGamesGateLocal={
+  available:function(){return !!(store&&!store.configured&&window.SQGamesGate);},
+  get:function(){return SQGamesGate.parseSettings(store&&store.familySettings&&store.familySettings.games_gate_v1);},
+  set:async function(next){
+    await store.setFamilySetting("games_gate_v1",JSON.stringify(next));
+    refreshLockUI();if(hubKid)renderHub();
+  }
+};
 /* ---- Papa test mode: Papa PIN-gated, unlocks everything for today so Papa can try every function ---- */
 function isTestMode(){
   try{return localStorage.getItem("sq:testMode")===todayStr();}catch(e){return false;}

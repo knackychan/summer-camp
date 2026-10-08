@@ -6,6 +6,7 @@ import vm from "node:vm";
 const require=createRequire(import.meta.url);
 const points=require("../js/points.js"), config=require("../js/quest-config.js");
 const rewards=require("../js/reward-data.js"), quests=require("../js/quest-data.js");
+const gate=require("../js/games-gate-core.js");
 
 // Catalog migration preserves value and identities, including repeated saves.
 const old={id:"movie_pick",cost:12,title:["Movie","電影"]};
@@ -40,8 +41,8 @@ const node=id=>{
   if(!elements.has(id))elements.set(id,{value:"",checked:false,dataset:{},innerHTML:"",textContent:"",focus(){},querySelector(){return null;},querySelectorAll(){return [];},classList:{add(){},remove(){},toggle(){}}});
   return elements.get(id);
 };
-const context={window:{SQPoints:points,SQQuestConfig:config,SQRewardData:rewards,SQQuestData:quests},
-  SQPoints:points,SQQuestConfig:config,SQ_DAY:{isoOffset:()=>"2026-10-03"},
+const context={window:{SQPoints:points,SQQuestConfig:config,SQRewardData:rewards,SQQuestData:quests,SQGamesGate:gate},
+  SQPoints:points,SQQuestConfig:config,SQGamesGate:gate,SQ_DAY:{isoOffset:()=>"2026-10-03"},
   document:{getElementById:node,querySelectorAll:()=>[]},localStorage:{getItem:()=>null},
   crypto:{randomUUID:()=>"manual-fixed-id"},SQStarId:{random:()=>"manual-fixed-id"},setTimeout:()=>0,clearTimeout(){},console,
   prompt:()=>"Unable to deliver",Date,Set,Map};
@@ -54,7 +55,8 @@ vm.runInContext(source.slice(0,source.indexOf("  /* ---- Event wiring ---- */"))
     set(clientValue){client=clientValue;session={user:{id:'parent'}};today='2026-10-03';pointsReady=true;
       rows.pointTotals=[{kid_id:'lili',total_earned:800,available:600,pending:20}];
       rows.familySettings=[];rewardEditId='movie_pick';loadAll=async function(){};toast=function(){};},
-    offline(){pointsReady=false;}};
+    offline(){pointsReady=false;},
+    gate(fs,claims){rows.familySettings=fs;rows.pointClaimsToday=claims;}};
 })();`,context);
 const api=context.window.test;
 api.set({rpc:async(name,args)=>{calls.push({name,args});return {data:{id:"claim-1",status:"confirmed"},error:null};},
@@ -63,6 +65,21 @@ api.renderPointsSettings(node("studio"));
 assert.match(node("studio").innerHTML,/Agreed goal \(Traditional Chinese\)/);
 assert.match(node("studio").innerHTML,/monthly budget/i);
 assert.match(node("studio").innerHTML,/pointsCash/);
+// Games points gate card (games-gate-ai-guide slice 03): same SQGamesGate as the tablets.
+assert.match(node("studio").innerHTML,/<h3>Games gate<\/h3>/);
+assert.match(node("studio").innerHTML,/id="ggEnabled">/,"ships switched off");
+api.gate([{key:"games_gate_v1",value:JSON.stringify({enabled:true,threshold:{luis:50,lili:50,lucien:40}})},{key:"braingate_luis",value:"2026-10-03"}],
+  [{kid_id:"lili",day:"2026-10-03",kind:"room_rescue",slot:"default",amount:10,status:"pending"},
+   {kid_id:"lili",day:"2026-10-03",kind:"homework",slot:"default",amount:30,status:"denied"},
+   {kid_id:"lucien",day:"2026-10-03",kind:"brain",slot:"calc",amount:10,status:"confirmed"},
+   {kid_id:"lucien",day:"2026-10-03",kind:"homework",slot:"default",amount:30,status:"pending"}]);
+api.renderPointsSettings(node("studio"));
+const ggHtml=node("studio").innerHTML;
+assert.match(ggHtml,/id="ggEnabled" checked>/);
+assert.match(ggHtml,/Lili · 10 \/ 50 points today/);assert.match(ggHtml,/Waiting · 40 to go/);
+assert.match(ggHtml,/Lucien · 40 \/ 40 points today/);
+assert.match(ggHtml,/Open — Papa today/);assert.match(ggHtml,/data-ggopen="luis:undo"/);
+assert.match(ggHtml,/data-ggthreshold="lucien" value="40"/);
 api.renderQuestRewardEditor();
 assert.match(node("qsRewardEditor").innerHTML,/<label for="rwTitleEn">Exchange label \(English\)/);
 assert.match(node("qsRewardEditor").innerHTML,/<label for="rwTitleZh">Exchange label \(Traditional Chinese\)/);

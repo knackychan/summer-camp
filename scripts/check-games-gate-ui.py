@@ -31,8 +31,8 @@ CLAIM = """([kid, kind, slot, amount, status]) => {
 }"""
 
 
-def open_kid(browser, base, kid, when):
-    context = recovery.context_for(browser, {"sq:kid": kid, "sq:view": "hub", "sq:hubTab": "games"})
+def open_kid(browser, base, kid, when, extra=None):
+    context = recovery.context_for(browser, dict({"sq:kid": kid, "sq:view": "hub", "sq:hubTab": "games"}, **(extra or {})))
     page = context.new_page()
     page.set_viewport_size({"width": 1024, "height": 600})
     page.clock.set_fixed_time(when)
@@ -127,6 +127,32 @@ def run(browser, base, out):
     assert "Helping time first" in page.locator("#gamesLockCard").inner_text()
     page.evaluate("window.sqOpenGamesToday()")
     assert opened(page)["ok"], "Papa opens games today"
+    context.close()
+
+    # slice 03: local-only mode sets the gate from the tablet's Papa tools
+    context, page = open_kid(browser, base, "lili", noon, {"sq:adminPin": json.dumps("2468")})
+    page.evaluate(BRAIN_DONE, "lili")
+    assert page.evaluate("sqGamesGateLocal.available()"), "local-only tablet owns the gate"
+    page.evaluate("SQPapa.open()")
+    for digit in "2468":
+        page.locator(".pinkey[data-k='%s']" % digit).click()
+    page.locator("#ptGate").click()
+    page.locator("[data-ptgate=lili]").fill("30")
+    page.locator("#ptGateOn").check()
+    page.screenshot(path=str(out / "games-gate-papa-tools.png"))
+    page.locator("#ptGateSave").click()
+    page.wait_for_function("document.getElementById('ptMsg') && document.getElementById('ptMsg').textContent.includes('Saved')")
+    assert page.evaluate("sqGamesGateLocal.get().threshold.lili") == 30
+    recovery.close_overlays(page)
+    page.evaluate("sqGamesGateLocal.set(Object.assign(sqGamesGateLocal.get(), {enabled: false, threshold: {luis: 50, lili: 50, lucien: 40}}))")
+    assert opened(page)["ok"]
+    page.evaluate("sqGamesGateLocal.set(Object.assign(sqGamesGateLocal.get(), {enabled: true}))")
+    assert opened(page)["reason"] == "points"
+    assert "0 / 50" in card_text(page)
+    stored = page.evaluate("JSON.parse(JSON.parse(localStorage.getItem('sq:famSettings')).games_gate_v1)")
+    assert stored["enabled"] is True and stored["threshold"]["lili"] == 50, stored
+    page.evaluate("sqGamesGateLocal.set(Object.assign(sqGamesGateLocal.get(), {threshold: {luis: 50, lili: 0, lucien: 40}}))")
+    assert opened(page)["ok"], "threshold 0 = no gate"
     context.close()
 
     context, page = open_kid(browser, base, "lucien", night)
