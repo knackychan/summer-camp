@@ -495,7 +495,7 @@ def catalog_checks(page, snap, check, out):
         page.wait_for_timeout(300)
         page.screenshot(path=str(out / f'catalog-{cat}.png'), clip=page.locator('.sqbl-left-rail').bounding_box())
     check(f'Every part in every category gets its real-part icon {bare}', not bare)
-    check(f'All {len(seen)} parts arm and build their geometry in < 50 ms {slow}', len(seen) == 238 and not slow)
+    check(f'All {len(seen)} parts arm and build their geometry in < 50 ms {slow}', len(seen) == 243 and not slow)
 
     info = page.locator('.sqbl-info')
     pick(page, 'animals')
