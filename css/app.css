@@ -5,9 +5,12 @@
 .rotate-overlay-icon{font-size:64px;margin-bottom:12px;animation:rotate-hint 1.6s ease-in-out infinite}
 .rotate-overlay-card p{font-size:20px;font-weight:700;margin:4px 0}
 @keyframes rotate-hint{0%,100%{transform:rotate(0deg)}50%{transform:rotate(90deg)}}
+/* Portrait works everywhere except games, which are built for landscape
+   (Papa, 2026-10-09; docs/plans/2026-10-09-summer-chat-panel/ D7). Instruments
+   carry their own prompt (js/game-services/music.js). */
 @media (orientation:portrait){
-  .rotate-overlay{display:flex}
-  .wrap{display:none !important}
+  body.game-mode .rotate-overlay{display:flex}
+  body.game-mode .wrap{display:none !important}
 }
 .btn{min-width:44px;min-height:44px}
 .spacer{flex:1}
