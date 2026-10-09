@@ -2937,7 +2937,80 @@ function updateSummerCompanion(){
   updateSummerNudge();
 }
 function companionActionLabel(id){
-  return {resume_quest:["▶ Resume quest","▶ 繼續任務"],quest_board:["🧭 Quest board","🧭 任務板"],activity_help:["💡 Help me","💡 幫幫我"],today:["☀️ Today","☀️ 今天"],close:["Close","關閉"]}[id]||[id,id];
+  return {chat:["💬 Chat with Summer","💬 和 Summer 聊天"],resume_quest:["▶ Resume quest","▶ 繼續任務"],quest_board:["🧭 Quest board","🧭 任務板"],activity_help:["💡 Help me","💡 幫幫我"],today:["☀️ Today","☀️ 今天"],close:["Close","關閉"]}[id]||[id,id];
+}
+/* ---- Summer chat (docs/plans/2026-10-09-summer-chat-crash-test/): free text with
+   the AI at any moment, never locked. Replies come EN + 中文 from the kid-chat
+   Edge Function; the conversation lives only while the chat is open. ---- */
+function summerChatOn(){
+  let v=store&&store.familySettings&&store.familySettings.kid_chat_v1;
+  if(typeof v==="string"){try{v=JSON.parse(v);}catch(e){v=null;}}
+  return !(v&&v.enabled===false);
+}
+function withSummerChat(actions){
+  return summerChatOn()&&actions.indexOf("chat")<0?["chat"].concat(actions):actions;
+}
+function summerChatEndpoint(){
+  const c=window.SQ_CONFIG;
+  return c&&c.SUPABASE_URL&&c.SUPABASE_ANON_KEY?{url:c.SUPABASE_URL.replace(/\/$/,"")+"/functions/v1/kid-chat",key:c.SUPABASE_ANON_KEY}:null;
+}
+function openSummerChat(){
+  if(!hubKid)return {ok:false};
+  const kid=hubKid, session=Date.now().toString(36)+Math.random().toString(36).slice(2,10), log=[], endpoint=summerChatEndpoint();
+  const old=document.getElementById("summerChatOverlay");if(old)old.remove();
+  const o=document.createElement("div");o.className="overlay summer-companion-overlay";o.id="summerChatOverlay";
+  o.innerHTML=`<div class="card summer-companion-sheet summer-chat">
+    <div class="summer-companion-sheet__head"><div class="summer-face" data-emotion="happy" data-mood="•ᴗ•">☀️</div>
+      <div><small>SUMMER</small><h3>Chat with Summer</h3><span>和 Summer 聊天</span></div></div>
+    <div class="summer-chat__log" id="summerChatLog" aria-live="polite"></div>
+    <form class="summer-chat__form" id="summerChatForm">
+      <textarea id="summerChatInput" maxlength="500" rows="2" placeholder="Type to Summer… 打字給 Summer…" aria-label="Message to Summer · 給 Summer 的話"></textarea>
+      <button class="btn" type="submit" id="summerChatSend">Send<span>送出</span></button>
+    </form>
+    <button class="btn small" id="summerChatClose">Close<span>關閉</span></button></div>`;
+  document.body.appendChild(o);SQPlatform.haptic("tap");
+  const box=o.querySelector("#summerChatLog"),form=o.querySelector("#summerChatForm"),input=o.querySelector("#summerChatInput");
+  function speak(en,zh){say(en,"en-US");say(zh,"zh-TW",true);}
+  function bubble(who,en,zh){
+    const b=document.createElement("div");b.className="summer-chat__msg summer-chat__msg--"+who;
+    b.innerHTML=who==="kid"?`<p>${escHtml(en)}</p>`:`<p>${escHtml(en)}</p><p class="zhs">${escHtml(zh)}</p><button class="summer-chat__say" type="button" aria-label="Read aloud · 唸出來">🔊</button>`;
+    const s=b.querySelector(".summer-chat__say");if(s)s.onclick=function(){speak(en,zh);};
+    box.appendChild(b);box.scrollTop=box.scrollHeight;
+    return b;
+  }
+  if(!endpoint||!navigator.onLine){
+    bubble("summer","Summer needs wifi to chat.","和 Summer 聊天需要網路。");
+    input.disabled=true;o.querySelector("#summerChatSend").disabled=true;
+  }else bubble("summer","Hi! What do you want to talk about?","嗨！你想聊什麼？");
+  let busy=false;
+  form.onsubmit=function(e){
+    e.preventDefault();
+    const text=input.value.trim();
+    if(!text||busy||!endpoint)return;
+    busy=true;input.value="";
+    log.push({role:"kid",text:text});bubble("kid",text);
+    const wait=bubble("summer","Thinking…","想一下…");wait.classList.add("is-thinking");
+    const ctl=new AbortController(),timer=setTimeout(function(){ctl.abort();},25000);
+    fetch(endpoint.url,{method:"POST",signal:ctl.signal,headers:{"content-type":"application/json",authorization:"Bearer "+endpoint.key,apikey:endpoint.key},
+      body:JSON.stringify({kid:kid,session:session,messages:log.slice(-20)})})
+      .then(function(r){return r.json();})
+      .then(function(r){
+        if(!r||!r.en||!r.zh)throw new Error("empty");
+        if(!r.fallback)log.push({role:"summer",text:r.en+"\n"+r.zh});
+        return r;
+      })
+      .catch(function(){return {en:"I can't reach the internet right now. Try again?",zh:"我現在連不上網路，再試一次好嗎？"};})
+      .then(function(r){
+        clearTimeout(timer);busy=false;wait.remove();
+        if(!o.isConnected)return;
+        bubble("summer",r.en,r.zh);
+        if((KIDS[kid].age||9)<=5)speak(r.en,r.zh);   /* Lucien can't read yet */
+        input.focus();
+      });
+  };
+  input.onkeydown=function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit();}};
+  o.querySelector("#summerChatClose").onclick=function(){o.remove();};
+  return {ok:true};
 }
 function openSummerCompanion(){
   if(!hubKid)return {ok:false};
@@ -2948,11 +3021,12 @@ function openSummerCompanion(){
   summerInteract({stage:"companion",context:ctx,kid:{id:hubKid,name:KIDS[hubKid].name,age:KIDS[hubKid].age}},questAvailable(questSession.preference||"surprise",questSession.energy||"any")).then(function(r){
     if(!o.isConnected)return;
     const sheet=o.querySelector(".summer-companion-sheet");
-    sheet.innerHTML=`<div class="summer-companion-sheet__head"><div class="summer-face" data-emotion="happy" data-mood="•ᴗ•">☀️</div><div><small>SUMMER</small><h3>${escHtml(r.speech||"")}</h3><span>${escHtml(r.speechZh||"")}</span></div></div><div class="summer-companion-actions">${(r.actions||["quest_board","close"]).map(function(id){const l=companionActionLabel(id);return `<button class="btn${id==="close"?" small":""}" data-summer-action="${escHtml(id)}">${escHtml(l[0])}<span>${escHtml(l[1])}</span></button>`;}).join("")}</div><div class="summer-companion-help hidden" id="summerCompanionHelp"></div>`;
+    sheet.innerHTML=`<div class="summer-companion-sheet__head"><div class="summer-face" data-emotion="happy" data-mood="•ᴗ•">☀️</div><div><small>SUMMER</small><h3>${escHtml(r.speech||"")}</h3><span>${escHtml(r.speechZh||"")}</span></div></div><div class="summer-companion-actions">${withSummerChat(r.actions||["quest_board","close"]).map(function(id){const l=companionActionLabel(id);return `<button class="btn${id==="close"?" small":""}" data-summer-action="${escHtml(id)}">${escHtml(l[0])}<span>${escHtml(l[1])}</span></button>`;}).join("")}</div><div class="summer-companion-help hidden" id="summerCompanionHelp"></div>`;
     if(window.SQSummerUI)SQSummerUI.present({face:sheet.querySelector(".summer-face"),panel:sheet,speech:sheet.querySelector("h3"),speechZh:sheet.querySelector(".summer-companion-sheet__head span"),dialogue:null},r);
     sheet.querySelectorAll("[data-summer-action]").forEach(function(b){b.onclick=function(){
       const action=b.dataset.summerAction;
       if(action==="close"){o.remove();return;}
+      if(action==="chat"){o.remove();openSummerChat();return;}
       if(action==="resume_quest"&&ctx.quest){o.remove();SummerQuest.openQuest(ctx.quest.id);return;}
       if(action==="quest_board"){o.remove();SummerQuest.navigate("quests");return;}
       if(action==="today"){o.remove();SummerQuest.navigate("day");return;}

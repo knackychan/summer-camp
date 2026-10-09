@@ -294,7 +294,7 @@
 
   async function loadAll(skipRouteRender){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts,ledger14,photos14,asks14,pointTotals,pointClaims,pointRequests,pointAssignments,pointClaimsToday,guideDecisions]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts,ledger14,photos14,asks14,pointTotals,pointClaims,pointRequests,pointAssignments,pointClaimsToday,guideDecisions,kidChats]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -324,7 +324,9 @@
       /* games points gate: every claim of today (any status) for today's points */
       client.from("points_claims").select("kid_id,day,kind,slot,amount,status").eq("day",today).limit(500),
       /* home-help guide history (slice 04); absent table = empty, never an error */
-      client.from("guide_decisions").select("*").gte("day",dayISO(-6)).order("created_at",{ascending:false}).limit(200)
+      client.from("guide_decisions").select("*").gte("day",dayISO(-6)).order("created_at",{ascending:false}).limit(200),
+      /* Summer chat transcripts (2026-10-09-summer-chat-crash-test); parent-only table */
+      client.from("kid_chats").select("*").gte("created_at",new Date(Date.now()-7*864e5).toISOString()).order("created_at",{ascending:false}).limit(300)
     ]);
     rows={
       ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:(ledger.data||[]).map(pointLedgerRow),asks:asks.data||[],
@@ -332,7 +334,7 @@
       familySettings:familySettings.data||[],redos:redos.data||[],acts:acts.data||[],
       ledger14:(ledger14.data||[]).map(pointLedgerRow),photos14:photos14.data||[],asks14:asks14.data||[],
       pointTotals:pointTotals.data||[],pointClaims:pointClaims.data||[],pointRequests:pointRequests.data||[],pointAssignments:pointAssignments.data||[],
-      pointClaimsToday:pointClaimsToday.data||[],guideDecisions:guideDecisions.data||[]
+      pointClaimsToday:pointClaimsToday.data||[],guideDecisions:guideDecisions.data||[],kidChats:kidChats.data||[]
     };
     pointsReady=!pointTotals.error&&!pointClaims.error&&!pointRequests.error;
     if(pointsReady)rows.totals=rows.pointTotals.map(function(r){return {kid_id:r.kid_id,stars:Number(r.total_earned)||0};});
@@ -479,7 +481,30 @@
       '<h3>Guide decisions (7 days)</h3><p>What the home-help guide suggested, newest first. ▶ marks the pick the child started. A saved decision is reused for the rest of its time slot.</p>'+
       '<div class="qs-list">'+(history||'<p>No guide decisions yet.</p>')+'</div>';
   }
+  /* Summer chat (docs/plans/2026-10-09-summer-chat-crash-test/ D5, D6): Papa's
+     switch and the last 7 days of what the kids wrote and what Summer answered. */
+  function summerChatHtml(){
+    let v=familySettingsMap().kid_chat_v1;
+    if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}
+    const on=!(v&&v.enabled===false), chats=rows.kidChats||[];
+    const cost=chats.reduce(function(a,c){return a+(Number(c.cost_usd)||0);},0);
+    const time=function(iso){return new Date(iso).toLocaleString('en-GB',{timeZone:'Asia/Taipei',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});};
+    const list=chats.map(function(c){
+      return '<article class="qs-row gg-row"><div class="qs-title"><b>'+(c.flagged?'⚠ ':'')+esc(kidName(c.kid_id))+' · '+esc(time(c.created_at))+'</b>'+
+        '<span>Kid: '+esc(c.kid_text)+'</span><span>Summer: '+esc(c.reply_en)+'</span><span>'+esc(c.reply_zh)+'</span></div></article>';
+    }).join('');
+    return '<h3>Summer chat</h3><p>Free chat with the AI from the ☀️ Summer button, at any moment (crash test). Replies are checked by moderation; ⚠ marks a message or reply that was replaced by "talk with Papa". Last 7 days: '+chats.length+' messages · US$'+cost.toFixed(4)+'.</p>'+
+      '<form id="kidChatForm"><label class="gg-enabled"><input type="checkbox" id="kcEnabled"'+(on?' checked':'')+'> Summer chat on</label> <button class="btn btn--sm" type="submit">Save chat switch</button></form>'+
+      '<div class="qs-list">'+(list||'<p>No chats yet.</p>')+'</div>';
+  }
   function bindGamesGate(body){
+    const chatForm=body.querySelector('#kidChatForm');
+    if(chatForm)chatForm.onsubmit=async function(e){
+      e.preventDefault();
+      const on=$('kcEnabled').checked;
+      if(!await saveFamilySetting('kid_chat_v1',JSON.stringify({enabled:on})))return;
+      toast(on?'Summer chat on':'Summer chat off',true);renderQuestStudio();
+    };
     const form=body.querySelector('#gamesGateForm');if(!form)return;
     form.onsubmit=async function(e){
       e.preventDefault();
@@ -501,7 +526,7 @@
     const fs=familySettingsMap(),economy=SQQuestConfig.economy(fs);
     const kinds=Object.keys(SQPoints.rules).filter(function(k){return !/^balanced|^brain$/.test(k);});
     const kidOptions=Object.keys(KIDS).map(function(k){return '<option value="'+k+'">'+esc(kidName(k))+'</option>';}).join('');
-    body.innerHTML=gamesGateHtml()+'<div class="qs-callout">Same work earns once across every entrance. Age-appropriate goals earn the same points; help and mistakes do not reduce them. Daily limits use Asia/Taipei.</div>'+
+    body.innerHTML=gamesGateHtml()+summerChatHtml()+'<div class="qs-callout">Same work earns once across every entrance. Age-appropriate goals earn the same points; help and mistakes do not reduce them. Daily limits use Asia/Taipei.</div>'+
       '<h3>Award amounts</h3><p>Changes apply to future claims. Existing pending claims retain their agreed amount. Limits stay fixed.</p><form id="pointsPolicyForm"><div class="qs-form">'+Object.keys(SQPoints.rules).map(function(k){const r=SQPoints.rules[k];return '<div class="qs-field"><label for="pointAmount-'+k+'">'+esc(r.label[0])+'</label><input id="pointAmount-'+k+'" data-pointamount="'+k+'" type="number" min="0" max="1000" step="5" value="'+SQPoints.amount(k,fs)+'"><span>'+esc(String(r.limit||1))+' per '+(k==='project'||k==='balanced_week'?'week':'day')+'</span></div>';}).join('')+'</div><button class="btn btn--primary" type="submit">Save future awards</button></form>'+
       '<h3>Gift and cash conversion</h3><p>Currency, points per currency unit and monthly budget are required for paid gifts and cash. Cash also requires explicit enablement and uses 100-point steps. Experience rewards need no retail price. Changing an established rate announces the previous and new conversion to children; existing requests keep their agreed rate.</p><form id="pointsEconomyForm"><div class="qs-form">'+
       '<div class="qs-field"><label for="pointsCurrency">Currency code</label><input id="pointsCurrency" value="'+esc(economy.currency)+'" maxlength="3" placeholder="e.g. TWD"></div><div class="qs-field"><label for="pointsRate">Points per currency unit</label><input id="pointsRate" type="number" min="0.01" step="0.01" value="'+(economy.pointsPerUnit||'')+'"></div><div class="qs-field"><label for="pointsBudget">Monthly budget per child (currency)</label><input id="pointsBudget" type="number" min="0.01" step="0.01" value="'+(economy.monthlyBudget||'')+'"></div><div class="qs-field"><label for="pointsCash"><input id="pointsCash" type="checkbox"'+(economy.cashEnabled?' checked':'')+'> Enable cash redemption</label></div></div><button class="btn btn--primary" type="submit">Save conversion settings</button></form>'+

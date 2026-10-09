@@ -68,6 +68,10 @@ add every authenticated account.
    migration). Tablets may only insert `local` rows and set `started_id`.
    Before this step the guide still works; tablets keep their decisions locally
    and the admin history stays empty.
+11. **Summer chat transcripts (2026-10-09), any time:**
+   [migrations/20261009_kid_chats.sql](migrations/20261009_kid_chats.sql)
+   creates `kid_chats` (written only by the `kid-chat` Edge Function, read only
+   by a parent). Without it the chat still answers, but Papa sees no transcripts.
 
 The exact remaining deployment action is step 3 on the family's live Supabase,
 followed by steps 7–8 (2026-10-08 migrations), then the build/tablet rollout and live smoke check in steps 4–6. The local

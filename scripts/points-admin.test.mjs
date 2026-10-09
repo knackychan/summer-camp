@@ -56,7 +56,7 @@ vm.runInContext(source.slice(0,source.indexOf("  /* ---- Event wiring ---- */"))
       rows.pointTotals=[{kid_id:'lili',total_earned:800,available:600,pending:20}];
       rows.familySettings=[];rewardEditId='movie_pick';loadAll=async function(){};toast=function(){};},
     offline(){pointsReady=false;},
-    gate(fs,claims,guide){rows.familySettings=fs;rows.pointClaimsToday=claims;rows.guideDecisions=guide||[];}};
+    gate(fs,claims,guide,chats){rows.familySettings=fs;rows.pointClaimsToday=claims;rows.guideDecisions=guide||[];rows.kidChats=chats||[];}};
 })();`,context);
 const api=context.window.test;
 api.set({rpc:async(name,args)=>{calls.push({name,args});return {data:{id:"claim-1",status:"confirmed"},error:null};},
@@ -85,6 +85,11 @@ api.gate([],[],[{kid_id:"lili",day:"2026-10-03",slot:"morning",reroll:1,source:"
 api.renderPointsSettings(node("studio"));
 assert.match(node("studio").innerHTML,/Lili · 2026-10-03 morning · reroll 1 · local/);
 assert.match(node("studio").innerHTML,/shoes · ▶ garden/);assert.match(node("studio").innerHTML,/Done: room · Time: some/);
+assert.match(node("studio").innerHTML,/id="kcEnabled" checked/);assert.match(node("studio").innerHTML,/No chats yet/);
+api.gate([{key:"kid_chat_v1",value:'{"enabled":false}'}],[],[],[{kid_id:"luis",created_at:"2026-10-09T02:00:00Z",kid_text:"Hi <b>",reply_en:"Hello!",reply_zh:"你好！",flagged:true,cost_usd:0.0002}]);
+api.renderPointsSettings(node("studio"));
+assert.match(node("studio").innerHTML,/id="kcEnabled">/);assert.match(node("studio").innerHTML,/⚠ Luis · 9 Oct, 10:00/);
+assert.match(node("studio").innerHTML,/Kid: Hi &lt;b&gt;/);assert.match(node("studio").innerHTML,/1 messages · US\$0\.0002/);
 api.renderQuestRewardEditor();
 assert.match(node("qsRewardEditor").innerHTML,/<label for="rwTitleEn">Exchange label \(English\)/);
 assert.match(node("qsRewardEditor").innerHTML,/<label for="rwTitleZh">Exchange label \(Traditional Chinese\)/);

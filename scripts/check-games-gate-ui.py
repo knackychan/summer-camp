@@ -198,6 +198,45 @@ def run(browser, base, out):
     assert "Rest time" in page.locator("#homeHelpOverlay").inner_text()
     assert page.locator("#homeHelpOverlay .hhcard").count() == 0
     context.close()
+
+    # Summer chat (2026-10-09-summer-chat-crash-test): from the companion sheet, any time
+    context, page = open_kid(browser, base, "luis", noon)
+    page.evaluate("s => { SQHost.store.familySettings.games_gate_v1 = JSON.stringify(s); }", GATE)
+    page.evaluate("openSummerCompanion()")
+    page.wait_for_selector("[data-summer-action=chat]")
+    assert "和 Summer 聊天" in page.locator("[data-summer-action=chat]").inner_text()
+    page.locator("[data-summer-action=chat]").click()
+    page.wait_for_selector("#summerChatOverlay")
+    assert "needs wifi" in page.locator("#summerChatLog").inner_text(), "local-only mode: no chat, a kind line"
+    assert page.locator("#summerChatInput").is_disabled()
+    recovery.close_overlays(page)
+    sent = []
+    def reply(route):
+        sent.append(json.loads(route.request.post_data))
+        route.fulfill(status=200, content_type="application/json",
+            body=json.dumps({"en": "The sky is blue because sunlight bounces!", "zh": "天空是藍色的，因為陽光在彈跳！", "flagged": False}))
+    page.route("**/functions/v1/kid-chat", reply)
+    page.evaluate("window.SQ_CONFIG = {SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'anon'}")
+    page.evaluate("openSummerChat()")
+    page.locator("#summerChatInput").fill("Why is the sky blue?")
+    page.locator("#summerChatSend").click()
+    page.wait_for_function("document.querySelectorAll('#summerChatLog .summer-chat__msg--summer:not(.is-thinking)').length === 2")
+    log = page.locator("#summerChatLog").inner_text()
+    assert "Why is the sky blue?" in log and "天空是藍色的" in log, log
+    page.locator("#summerChatInput").fill("Tell me more")
+    page.locator("#summerChatInput").press("Enter")
+    page.wait_for_function("document.querySelectorAll('#summerChatLog .summer-chat__msg--summer:not(.is-thinking)').length === 3")
+    assert [m["role"] for m in sent[1]["messages"]] == ["kid", "summer", "kid"], sent[1]
+    assert sent[1]["kid"] == "luis" and sent[0]["session"] == sent[1]["session"], sent
+    assert opened(page)["reason"] == "brain", "games stay gated while the chat is open to talk"
+    page.screenshot(path=str(out / "summer-chat-luis.png"))
+    page.evaluate("SQHost.store.familySettings.kid_chat_v1 = JSON.stringify({enabled: false})")
+    recovery.close_overlays(page)
+    page.evaluate("openSummerCompanion()")
+    page.wait_for_selector("[data-summer-action]")
+    assert page.locator("[data-summer-action=chat]").count() == 0, "Papa's switch hides the chat"
+    results["chat"] = {"messages": len(sent)}
+    context.close()
     return results
 
 
