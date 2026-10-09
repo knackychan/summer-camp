@@ -2941,7 +2941,22 @@ function companionActionLabel(id){
 }
 /* ---- Summer chat (docs/plans/2026-10-09-summer-chat-crash-test/): free text with
    the AI at any moment, never locked. Replies come EN + 中文 from the kid-chat
-   Edge Function; the conversation lives only while the chat is open. ---- */
+   Edge Function; the conversation lives only while the chat is open. The panel
+   (docs/plans/2026-10-09-summer-chat-panel/) is a full-height sheet, docked right
+   on wide landscape screens, sized to window.visualViewport so the composer stays
+   above the on-screen keyboard. ---- */
+/* Tap-to-ask questions: a tap sends `en` as the kid's message through the same
+   kid-chat function and moderation as typed text. Taiwan usage for 中文. */
+const SUMMER_CHAT_PRESETS=[
+  {icon:"🌙",en:"What is the moon made of?",zh:"月亮是什麼做的？"},
+  {icon:"😂",en:"Tell me a joke!",zh:"說個笑話給我聽！"},
+  {icon:"🦖",en:"Tell me about dinosaurs.",zh:"跟我說說恐龍的事。"},
+  {icon:"🌈",en:"Why is the sky blue?",zh:"天空為什麼是藍色的？"},
+  {icon:"🐆",en:"Which animal runs the fastest?",zh:"哪種動物跑得最快？"},
+  {icon:"📖",en:"Tell me a short story.",zh:"說一個短短的故事。"},
+  {icon:"🧀",en:"Why does some cheese have holes?",zh:"為什麼有些起司有洞？"},
+  {icon:"🧩",en:"Give me a riddle!",zh:"出一個謎語給我猜！"}
+];
 function summerChatOn(){
   let v=store&&store.familySettings&&store.familySettings.kid_chat_v1;
   if(typeof v==="string"){try{v=JSON.parse(v);}catch(e){v=null;}}
@@ -2957,38 +2972,62 @@ function summerChatEndpoint(){
 function openSummerChat(){
   if(!hubKid)return {ok:false};
   const kid=hubKid, session=Date.now().toString(36)+Math.random().toString(36).slice(2,10), log=[], endpoint=summerChatEndpoint();
+  const online=!!endpoint&&navigator.onLine, finePointer=matchMedia("(pointer:fine)").matches, vv=window.visualViewport;
   const old=document.getElementById("summerChatOverlay");if(old)old.remove();
-  const o=document.createElement("div");o.className="overlay summer-companion-overlay";o.id="summerChatOverlay";
-  o.innerHTML=`<div class="card summer-companion-sheet summer-chat">
-    <div class="summer-companion-sheet__head"><div class="summer-face" data-emotion="happy" data-mood="•ᴗ•">☀️</div>
-      <div><small>SUMMER</small><h3>Chat with Summer</h3><span>和 Summer 聊天</span></div></div>
+  /* No backdrop dismiss: closing ends the conversation, so a stray tap on the app
+     beside the panel must not. Close and Back still do. */
+  const o=document.createElement("div");o.className="overlay summer-chat-overlay";o.id="summerChatOverlay";o.dataset.nodismiss="1";
+  o.innerHTML=`<section class="card summer-chat" role="dialog" aria-modal="true" aria-labelledby="summerChatTitle">
+    <header class="summer-chat__head"><div class="summer-face" data-emotion="happy" data-mood="•ᴗ•">☀️</div>
+      <div class="summer-chat__title"><h3 id="summerChatTitle">Chat with Summer</h3><span>和 Summer 聊天</span></div>
+      <button class="btn small summer-chat__close" type="button" id="summerChatClose" aria-label="Close · 關閉">✕ Close<span>關閉</span></button></header>
     <div class="summer-chat__log" id="summerChatLog" aria-live="polite"></div>
+    <div class="summer-chat__presets" id="summerChatPresets" role="group" aria-label="Ask Summer · 問 Summer">${SUMMER_CHAT_PRESETS.map(function(p,i){return `<button class="summer-chat__preset" type="button" data-preset="${i}"><b aria-hidden="true">${p.icon}</b><span>${escHtml(p.en)}<small>${escHtml(p.zh)}</small></span></button>`;}).join("")}</div>
     <form class="summer-chat__form" id="summerChatForm">
-      <textarea id="summerChatInput" maxlength="500" rows="2" placeholder="Type to Summer… 打字給 Summer…" aria-label="Message to Summer · 給 Summer 的話"></textarea>
+      <textarea id="summerChatInput" maxlength="500" rows="1" enterkeyhint="send" placeholder="Type here… 在這裡打字…" aria-label="Message to Summer · 給 Summer 的話"></textarea>
       <button class="btn" type="submit" id="summerChatSend">Send<span>送出</span></button>
-    </form>
-    <button class="btn small" id="summerChatClose">Close<span>關閉</span></button></div>`;
+    </form></section>`;
   document.body.appendChild(o);SQPlatform.haptic("tap");
-  const box=o.querySelector("#summerChatLog"),form=o.querySelector("#summerChatForm"),input=o.querySelector("#summerChatInput");
+  const box=o.querySelector("#summerChatLog"),form=o.querySelector("#summerChatForm"),input=o.querySelector("#summerChatInput"),
+    send=o.querySelector("#summerChatSend"),presets=Array.from(o.querySelectorAll("[data-preset]"));
+  /* Keyboard-safe: the overlay covers exactly the visible viewport. 100dvh does not
+     shrink for the on-screen keyboard in Chrome; the visual viewport does. Only the
+     message list scrolls, and it stays on the newest message if it was there. */
+  function fit(){
+    if(!o.isConnected){if(vv){vv.removeEventListener("resize",fit);vv.removeEventListener("scroll",fit);}return;}
+    const pinned=box.scrollHeight-box.scrollTop-box.clientHeight<48;
+    if(vv){o.style.top=vv.offsetTop+"px";o.style.height=vv.height+"px";}
+    o.classList.toggle("is-short",(vv?vv.height:innerHeight)<460);
+    if(pinned)box.scrollTop=box.scrollHeight;
+    if(document.activeElement===input)input.scrollIntoView({block:"nearest"});
+  }
+  if(vv){vv.addEventListener("resize",fit);vv.addEventListener("scroll",fit);}
+  /* Some keyboards finish sliding in after the first resize event. */
+  input.addEventListener("focus",function(){fit();setTimeout(fit,350);});
+  function grow(){input.style.height="auto";input.style.height=Math.min(input.scrollHeight+4,132)+"px";}
+  input.addEventListener("input",grow);
   function speak(en,zh){say(en,"en-US");say(zh,"zh-TW",true);}
   function bubble(who,en,zh){
     const b=document.createElement("div");b.className="summer-chat__msg summer-chat__msg--"+who;
-    b.innerHTML=who==="kid"?`<p>${escHtml(en)}</p>`:`<p>${escHtml(en)}</p><p class="zhs">${escHtml(zh)}</p><button class="summer-chat__say" type="button" aria-label="Read aloud · 唸出來">🔊</button>`;
+    b.innerHTML=who==="kid"?`<p>${escHtml(en)}</p>${zh?`<p class="zhs">${escHtml(zh)}</p>`:""}`:`<p>${escHtml(en)}</p><p class="zhs">${escHtml(zh)}</p><button class="summer-chat__say" type="button" aria-label="Read aloud · 唸出來">🔊</button>`;
     const s=b.querySelector(".summer-chat__say");if(s)s.onclick=function(){speak(en,zh);};
     box.appendChild(b);box.scrollTop=box.scrollHeight;
     return b;
   }
-  if(!endpoint||!navigator.onLine){
-    bubble("summer","Summer needs wifi to chat.","和 Summer 聊天需要網路。");
-    input.disabled=true;o.querySelector("#summerChatSend").disabled=true;
-  }else bubble("summer","Hi! What do you want to talk about?","嗨！你想聊什麼？");
   let busy=false;
-  form.onsubmit=function(e){
-    e.preventDefault();
-    const text=input.value.trim();
-    if(!text||busy||!endpoint)return;
-    busy=true;input.value="";
-    log.push({role:"kid",text:text});bubble("kid",text);
+  function setBusy(v){busy=v;send.disabled=v||!online;presets.forEach(function(b){b.disabled=v||!online;});}
+  if(!online){
+    bubble("summer","Summer needs wifi to chat.","和 Summer 聊天需要網路。");
+    input.disabled=true;
+  }else bubble("summer","Hi! What do you want to talk about?","嗨！你想聊什麼？");
+  setBusy(false);fit();
+  /* One send path for typed text and presets. A preset also shows its 中文 on the
+     kid's bubble; the function gets the English text either way. */
+  function ask(text,zh,typed){
+    text=String(text||"").trim().slice(0,500);
+    if(!text||busy||!online)return false;
+    setBusy(true);
+    log.push({role:"kid",text:text});bubble("kid",text,zh);
     const wait=bubble("summer","Thinking…","想一下…");wait.classList.add("is-thinking");
     const ctl=new AbortController(),timer=setTimeout(function(){ctl.abort();},25000);
     fetch(endpoint.url,{method:"POST",signal:ctl.signal,headers:{"content-type":"application/json",authorization:"Bearer "+endpoint.key,apikey:endpoint.key},
@@ -3001,15 +3040,29 @@ function openSummerChat(){
       })
       .catch(function(){return {en:"I can't reach the internet right now. Try again?",zh:"我現在連不上網路，再試一次好嗎？"};})
       .then(function(r){
-        clearTimeout(timer);busy=false;wait.remove();
+        clearTimeout(timer);wait.remove();
         if(!o.isConnected)return;
+        setBusy(false);
         bubble("summer",r.en,r.zh);
         if((KIDS[kid].age||9)<=5)speak(r.en,r.zh);   /* Lucien can't read yet */
-        input.focus();
+        /* A preset tap on a tablet must not pop the keyboard open. */
+        if(typed||finePointer)input.focus({preventScroll:true});
       });
+    return true;
+  }
+  form.onsubmit=function(e){
+    e.preventDefault();
+    if(ask(input.value,"",true)){input.value="";grow();}
   };
-  input.onkeydown=function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit();}};
-  o.querySelector("#summerChatClose").onclick=function(){o.remove();};
+  o.querySelector("#summerChatPresets").onclick=function(e){
+    const b=e.target.closest("[data-preset]");if(!b||b.disabled)return;
+    const p=SUMMER_CHAT_PRESETS[+b.dataset.preset];
+    if(ask(p.en,p.zh,false))SQPlatform.haptic("tap");
+  };
+  /* Enter sends (Shift+Enter = new line), never while a 注音 / IME candidate is open. */
+  input.onkeydown=function(e){if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();form.requestSubmit();}};
+  o.querySelector("#summerChatClose").onclick=function(){o.remove();if(typeof updateSummerNudge==="function")updateSummerNudge();};
+  if(finePointer&&online)input.focus({preventScroll:true});
   return {ok:true};
 }
 function openSummerCompanion(){

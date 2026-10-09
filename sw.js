@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v201-summer-chat";
+const CACHE_NAME = "summer-quest-v202-summer-chat-panel";
 const APP_SHELL = [
   "./",
   "./index.html",
