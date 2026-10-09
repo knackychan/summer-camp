@@ -7,7 +7,8 @@
     enabled:false,
     threshold:{luis:50,lili:50,lucien:40},
     rerollsPerSlot:3,
-    ai:{enabled:false,callsPerKidPerDay:8,familyCallsPerDay:24,dailyUsdCap:0.05,monthlyUsdCap:1}
+    /* no AI spend caps: removed by Papa 2026-10-09 (design D10 amended) */
+    ai:{enabled:false}
   };
   /* a claim counts while it is waiting or confirmed; denied and merely
      started attempts never do (D1) */
@@ -30,7 +31,6 @@
     out.rerollsPerSlot=Math.max(0,Math.min(10,Math.round(capNumber(v.rerollsPerSlot,DEFAULTS.rerollsPerSlot))));
     const ai=v.ai&&typeof v.ai==="object"?v.ai:{};
     out.ai.enabled=ai.enabled===true;
-    ["callsPerKidPerDay","familyCallsPerDay","dailyUsdCap","monthlyUsdCap"].forEach(function(key){out.ai[key]=capNumber(ai[key],DEFAULTS.ai[key]);});
     return out;
   }
   function identity(c){return [c.kid_id,c.day,c.kind,c.slot||"default"].join(":");}

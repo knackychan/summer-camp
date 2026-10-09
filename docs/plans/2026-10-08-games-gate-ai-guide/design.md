@@ -189,6 +189,8 @@ A new function, **`supabase/functions/games-guide/index.ts`** (Deno), is the onl
 
 ### D10 — Rate limits and spend caps
 
+> **Amended by Papa, 2026-10-09: no spend caps for now ("we will try like this").** No `guide_usage` table and no calls-per-day or USD caps; `games_gate_v1.ai` keeps only `enabled`. Calls stay bounded by the D8 key (one decision per kid / day / slot / reroll, day and slot must be now) and `rerollsPerSlot` (≤ 4 calls per kid per slot, 36 a day). Cost is still recorded per row in `guide_decisions.cost_usd`. The OpenAI project budget is the only money limit. The table below is kept as the original design.
+
 A new table, **`guide_usage`** (`day`, `kid_id`, `calls`, `cost_usd`), is only written by the function in the same transaction as the `guide_decisions` insert. Before calling the model, the function checks:
 
 | Cap | Default | When hit |

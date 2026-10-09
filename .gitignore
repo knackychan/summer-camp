@@ -31,3 +31,4 @@ apps/android/.reports/
 
 # build artifacts
 *.apk
+supabase/functions/**/.env*

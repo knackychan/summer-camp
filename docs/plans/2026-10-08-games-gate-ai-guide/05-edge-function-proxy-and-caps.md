@@ -20,3 +20,10 @@
 - **`scripts/games-guide-fn.test.mjs`**: runs the handler with a fake `fetch` (canned Responses API bodies) and a fake DB. Cases: cap reached → fallback with no model call; repeat key → cached row with no model call; bad model output (2 ids, missing 中文, an unknown id) → fallback; refusal → fallback; good output → one decision row + usage +1, with cost computed from tokens.
 
 **DONE WHEN:** `node scripts/check.mjs` green, including the secret scan. Function tests pass. Deployed to the Supabase project with Papa's key, a `curl` with the anon key returns 3 valid bilingual picks. The same `curl` repeated returns the same row, with `guide_usage.calls` unchanged. With `dailyUsdCap` set to 0 it returns `fallback:true`. `git grep -nE "sk-(proj-)?[A-Za-z0-9]{20,}"` finds nothing.
+
+## Build notes (2026-10-09)
+- **Spend caps removed by Papa** (design D10 amended): no `guide_usage` migration, no cap checks, `games_gate_v1.ai` is just `{enabled}`. Cost and tokens are still saved on every `ai` row. The reroll limit (`rerollsPerSlot`) stays, which keeps calls ≤ 4 per kid per slot.
+- Logic lives in `guide.mjs` (no Deno APIs) so `scripts/games-guide-fn.test.mjs` runs it in Node with a fake fetch and database; `index.ts` only does HTTP, CORS and the database. The id copy is `items.mjs`, checked against `SQHomeHelp.ITEMS` in that test (run by `check.mjs`).
+- The function also falls back when `games_gate_v1.ai.enabled` is not true, so deploying it changes nothing for the kids until slice 06's switch is on.
+- `check.mjs` secret scan now covers `.ts` files and fails on OpenAI key shapes or an `OPENAI_API_KEY=` with a value.
+- Request parameters follow `server/agent-proxy/src/providers/OpenAIProvider.ts` (same model and request shape in use by the LAN proxy).

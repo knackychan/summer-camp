@@ -754,13 +754,19 @@ try {
   const jwtPattern = ["e", "y", "J"].join("");
   const allowedServiceRoleFiles = new Set([".claude/commands/ship.md", "CLAUDE.md", "js/config.example.js"]);
   const allowedJwtFiles = new Set([".claude/commands/ship.md"]);
-  const textLike = /\.(css|html|js|json|md|mjs|sql|svg|txt|webmanifest|yml)$/i;
+  const textLike = /\.(css|html|js|json|md|mjs|sql|svg|ts|txt|webmanifest|yml)$/i;
+  // OpenAI keys (games-guide Edge Function, games-gate-ai-guide slice 05): the key
+  // lives only in Supabase secrets, never here, never as an assignment with a value.
+  const openAiKey = new RegExp(["s", "k-(proj-)?[A-Za-z0-9_-]{20,}"].join(""));
+  const openAiAssign = new RegExp(["OPENAI", "_API_KEY\\s*=\\s*[^\\s.…'\"`]"].join(""));
   for (const file of tracked) {
     const normalizedFile = file.replaceAll("\\", "/");
     const fileUrl = new URL(file, root);
     if (!existsSync(fileUrl)) continue;
     if (!textLike.test(normalizedFile)) continue;
     const text = readFileSync(fileUrl, "utf8");
+    if (openAiKey.test(text)) fail("secrets", `${file} contains an OpenAI key shape`);
+    if (openAiAssign.test(text)) fail("secrets", `${file} assigns an OpenAI key`);
     if (text.includes(jwtPattern) && !allowedJwtFiles.has(normalizedFile)) {
       fail("secrets", `${file} contains JWT prefix ${jwtPattern}`);
     }
