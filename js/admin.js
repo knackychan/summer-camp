@@ -50,6 +50,9 @@
   let currentRoute="today";
   let activeKidDetail=null;
   let questStudioTab="tasks", questEditId=null, rewardEditId=null;
+  /* Settings → Clean up (docs/plans/2026-10-09-admin-cleanup/): open tab, kid
+     filter, ticked ids, the pending confirm card and the points-reset kid. */
+  let cleanupTab="asks", cleanupKid="all", cleanupSel=new Set(), cleanupConfirm=null, cleanupResult="", cleanupResetKid="luis", cleanupResetResult="";
 
   const CHAT_KEY="sq-admin-chat-filters";
   const CHAT_TYPES=[
@@ -334,7 +337,7 @@
       familySettings:familySettings.data||[],redos:redos.data||[],acts:acts.data||[],
       ledger14:(ledger14.data||[]).map(pointLedgerRow),photos14:photos14.data||[],asks14:asks14.data||[],
       pointTotals:pointTotals.data||[],pointClaims:pointClaims.data||[],pointRequests:pointRequests.data||[],pointAssignments:pointAssignments.data||[],
-      pointClaimsToday:pointClaimsToday.data||[],guideDecisions:guideDecisions.data||[],kidChats:kidChats.data||[]
+      pointClaimsToday:pointClaimsToday.data||[],guideDecisions:guideDecisions.data||[],kidChats:kidChats.data||[],kidChatsError:!!kidChats.error
     };
     pointsReady=!pointTotals.error&&!pointClaims.error&&!pointRequests.error;
     if(pointsReady)rows.totals=rows.pointTotals.map(function(r){return {kid_id:r.kid_id,stars:Number(r.total_earned)||0};});
@@ -2287,6 +2290,7 @@
   function renderSettings(){
     if($("accessPanel"))renderAccessPanel();
     if($("behaviourPanel"))renderBehaviourPanel();
+    if($("cleanupPanel"))renderCleanup();
     if($("dangerZone"))renderDangerZone();
     if($("seasonReset"))renderSeasonReset();
     updateNotifyState();
@@ -2436,6 +2440,146 @@
       return;
     }
     toast("New season started; points kept",true);
+    await loadAll();
+  }
+
+  /* ---- Clean up (docs/plans/2026-10-09-admin-cleanup/) ----
+     Real deletes and the points reset go through parent-only database functions
+     (design D1); rows, filters and wording come from SQAdminCleanup (D6). */
+  const cleanupMissing=error=>/admin_(delete_rows|clear|reset_points)/.test(String(error&&error.message||""))&&/find|schema cache|does not exist/i.test(String(error&&error.message||""));
+  const cleanupError=error=>cleanupMissing(error)?"Run supabase/migrations/20261009_admin_cleanup.sql in the Supabase SQL editor first.":(error&&error.message)||"Could not clean up";
+  function renderCleanup(){
+    var el=$("cleanupPanel");
+    if(!el)return;
+    el.innerHTML='<div class="cleanup-reset"><h3>Reset points</h3><div id="cleanupReset"></div></div>'+
+      '<div class="cleanup-data"><h3>Delete rows</h3><div id="cleanupData"></div></div>';
+    renderCleanupReset();
+    renderCleanupData();
+  }
+  function renderCleanupReset(){
+    var el=$("cleanupReset");
+    if(!el)return;
+    var kids=SQAdminCleanup.KIDS.concat([["all","All"]]);
+    el.innerHTML='<p class="field__hint">Sync every tablet first — unsent earnings in a tablet\'s offline queue would come back. Kids, messages, settings and learning stay; today\'s Games gate counts from 0 again.</p>'+
+      '<div class="chips" role="group" aria-label="Kid to reset">'+kids.map(function(k){
+        return '<button class="chip" data-cleanreset="'+k[0]+'" aria-pressed="'+(cleanupResetKid===k[0])+'">'+esc(k[1])+'</button>';
+      }).join("")+'</div>'+
+      '<p class="cleanup-balance" id="cleanupBalance">'+(pointsReady?esc(SQAdminCleanup.balanceText(rows.pointTotals,cleanupResetKid)):"Deploy the points migration before resetting points.")+'</p>'+
+      '<label class="field" style="max-width:260px;margin-bottom:0"><span class="lbl">Type RESET to confirm</span>'+
+      '<input class="inp" id="cleanupResetConfirm" autocomplete="off" placeholder="RESET" aria-describedby="cleanupResetStatus"></label>'+
+      '<div class="row" style="margin-top:12px"><button class="btn btn--danger" id="cleanupResetBtn" disabled>Reset points to 0</button>'+
+      '<span class="tbl__note" id="cleanupResetStatus" aria-live="polite">'+esc(cleanupResetResult)+'</span></div>';
+    el.querySelectorAll("[data-cleanreset]").forEach(function(b){b.onclick=function(){cleanupResetKid=b.dataset.cleanreset;cleanupResetResult="";renderCleanupReset();};});
+    var input=$("cleanupResetConfirm"),btn=$("cleanupResetBtn");
+    input.oninput=function(){btn.disabled=!pointsReady||input.value.trim().toUpperCase()!=="RESET";};
+    btn.onclick=runPointsReset;
+  }
+  async function runPointsReset(){
+    var btn=$("cleanupResetBtn"),status=$("cleanupResetStatus");
+    if(!pointsReady){status.textContent="Deploy the points migration before resetting points.";return;}
+    btn.disabled=true;
+    status.textContent="Resetting…";
+    const {data,error}=await client.rpc("admin_reset_points",{p_kid:cleanupResetKid==="all"?null:cleanupResetKid});
+    if(error){status.textContent=cleanupError(error);btn.disabled=false;return;}
+    cleanupResetResult=SQAdminCleanup.resetText(data);
+    toast(cleanupResetResult,true);
+    await loadAll();
+  }
+  function cleanupRows(){
+    return SQAdminCleanup.buildRows(cleanupTab,{
+      asks:rows.asks,archivedIds:archivedAskIds(),rewardIds:rows.pointRequests.map(function(r){return r.id;}),
+      kidChats:rows.kidChats,photos:rows.photos,passes:rows.passes,blockTitle:blockTitle
+    },{kid:cleanupKid});
+  }
+  function renderCleanupData(){
+    var el=$("cleanupData");
+    if(!el)return;
+    var list=cleanupRows();
+    cleanupSel=SQAdminCleanup.prune(list,cleanupSel);
+    var cat=SQAdminCleanup.category(cleanupTab), who=cleanupKid==="all"?"everyone":kidName(cleanupKid);
+    var head='<div class="chips" role="group" aria-label="What to clean up">'+SQAdminCleanup.CATEGORIES.map(function(c){
+        return '<button class="chip" data-cleantab="'+c.id+'" aria-pressed="'+(cleanupTab===c.id)+'">'+esc(c.label)+'</button>';
+      }).join("")+'</div>'+
+      '<div class="chips" role="group" aria-label="Filter by kid">'+[["all","All"]].concat(SQAdminCleanup.KIDS).map(function(k){
+        return '<button class="chip" data-cleankid="'+k[0]+'" aria-pressed="'+(cleanupKid===k[0])+'">'+(k[0]==="all"?"":'<span class="chip__dot" style="background:var(--kid-'+k[0]+')"></span>')+esc(k[1])+'</button>';
+      }).join("")+'</div>';
+    if(cleanupTab==="kid_chats"&&rows.kidChatsError){
+      el.innerHTML=head+'<p class="qs-callout">Summer chat transcripts are not installed. Run supabase/migrations/20261009_kid_chats.sql first.</p>';
+      bindCleanupData(el,list);return;
+    }
+    var actions='<div class="row cleanup-actions">'+
+      '<button class="btn btn--sm btn--danger" id="cleanupDeleteSel"'+(cleanupSel.size?'':' disabled')+'>Delete selected ('+cleanupSel.size+')</button>'+
+      '<button class="btn btn--sm" id="cleanupClearAll">Clear all '+esc(cat.label.toLowerCase())+' for '+esc(who)+'</button>'+
+      (cleanupTab==="asks"?'<button class="btn btn--sm" id="cleanupClearArchived">Clear all archived</button>':'')+
+      '</div>';
+    var confirm="";
+    if(cleanupConfirm){
+      var t=SQAdminCleanup.confirmText(cleanupConfirm);
+      confirm='<div class="note note--error cleanup-confirm"><div><b>'+esc(t.head)+'</b>'+t.notes.map(function(n){return '<span>'+esc(n)+'</span>';}).join("")+
+        '<label class="field" style="max-width:260px;margin:10px 0 0"><span class="lbl">Type DELETE to confirm</span><input class="inp" id="cleanupConfirmInput" autocomplete="off" placeholder="DELETE"></label>'+
+        '<div class="row" style="margin-top:10px"><button class="btn btn--danger" id="cleanupConfirmBtn" disabled>Delete</button><button class="btn btn--quiet" id="cleanupCancel">Cancel</button></div></div></div>';
+    }
+    var all=SQAdminCleanup.allSelected(list,cleanupSel);
+    var body=list.map(function(r){
+      var group=cleanupTab==="kid_chats"&&r.groupStart?'<tr class="cleanup-group"><td colspan="4" data-l="">Conversation · '+esc(kidName(r.kid))+' · '+esc(SQAdminCleanup.when(r.at))+'</td></tr>':'';
+      var on=cleanupSel.has(r.id);
+      return group+'<tr'+(on?' class="is-selected"':'')+'><td data-l=""><label class="cleanup-check"><input type="checkbox" data-cleanrow="'+esc(r.id)+'"'+(on?' checked':'')+' aria-label="Select"></label></td>'+
+        '<td data-l="Kid"><span class="chip__dot" style="background:var(--kid-'+esc(r.kid)+')"></span> '+esc(kidName(r.kid))+'</td>'+
+        '<td data-l="When" class="num">'+esc(SQAdminCleanup.when(r.at))+'</td>'+
+        '<td data-l="'+esc(cat.label)+'" class="cleanup-preview"><b>'+esc(r.text)+'</b>'+r.tags.map(function(x){return ' <span class="tag tag--open">'+esc(x)+'</span>';}).join("")+
+        r.lines.map(function(x){return '<div class="tbl__note">'+esc(x)+'</div>';}).join("")+'</td></tr>';
+    }).join("");
+    el.innerHTML=head+actions+confirm+
+      '<div class="tbl-wrap"><table class="tbl cleanup-tbl"><thead><tr><th><label class="cleanup-check"><input type="checkbox" id="cleanupAll"'+(all?' checked':'')+(list.length?'':' disabled')+' aria-label="Select all shown"><span class="cleanup-all-lbl">Select all shown</span></label></th><th>Kid</th><th>When</th><th>'+esc(cat.label)+'</th></tr></thead>'+
+      '<tbody>'+(body||'<tr><td colspan="4" class="tbl__note">Nothing to clean up here.</td></tr>')+'</tbody></table></div>'+
+      '<p class="field__hint">Lists the recent rows Admin has loaded. "Clear all" also removes older ones.</p>'+
+      '<p class="tbl__note" id="cleanupResult" aria-live="polite">'+esc(cleanupResult)+'</p>';
+    bindCleanupData(el,list);
+  }
+  function bindCleanupData(el,list){
+    el.querySelectorAll("[data-cleantab]").forEach(function(b){b.onclick=function(){cleanupTab=b.dataset.cleantab;cleanupSel=new Set();cleanupConfirm=null;cleanupResult="";renderCleanupData();};});
+    el.querySelectorAll("[data-cleankid]").forEach(function(b){b.onclick=function(){cleanupKid=b.dataset.cleankid;cleanupConfirm=null;renderCleanupData();};});
+    el.querySelectorAll("[data-cleanrow]").forEach(function(i){i.onchange=function(){cleanupSel=SQAdminCleanup.toggle(cleanupSel,i.dataset.cleanrow);cleanupConfirm=null;renderCleanupData();};});
+    var all=$("cleanupAll");
+    if(all)all.onchange=function(){cleanupSel=SQAdminCleanup.toggleAll(list,cleanupSel);cleanupConfirm=null;renderCleanupData();};
+    var ask=function(action){
+      var ids=action==="selected"?Array.from(cleanupSel):null;
+      var rewardCount=action==="selected"?list.filter(function(r){return r.reward&&cleanupSel.has(r.id);}).length:0;
+      cleanupConfirm={action:action,category:cleanupTab,kid:cleanupKid,ids:ids,count:ids?ids.length:0,rewardCount:rewardCount};
+      cleanupResult="";renderCleanupData();
+      var input=$("cleanupConfirmInput");if(input)input.focus();
+    };
+    if($("cleanupDeleteSel"))$("cleanupDeleteSel").onclick=function(){if(cleanupSel.size)ask("selected");};
+    if($("cleanupClearAll"))$("cleanupClearAll").onclick=function(){ask("clear");};
+    if($("cleanupClearArchived"))$("cleanupClearArchived").onclick=function(){ask("archived");};
+    if($("cleanupCancel"))$("cleanupCancel").onclick=function(){cleanupConfirm=null;renderCleanupData();};
+    var input=$("cleanupConfirmInput"),btn=$("cleanupConfirmBtn");
+    if(input&&btn){
+      input.oninput=function(){btn.disabled=input.value.trim().toUpperCase()!=="DELETE";};
+      btn.onclick=runCleanup;
+    }
+  }
+  async function runCleanup(){
+    var c=cleanupConfirm,btn=$("cleanupConfirmBtn");
+    if(!c)return;
+    if(btn){btn.disabled=true;btn.textContent="Deleting…";}
+    const {data,error}=c.action==="selected"
+      ?await client.rpc("admin_delete_rows",{p_category:c.category,p_ids:c.ids})
+      :await client.rpc("admin_clear",{p_category:c.category,p_kid:c.kid==="all"?null:c.kid,p_archived_only:c.action==="archived"});
+    if(error){cleanupConfirm=null;cleanupResult=cleanupError(error);toast(cleanupResult);renderCleanupData();return;}
+    var msg=SQAdminCleanup.resultText(c.category,data);
+    /* D4: the rows are gone; remove their files best-effort. A failure never undoes the delete. */
+    var bucket=SQAdminCleanup.category(c.category).bucket, paths=(data&&data.paths)||[];
+    if(bucket&&paths.length){
+      var left=false;
+      try{
+        const res=await client.storage.from(bucket).remove(paths);
+        left=!!res.error||!res.data||res.data.length<paths.length;
+      }catch(e){left=true;}
+      if(left)msg+=" · Files left in Storage — empty the bucket in the Supabase dashboard";
+    }
+    cleanupSel=new Set();cleanupConfirm=null;cleanupResult=msg;
+    toast(msg,true);
     await loadAll();
   }
 
