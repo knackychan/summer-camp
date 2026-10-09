@@ -12,6 +12,13 @@ assert.match(sql, /request_id uuid primary key references public\.points_request
 assert.match(sql, /if not points_parent\(\) then raise exception 'Parent approval required'/);
 assert.match(sql, /version=1\) then return/);
 assert.doesNotMatch(sql.slice(sql.indexOf('create or replace function public.reset_season')), /truncate table[^;]*(stars_ledger|family_settings|asks)/);
+const cleanupSql = readFileSync(new URL('../supabase/migrations/20261009_admin_cleanup.sql', import.meta.url), 'utf8');
+for (const fn of ['admin_delete_rows', 'admin_clear', 'admin_reset_points']) {
+  assert.match(cleanupSql, new RegExp(`function public\\.${fn}\\([\\s\\S]*?\\bbegin\\s*if not public\\.admin_cleanup_parent\\(\\) then raise exception`), `${fn} starts with the parent check`);
+}
+assert.match(cleanupSql, /revoke all on function public\.admin_cleanup_archived\(\),public\.admin_cleanup_apply\(text,text\[\]\) from public,anon,authenticated/);
+assert.doesNotMatch(cleanupSql, /delete from storage\.objects/, 'Storage files are removed by the browser, never by SQL (D4)');
+assert.match(cleanupSql, /for delete to authenticated\s+using \(bucket_id in \('voices','proofs'\) and public\.admin_cleanup_parent\(\)\)/, 'only a parent may delete files');
 const url = process.env.POINTS_TEST_URL;
 if (!url) {
   console.log('Points database static checks passed; PostgreSQL integration NOT RUN (set POINTS_TEST_URL and POINTS_TEST_PSQL; see supabase/POINTS-ROLLOUT.md).');
@@ -245,4 +252,63 @@ await run(`update guide_decisions set started_id='room' where kid_id='lili' and 
 assert.equal((await one(`select started_id from guide_decisions where kid_id='lili'`)).started_id, 'room');
 await assert.rejects(() => run(`update guide_decisions set picks='[]' where kid_id='lili';`, 'anon', ''), /permission denied/);
 await assert.rejects(() => run(`delete from guide_decisions;`, 'anon', ''), /permission denied/);
-console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation, games-gate home-help kinds, settings guard and guide decisions.');
+// Admin clean-up (2026-10-09-admin-cleanup): parent-only deletes and points reset.
+const chatsSql = readFileSync(new URL('../supabase/migrations/20261009_kid_chats.sql', import.meta.url), 'utf8');
+await run(cleanupSql); await run(cleanupSql);
+await assert.rejects(() => rpc('admin_delete_rows', `'kid_chats',array['1']`), /not installed/, 'kid_chats absent: clear message');
+await run(chatsSql);
+const count = async t => (await one(`select count(*)::int as n from ${t}`)).n;
+const cleanupCalls = [['admin_delete_rows', `'asks',array[]::text[]`], ['admin_clear', `'asks'`], ['admin_reset_points', `'lili'`]];
+for (const [fn, args] of cleanupCalls) {
+  await assert.rejects(() => rpc(fn, args, 'anon', ''), /permission denied/, `${fn}: anon`);
+  await assert.rejects(() => rpc(fn, args, 'authenticated', stranger), /Parent approval/, `${fn}: non-admin`);
+}
+await assert.rejects(() => rpc('admin_cleanup_apply', `'asks',array[]::text[]`), /permission denied/, 'internal delete path is not callable');
+await assert.rejects(() => rpc('admin_delete_rows', `'kids',array['luis']`), /Unknown clean-up category/);
+await assert.rejects(() => rpc('admin_clear', `'photos','nobody'`), /Unknown kid/);
+// Messages (slice 02): plain asks delete, reward asks are kept, archived ids follow.
+await run(`insert into asks(id,kid_id,kind,body,audio_path) values('${uuid(40)}','luis','question','archived plain','voices/luis-40.webm'),
+  ('${uuid(41)}','luis','question','open plain',null),('${uuid(42)}','lili','question','lili archived',null);
+insert into family_settings(key,value) values('archived_asks','["${uuid(40)}","${uuid(42)}","${uuid(2)}"]') on conflict(key) do update set value=excluded.value;`);
+const archived = async () => JSON.parse((await one(`select value from family_settings where key='archived_asks'`)).value).sort();
+assert.deepEqual(await rpc('admin_delete_rows', `'asks',array['${uuid(41)}','${uuid(2)}']`), { deleted: 1, skipped: 1, paths: [] }, 'reward ask kept');
+assert.ok(await one(`select id from asks where id='${uuid(2)}'`), 'reward ask still there');
+assert.deepEqual(await rpc('admin_clear', `'asks','luis',true`), { deleted: 1, skipped: 1, paths: ['voices/luis-40.webm'] }, 'only Luis archived');
+assert.ok(await one(`select id from asks where id='${uuid(42)}'`), "Lili's archived ask stays");
+assert.deepEqual(await archived(), [uuid(2), uuid(42)].sort(), 'deleted ids leave archived_asks');
+// Summer chats (slice 03): bigint ids passed as text, clear per kid.
+await run(`insert into kid_chats(kid_id,session_id,kid_text,reply_en,reply_zh) values('lili','s1','hi','Hello','你好'),('lili','s1','why','Because','因為'),('luis','s2','yo','Hey','嘿');`);
+const chatId = (await one(`select id::text as id from kid_chats where kid_text='hi'`)).id;
+assert.equal((await rpc('admin_delete_rows', `'kid_chats',array['${chatId}']`)).deleted, 1);
+assert.equal((await rpc('admin_clear', `'kid_chats','lili'`)).deleted, 1);
+assert.deepEqual((await rows(`select kid_id from kid_chats`)).map(r => r.kid_id), ['luis'], "other kids' chats stay");
+// Photos and passes (slice 04): paths come back for the deleted photo rows only.
+await run(`insert into photos(id,kid_id,day,block_idx,path) values('${uuid(50)}','luis','${today}',1,'proofs/a.jpg'),('${uuid(51)}','luis','${today}',2,'proofs/b.jpg'),('${uuid(52)}','lili','${today}',1,'proofs/c.jpg');
+insert into passes(id,kid_id,kind,status) values('${uuid(60)}','luis','golden','spent'),('${uuid(61)}','luis','excused','granted'),('${uuid(62)}','lili','golden','granted');`);
+assert.deepEqual(await rpc('admin_delete_rows', `'photos',array['${uuid(50)}']`), { deleted: 1, skipped: 0, paths: ['proofs/a.jpg'] });
+assert.deepEqual(await rpc('admin_clear', `'photos','luis'`), { deleted: 1, skipped: 0, paths: ['proofs/b.jpg'] });
+assert.equal(await count('photos'), 1);
+assert.equal((await rpc('admin_delete_rows', `'passes',array['${uuid(60)}']`)).deleted, 1);
+assert.equal((await rpc('admin_clear', `'passes','luis'`)).deleted, 1);
+assert.deepEqual((await rows(`select id from passes`)).map(r => r.id), [uuid(62)]);
+// Points reset (slice 01): one kid, then everyone; nothing else is touched.
+const pointTables = ['points_refunds', 'points_redemptions', 'points_requests', 'points_claims', 'points_assignments', 'points_excuses', 'points_legacy_spending', 'stars_ledger'];
+const kept = async () => ({ asks: await count('asks'), settings: await count('family_settings'), kids: await count('kids'), history: await count('points_policy_history') });
+const keptBefore = await kept();
+const others = async () => rows(`select * from point_totals where kid_id<>'lili' order by kid_id`);
+const othersBefore = await others();
+assert.ok((await wallet('lili')).total_earned > 0 && othersBefore.some(w => w.spent > 0), 'reset starts from real balances');
+assert.deepEqual(await rpc('admin_reset_points', `'lili'`).then(r => r.kids), 1);
+assert.deepEqual(await wallet('lili'), { kid_id: 'lili', total_earned: 0, spent: 0, available: 0, pending: 0 });
+assert.deepEqual(await others(), othersBefore, 'Luis and Lucien keep their points');
+assert.equal((await one(`select stars from star_totals where kid_id='lili'`)).stars, 0);
+assert.equal((await rpc('admin_reset_points', 'null')).kids, 3);
+for (const w of await rows('select * from point_totals')) assert.deepEqual([w.total_earned, w.spent, w.available, w.pending], [0, 0, 0, 0], w.kid_id);
+for (const t of pointTables) assert.equal(await count(t), 0, `${t} empty`);
+assert.deepEqual(await kept(), keptBefore, 'asks, settings, kids and policy history keep their rows');
+assert.equal((await claim('lili', today, 'morning_teeth')).amount, 5, "today's routines can be earned again");
+await assert.rejects(() => run(`delete from stars_ledger;`, 'authenticated'), /cannot be edited or deleted/, 'ledger guard is back on after a reset');
+assert.deepEqual(await rpc('admin_delete_rows', `'asks',array['${uuid(2)}']`), { deleted: 1, skipped: 0, paths: [] }, 'after a reset the reward ask deletes');
+await run(cleanupSql);
+assert.equal((await wallet('lili')).total_earned, 5, 're-running the clean-up migration changes nothing');
+console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation, games-gate home-help kinds, settings guard, guide decisions and admin clean-up.');

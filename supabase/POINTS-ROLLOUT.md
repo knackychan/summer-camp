@@ -72,6 +72,15 @@ add every authenticated account.
    [migrations/20261009_kid_chats.sql](migrations/20261009_kid_chats.sql)
    creates `kid_chats` (written only by the `kid-chat` Edge Function, read only
    by a parent). Without it the chat still answers, but Papa sees no transcripts.
+12. **Admin clean-up (2026-10-09), after step 3:**
+   [migrations/20261009_admin_cleanup.sql](migrations/20261009_admin_cleanup.sql)
+   (database owner, safe to re-run). Adds the parent-only `admin_delete_rows`,
+   `admin_clear` and `admin_reset_points` behind Admin → Settings → Clean up, and a
+   Storage policy that lets a parent (never a tablet) delete files in `voices` and
+   `proofs`. Reset points makes **no backup**: sync every tablet first, because
+   earnings still in a tablet's offline queue arrive after the reset. Points tables
+   that do not exist yet are skipped; run step 11 first if you want the Summer
+   chats tab. `reset-points.sql` stays as the SQL-editor route with a backup copy.
 
 The exact remaining deployment action is step 3 on the family's live Supabase,
 followed by steps 7–8 (2026-10-08 migrations), then the build/tablet rollout and live smoke check in steps 4–6. The local
