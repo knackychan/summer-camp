@@ -2986,6 +2986,7 @@ function openSummerChat(){
     <form class="summer-chat__form" id="summerChatForm">
       <textarea id="summerChatInput" maxlength="500" rows="1" enterkeyhint="send" placeholder="Type here… 在這裡打字…" aria-label="Message to Summer · 給 Summer 的話"></textarea>
       <button class="btn" type="submit" id="summerChatSend">Send<span>送出</span></button>
+      <button class="btn summer-chat__close-mini" type="button" id="summerChatCloseMini" aria-label="Close · 關閉">✕</button>
     </form></section>`;
   document.body.appendChild(o);SQPlatform.haptic("tap");
   const box=o.querySelector("#summerChatLog"),form=o.querySelector("#summerChatForm"),input=o.querySelector("#summerChatInput"),
@@ -3061,7 +3062,8 @@ function openSummerChat(){
   };
   /* Enter sends (Shift+Enter = new line), never while a 注音 / IME candidate is open. */
   input.onkeydown=function(e){if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();form.requestSubmit();}};
-  o.querySelector("#summerChatClose").onclick=function(){o.remove();if(typeof updateSummerNudge==="function")updateSummerNudge();};
+  /* The header hides while the keyboard is up; a small ✕ beside Send stands in. */
+  o.querySelector("#summerChatClose").onclick=o.querySelector("#summerChatCloseMini").onclick=function(){o.remove();if(typeof updateSummerNudge==="function")updateSummerNudge();};
   if(finePointer&&online)input.focus({preventScroll:true});
   return {ok:true};
 }
