@@ -62,6 +62,12 @@ add every authenticated account.
    seeds `games_gate_v1` switched **off** and lets only a parent in `admins`
    change it (checked values). It does not depend on the points migration. Then
    switch the gate on in Admin → Quests → Points & assignments → Games gate.
+10. **Home-help guide decisions (2026-10-08), any time:**
+   [migrations/20261008_guide_decisions.sql](migrations/20261008_guide_decisions.sql)
+   creates `guide_decisions` (safe to re-run; independent of the points
+   migration). Tablets may only insert `local` rows and set `started_id`.
+   Before this step the guide still works; tablets keep their decisions locally
+   and the admin history stays empty.
 
 The exact remaining deployment action is step 3 on the family's live Supabase,
 followed by steps 7–8 (2026-10-08 migrations), then the build/tablet rollout and live smoke check in steps 4–6. The local

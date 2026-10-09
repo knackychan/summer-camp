@@ -231,4 +231,18 @@ assert.deepEqual((await gateValue()).threshold, { luis: 50, lili: 50, lucien: 40
 await setGate({ enabled: false }, 'anon', '');
 assert.equal((await gateValue()).enabled, true, 'a tablet cannot switch the gate off');
 await assert.rejects(() => run(`delete from family_settings where key='games_gate_v1';`, 'authenticated'), /cannot be deleted/);
-console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation, games-gate home-help kinds and settings guard.');
+// Games points gate slice 04: guide decisions — tablets save local rows and mark a start, nothing more.
+const guideSql = readFileSync(new URL('../supabase/migrations/20261008_guide_decisions.sql', import.meta.url), 'utf8');
+await run(guideSql); await run(guideSql);
+const decision = { kid_id: 'lili', day: today, slot: 'morning', reroll: 0, answers: { done: [], time: 'some' }, picks: [{ id: 'room', line: ['a', '甲'] }], source: 'local' };
+const insertDecision = (row, role = 'anon') => run(`insert into guide_decisions(kid_id,day,slot,reroll,answers,picks,source${row.cost_usd != null ? ',cost_usd' : ''}) values(${quote(row.kid_id)},${quote(row.day)},${quote(row.slot)},${row.reroll},${quote(JSON.stringify(row.answers))},${quote(JSON.stringify(row.picks))},${quote(row.source)}${row.cost_usd != null ? ',' + row.cost_usd : ''}) on conflict do nothing;`, role, '');
+await insertDecision(decision); await insertDecision(decision);
+assert.equal((await one(`select count(*)::int as n from guide_decisions`)).n, 1, 'a replayed save is a no-op');
+await assert.rejects(() => insertDecision({ ...decision, reroll: 1, source: 'ai' }), /row-level security/);
+await assert.rejects(() => insertDecision({ ...decision, reroll: 2, cost_usd: 0.001 }), /row-level security/);
+await assert.rejects(() => insertDecision({ ...decision, reroll: 3, picks: [1, 2, 3, 4] }), /check constraint/);
+await run(`update guide_decisions set started_id='room' where kid_id='lili' and reroll=0;`, 'anon', '');
+assert.equal((await one(`select started_id from guide_decisions where kid_id='lili'`)).started_id, 'room');
+await assert.rejects(() => run(`update guide_decisions set picks='[]' where kid_id='lili';`, 'anon', ''), /permission denied/);
+await assert.rejects(() => run(`delete from guide_decisions;`, 'anon', ''), /permission denied/);
+console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation, games-gate home-help kinds, settings guard and guide decisions.');

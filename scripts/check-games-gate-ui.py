@@ -1,4 +1,4 @@
-"""Daily points gate in the real root runtime (games-gate-ai-guide slice 01).
+"""Daily points gate and home-help guide in the real root runtime (games-gate-ai-guide slices 01-04).
 
 Run with --browser <Chromium executable> (Chrome 138 for the Android 8 baseline).
 Local-only mode, external services blocked, clock fixed to a Taipei day.
@@ -81,34 +81,66 @@ def run(browser, base, out):
     page.screenshot(path=str(out / "games-gate-card-lili.png"))
     assert "0 / 50" in overlay_text(page)
     page.screenshot(path=str(out / "games-gate-overlay-lili.png"))
+    # slice 04: the guide asks two tap-only questions, then three cards
     page.locator("#lockOverlay [data-gg=help]").click()
-    page.wait_for_selector("#homeHelpOverlay")
-    cards = page.evaluate("[...document.querySelectorAll('#homeHelpOverlay .hhcard')].map(b => ({t: b.innerText, ready: !b.disabled}))")
-    ready = [c for c in cards if c["ready"]]
-    soon = [c for c in cards if not c["ready"]]
-    assert any("Help clean the table" in c["t"] and "+5" in c["t"] for c in ready), cards
-    assert any("Homework practice" in c["t"] for c in ready), cards
-    assert len(cards) == 8 and not soon, cards  # slice 02: all eight are startable
-    assert any("Tidy the shoes" in c["t"] and "+5" in c["t"] and "Papa will check" not in c["t"] for c in ready), cards
-    assert any("Tidy the garden" in c["t"] and "+15" in c["t"] and "Papa will check" in c["t"] for c in ready), cards
+    page.wait_for_selector("#homeHelpOverlay .hhchip")
+    q1 = page.locator("#homeHelpOverlay").inner_text()
+    assert "already done today" in q1 and "今天已經做了什麼" in q1, q1
+    assert page.locator("#homeHelpOverlay [data-hhdone]").count() == 8
+    assert page.locator("#homeHelpOverlay input, #homeHelpOverlay textarea").count() == 0, "tap-only"
+    page.locator("[data-hhdone=room]").click()
+    page.screenshot(path=str(out / "games-gate-guide-q1-lili.png"))
+    page.locator("#hhNext").click()
+    page.wait_for_selector("[data-hhtime=some]")
+    assert "你現在有多少時間" in page.locator("#homeHelpOverlay").inner_text()
+    page.screenshot(path=str(out / "games-gate-guide-q2-lili.png"))
+    page.locator("[data-hhtime=some]").click()
+    page.wait_for_selector("#homeHelpOverlay .hhcard")
+    shown = lambda: page.evaluate("[...document.querySelectorAll('#homeHelpOverlay .hhcard')].map(b => b.innerText)")
+    cards = shown()
+    assert len(cards) == 3, cards
+    assert "Help clean the table" in cards[0] and "+5" in cards[0], cards  # lunch block, fits 15 min
+    assert not any("Clean my room" in c for c in cards), "what the kid says is done is never suggested"
     page.screenshot(path=str(out / "games-gate-chooser-lili.png"))
-    page.locator(".hhcard:has-text('Help clean the table')").click()
-    page.wait_for_selector("#questOverlay")
-    assert "Table Helper" in page.locator("#questOverlay").inner_text()
-    recovery.close_overlays(page)
-    for label, quest in (("Tidy the living room", "Living Room Tidy"), ("Tidy the office", "Office Tidy")):
+    sets = [cards]
+    for _ in range(2):
+        page.locator("#hhReroll").click()
+        page.wait_for_function("prev => document.querySelector('#homeHelpOverlay .hhcard') && [...document.querySelectorAll('#homeHelpOverlay .hhcard')].map(b => b.innerText).join('|') !== prev", arg="|".join(sets[-1]))
+        sets.append(shown())
+        assert len(sets[-1]) >= 1 and sets[-1] != sets[-2], sets
+    page.locator("#hhBack").click()
+    page.evaluate("showHomeHelpChooser()")
+    page.wait_for_selector("#homeHelpOverlay .hhcard")
+    assert shown() == sets[-1], "reopening the slot shows the saved set, no new questions"
+    saved = page.evaluate("Object.values(JSON.parse(localStorage.getItem('sq:guide:v1')).decisions).map(d => [d.slot, d.reroll, d.source, d.answers.time, d.picks.length])")
+    assert sorted(saved) == [["afternoon", 0, "local", "some", 3], ["afternoon", 1, "local", "some", 3], ["afternoon", 2, "local", "some", 3]], saved
+    # every eligible activity comes round; start the garden one and the table one
+    for label, quest in (("Tidy the garden", "Garden Tidy"), ("Help clean the table", "Table Helper"), ("Tidy the living room", "Living Room Tidy"), ("Tidy the office", "Office Tidy")):
         page.evaluate("showHomeHelpChooser()")
+        page.wait_for_selector("#homeHelpOverlay .hhcard")
+        for _ in range(4):
+            if page.locator(".hhcard:has-text('%s')" % label).count():
+                break
+            before = "|".join(shown())
+            page.locator("#hhReroll").click()
+            page.wait_for_function("prev => [...document.querySelectorAll('#homeHelpOverlay .hhcard')].map(b => b.innerText).join('|') !== prev", arg=before)
         page.locator(".hhcard:has-text('%s')" % label).click()
         page.wait_for_selector("#questOverlay")
-        assert quest in page.locator("#questOverlay").inner_text()
+        assert quest in page.locator("#questOverlay").inner_text(), quest
         recovery.close_overlays(page)
+    started = page.evaluate("Object.values(JSON.parse(localStorage.getItem('sq:guide:v1')).decisions).map(d => d.started_id).filter(Boolean)")
+    assert started, "a started pick is saved on its decision"
+    page.evaluate("showHomeHelpChooser()")
+    page.wait_for_selector("#homeHelpOverlay .vrow")
+    assert not any("Tidy the office" in c for c in shown()), "a started pick is hidden on reopen"
+    recovery.close_overlays(page)
     page.evaluate(CLAIM, ["lili", "room_rescue", "default", 10, "pending"])
     assert "10 / 50" in card_text(page)
     page.evaluate(CLAIM, ["lili", "homework", "default", 40, "confirmed"])
     assert opened(page)["ok"], "50 reached opens games"
     page.evaluate("SQHost.store.pointClaims.forEach(c => { if (c.kind === 'homework') c.status = 'denied'; })")
     assert opened(page)["ok"], "a later decline never re-closes the day (D2)"
-    results["lili"] = {"cards": len(cards), "ready": len(ready)}
+    results["lili"] = {"cards": len(cards), "rerolls": len(sets) - 1, "started": started}
     context.close()
 
     context, page = open_kid(browser, base, "luis", noon)

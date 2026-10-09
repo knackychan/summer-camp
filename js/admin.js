@@ -294,7 +294,7 @@
 
   async function loadAll(skipRouteRender){
     const start=dayISO(-13);
-    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts,ledger14,photos14,asks14,pointTotals,pointClaims,pointRequests,pointAssignments,pointClaimsToday]=await Promise.all([
+    const [ticks,totals,stats,ledger,asks,note,passes,photos,kids,history,helpClaims,familySettings,overrides,redos,acts,ledger14,photos14,asks14,pointTotals,pointClaims,pointRequests,pointAssignments,pointClaimsToday,guideDecisions]=await Promise.all([
       client.from("day_ticks").select("*").eq("day",today),
       client.from("star_totals").select("*"),
       client.from("game_stats").select("*").eq("stat","missions"),
@@ -322,7 +322,9 @@
       client.from("points_requests").select("*").order("created_at",{ascending:false}).limit(100),
       client.from("points_assignments").select("*").gte("day",SQPoints.week(today)).order("day").limit(100),
       /* games points gate: every claim of today (any status) for today's points */
-      client.from("points_claims").select("kid_id,day,kind,slot,amount,status").eq("day",today).limit(500)
+      client.from("points_claims").select("kid_id,day,kind,slot,amount,status").eq("day",today).limit(500),
+      /* home-help guide history (slice 04); absent table = empty, never an error */
+      client.from("guide_decisions").select("*").gte("day",dayISO(-6)).order("created_at",{ascending:false}).limit(200)
     ]);
     rows={
       ticks:ticks.data||[],totals:totals.data||[],stats:stats.data||[],ledger:(ledger.data||[]).map(pointLedgerRow),asks:asks.data||[],
@@ -330,7 +332,7 @@
       familySettings:familySettings.data||[],redos:redos.data||[],acts:acts.data||[],
       ledger14:(ledger14.data||[]).map(pointLedgerRow),photos14:photos14.data||[],asks14:asks14.data||[],
       pointTotals:pointTotals.data||[],pointClaims:pointClaims.data||[],pointRequests:pointRequests.data||[],pointAssignments:pointAssignments.data||[],
-      pointClaimsToday:pointClaimsToday.data||[]
+      pointClaimsToday:pointClaimsToday.data||[],guideDecisions:guideDecisions.data||[]
     };
     pointsReady=!pointTotals.error&&!pointClaims.error&&!pointRequests.error;
     if(pointsReady)rows.totals=rows.pointTotals.map(function(r){return {kid_id:r.kid_id,stars:Number(r.total_earned)||0};});
@@ -464,9 +466,18 @@
         '<div class="qs-actions"><label class="gg-threshold">Threshold <input type="number" min="0" max="300" step="5" data-ggthreshold="'+kid+'" value="'+s.threshold[kid]+'"></label>'+
         (st.reason==="papa"?'<button class="btn btn--sm" data-ggopen="'+kid+':undo">Undo open today</button>':'<button class="btn btn--sm" data-ggopen="'+kid+':open">Open Games today</button>')+'</div></article>';
     }).join('');
+    const label=function(id){const it=window.SQHomeHelp&&SQHomeHelp.ITEMS.find(function(x){return x.id===id;});return it?it.icon+' '+it.label[0]:id;};
+    const history=(rows.guideDecisions||[]).map(function(d){
+      const picks=(Array.isArray(d.picks)?d.picks:[]).map(function(p){return (p.id===d.started_id?'▶ ':'')+label(p.id);}).join(' · ');
+      const a=d.answers||{};
+      return '<article class="qs-row gg-row"><div class="qs-title"><b>'+esc(kidName(d.kid_id))+' · '+esc(d.day)+' '+esc(d.slot)+(d.reroll?' · reroll '+d.reroll:'')+' · '+esc(d.source)+'</b>'+
+        '<span>'+esc(picks)+'</span><span>Done: '+esc((a.done||[]).map(label).join(', ')||'—')+' · Time: '+esc(a.time||'—')+(d.cost_usd!=null?' · $'+Number(d.cost_usd).toFixed(5):'')+'</span></div></article>';
+    }).join('');
     return '<h3>Games gate</h3><p>Games open once a child has earned the threshold in points today (Asia/Taipei; points waiting for your check count), then stay open for the day. Brain Gym, Learn, My Day and Ask are never gated. Threshold 0 = no gate for that child. Open Games today also skips the Brain Gym gate for that day.</p>'+
       '<form id="gamesGateForm"><label class="gg-enabled"><input type="checkbox" id="ggEnabled"'+(s.enabled?' checked':'')+'> Games gate on</label>'+
-      '<div class="qs-list">'+kids+'</div><button class="btn btn--primary" type="submit">Save games gate</button></form>';
+      '<div class="qs-list">'+kids+'</div><button class="btn btn--primary" type="submit">Save games gate</button></form>'+
+      '<h3>Guide decisions (7 days)</h3><p>What the home-help guide suggested, newest first. ▶ marks the pick the child started. A saved decision is reused for the rest of its time slot.</p>'+
+      '<div class="qs-list">'+(history||'<p>No guide decisions yet.</p>')+'</div>';
   }
   function bindGamesGate(body){
     const form=body.querySelector('#gamesGateForm');if(!form)return;

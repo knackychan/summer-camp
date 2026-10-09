@@ -79,9 +79,20 @@
     back:["Back","返回"],
     giftCan:["🎁 You have {a} points to spend. “{r}” is {c} — ask Papa!","🎁 你有 {a} 點可以用，「{rz}」只要 {c} 點，問問爸爸！"],
     giftSaving:["🎁 You have {a} points to spend. “{r}” is {c} — {n} more to go!","🎁 你有 {a} 點可以用，「{rz}」要 {c} 點，再 {n} 點就到了！"],
+    q1Hint:["Tap what you already did — or just Next.","點一下已經做完的，或直接按下一步。"],
+    next:["Next","下一步"],
+    doneToday:["Done today","今天完成"],
+    reroll:["Other ideas","換一批"],
+    change:["Change answers","改答案"],
     giftStart:["🎁 “{r}” is {c} points — every job gets you closer!","🎁 「{rz}」要 {c} 點，每件事都讓你更接近！"],
     giftGeneric:["🎁 Points can become a gift — ask Papa!","🎁 點數可以換禮物，問問爸爸！"]
   };
+  /* Q2 answers (D5): the minutes a card may take to fit */
+  const TIME_CHOICES=[
+    {id:"little",icon:"⚡",max:5,label:["A little (about 5 min)","一點點（約 5 分鐘）"]},
+    {id:"some",icon:"🙂",max:15,label:["Some (about 15 min)","一些（約 15 分鐘）"]},
+    {id:"lots",icon:"💪",max:999,label:["Lots (30+ min)","很多（30 分鐘以上）"]}
+  ];
   function mins(t){
     const p=String(t||"").split(":").map(Number);
     return p.length===2&&Number.isFinite(p[0])&&Number.isFinite(p[1])?p[0]*60+p[1]:null;
@@ -120,6 +131,64 @@
     });
     return out.filter(function(x){return x.ready;}).concat(out.filter(function(x){return !x.ready;}));
   }
+  /* D6 ranking. ctx adds to available()'s: done (ids the kid says are done),
+     time (TIME_CHOICES id), need (points still to the threshold), blockKinds
+     (award kinds of the current and next DAY block), recent (ids picked in
+     earlier slots today) and seed (kid:day:slot, for stable ties). */
+  function rank(ctx){
+    const done=ctx.done||[], blockKinds=ctx.blockKinds||[], recent=ctx.recent||[];
+    const choice=TIME_CHOICES.find(function(c){return c.id===ctx.time;})||TIME_CHOICES[2];
+    return available(ctx).filter(function(x){return x.ready&&done.indexOf(x.item.id)<0;}).map(function(x){
+      let score=0;
+      if(blockKinds.indexOf(x.item.kind)>=0)score+=3;
+      if(x.item.minutes<=choice.max)score+=2;
+      if(ctx.need>0&&x.points>=ctx.need)score+=1;
+      if(recent.indexOf(x.item.id)>=0)score-=1;
+      return {entry:x,score:score,tie:hash(String(ctx.seed||"")+":"+x.item.id)};
+    }).sort(function(a,b){return b.score-a.score||a.tie-b.tie;}).map(function(r){return r.entry;});
+  }
+  /* three picks for a reroll: windows of three down the ranking, wrapping, so
+     every eligible activity comes round before any repeats */
+  function pick(ctx,reroll){
+    const ranked=rank(ctx);
+    if(ranked.length<=3)return ranked;
+    const start=(3*Math.max(0,reroll|0))%ranked.length, out=[];
+    for(let i=0;i<3;i++)out.push(ranked[(start+i)%ranked.length]);
+    return out;
+  }
+  /* D8 cache: decisions keyed kid:day:slot:reroll. Only today's are kept. */
+  function decisionKey(d){return [d.kid_id,d.day,d.slot,d.reroll].join(":");}
+  function todays(decisions,day){
+    const out={};
+    Object.keys(decisions||{}).forEach(function(k){const d=decisions[k];if(d&&d.day===day)out[decisionKey(d)]=d;});
+    return out;
+  }
+  function latest(decisions,kid,day,slot){
+    let best=null;
+    Object.keys(decisions||{}).forEach(function(k){
+      const d=decisions[k];
+      if(d&&d.kid_id===kid&&d.day===day&&d.slot===slot&&(!best||d.reroll>best.reroll))best=d;
+    });
+    return best;
+  }
+  /* The cards for a saved decision: a pick finished since shows ✓ (or "Papa
+     will check"), a pick started but not finished is hidden, and the gap is
+     filled from the ranking (a display refill, never a new decision).
+     status(id) → "done" | "check" | null. */
+  function view(dec,ranked,status){
+    const byId={};ranked.forEach(function(x){byId[x.item.id]=x;});
+    const out=[];
+    dec.picks.forEach(function(p){
+      const st=status(p.id), item=ITEMS.find(function(it){return it.id===p.id;});
+      if(st&&item)out.push({id:p.id,item:item,line:p.line,state:st});
+      else if(byId[p.id]&&p.id!==dec.started_id)out.push({id:p.id,item:item,entry:byId[p.id],line:p.line,state:"live"});
+    });
+    ranked.forEach(function(x){
+      if(out.length<3&&x.item.id!==dec.started_id&&!out.some(function(c){return c.id===x.item.id;}))
+        out.push({id:x.item.id,item:x.item,entry:x,line:null,state:"live"});
+    });
+    return out;
+  }
   function line(kid,day,need){
     return fill(LINES[hash(kid+":"+day)%LINES.length],{n:need});
   }
@@ -129,8 +198,9 @@
     /* nothing saved yet: name the reward, not the zero */
     return fill(rem.kind==="can"?TEXT.giftCan:rem.available>0?TEXT.giftSaving:TEXT.giftStart,vars);
   }
-  const api={ITEMS:ITEMS,SLOTS:SLOTS,MEAL_WINDOW:MEAL_WINDOW,LINES:LINES,TEXT:TEXT,
-    mins:mins,fill:fill,slotOf:slotOf,mealSlot:mealSlot,available:available,line:line,giftLine:giftLine};
+  const api={ITEMS:ITEMS,SLOTS:SLOTS,MEAL_WINDOW:MEAL_WINDOW,LINES:LINES,TEXT:TEXT,TIME_CHOICES:TIME_CHOICES,
+    mins:mins,fill:fill,slotOf:slotOf,mealSlot:mealSlot,available:available,rank:rank,pick:pick,
+    decisionKey:decisionKey,todays:todays,latest:latest,view:view,line:line,giftLine:giftLine};
   if(typeof window!=="undefined")window.SQHomeHelp=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

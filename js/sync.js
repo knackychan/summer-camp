@@ -51,6 +51,14 @@
     try{localStorage.setItem(key,JSON.stringify(value));}catch(e){}
   }
 
+  /* Guide ops: a server answer with an error code is dropped (the queue never
+     waits on the guide); a failed fetch has no code, so it stays queued. */
+  function guideSyncError(error,what){
+    if(!error)return;
+    if(!error.code)throw error;
+    console.warn(what,error.message);
+  }
+
   function loadScript(src){
     return new Promise((resolve,reject)=>{
       if(window.supabase) return resolve();
@@ -399,7 +407,9 @@
           this.supabase.from("point_totals").select("kid_id,total_earned,spent,available,pending"),
           this.supabase.from("points_claims").select("*").order("created_at",{ascending:false}).limit(1000),
           this.supabase.from("points_assignments").select("*")
-        ]:[])
+        ]:[]),
+        /* home-help guide decisions of today (games-gate-ai-guide D8); always last */
+        this.supabase.from("guide_decisions").select("*").eq("day",day)
       ]);
       const [{data:kids},{data:ticks},{data:rolls},{data:acts},{data:totals},{data:vocab},{data:stats},{data:note},{data:passes},{data:photos},{data:helpClaims},{data:famSettings},{data:overrides},{data:redos},{data:brain}]=results;
       if(!results[0].error&&Array.isArray(kids)){
@@ -410,12 +420,15 @@
       }
       const failed=results.slice(0,15).find(result=>result.error);
       if(failed)throw failed.error;
-      const pointsFailure=this.points&&results.slice(15).find(result=>result.error);
+      const pointsFailure=this.points&&results.slice(15,-1).find(result=>result.error);
       if(pointsFailure){this.pointsReady=false;this.pointsError=pointsFailure.error.message;}
       const p=normalize(this.progress);
       this.passes=passes||[];
       this.photos=photos||[];
       this.helpClaims=helpClaims||[];
+      /* an absent guide table just means no shared decisions yet */
+      const guide=results[results.length-1];
+      this.guideDecisions=!guide.error&&Array.isArray(guide.data)?guide.data:[];
       if(Array.isArray(famSettings)){
         this.familySettings={};
         famSettings.forEach(r=>{this.familySettings[r.key]=r.value;if(r.key==="points_policy_v1")this.familySettings.points_policy_updated_at=r.updated_at;});
@@ -717,6 +730,17 @@
           kid_id:op.kid,day:op.day,game_id:op.gameId,score:op.score||0,ms:op.ms||null
         },{onConflict:"kid_id,day,game_id"});
         if(error) throw error;
+      }else if(op.type==="guideDecision"){
+        /* Home-help guide decisions are a shared cache (games-gate-ai-guide D8).
+           They must never hold up ticks or points: when the server refuses one
+           (e.g. the table is not deployed yet) the op is dropped and the tablet
+           keeps its copy. A lost connection (no error code) retries later. */
+        const {error}=await this.supabase.from("guide_decisions").upsert(op.row,{onConflict:"kid_id,day,slot,reroll",ignoreDuplicates:true});
+        guideSyncError(error,"Guide decision not synced");
+      }else if(op.type==="guideStarted"){
+        const {error}=await this.supabase.from("guide_decisions").update({started_id:op.startedId})
+          .eq("kid_id",op.key.kid_id).eq("day",op.key.day).eq("slot",op.key.slot).eq("reroll",op.key.reroll);
+        guideSyncError(error,"Guide start not synced");
       }else if(op.type==="famset"){
         /* update, not upsert — anon RLS only allows clearing applock_* keys */
         const {error}=await this.supabase.from("family_settings")
@@ -745,6 +769,17 @@
       this.familySettings[key]=value;
       saveJson("sq:famSettings",this.familySettings);
       this.enqueue({type:"famset",key,value});
+      this.flush().catch(()=>{});
+    }
+    /* Only a configured tablet queues these: local-only mode keeps the guide's
+       own localStorage copy and has nowhere to send them. */
+    saveGuideDecision(dec,started){
+      if(!this.configured)return;
+      if(started){
+        this.enqueue({type:"guideStarted",key:{kid_id:dec.kid_id,day:dec.day,slot:dec.slot,reroll:dec.reroll},startedId:dec.started_id});
+      }else{
+        this.enqueue({type:"guideDecision",row:{kid_id:dec.kid_id,day:dec.day,slot:dec.slot,reroll:dec.reroll,answers:dec.answers,picks:dec.picks,source:"local",started_id:null}});
+      }
       this.flush().catch(()=>{});
     }
     async markBrainDone(kid,dayISO,gameId,score,ms){

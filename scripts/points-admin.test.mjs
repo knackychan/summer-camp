@@ -56,7 +56,7 @@ vm.runInContext(source.slice(0,source.indexOf("  /* ---- Event wiring ---- */"))
       rows.pointTotals=[{kid_id:'lili',total_earned:800,available:600,pending:20}];
       rows.familySettings=[];rewardEditId='movie_pick';loadAll=async function(){};toast=function(){};},
     offline(){pointsReady=false;},
-    gate(fs,claims){rows.familySettings=fs;rows.pointClaimsToday=claims;}};
+    gate(fs,claims,guide){rows.familySettings=fs;rows.pointClaimsToday=claims;rows.guideDecisions=guide||[];}};
 })();`,context);
 const api=context.window.test;
 api.set({rpc:async(name,args)=>{calls.push({name,args});return {data:{id:"claim-1",status:"confirmed"},error:null};},
@@ -80,6 +80,11 @@ assert.match(ggHtml,/Lili · 10 \/ 50 points today/);assert.match(ggHtml,/Waitin
 assert.match(ggHtml,/Lucien · 40 \/ 40 points today/);
 assert.match(ggHtml,/Open — Papa today/);assert.match(ggHtml,/data-ggopen="luis:undo"/);
 assert.match(ggHtml,/data-ggthreshold="lucien" value="40"/);
+assert.match(ggHtml,/No guide decisions yet/);
+api.gate([],[],[{kid_id:"lili",day:"2026-10-03",slot:"morning",reroll:1,source:"local",answers:{done:["room"],time:"some"},picks:[{id:"shoes"},{id:"garden"}],started_id:"garden"}]);
+api.renderPointsSettings(node("studio"));
+assert.match(node("studio").innerHTML,/Lili · 2026-10-03 morning · reroll 1 · local/);
+assert.match(node("studio").innerHTML,/shoes · ▶ garden/);assert.match(node("studio").innerHTML,/Done: room · Time: some/);
 api.renderQuestRewardEditor();
 assert.match(node("qsRewardEditor").innerHTML,/<label for="rwTitleEn">Exchange label \(English\)/);
 assert.match(node("qsRewardEditor").innerHTML,/<label for="rwTitleZh">Exchange label \(Traditional Chinese\)/);

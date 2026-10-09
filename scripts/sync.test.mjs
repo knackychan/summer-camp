@@ -592,13 +592,13 @@ const seedProgress = () => ({});
   const first = store.hydrate();
   assert.equal(store.hydrate(), first, "callbacks in one burst share the pending hydrate");
   await Promise.resolve();
-  assert.equal(reads, 15);
+  assert.equal(reads, 16);
   const trailing = store.hydrate();
   assert.notEqual(trailing, first, "an event during an active read gets a fresh snapshot");
   assert.equal(store.hydrate(), trailing, "later callbacks share that follow-up read");
   finishRead();
   await Promise.all([first, trailing]);
-  assert.equal(reads, 30, "four callbacks issue two snapshot batches, rather than four");
+  assert.equal(reads, 32, "four callbacks issue two snapshot batches, rather than four");
   console.log("ok - realtime bursts coalesce without dropping later updates");
 }
 
@@ -667,5 +667,26 @@ console.log("ok - packaged SDK loading and database requests have deadlines");
   assert.equal(store.queue.length, 1, "failed write remains durable for the next attempt");
   console.log("ok - a partially failed flush still refreshes committed stars");
 }
+
+// Guide decisions (games-gate-ai-guide slice 04): a lost connection keeps the op;
+// a server refusal (e.g. table not deployed) drops it so the queue never waits on the guide.
+for (const [error, kept] of [[{ message: "TypeError: Failed to fetch", code: "" }, true], [{ message: "relation does not exist", code: "42P01" }, false]]) {
+  const row = { kid_id: "lili", day: TODAY, slot: "morning", reroll: 0, answers: {}, picks: [], source: "local", started_id: null };
+  const ls = makeLocalStorage({ "sq:queue": JSON.stringify([{ id: "op-guide", type: "guideDecision", row }, { id: "op-act", type: "actDone", kid: "lili", day: TODAY, actIdx: 1, done: true }]) });
+  const SyncStore = loadSyncStore(ls);
+  const writes = [];
+  const client = fakeSupabase({}, writes);
+  const from = client.from.bind(client);
+  client.from = table => {
+    const builder = from(table);
+    if (table === "guide_decisions") builder.upsert = () => Promise.resolve({ error });
+    return builder;
+  };
+  const store = new SyncStore({ progress: seedProgress(), settings: {} }, client);
+  await store.flush();
+  assert.equal(store.queue.some(o => o.id === "op-guide"), kept, kept ? "offline: the decision waits for the next flush" : "refused: dropped");
+  if (!kept) assert.ok(writes.some(w => w.table === "act_done"), "a refused guide save never holds up later ops");
+}
+console.log("ok - guide decisions retry when offline and never block the queue");
 
 console.log("sync tests passed");

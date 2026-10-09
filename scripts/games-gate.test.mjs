@@ -201,3 +201,76 @@ test("a family's saved quest catalog picks up the new home-help quests once", ()
     delete globalThis.window;
   }
 });
+
+/* slice 04: schedule-aware ranking and reroll windows (design D6, D8) */
+function guideCtx(minutes, extra) {
+  return ctx(minutes, Object.assign({ time: "lots", need: 30, seed: "lili:2026-10-08:x" }, extra || {}));
+}
+test("ranking follows the schedule and the time the kid has", () => {
+  const homework = Help.rank(guideCtx(10 * 60 + 5, { blockKinds: ["homework"] }));
+  assert.equal(homework[0].item.id, "homework", "homework block puts homework first");
+  const lunch = Help.rank(guideCtx(12 * 60 + 10, { blockKinds: ["table_helper"] }));
+  assert.equal(lunch[0].item.id, "table");assert.equal(lunch[0].slot, "lunch");
+  const evening = Help.rank(guideCtx(18 * 60 + 30)).map((x) => x.item.id);
+  assert.ok(!evening.includes("homework") && !evening.includes("garden"));
+  assert.equal(Help.rank(guideCtx(21 * 60)).length, 0);
+  assert.equal(Help.rank(guideCtx(10 * 60, { time: "little" }))[0].item.id, "shoes", "a little time puts the 5-minute job first");
+  const said = Help.rank(guideCtx(10 * 60, { done: ["room", "shoes"] })).map((x) => x.item.id);
+  assert.ok(!said.includes("room") && !said.includes("shoes"), "what the kid says is done is never suggested");
+  const capped = Help.rank(guideCtx(10 * 60, { atLimit: (kind) => kind === "laundry_helper" })).map((x) => x.item.id);
+  assert.ok(!capped.includes("clothes"));
+  const varied = Help.rank(guideCtx(10 * 60, { recent: ["homework"], blockKinds: [] })).map((x) => x.item.id);
+  const plain = Help.rank(guideCtx(10 * 60, { blockKinds: [] })).map((x) => x.item.id);
+  assert.ok(varied.indexOf("homework") >= plain.indexOf("homework"), "picked in an earlier slot sinks a little");
+});
+test("picks: stable, three per reroll, every activity before a repeat", () => {
+  const c = guideCtx(10 * 60);
+  const ids = (r) => Help.pick(c, r).map((x) => x.item.id);
+  assert.deepEqual(ids(0), ids(0));
+  assert.equal(ids(0).length, 3);
+  assert.notDeepEqual(ids(1), ids(0));
+  const ranked = Help.rank(c).map((x) => x.item.id);
+  assert.ok(ranked.length >= 6);
+  const seen = new Set();
+  for (let r = 0; r * 3 < ranked.length; r++) ids(r).forEach((id) => seen.add(id));
+  assert.equal(seen.size, ranked.length);
+  assert.equal(Help.pick(guideCtx(20 * 60 + 25), 5).length <= 3, true);
+});
+test("saved decisions: today's only, the latest reroll of a slot is reused", () => {
+  const d = (slot, reroll, day = DAY) => ({ kid_id: "lili", day, slot, reroll, picks: [], answers: {} });
+  const all = { a: d("morning", 0), b: d("morning", 2), c: d("afternoon", 0), old: d("morning", 5, "2026-10-07") };
+  assert.deepEqual(Object.keys(Help.todays(all, DAY)).sort(), ["lili:2026-10-08:afternoon:0", "lili:2026-10-08:morning:0", "lili:2026-10-08:morning:2"]);
+  assert.equal(Help.latest(all, "lili", DAY, "morning").reroll, 2, "reopening the slot reuses the newest decision: no new pick");
+  assert.equal(Help.latest(all, "lili", DAY, "evening"), null, "a new slot makes one new decision");
+  assert.equal(Help.latest(all, "luis", DAY, "morning"), null);
+});
+test("saved decision cards: finished shows its state, started hides, the gap refills", () => {
+  const c = guideCtx(10 * 60);
+  const ranked = Help.rank(c);
+  const [a, b, x] = ranked.map((r) => r.item.id);
+  const dec = { picks: [{ id: a, line: ["A", "甲"] }, { id: b, line: ["B", "乙"] }, { id: x, line: ["C", "丙"] }], started_id: b };
+  const cards = Help.view(dec, ranked.filter((r) => r.item.id !== a), (id) => (id === a ? "check" : null));
+  assert.equal(cards.length, 3);
+  assert.deepEqual(cards[0], { id: a, item: Help.ITEMS.find((i) => i.id === a), line: ["A", "甲"], state: "check" });
+  assert.ok(!cards.some((k) => k.id === b), "a started pick is hidden");
+  assert.equal(cards[1].id, x);assert.deepEqual(cards[1].line, ["C", "丙"]);
+  assert.equal(cards[2].state, "live");assert.equal(cards[2].line, null, "a refill uses the goal line");
+  assert.equal(Help.view({ picks: [], started_id: null }, [], () => null).length, 0);
+});
+test("guide words come from SQSummerAgent help stages, bilingual, never the remote", async () => {
+  const Agent = require("../js/summer-agent.js");
+  let remoteCalls = 0;
+  Agent.setRemoteProvider(() => { remoteCalls++; return {}; });
+  try {
+    const done = await Agent.interact({ stage: "help_done", choices: [{ id: "room" }] });
+    assert.equal(done.questionId, "help_done");assert.deepEqual(done.choices, [{ id: "room" }]);
+    const time = await Agent.interact({ stage: "help_time", choices: Help.TIME_CHOICES });
+    assert.equal(time.choices.length, 3);
+    const pick = await Agent.interact({ stage: "help_pick", picks: ["room", "shoes"] });
+    assert.deepEqual(pick.picks, ["room", "shoes"]);
+    const rest = await Agent.interact({ stage: "help_pick", picks: [] });
+    assert.match(rest.speech, /Rest time/);assert.match(rest.speechZh, /休息/);
+    for (const r of [done, time, pick, rest]) assert.ok(r.speech && /[\u4e00-\u9fff]/.test(r.speechZh));
+    assert.equal(remoteCalls, 0);
+  } finally { Agent.setRemoteProvider(null); }
+});

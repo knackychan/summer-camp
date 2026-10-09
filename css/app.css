@@ -770,6 +770,19 @@ body.music-mode{overflow:hidden}
 .hhicon{font-size:1.9em}
 .hhtext small,.hhpts small{display:block;color:var(--muted);font-size:12px;font-weight:700}
 .hhpts{text-align:right;white-space:nowrap}
+/* Q1 fits the 8 chips in two rows on a landscape tablet, so Next stays on screen */
+.hhpick:has(.hhchips){max-width:760px}
+.hhchips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+@media(max-width:640px){.hhchips{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.hhtimes{display:grid;gap:10px;margin:12px 0}
+.hhchip{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:64px;padding:8px;font:inherit;color:inherit;
+  border:2px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(255,255,255,.06);cursor:pointer;text-align:center}
+.hhchip span{font-size:1.6em}
+.hhchip small{color:var(--muted);font-size:12px;font-weight:700}
+.hhchip.on{border-color:var(--gold);background:rgba(255,201,60,.14)}
+.hhchip[disabled]{opacity:.6;cursor:default}
+.hhchip.hhtime{flex-direction:row;justify-content:flex-start;gap:12px;min-height:68px;text-align:left}
+.hhchip.hhtime small{margin-left:auto}
 .brainnudge{display:block;width:100%;text-align:left;font:inherit;color:inherit;border:none;cursor:pointer;
   background:linear-gradient(135deg,#3D5E8C,#5B7FB8)}
 .brainnudge:active{transform:translateY(2px)}

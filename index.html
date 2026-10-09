@@ -898,6 +898,7 @@ async function loadProgress(){
     normalizeProgressShape();
     refreshOverrides();
   }catch(e){normalizeProgressShape();}
+  if(window.SQHomeHelp)guidePrune();
 }
 async function saveProgress(){
   try{ if(store) await store.save(progress,settings); }catch(e){}
@@ -1737,43 +1738,145 @@ function homeHelpContext(id){
       if(d.kind==="table_helper"&&start!=null)meals.push({slot:d.slot,start:start});
     });
   });
-  return {minutes:SQ_DAY.nowMins(),meals:meals,
+  return {minutes:SQ_DAY.nowMins(),meals:meals,claims:claims,
     known:function(kind,quest){return !!SQPoints.rules[kind]&&(!quest||!!questById(quest));},
     claimed:function(kind,slot){return claims.some(c=>c.kind===kind&&(c.slot||"default")===slot);},
     atLimit:function(kind){return claims.filter(c=>c.kind===kind).length>=SQPoints.rules[kind].limit;},
     amount:function(kind){return SQPoints.amount(kind,fs);}};
 }
-/* Slice 01: the fixed list, filtered by the drop rules only (no ranking, no AI). */
+/* ---- Home-help guide (design.md D5, D6, D8): two tap-only questions, three
+   picks that fit the schedule now, reroll. A decision is saved per
+   kid:day:slot:reroll and reused when the guide opens again in the same slot;
+   only a reroll, a changed answer, a new slot or a new day makes a new one.
+   The words come from SQSummerAgent's help_* stages, the picks from SQHomeHelp. ---- */
+const GUIDE_KEY="sq:guide:v1";
+function guideDecisions(){
+  let v=null;
+  try{v=JSON.parse(localStorage.getItem(GUIDE_KEY)||"null");}catch(e){}
+  /* rows synced from other tablets count too; this tablet's own copy wins */
+  const server={};((store&&store.guideDecisions)||[]).forEach(d=>{server[SQHomeHelp.decisionKey(d)]=d;});
+  return SQHomeHelp.todays(Object.assign(server,v&&v.decisions||{}),todayStr());
+}
+/* earlier days' decisions leave this tablet on boot (D8); the server keeps them */
+function guidePrune(){
+  let v=null;
+  try{v=JSON.parse(localStorage.getItem(GUIDE_KEY)||"null");}catch(e){}
+  if(v&&v.decisions)guideStore(SQHomeHelp.todays(v.decisions,todayStr()));
+}
+function guideStore(all){try{localStorage.setItem(GUIDE_KEY,JSON.stringify({decisions:all}));}catch(e){}}
+function guideSave(dec,started){
+  const all=guideDecisions();
+  all[SQHomeHelp.decisionKey(dec)]=dec;
+  guideStore(all);
+  if(store&&store.saveGuideDecision)store.saveGuideDecision(dec,!!started);
+}
+function guideRanking(id,slot,answers){
+  const ctx=homeHelpContext(id);
+  const tl=SQTime.timelineInfo(dayFor(id),dayOverrides,ctx.minutes);
+  const blockKinds=[tl.current,tl.next].filter(i=>i!=null).reduce((a,i)=>a.concat(SQPoints.block(i).map(d=>d.kind)),[]);
+  const earlier=Object.values(guideDecisions()).filter(d=>d.kid_id===id&&d.slot!==slot).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,2);
+  return Object.assign(ctx,{done:answers.done||[],time:answers.time,need:pointsGateState(id).need,blockKinds:blockKinds,
+    recent:earlier.reduce((a,d)=>a.concat(d.picks.map(p=>p.id)),[]),seed:[id,todayStr(),slot].join(":")});
+}
+function guideDecide(id,slot,reroll,answers){
+  const picks=SQHomeHelp.pick(guideRanking(id,slot,answers),reroll);
+  const dec={kid_id:id,day:todayStr(),slot:slot,reroll:reroll,answers:answers,source:"local",started_id:null,
+    picks:picks.map(x=>({id:x.item.id,line:(x.item.goal[id]||x.item.goal.luis).slice()})),created_at:new Date().toISOString()};
+  guideSave(dec);
+  return dec;
+}
+/* "done" (✓) or "check" (Papa will check) once a pick's award is claimed today */
+function guideStatus(id){
+  const claims=homeHelpContext(id).claims;
+  return function(pick){
+    const it=SQHomeHelp.ITEMS.find(x=>x.id===pick), c=it&&claims.find(c=>c.kind===it.kind);
+    if(!c)return null;
+    return SQPoints.rules[it.kind].parent&&c.status!=="confirmed"?"check":"done";
+  };
+}
 function showHomeHelpChooser(){
   const id=activeKid();
   if(!id||!window.SQHomeHelp)return;
+  const slot=SQHomeHelp.slotOf(SQ_DAY.nowMins()), last=SQHomeHelp.latest(guideDecisions(),id,todayStr(),slot);
+  if(last)guidePicks(id,last);
+  else if(!SQHomeHelp.rank(guideRanking(id,slot,{})).length)guideRest();   /* after 20:30: nothing to ask about */
+  else guideAsk(id,slot,0);
+}
+function guideOverlay(r,html){
   const old=document.getElementById("homeHelpOverlay");if(old)old.remove();
-  const list=SQHomeHelp.available(homeHelpContext(id));
+  const mood=window.SQSummerUI&&SQSummerUI.GLYPHS[r.emotion]||"•ᴗ•";
   const o=document.createElement("div");
   o.className="overlay"; o.id="homeHelpOverlay";
-  const cards=list.map(function(x,i){
-    const goal=x.item.goal[id]||x.item.goal.luis;
-    const right=x.ready?`<b>+${x.points}</b> <small>${hhPlain("pointsWord")}</small>${x.item.verify==="parent"?`<small>${hhPlain("papaChecks")}</small>`:""}`:`<small>${hhPlain("soon")}</small>`;
-    return `<button class="hhcard" data-hh="${i}" ${x.ready?"":"disabled"}>
-      <span class="hhicon">${x.item.icon}</span>
-      <span class="hhtext"><b>${escHtml(x.item.label[0])} · ${escHtml(x.item.label[1])}</b><small>${escHtml(goal[0])}</small><small>${escHtml(goal[1])}</small></span>
-      <span class="hhpts">${right}</span></button>`;
-  }).join("");
-  o.innerHTML=`<div class="card hhpick">
-    <h3>🧭 ${hh("pickTitle")}</h3>
-    ${list.length?`<div class="hhlist">${cards}</div>`:`<p>🌙 ${hh("rest")}</p>`}
-    <div class="vrow"><button class="btn small" id="hhBack">${hhPlain("back")}</button></div>
-  </div>`;
+  o.innerHTML=`<div class="card hhpick"><div class="summer-companion-sheet__head">
+    <div class="summer-face" data-emotion="${escHtml(r.emotion||"happy")}" data-mood="${escHtml(mood)}">☀️</div>
+    <div><small>🧭 SUMMER</small><h3>${escHtml(r.speech||"")}</h3><span>${escHtml(r.speechZh||"")}</span></div></div>${html}</div>`;
   document.body.appendChild(o);
-  o.querySelector("#hhBack").onclick=function(){o.remove();};
-  o.querySelectorAll("[data-hh]").forEach(function(b){
-    b.onclick=function(){
-      const x=list[+b.dataset.hh];
-      if(!x||!x.ready)return;
-      o.remove();
-      if(x.item.route==="day")SummerQuest.navigate("day");
-      else SummerQuest.openQuest(x.quest);
-    };
+  const back=o.querySelector("#hhBack");if(back)back.onclick=function(){o.remove();};
+  return o;
+}
+function guideRest(){
+  SQSummerAgent.interact({stage:"help_pick",picks:[]}).then(r=>{
+    guideOverlay(r,`<div class="vrow"><button class="btn small" id="hhBack">${hhPlain("back")}</button></div>`);
+  });
+}
+function guideAsk(id,slot,reroll,previous){
+  const ctx=homeHelpContext(id);
+  const already=new Set(SQHomeHelp.ITEMS.filter(it=>ctx.claims.some(c=>c.kind===it.kind)).map(it=>it.id));
+  const done=new Set((previous&&previous.done)||[]);
+  SQSummerAgent.interact({stage:"help_done",choices:SQHomeHelp.ITEMS.map(it=>({id:it.id,icon:it.icon,label:it.label,done:already.has(it.id)}))}).then(r=>{
+    const chips=r.choices.map(c=>`<button class="hhchip${c.done||done.has(c.id)?" on":""}" data-hhdone="${c.id}" ${c.done?"disabled":""}>
+      <span>${c.icon}</span><b>${escHtml(c.label[0])}</b><small>${escHtml(c.label[1])}</small>${c.done?`<small>✓ ${hhPlain("doneToday")}</small>`:""}</button>`).join("");
+    const o=guideOverlay(r,`<p class="zhs">${hhPlain("q1Hint")}</p>
+      <div class="hhchips">${chips}</div>
+      <div class="vrow"><button class="btn" id="hhNext">${hhPlain("next")} ▶</button><button class="btn small" id="hhBack">${hhPlain("back")}</button></div>`);
+    o.querySelectorAll("[data-hhdone]").forEach(b=>{b.onclick=function(){
+      if(b.disabled)return;
+      const k=b.dataset.hhdone; if(done.has(k))done.delete(k); else done.add(k);
+      b.classList.toggle("on",done.has(k));
+    };});
+    o.querySelector("#hhNext").onclick=function(){guideTime(id,slot,reroll,Array.from(done));};
+  });
+}
+function guideTime(id,slot,reroll,done){
+  SQSummerAgent.interact({stage:"help_time",choices:SQHomeHelp.TIME_CHOICES}).then(r=>{
+    const o=guideOverlay(r,`<div class="hhtimes">${r.choices.map(c=>`<button class="hhchip hhtime" data-hhtime="${c.id}"><span>${c.icon}</span><b>${escHtml(c.label[0])}</b><small>${escHtml(c.label[1])}</small></button>`).join("")}</div>
+      <div class="vrow"><button class="btn small" id="hhBack">${hhPlain("back")}</button></div>`);
+    o.querySelectorAll("[data-hhtime]").forEach(b=>{b.onclick=function(){
+      guidePicks(id,guideDecide(id,slot,reroll,{done:done,time:b.dataset.hhtime}));
+    };});
+  });
+}
+/* Show a saved decision: finished picks show ✓ / Papa will check, started ones
+   hide, the gap refills from today's local ranking (never a new decision). */
+function guidePicks(id,dec){
+  const shown=SQHomeHelp.view(dec,SQHomeHelp.rank(guideRanking(id,dec.slot,dec.answers)),guideStatus(id));
+  SQSummerAgent.interact({stage:"help_pick",picks:shown.map(c=>c.id)}).then(r=>{
+    const cards=shown.map(function(c,i){
+      const ln=c.line||c.item.goal[id]||c.item.goal.luis;
+      const right=c.state==="done"?`<b>✓</b>`:c.state==="check"?`<small>⏳ ${hhPlain("papaChecks")}</small>`
+        :`<b>+${c.entry.points}</b> <small>${hhPlain("pointsWord")}</small>${c.item.verify==="parent"?`<small>${hhPlain("papaChecks")}</small>`:""}`;
+      return `<button class="hhcard" data-hh="${i}" ${c.state==="live"?"":"disabled"}>
+        <span class="hhicon">${c.item.icon}</span>
+        <span class="hhtext"><b>${escHtml(c.item.label[0])} · ${escHtml(c.item.label[1])}</b><small>${escHtml(ln[0])}</small><small>${escHtml(ln[1])}</small></span>
+        <span class="hhpts">${right}</span></button>`;
+    }).join("");
+    const live=shown.some(c=>c.state==="live");
+    const o=guideOverlay(r,`${shown.length?`<div class="hhlist">${cards}</div>`:""}
+      <div class="vrow">${live?`<button class="btn" id="hhReroll">🎲 ${hhPlain("reroll")}</button>`:""}
+        <button class="btn small" id="hhChange">✏️ ${hhPlain("change")}</button>
+        <button class="btn small" id="hhBack">${hhPlain("back")}</button></div>`);
+    const reroll=o.querySelector("#hhReroll");
+    if(reroll)reroll.onclick=function(){guidePicks(id,guideDecide(id,dec.slot,dec.reroll+1,dec.answers));};
+    o.querySelector("#hhChange").onclick=function(){guideAsk(id,dec.slot,dec.reroll+1,dec.answers);};
+    o.querySelectorAll("[data-hh]").forEach(function(b){
+      b.onclick=function(){
+        const c=shown[+b.dataset.hh];if(!c||c.state!=="live")return;
+        dec.started_id=c.id;guideSave(dec,true);
+        o.remove();
+        if(c.item.route==="day")SummerQuest.navigate("day");
+        else SummerQuest.openQuest(c.entry.quest);
+      };
+    });
   });
 }
 function brainTrioStrip(id){

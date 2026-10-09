@@ -23,3 +23,12 @@
   - Cache: reopening the same slot calls `pick` 0 more times; a new slot calls it once.
 
 **DONE WHEN:** `node scripts/check.mjs` green. In the browser with the gate on: Lili below threshold taps 🧭, answers both questions, gets 3 fitting cards, rerolls twice and sees new ones each time. Closing and reopening shows the saved set. Starting Garden shows it as started in admin's history on the second screen. Wifi off: the same flow works and the decision syncs after reconnect, with no duplicate row. `scripts/check-android8-ui.py` with Chrome 138 passes. Papa looks at the guide on a tablet.
+
+## Build notes (2026-10-09)
+- Built as `SQHomeHelp.rank(ctx)` + `pick(ctx, reroll)` (the kid is in `ctx`); `todays`, `latest` and `view` are the pure cache and card helpers. Tests live in `scripts/games-gate.test.mjs` with the slice 01–03 ones, not a separate `home-help.test.mjs`; the cache case is tested on `latest` (same slot → saved decision, no pick).
+- A finished pick stays on its card as ✓ or "Papa will check 爸爸會確認"; a pick started but not finished is hidden and the gap refills from the local ranking (D8).
+- One `started_id` per decision (the D8 table): starting a second pick from the same set replaces the first in admin's history.
+- The tablet hydrates **today's** rows only (the only ones it uses); admin reads 7 days.
+- Guide sync ops never hold up the queue: a server refusal (e.g. table not deployed) drops the op, a lost connection keeps it for the next flush.
+- The words of the three screens come from `SQSummerAgent` stages `help_done`, `help_time`, `help_pick`; those stages never go to the summer remote provider (slice 06 adds the guide's own).
+- Browser check: `scripts/check-games-gate-ui.py` (Chrome 138) walks Q1 → Q2 → 3 cards → 2 rerolls → reopen shows the saved set → start garden / table / living room / office. Local-only mode, so the Supabase sync and admin history are covered by `sync.test.mjs`, `points-admin.test.mjs` and `points-database.test.mjs`, not a live database.

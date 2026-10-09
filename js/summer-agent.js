@@ -33,6 +33,16 @@
     if(stage==="activity_help"){const h=input.localHelp||{};return Promise.resolve({provider:"local",kind:"companion",speech:h.speech||"Try the next visible step first. If that does not work, ask me again.",speechZh:h.speechZh||"先試試畫面上的下一步。如果還是不行，再來問我。",emotion:"encouraging",animation:"lean_in",actions:["close"]});}
     if(stage==="quest_started")return Promise.resolve({provider:"local",kind:"status",speech:"Quest started! I'll stay nearby if you need me.",speechZh:"任務開始！需要我的時候我會在旁邊。",emotion:"excited",animation:"small_hop"});
     if(stage==="verification_requested")return Promise.resolve({provider:"local",kind:"status",speech:"Nice work. I sent it to Papa to check.",speechZh:"做得好，我已經送給爸爸確認了。",emotion:"proud",animation:"small_hop"});
+    /* Home-help guide (games-gate-ai-guide D5): tap-only questions and picks.
+       The caller passes the choices and the already-ranked picks; this only words them. */
+    if(stage==="help_done")return Promise.resolve({provider:"local",kind:"question",questionId:"help_done",speech:"What's already done today?",speechZh:"今天已經做了什麼？",emotion:"thinking",animation:"lean_in",choices:input.choices||[]});
+    if(stage==="help_time")return Promise.resolve({provider:"local",kind:"question",questionId:"help_time",speech:"How much time do you have now?",speechZh:"你現在有多少時間？",emotion:"happy",animation:"small_hop",choices:input.choices||[]});
+    if(stage==="help_pick"){
+      const picks=input.picks||[];
+      return Promise.resolve(picks.length
+        ?{provider:"local",kind:"recommendation",questionId:"help_pick",speech:"These fit right now. Pick one!",speechZh:"這些現在很適合，選一個吧！",emotion:"happy",animation:"small_hop",picks:picks}
+        :{provider:"local",kind:"recommendation",questionId:"help_pick",speech:"Rest time — helping starts again tomorrow.",speechZh:"休息時間，明天再來幫忙。",emotion:"sleepy",animation:"idle",picks:[]});
+    }
     if(stage==="quest_completed")return Promise.resolve({provider:"local",kind:"status",speech:"Quest complete!",speechZh:"任務完成！",emotion:"celebrate",animation:"double_hop"});
     const lines={
       morning:["I found a few good morning quests.","我找到幾個適合早上的任務。"],
@@ -45,7 +55,8 @@
     return Promise.resolve({provider:"local",kind:"recommendation",speech:speech[0],speechZh:speech[1],emotion:"happy",animation:"small_hop",questIds:q.slice(0,input.maxSuggestions||3).map(function(x){return x.id;})});
   }
   function interact(input){
-    if(remote){
+    /* help_* stages never reach the summer remote; the guide's AI is its own provider (slice 06) */
+    if(remote&&!/^help_/.test(input.stage||"")){
       return Promise.resolve().then(function(){return remote(input);}).then(function(v){return v&&typeof v==="object"?v:local(input);}).catch(function(){return local(input);});
     }
     return local(input);
