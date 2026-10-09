@@ -27,3 +27,4 @@
 - The function also falls back when `games_gate_v1.ai.enabled` is not true, so deploying it changes nothing for the kids until slice 06's switch is on.
 - `check.mjs` secret scan now covers `.ts` files and fails on OpenAI key shapes or an `OPENAI_API_KEY=` with a value.
 - Request parameters follow `server/agent-proxy/src/providers/OpenAIProvider.ts` (same model and request shape in use by the LAN proxy).
+- **Deployed 2026-10-09** to `summer-camp` (`npx supabase functions deploy games-guide --use-api`). It answers: a bad kid → 400 `invalid kid`; a valid request → `{fallback:true, reason:"server"}` because the live database has no `guide_decisions` yet (POINTS-ROLLOUT step 10 not run) and no `games_gate_v1` row (step 9). The project had no `OPENAI_API_KEY` secret when checked. Still open from DONE WHEN: a real model answer by `curl`, the repeat returning the same row.
