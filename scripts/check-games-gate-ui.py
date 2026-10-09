@@ -78,6 +78,8 @@ PANEL = """() => {
   return {vw: innerWidth, vh: innerHeight, card: r('.summer-chat'), form: r('#summerChatForm'), input: r('#summerChatInput'),
     send: r('#summerChatSend'), close: r('#summerChatClose'), preset: r('[data-preset]'),
     presets_shown: getComputedStyle(document.getElementById('summerChatPresets')).display !== 'none',
+    head_shown: getComputedStyle(document.querySelector('.summer-chat__head')).display !== 'none',
+    mini: r('#summerChatCloseMini'),
     log: {h: log.clientHeight, pinned: log.scrollHeight - log.scrollTop - log.clientHeight < 2, overflows: log.scrollHeight > log.clientHeight},
     page_scroll: document.scrollingElement.scrollTop};
 }"""
@@ -305,6 +307,7 @@ def run(browser, base, out):
     p = panel(page)
     assert p["form"]["bottom"] <= 300 and p["input"]["y"] >= p["card"]["y"], p["form"]
     assert not p["presets_shown"] and p["log"]["pinned"] and p["log"]["h"] > 60 and p["page_scroll"] == 0, p
+    assert not p["head_shown"] and p["mini"]["w"] >= 48 and p["mini"]["h"] >= 48 and p["mini"]["bottom"] <= 300, "header hides, a small ✕ beside Send"
     page.screenshot(path=str(out / "summer-chat-landscape-keyboard.png"))
     keyboard(page, 300, 120)   # the browser scrolled the visual viewport down
     p = panel(page)
@@ -343,16 +346,35 @@ def run(browser, base, out):
     assert p["form"]["bottom"] <= 230 and not p["presets_shown"] and p["log"]["pinned"] and p["log"]["overflows"], p
     assert p["page_scroll"] == 0, "only the message list scrolls"
     page.screenshot(path=str(out / "summer-chat-small-keyboard.png"))
-    # Portrait: app.css asks to turn the tablet sideways over everything, so a kid
-    # never sees the chat there; the sheet still lays out full-screen behind it.
+    page.locator("#summerChatCloseMini").click()
+    assert page.locator("#summerChatOverlay").count() == 0, "the small ✕ closes the chat"
+    # Portrait (2026-10-09-summer-chat-panel D7): the app and the chat work upright;
+    # only games ask to turn the tablet sideways.
     page.set_viewport_size({"width": 800, "height": 1280})
-    keyboard(page, 1280)
+    page.evaluate(FAKE_VV)
+    page.evaluate("openSummerChat()")
+    assert not page.locator("#rotateOverlay").is_visible(), "portrait is allowed outside games"
     p = panel(page)
-    assert p["card"]["x"] == 0 and p["card"]["w"] == p["vw"] and p["card"]["h"] >= p["vh"] - 1 and p["presets_shown"], p
+    assert p["card"]["x"] == 0 and p["card"]["w"] == p["vw"] and p["card"]["h"] >= p["vh"] - 1 and p["presets_shown"] and p["head_shown"], p
+    page.screenshot(path=str(out / "summer-chat-portrait.png"))
+    page.locator("#summerChatInput").focus()
     keyboard(page, 760)
+    page.locator("#summerChatInput").fill("Hello")
+    page.locator("#summerChatInput").press("Enter")
+    wait_held(page, held)
+    answer(held)
+    wait_replies(page, 2)
     p = panel(page)
     assert p["form"]["bottom"] <= 760 and p["presets_shown"] and p["log"]["pinned"] and p["page_scroll"] == 0, p
-    assert page.locator("#rotateOverlay").is_visible()
+    page.screenshot(path=str(out / "summer-chat-portrait-keyboard.png"))
+    page.locator("#summerChatClose").click()
+    page.evaluate(BRAIN_DONE, "lili")
+    assert page.evaluate("SummerQuest.openGame('balloon')")["ok"]
+    recovery.wait_screen(page, "game")
+    assert page.locator("#rotateOverlay").is_visible(), "games stay landscape"
+    page.screenshot(path=str(out / "portrait-game-rotate.png"))
+    page.set_viewport_size({"width": 1024, "height": 600})
+    assert not page.locator("#rotateOverlay").is_visible()
     results["chat"] = {"messages": len(sent)}
     context.close()
     return results
