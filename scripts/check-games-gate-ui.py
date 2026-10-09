@@ -1,4 +1,5 @@
-"""Daily points gate and home-help guide in the real root runtime (games-gate-ai-guide slices 01-04).
+"""Daily points gate and home-help guide in the real root runtime (games-gate-ai-guide slices 01-04),
+and the Summer chat panel (summer-chat-crash-test, summer-chat-panel).
 
 Run with --browser <Chromium executable> (Chrome 138 for the Android 8 baseline).
 Local-only mode, external services blocked, clock fixed to a Taipei day.
@@ -62,6 +63,49 @@ def overlay_text(page):
     page.evaluate("showLockOverlay(gameLockState())")
     page.wait_for_selector("#lockOverlay")
     return page.locator("#lockOverlay").inner_text()
+
+
+# The Summer chat sizes itself from window.visualViewport; headless Chrome has no
+# on-screen keyboard, so a stand-in viewport lets the check shrink it like one.
+FAKE_VV = """() => {
+  const v = new EventTarget();
+  Object.assign(v, {width: innerWidth, height: innerHeight, offsetTop: 0, offsetLeft: 0, scale: 1});
+  Object.defineProperty(window, 'visualViewport', {value: v, configurable: true});
+}"""
+PANEL = """() => {
+  const r = s => { const b = document.querySelector(s).getBoundingClientRect(); return {x: b.x, y: b.y, w: b.width, h: b.height, bottom: b.bottom, right: b.right}; };
+  const log = document.getElementById('summerChatLog');
+  return {vw: innerWidth, vh: innerHeight, card: r('.summer-chat'), form: r('#summerChatForm'), input: r('#summerChatInput'),
+    send: r('#summerChatSend'), close: r('#summerChatClose'), preset: r('[data-preset]'),
+    presets_shown: getComputedStyle(document.getElementById('summerChatPresets')).display !== 'none',
+    log: {h: log.clientHeight, pinned: log.scrollHeight - log.scrollTop - log.clientHeight < 2, overflows: log.scrollHeight > log.clientHeight},
+    page_scroll: document.scrollingElement.scrollTop};
+}"""
+
+
+def panel(page):
+    return page.evaluate(PANEL)
+
+
+def keyboard(page, height, top=0):
+    page.evaluate("""([h, t]) => { const v = window.visualViewport; v.height = h; v.offsetTop = t;
+      v.dispatchEvent(new Event('resize')); v.dispatchEvent(new Event('scroll')); }""", [height, top])
+
+
+def wait_held(page, held):
+    for _ in range(100):
+        if held:
+            return
+        page.wait_for_timeout(50)
+    raise AssertionError("the chat never called kid-chat")
+
+
+def answer(held, en="The sky is blue because sunlight bounces!", zh="天空是藍色的，因為陽光在彈跳！"):
+    held.pop(0).fulfill(status=200, content_type="application/json", body=json.dumps({"en": en, "zh": zh, "flagged": False}))
+
+
+def wait_replies(page, count):
+    page.wait_for_function("n => document.querySelectorAll('#summerChatLog .summer-chat__msg--summer:not(.is-thinking)').length === n", arg=count)
 
 
 def run(browser, base, out):
@@ -199,7 +243,9 @@ def run(browser, base, out):
     assert page.locator("#homeHelpOverlay .hhcard").count() == 0
     context.close()
 
-    # Summer chat (2026-10-09-summer-chat-crash-test): from the companion sheet, any time
+    # Summer chat (2026-10-09-summer-chat-crash-test): from the companion sheet, any time.
+    # Panel (2026-10-09-summer-chat-panel): docked right in landscape, a full sheet in
+    # portrait, preset taps + typing, composer above a simulated on-screen keyboard.
     context, page = open_kid(browser, base, "luis", noon)
     page.evaluate("s => { SQHost.store.familySettings.games_gate_v1 = JSON.stringify(s); }", GATE)
     page.evaluate("openSummerCompanion()")
@@ -209,25 +255,62 @@ def run(browser, base, out):
     page.wait_for_selector("#summerChatOverlay")
     assert "needs wifi" in page.locator("#summerChatLog").inner_text(), "local-only mode: no chat, a kind line"
     assert page.locator("#summerChatInput").is_disabled()
-    recovery.close_overlays(page)
-    sent = []
-    def reply(route):
+    assert page.locator("#summerChatPresets [data-preset]").first.is_disabled(), "nothing is queued offline"
+    page.locator("#summerChatOverlay").click(position={"x": 20, "y": 300})
+    assert page.locator("#summerChatOverlay").count() == 1, "a tap beside the panel never ends the conversation"
+    page.locator("#summerChatClose").click()
+    assert page.locator("#summerChatOverlay").count() == 0
+    sent, held = [], []
+    def hold(route):
         sent.append(json.loads(route.request.post_data))
-        route.fulfill(status=200, content_type="application/json",
-            body=json.dumps({"en": "The sky is blue because sunlight bounces!", "zh": "天空是藍色的，因為陽光在彈跳！", "flagged": False}))
-    page.route("**/functions/v1/kid-chat", reply)
+        held.append(route)
+    page.route("**/functions/v1/kid-chat", hold)
     page.evaluate("window.SQ_CONFIG = {SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'anon'}")
+    page.evaluate(FAKE_VV)
     page.evaluate("openSummerChat()")
+    p = panel(page)
+    assert abs(p["card"]["right"] - p["vw"]) < 1 and 0.38 <= p["card"]["w"] / p["vw"] <= 0.47, p["card"]
+    assert p["card"]["h"] >= p["vh"] - 1 and p["card"]["x"] > 0, "full height, the app stays visible on the left"
+    for name in ("close", "send", "preset"):
+        assert p[name]["w"] >= 48 and p[name]["h"] >= 48, (name, p[name])
+    presets = page.evaluate("SUMMER_CHAT_PRESETS")
+    assert page.locator("#summerChatPresets [data-preset]").count() == len(presets) >= 4
+    assert presets[0]["zh"] in page.locator("#summerChatPresets").inner_text()
+    page.screenshot(path=str(out / "summer-chat-landscape.png"))
+    page.locator("#summerChatPresets [data-preset='0']").click()
+    wait_held(page, held)
+    assert page.locator("#summerChatLog .is-thinking").count() == 1 and "想一下" in page.locator("#summerChatLog").inner_text()
+    assert page.locator("#summerChatSend").is_disabled() and page.locator("[data-preset='1']").is_disabled(), "one question at a time"
+    answer(held, "The moon is made of rock and dust!", "月亮是由岩石和灰塵組成的！")
+    wait_replies(page, 2)
+    assert sent[0]["messages"] == [{"role": "kid", "text": presets[0]["en"]}], sent[0]
+    log = page.locator("#summerChatLog").inner_text()
+    assert presets[0]["en"] in log and presets[0]["zh"] in log and "月亮是由岩石" in log, log
+    assert page.locator("#summerChatLog .summer-chat__say").count() == 2, "🔊 on every Summer reply"
     page.locator("#summerChatInput").fill("Why is the sky blue?")
     page.locator("#summerChatSend").click()
-    page.wait_for_function("document.querySelectorAll('#summerChatLog .summer-chat__msg--summer:not(.is-thinking)').length === 2")
-    log = page.locator("#summerChatLog").inner_text()
-    assert "Why is the sky blue?" in log and "天空是藍色的" in log, log
+    wait_held(page, held)
+    answer(held)
+    wait_replies(page, 3)
     page.locator("#summerChatInput").fill("Tell me more")
     page.locator("#summerChatInput").press("Enter")
-    page.wait_for_function("document.querySelectorAll('#summerChatLog .summer-chat__msg--summer:not(.is-thinking)').length === 3")
-    assert [m["role"] for m in sent[1]["messages"]] == ["kid", "summer", "kid"], sent[1]
-    assert sent[1]["kid"] == "luis" and sent[0]["session"] == sent[1]["session"], sent
+    wait_held(page, held)
+    answer(held)
+    wait_replies(page, 4)
+    assert [m["role"] for m in sent[2]["messages"]] == ["kid", "summer", "kid", "summer", "kid"], sent[2]
+    assert sent[2]["messages"][2]["text"] == "Why is the sky blue?" and page.locator("#summerChatInput").input_value() == ""
+    assert sent[2]["kid"] == "luis" and sent[0]["session"] == sent[2]["session"], sent
+    # Keyboard up in landscape: the visible viewport shrinks to 300 px
+    keyboard(page, 300)
+    p = panel(page)
+    assert p["form"]["bottom"] <= 300 and p["input"]["y"] >= p["card"]["y"], p["form"]
+    assert not p["presets_shown"] and p["log"]["pinned"] and p["log"]["h"] > 60 and p["page_scroll"] == 0, p
+    page.screenshot(path=str(out / "summer-chat-landscape-keyboard.png"))
+    keyboard(page, 300, 120)   # the browser scrolled the visual viewport down
+    p = panel(page)
+    assert abs(p["card"]["y"] - 120) < 1 and p["form"]["bottom"] <= 420, p
+    keyboard(page, p["vh"])
+    assert panel(page)["presets_shown"], "presets come back when the keyboard closes"
     assert opened(page)["reason"] == "brain", "games stay gated while the chat is open to talk"
     page.screenshot(path=str(out / "summer-chat-luis.png"))
     page.evaluate("SQHost.store.familySettings.kid_chat_v1 = JSON.stringify({enabled: false})")
@@ -235,6 +318,41 @@ def run(browser, base, out):
     page.evaluate("openSummerCompanion()")
     page.wait_for_selector("[data-summer-action]")
     assert page.locator("[data-summer-action=chat]").count() == 0, "Papa's switch hides the chat"
+    context.close()
+
+    # A landscape screen under 900 px wide gets the full-height sheet; type with the
+    # keyboard up until the list overflows.
+    context, page = open_kid(browser, base, "lili", noon)
+    page.set_viewport_size({"width": 854, "height": 480})
+    page.route("**/functions/v1/kid-chat", hold)
+    page.evaluate("window.SQ_CONFIG = {SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'anon'}")
+    page.evaluate(FAKE_VV)
+    page.evaluate("openSummerChat()")
+    p = panel(page)
+    assert p["card"]["x"] == 0 and p["card"]["w"] == p["vw"] and p["card"]["h"] >= p["vh"] - 1 and p["presets_shown"], p
+    page.screenshot(path=str(out / "summer-chat-small.png"))
+    page.locator("#summerChatInput").focus()
+    keyboard(page, 230)
+    for i in range(4):
+        page.locator("#summerChatInput").fill("Question %d" % i)
+        page.locator("#summerChatInput").press("Enter")
+        wait_held(page, held)
+        answer(held, "A long answer. " * 12, "很長的回答。" * 12)
+        wait_replies(page, 2 + i)
+    p = panel(page)
+    assert p["form"]["bottom"] <= 230 and not p["presets_shown"] and p["log"]["pinned"] and p["log"]["overflows"], p
+    assert p["page_scroll"] == 0, "only the message list scrolls"
+    page.screenshot(path=str(out / "summer-chat-small-keyboard.png"))
+    # Portrait: app.css asks to turn the tablet sideways over everything, so a kid
+    # never sees the chat there; the sheet still lays out full-screen behind it.
+    page.set_viewport_size({"width": 800, "height": 1280})
+    keyboard(page, 1280)
+    p = panel(page)
+    assert p["card"]["x"] == 0 and p["card"]["w"] == p["vw"] and p["card"]["h"] >= p["vh"] - 1 and p["presets_shown"], p
+    keyboard(page, 760)
+    p = panel(page)
+    assert p["form"]["bottom"] <= 760 and p["presets_shown"] and p["log"]["pinned"] and p["page_scroll"] == 0, p
+    assert page.locator("#rotateOverlay").is_visible()
     results["chat"] = {"messages": len(sent)}
     context.close()
     return results

@@ -1318,6 +1318,27 @@ try {
   fail("brain scenes", error.message);
 }
 
+// Summer chat presets (2026-10-09-summer-chat-panel): one data array, every
+// question bilingual, short enough for the 500-character text box.
+{
+  const presetMatch = indexHtml.match(/const SUMMER_CHAT_PRESETS=(\[[\s\S]*?\]);/);
+  if (!presetMatch) fail("summer chat", "index.html must define SUMMER_CHAT_PRESETS as one array");
+  else {
+    try {
+      const presets = Function(`return ${presetMatch[1]}`)();
+      if (presets.length < 4) fail("summer chat", "SUMMER_CHAT_PRESETS needs at least 4 questions");
+      presets.forEach(function (p, i) {
+        assertPair([p.en, p.zh], `SUMMER_CHAT_PRESETS[${i}]`);
+        if (!p.icon) fail("summer chat", `SUMMER_CHAT_PRESETS[${i}] needs an icon`);
+        if (p.zh && !/[一-鿿]/.test(p.zh)) fail("summer chat", `SUMMER_CHAT_PRESETS[${i}].zh must be 中文`);
+        if (String(p.en || "").length > 500) fail("summer chat", `SUMMER_CHAT_PRESETS[${i}].en is over 500 characters`);
+      });
+    } catch (error) {
+      fail("summer chat", "SUMMER_CHAT_PRESETS does not parse: " + error.message);
+    }
+  }
+}
+
 // Brain scene CSS colour tokens (implementation-guidelines.md §4.1, §17): a scene
 // must consume --brain-* tokens, never scatter a literal colour through scene CSS.
 // The :root block in brain-shell.css is where those literals are declared, so it is
