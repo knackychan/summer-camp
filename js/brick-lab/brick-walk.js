@@ -20,6 +20,10 @@ export const MOVE = Object.freeze({
   maxFall: 15,
   maxDt: 0.05,
 });
+/* A ladder: stick forward climbs, back climbs down, up to its top, where
+   forward walks on. `reach`: how far from the ladder a walker walking at it
+   takes hold. */
+export const CLIMB = Object.freeze({ speed: 4, reach: 0.3 });
 export const REACH = 8; /* studs across the ground (W9) */
 export const LOOK = Object.freeze({ maxPitch: Math.PI / 3 });
 /* `shoulder`: the view looks past the right shoulder, so the crosshair in the
@@ -46,22 +50,39 @@ export function solids(pieces, boxOf, skip = new Set()) {
   return out;
 }
 
-/* A part that is not one solid block to walk on (stairs) lists its own
-   boxes in `part.walk`: { x: [min, max], z: [min, max], top }, around the
-   part's centre and up from its bottom. Turned and placed with the piece
-   (Three's rotation.y: local (x, z) → (x cos + z sin, −x sin + z cos)). */
+/* A part that is not one solid block to walk on (stairs, a doorway) lists
+   its own boxes in `part.walk`: { x: [min, max], z: [min, max], top }, around
+   the part's centre and up from its bottom. Turned and placed with the piece
+   (Three's rotation.y: local (x, z) → (x cos + z sin, −x sin + z cos)).
+   Optional per box: `from` (its underside above the bottom, so a lintel
+   leaves an opening below), `shut` (only while the piece's pose is not
+   "open": a door leaf) and `climb` (not solid: a ladder, see step). */
 export function walkBoxes(piece, part) {
   const turn = (((Math.round((piece.rotation || 0) / 90) % 4) + 4) % 4) * Math.PI / 2;
   const cos = Math.round(Math.cos(turn));
   const sin = Math.round(Math.sin(turn));
   const bottom = piece.y - part.height / 2;
-  return part.walk.map(({ x, z, top }) => {
+  const open = !!piece.pose && piece.pose.p === "open";
+  return part.walk.filter((w) => !(w.shut && open)).map(({ x, z, top, from = 0, climb }) => {
     const xs = [];
     const zs = [];
     x.forEach((lx) => z.forEach((lz) => { xs.push(lx * cos + lz * sin); zs.push(-lx * sin + lz * cos); }));
     return { minX: piece.x + Math.min(...xs), maxX: piece.x + Math.max(...xs), minZ: piece.z + Math.min(...zs), maxZ: piece.z + Math.max(...zs),
-      minY: bottom, maxY: bottom + top };
+      minY: bottom + from, maxY: bottom + top, ...(climb ? { climb: true } : {}) };
   });
+}
+
+const solid = (boxes) => (boxes.some((b) => b.climb) ? boxes.filter((b) => !b.climb) : boxes);
+
+/* The ladder the column at (x, z) hangs on, if any: its box a little wider
+   than the walker (CLIMB.reach) and no higher than its top. */
+function ladderAt(x, z, y, boxes) {
+  for (const b of boxes) {
+    if (!b.climb || y > b.maxY + EPS || y + WALKER.height < b.minY) continue;
+    const r = WALKER.radius + CLIMB.reach;
+    if (b.minX < x + r && b.maxX > x - r && b.minZ < z + r && b.maxZ > z - r) return b;
+  }
+  return null;
 }
 
 /* The highest top under the column at (x, z) no higher than `limit`; 0 is the baseplate. */
@@ -81,17 +102,50 @@ function fits(x, z, y, reach, boxes) {
    { forward, strafe, jump, yaw }: the stick (−1…1) and the look yaw it walks
    along. Walls are tried one axis at a time, so pushing into one slides
    along it. Returns the next state plus `moving`. */
-export function step(state, input, dt, boxes, half) {
+export function step(state, input, dt, all, half) {
   dt = clamp(dt, 0, MOVE.maxDt);
+  const boxes = solid(all);
   let { x, y, z, vy, yaw } = state;
-  const reach = state.grounded ? MOVE.stepUp : MOVE.airStep;
+  let grounded0 = state.grounded;
   const f = clamp(input.forward || 0, -1, 1);
   const s = clamp(input.strafe || 0, -1, 1);
   const len = Math.hypot(f, s);
+  let dx = 0;
+  let dz = 0;
   if (len > 0.05) {
     const look = input.yaw || 0;
-    const dx = (f * Math.sin(look) - s * Math.cos(look)) / len;
-    const dz = (f * Math.cos(look) + s * Math.sin(look)) / len;
+    dx = (f * Math.sin(look) - s * Math.cos(look)) / len;
+    dz = (f * Math.cos(look) + s * Math.sin(look)) / len;
+  }
+  /* A ladder: walking at it takes hold; then forward is up and back is down.
+     Jumping lets go. At the top, forward walks on; at the bottom, back steps off. */
+  const rung = ladderAt(x, z, y, all);
+  let climbing = false;
+  if (rung && !input.jump) {
+    const cx = (rung.minX + rung.maxX) / 2 - x;
+    const cz = (rung.minZ + rung.maxZ) / 2 - z;
+    const away = Math.hypot(cx, cz);
+    const toward = len > 0.05 && (away < 0.05 || (dx * cx + dz * cz) / away > 0.3);
+    climbing = (!!state.climbing || (toward && y < rung.maxY - EPS)) && y <= rung.maxY + EPS;
+  } else if (rung && state.climbing && input.jump) {
+    vy = Math.sqrt(2 * MOVE.gravity * 1);
+  }
+  if (climbing) {
+    const floor = groundUnder(x, z, boxes, y + MOVE.airStep);
+    const top = rung.maxY;
+    const ny = clamp(y + f * CLIMB.speed * dt, floor, top);
+    const walkOn = ny >= top - EPS && f > 0.05; /* forward at the top walks on */
+    const stepOff = ny <= floor + EPS && f <= 0.05; /* back, or nothing, at the bottom steps off */
+    if (!walkOn && !stepOff) {
+      const face = Math.atan2((rung.minX + rung.maxX) / 2 - x, (rung.minZ + rung.maxZ) / 2 - z);
+      return { x, y: ny, z, vy: 0, yaw: face, grounded: false, climbing: true, moving: ny !== y };
+    }
+    y = ny;
+    grounded0 = true;
+    vy = 0;
+  }
+  const reach = grounded0 ? MOVE.stepUp : MOVE.airStep;
+  if (len > 0.05) {
     const dist = MOVE.speed * Math.min(1, len) * dt;
     const edge = half - WALKER.radius;
     const nx = clamp(x + dx * dist, -edge, edge);
@@ -101,8 +155,8 @@ export function step(state, input, dt, boxes, half) {
     yaw = Math.atan2(dx, dz);
   }
   const floor = groundUnder(x, z, boxes, y + reach);
-  if (state.grounded && floor > y) y = floor;
-  if (input.jump && state.grounded) vy = Math.sqrt(2 * MOVE.gravity * MOVE.jump);
+  if (grounded0 && floor > y) y = floor;
+  if (input.jump && grounded0) vy = Math.sqrt(2 * MOVE.gravity * MOVE.jump);
   let ny = y + vy * dt - MOVE.gravity * dt * dt / 2;
   vy = Math.max(-MOVE.maxFall, vy - MOVE.gravity * dt);
   if (ny > y) {
@@ -189,7 +243,8 @@ function clear(o, d, max, boxes) {
    beside the head (BEHIND.shoulder to the right, less if a piece is there)
    at level look, tipping with the look's pitch; pulled in in front of a
    piece in the way. `boxes` leaves out the walker and its riders. */
-export function behindCamera(state, look, boxes) {
+export function behindCamera(state, look, all) {
+  const boxes = solid(all);
   const tilt = clamp(look.pitch + Math.atan2(BEHIND.up, BEHIND.back), BEHIND.minTilt, BEHIND.maxTilt);
   const head = { x: state.x, y: state.y + WALKER.head, z: state.z };
   const right = { x: -Math.cos(look.yaw), y: 0, z: Math.sin(look.yaw) };

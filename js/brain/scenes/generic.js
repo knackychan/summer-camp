@@ -44,12 +44,19 @@ function promptHtml(p) {
   if (p.type === "clockface") return clockSvg(p.h, p.m) + sub(p);
   if (p.type === "money") return '<div class="brain-generic__task">' + (p.art || "") + '</div>' + sub(p);
   if (p.type === "gridflash") return '<div class="brain-generic__grid" data-role="grid"></div>' + sub(p);
-  if (p.type === "wordlist") return '<div class="brain-generic__words" data-role="words"></div>' + sub(p);
+  if (p.type === "wordlist") return countdownHtml(p) + '<div class="brain-generic__words" data-role="words"></div>' + sub(p);
   if (/^[\d\s+×÷−=?]+$/.test(p.en)) return '<div class="brain-generic__equation">' + p.en.split(/\s+/).map(function (part) {
     var kind = part === '?' ? 'missing' : /^\d+$/.test(part) ? 'number' : 'operator';
     return '<span class="brain-generic__' + kind + '">' + part + '</span>';
   }).join('') + '</div>';
   return p.zh && p.zh !== p.en ? sub(p) : '<div class="brain-generic__task">' + p.en + '</div>';
+}
+function countdownHtml(p) {
+  if (!p.countdownSec) return '';
+  var l = p.countdownLabel || ['', ''];
+  return '<div class="brain-generic__countdown" data-role="countdown" role="timer" aria-live="off">' +
+    '<span class="brain-generic__countnum" data-role="countnum">' + p.countdownSec + '</span>' +
+    '<span class="brain-generic__countlabel">' + l[0] + '<span class="zhs">' + l[1] + '</span></span></div>';
 }
 function sub(p) {
   return '<div class="brain-generic__sub">' + p.en + '<span class="zhs">' + p.zh + '</span></div>';
@@ -60,9 +67,12 @@ function padHtml(pad, entry) {
     return '<div class="brain-generic__entry">' + (entry === "" ? "&nbsp;" : entry.split(",").join(" · ")) + '</div>' +
       '<div class="brain-generic__grid" data-role="gridpad"></div>';
   }
+  if (pad === "yesno") return '<div class="brain-generic__yesno" data-role="yesno"></div>';
   if (pad === "type") {
     return '<textarea class="brain-generic__type" data-role="type" rows="3" aria-label="Words you remember 你記得的單字" placeholder="Type the words 打出單字"></textarea>' +
       '<div class="brain-generic__bpmfpad" data-role="bpmfpad"></div>' +
+      '<div class="brain-generic__pickwords" data-role="pickwords" hidden></div>' +
+      '<button class="brain-generic__alt" type="button" data-role="pickmode" disabled>Easier: pick the words 改用選的</button>' +
       '<button class="brain-key" data-v="✓">Done 完成</button>';
   }
   if (pad === "keypad") {
@@ -93,7 +103,8 @@ function padTypeFor(ctx) {
 }
 
 function create(ctx) {
-  var pad = padTypeFor(ctx);
+  var basePad = padTypeFor(ctx);
+  var pad = basePad;
   var entry = "";
   var currentItem = null;
   var inputEnabled = false;
@@ -178,8 +189,21 @@ function create(ctx) {
     host.innerHTML = item.prompt.words.map(function (w) { return '<span class="brain-generic__word">' + w + '</span>'; }).join("");
     var ta = root().querySelector('[data-role="type"]');
     if (ta) { ta.disabled = true; ta.dataset.studying = "1"; }
+    var countBox = root().querySelector('[data-role="countdown"]');
+    var countNum = root().querySelector('[data-role="countnum"]');
+    var left = item.prompt.countdownSec || 0;
+    function tick() {
+      if (!currentItem || currentItem !== item || !countNum) return;
+      left -= 1;
+      if (left < 0) return;
+      countNum.textContent = left;
+      ctx.scheduler.after(1000, tick);
+    }
+    if (countNum && left > 0) ctx.scheduler.after(1000, tick);
     ctx.scheduler.after(item.prompt.studyMs, function () {
       if (!currentItem || currentItem !== item) return;
+      if (countBox) countBox.hidden = true;
+      if (item.prompt.recognize) { mountYesNo(item, host); return; }
       if (item.choices) {
         host.innerHTML = item.prompt.words
           .filter(function (w) { return w !== item.answer; })
@@ -193,8 +217,64 @@ function create(ctx) {
         '</span>';
       var box = root().querySelector('[data-role="type"]');
       if (box) { delete box.dataset.studying; box.disabled = false; box.focus(); }
+      mountPickMode(item);
       root().querySelectorAll(".brain-key").forEach(function (b) { b.disabled = false; });
     });
+  }
+  function mountYesNo(item, host) {
+    var r = item.prompt.recognize, qs = r.questions, answers = [], i = 0;
+    var pad2 = root().querySelector('[data-role="yesno"]');
+    if (!pad2) return;
+    function show() {
+      host.innerHTML = '<span class="brain-generic__word brain-generic__word--ask">' + qs[i].word + '</span>' +
+        '<span class="brain-generic__sub">' + r.ask[0] + '<span class="zhs">' + r.ask[1] + '</span> (' + (i + 1) + '/' + qs.length + ')</span>';
+      pad2.innerHTML =
+        '<button class="brain-key brain-generic__yes" type="button" data-v="yes">✅ ' + r.yes[0].replace(/\s*✔/, '') + ' <span class="zhs">' + r.yes[1].replace(/\s*✔/, '') + '</span></button>' +
+        '<button class="brain-key brain-generic__no" type="button" data-v="no">❌ ' + r.no[0].replace(/\s*✘/, '') + ' <span class="zhs">' + r.no[1].replace(/\s*✘/, '') + '</span></button>';
+      pad2.querySelectorAll(".brain-key").forEach(function (b) {
+        b.disabled = !inputEnabled;
+        b.onclick = function () {
+          if (!inputEnabled || pendingSubmit) return;
+          answers.push(b.dataset.v);
+          i += 1;
+          if (i >= qs.length) { pad2.innerHTML = ""; submitValue(answers.join(" ")); return; }
+          show();
+        };
+      });
+    }
+    show();
+  }
+
+  /* Typing alternative: tap words from the studied list plus look-alikes. */
+  function mountPickMode(item) {
+    var toggle = root().querySelector('[data-role="pickmode"]');
+    var tray = root().querySelector('[data-role="pickwords"]');
+    var ta = root().querySelector('[data-role="type"]');
+    var words = item.prompt.pickWords;
+    if (!toggle || !tray || !words) return;
+    toggle.disabled = false;
+    toggle.onclick = function () {
+      toggle.hidden = true;
+      tray.hidden = false;
+      var bp = root().querySelector('[data-role="bpmfpad"]');
+      if (bp) bp.hidden = true;
+      if (ta) ta.readOnly = true;
+      tray.innerHTML = words.map(function (w) {
+        return '<button class="brain-generic__pick" type="button" aria-pressed="false" data-w="' + w + '">' + w + '</button>';
+      }).join("");
+      tray.querySelectorAll(".brain-generic__pick").forEach(function (b) {
+        b.onclick = function () {
+          if (!inputEnabled || pendingSubmit) return;
+          var on = b.getAttribute("aria-pressed") !== "true";
+          b.setAttribute("aria-pressed", String(on));
+          b.classList.toggle("is-picked", on);
+          var chosen = [];
+          tray.querySelectorAll(".is-picked").forEach(function (x) { chosen.push(x.dataset.w); });
+          entry = chosen.join(" ");
+          if (ta) ta.value = entry;
+        };
+      });
+    };
   }
   function mountBopomofoPad() {
     var host = root().querySelector('[data-role="bpmfpad"]');
@@ -220,6 +300,7 @@ function create(ctx) {
 
   function present(item) {
     currentItem = item; entry = ""; inputEnabled = false; pendingSubmit = false;
+    pad = item.prompt.recognize ? "yesno" : basePad;
     root().innerHTML =
       '<div class="brain-task-card brain-generic__prompt">' + promptHtml(item.prompt) + '</div>' +
       '<div class="brain-answer brain-generic__pad">' + padHtml(pad, entry) + '</div>' +
@@ -250,7 +331,7 @@ function create(ctx) {
     inputEnabled = !!enabled;
     var ta = root().querySelector('[data-role="type"]');
     var studying = !!(ta && ta.dataset.studying);
-    root().querySelectorAll(".brain-key,.brain-generic__counter").forEach(function (b) { b.disabled = !inputEnabled || studying || b.classList.contains('is-used'); });
+    root().querySelectorAll(".brain-key,.brain-generic__counter,.brain-generic__pick").forEach(function (b) { b.disabled = !inputEnabled || studying || b.classList.contains('is-used'); });
     if (ta && !ta.dataset.studying) ta.disabled = !inputEnabled;
     if (inputEnabled && pad === 'keypad') { root().setAttribute('tabindex', '-1'); root().focus({ preventScroll: true }); }
   }

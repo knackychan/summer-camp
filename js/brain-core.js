@@ -89,7 +89,7 @@
     const data=cat(override);
     const g=data.GAMES[gameId];
     if(!g)throw new Error("unknown brain game: "+gameId);
-    const cfg=g.tiers[tier];
+    const cfg=(options&&options.recognition&&g.recogTiers&&g.recogTiers[tier])||g.tiers[tier];
     if(!cfg)throw new Error("game "+gameId+" has no tier "+tier);
     let items;
     if(typeof cfg.build==="function"){

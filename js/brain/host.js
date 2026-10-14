@@ -48,7 +48,7 @@ function createRound(opts) {
   var reducedMotion = motionSvc.reduced;
 
   var questionRnd = C.mulberry32(Date.now() >>> 0);
-  var round = C.buildRound(gameId, tier, questionRnd, null, { mathSkill: opts.mathSkill || "" });
+  var round = C.buildRound(gameId, tier, questionRnd, null, { mathSkill: opts.mathSkill || "", recognition: !!opts.recognition });
   if (Number.isFinite(Number(opts.itemLimit)) && Number(opts.itemLimit) > 0) {
     round.items = round.items.slice(0, Math.max(1, Math.round(Number(opts.itemLimit))));
   }

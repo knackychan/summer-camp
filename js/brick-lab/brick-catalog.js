@@ -234,7 +234,13 @@ export const PARTS = Object.freeze([
      (2026-10-08): the door and the windows swing open on a tap (moving-parts
      M8); the opening still counts as taken, open or shut. */
   { id: "arch_1x4", label: ["Arch 1×4", "拱形積木 1×4"], size: "", category: "structure", shape: "arch", width: 1, depth: 4, height: BRICK_HEIGHT, studs: true },
-  { id: "door_1x4x6", label: ["Door", "門"], size: "", category: "doors", shape: "door", width: 1, depth: 4, height: BRICK_HEIGHT * 6, studs: true, ...swingOn(-1.68, BRICK_HEIGHT * 6) },
+  { id: "door_1x4x6", label: ["Door", "門"], size: "", category: "doors", shape: "door", width: 1, depth: 4, height: BRICK_HEIGHT * 6, studs: true, ...swingOn(-1.68, BRICK_HEIGHT * 6),
+    /* A walker goes through the doorway (brick-walk.js walkBoxes): jambs and head solid, the leaf only while shut. */
+    walk: [
+      { x: [-0.5, 0.5], z: [-2, -1.7], top: BRICK_HEIGHT * 6 }, { x: [-0.5, 0.5], z: [1.7, 2], top: BRICK_HEIGHT * 6 },
+      { x: [-0.5, 0.5], z: [-2, 2], from: BRICK_HEIGHT * 6 - 0.4, top: BRICK_HEIGHT * 6 },
+      { x: [-0.1, 0.1], z: [-1.7, 1.7], top: BRICK_HEIGHT * 6 - 0.4, shut: true },
+    ] },
   { id: "window_1x4x3", label: ["Big Window", "大窗戶"], size: "", category: "doors", shape: "window", width: 1, depth: 4, height: BRICK_HEIGHT * 3, studs: true, ...swingOn(-1.78, BRICK_HEIGHT * 3) },
   /* The two that plant straight into the baseplate (catalog C5: `ground`). */
   { id: "tree_small", label: ["Small Tree", "小樹"], size: "", category: "nature", shape: "tree", width: 2, depth: 2, height: 4, studs: false, ground: true },

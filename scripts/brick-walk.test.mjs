@@ -210,3 +210,31 @@ test("stairs: the walker climbs them one step at a time, no jump needed", () => 
   const wall = run(standing({ z: 4 }), [box(-1, 1, -2, 2, 0, 4.8)], 240, () => ({ forward: 1, yaw: Math.PI })).s;
   assert.equal(wall.y, 0, "as one solid box the same stairs were a wall");
 });
+
+test("a doorway: walk through when the leaf is open, bump it when shut; jambs and head stay", async () => {
+  const { getPart } = await import("../js/brick-lab/brick-catalog.js");
+  const part = getPart("door_round");
+  const mk = (pose) => walkBoxes({ x: 0, y: part.height / 2, z: 0, rotation: 0, pose }, part);
+  const pass = (boxes) => run(standing({ x: -3, yaw: Math.PI / 2 }), boxes, 120, () => ({ forward: 1, strafe: 0, yaw: Math.PI / 2 })).s;
+  assert.ok(pass(mk({ p: "open" })).x > 1, "through the open door");
+  assert.ok(pass(mk(undefined)).x < -0.4, "stopped by the shut leaf");
+});
+
+test("a ladder: walking at it climbs to its top and walks on; back climbs down; jump lets go", () => {
+  const ladder = box(-1, 1, 1, 2, 0, 6);
+  ladder.climb = true;
+  const platform = box(-4, 4, 2, 6, 5.9, 6);
+  const boxes = [ladder, platform];
+  let s = standing({ z: 0.2 });
+  for (let i = 0; i < 40; i++) s = step(s, forward(), DT, boxes, HALF);
+  assert.ok(s.climbing && s.y > 1, `climbing, y ${s.y}`);
+  for (let i = 0; i < 90 && s.y < 5.99; i++) s = step(s, forward(), DT, boxes, HALF);
+  assert.ok(s.y >= 5.99, `top, y ${s.y}`);
+  for (let i = 0; i < 25; i++) s = step(s, forward(), DT, boxes, HALF);
+  assert.ok(s.z > 2 && near(s.y, 6) && !s.climbing, `on the platform z ${s.z} y ${s.y}`);
+  let d = standing({ z: 0.33, y: 3, climbing: true, grounded: false });
+  d = step(d, { forward: -1, strafe: 0, yaw: 0 }, DT, boxes, HALF);
+  assert.ok(d.y < 3 && d.climbing, "back climbs down");
+  const j = step(d, { forward: 0, strafe: 0, yaw: 0, jump: true }, DT, boxes, HALF);
+  assert.ok(!j.climbing && j.vy > 0, "jump lets go");
+});

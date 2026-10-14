@@ -661,3 +661,32 @@ test("greedyPieceCount: exact change is payable, an impossible set is Infinity",
   assert.equal(SQBrainData.greedyPieceCount(13, [50, 10, 5, 1]), 4); // 10+1+1+1
   assert.equal(SQBrainData.greedyPieceCount(3, [50, 10]), Infinity);
 });
+
+test("wordmem study items carry a bilingual countdown matching studyMs", () => {
+  for (const tier of ["tot", "mid", "hard"]) {
+    const p = SQBrainCore.buildRound("wordmem", tier, SQBrainCore.mulberry32(5)).items[0].prompt;
+    assert.equal(p.countdownSec, Math.round(p.studyMs / 1000), tier);
+    assert.ok(p.countdownLabel[0] && /[\u4e00-\u9fff]/.test(p.countdownLabel[1]), tier);
+  }
+});
+
+test("wordmem recognition: yes = listed word, no = unlisted word, EN + 中文 labels", () => {
+  for (const tier of ["mid", "hard"]) {
+    const round = SQBrainCore.buildRound("wordmem", tier, SQBrainCore.mulberry32(9), null, { recognition: true });
+    assert.equal(round.pad, "yesno");
+    const item = round.items[0], r = item.prompt.recognize;
+    assert.ok(r.questions.length > 0);
+    for (const q of r.questions) {
+      assert.equal(item.prompt.words.includes(q.word), q.answer === "yes", q.word);
+    }
+    for (const pair of [r.ask, r.yes, r.no]) assert.ok(pair[0] && /[\u4e00-\u9fff]/.test(pair[1]));
+    assert.equal(SQBrainCore.gradeItem(item, item.answer).got ?? item.grade(item.answer), r.questions.length);
+    assert.equal(item.grade(r.questions.map((q) => (q.answer === "yes" ? "no" : "yes")).join(" ")), 0);
+  }
+});
+
+test("wordmem typing items offer pick-words with every listed word plus decoys", () => {
+  const p = SQBrainCore.buildRound("wordmem", "mid", SQBrainCore.mulberry32(3)).items[0].prompt;
+  for (const w of p.words) assert.ok(p.pickWords.includes(w));
+  assert.ok(p.pickWords.length > p.words.length);
+});

@@ -335,6 +335,7 @@
   const EMOJI_POOL=["🐱","🐶","🐟","🐦","🍎","💧","🏠","📚","🌳","⭐","🚗","🎈"];
   let BOPOMOFO_POOL=["ㄇㄠ","ㄍㄡˇ","ㄩˊ","ㄋㄧㄠˇ","ㄆㄧㄥˊㄍㄨㄛˇ","ㄕㄨㄟˇ","ㄕㄨ","ㄆㄥˊㄧㄡˇ"];
   let INPUT_SCRIPT="abc";
+  const WORD_COUNTDOWN_LABEL=["Remember them before time runs out!","時間到之前，快記住它們！"];
   function setWordPool(list){if(list&&list.length>=12)WORD_POOL=list.slice();}
   function setBopomofoPool(list){if(list&&list.length>=8)BOPOMOFO_POOL=list.slice();}
   function setInputScript(mode){INPUT_SCRIPT=mode==="bpmf"?"bpmf":"abc";}
@@ -347,6 +348,8 @@
     words.forEach(function(w){want[bpmf?cleanBopomofo(w):w.toLowerCase()]=true;});
     return {
       prompt:{type:"wordlist",words:words,studyMs:studyMs,
+        countdownSec:Math.round(studyMs/1000),countdownLabel:WORD_COUNTDOWN_LABEL.slice(),
+        pickWords:shuffleWith(rnd,words.concat((bpmf?BOPOMOFO_POOL:WORD_POOL).filter(function(w){return words.indexOf(w)<0;}).slice(0,count))),
         en:bpmf?"Remember these Bopomofo":"Remember these words",
         zh:bpmf?"記住這些注音":"記住這些單字"},
       worth:count,
@@ -372,10 +375,43 @@
     const missing=pick(rnd,shown);
     return {
       prompt:{type:"wordlist",words:shown,studyMs:4000,
+        countdownSec:4,countdownLabel:WORD_COUNTDOWN_LABEL.slice(),
         en:"Which one disappeared?",zh:"哪一個不見了？"},
       say:["Remember these pictures","記住這些圖片"],
       answer:missing,
       choices:shuffleWith(rnd,shown.slice())
+    };
+  }
+
+  /* Recognition mode: same study phase, then "was this word in the list?"
+     yes/no for a mix of listed and unlisted words. grade() takes the kid's
+     answers as "yes"/"no" tokens in question order; one point per correct. */
+  function wordMemRecog(rnd,count,studyMs){
+    const bpmf=INPUT_SCRIPT==="bpmf";
+    const pool=(bpmf?BOPOMOFO_POOL:WORD_POOL).slice();
+    const shuffled=shuffleWith(rnd,pool);
+    const words=shuffled.slice(0,count);
+    const others=shuffled.slice(count);
+    const n=Math.min(words.length,others.length,Math.ceil(count/2));
+    const listed=words.slice(0,n), unlisted=others.slice(0,n);
+    const questions=shuffleWith(rnd,listed.map(function(w){return {word:w,answer:"yes"};})
+      .concat(unlisted.map(function(w){return {word:w,answer:"no"};})));
+    return {
+      prompt:{type:"wordlist",words:words,studyMs:studyMs,
+        countdownSec:Math.round(studyMs/1000),countdownLabel:WORD_COUNTDOWN_LABEL.slice(),
+        recognize:{questions:questions,
+          ask:["Was this word in the list?","這個單字有在清單裡嗎？"],
+          yes:["Yes ✔","有 ✔"], no:["No ✘","沒有 ✘"]},
+        en:bpmf?"Remember these Bopomofo":"Remember these words",
+        zh:bpmf?"記住這些注音":"記住這些單字"},
+      worth:questions.length,
+      answer:questions.map(function(q){return q.answer;}).join(" "),
+      grade:function(given){
+        const toks=String(given).toLowerCase().split(/[^a-z]+/).filter(Boolean);
+        let hit=0;
+        questions.forEach(function(q,i){if(toks[i]===q.answer)hit++;});
+        return hit;
+      }
     };
   }
 
@@ -1019,6 +1055,11 @@
         tot :{items:5,clock:false,pad:"choice",gen:wordMemTot},
         mid :{items:1,clock:true, pad:"type",gen:function(r){return wordMemItem(r,8,45000);}},
         hard:{items:1,clock:true, pad:"type",gen:function(r){return wordMemItem(r,12,60000);}}
+      },
+      /* optional yes/no recognition mode for kids who find typing hard */
+      recogTiers:{
+        mid :{items:1,clock:true, pad:"yesno",gen:function(r){return wordMemRecog(r,8,45000);}},
+        hard:{items:1,clock:true, pad:"yesno",gen:function(r){return wordMemRecog(r,12,60000);}}
       }
     },
     recall:{
@@ -1035,7 +1076,7 @@
   const api={TIERS:TIERS,TIER_DEFAULT:TIER_DEFAULT,GAMES:GAMES,SHOP_PRODUCTS:SHOP_PRODUCTS,
     pick:pick,intBetween:intBetween,numChoices:numChoices,shuffleWith:shuffleWith,zhNum:zhNum,
     greedyPieceCount:greedyPieceCount,setWordPool:setWordPool,setBopomofoPool:setBopomofoPool,
-    setInputScript:setInputScript};
+    setInputScript:setInputScript,wordMemRecog:wordMemRecog};
   if(typeof window!=="undefined")window.SQBrainData=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

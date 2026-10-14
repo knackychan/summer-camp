@@ -313,7 +313,10 @@ export const MORE_PARTS = Object.freeze([
   model("ladder", ["Ladder", "梯子"], "structure", 2, 1, B * 5, [
     mirror({ box: [0.16, B * 5, 0.2], at: [0.82, B * 2.5, 0], bevel: 0 }),
     range(9, (i) => ({ cyl: [0.06, 1.6], axis: "x", at: [0, 0.4 + i * 0.65, 0] })),
-  ]),
+  ], {
+    /* A walking minifig takes hold and climbs it (brick-walk.js CLIMB), not bumps into it. */
+    walk: [{ x: [-1, 1], z: [-0.5, 0.5], top: B * 5, climb: true }],
+  }),
   model("panel_1x2", ["Wall Panel 1×2×2", "牆板 1×2×2"], "structure", 1, 2, B * 2, [
     { box: [0.98, P, 1.96], at: [0, P / 2, 0] },
     { box: [0.24, B * 2 - P, 1.96], at: [-0.37, P + (B * 2 - P) / 2, 0] },
@@ -333,7 +336,13 @@ export const MORE_PARTS = Object.freeze([
       { torus: [0.16, 0.035], at: [0.2, 3.0, 1.0], rot: [0, 90, 0], c: "black", seg: 10, segT: 4 },
     ]),
     { studs: grid(1, 4), at: [0, B * 6, 0] },
-  ], machine({ at: [0.08, 3.0, -1.5], axis: "y", step: 22.5, min: 0, max: 90, open: 90 })),
+  ], { ...machine({ at: [0.08, 3.0, -1.5], axis: "y", step: 22.5, min: 0, max: 90, open: 90 }),
+    /* A walker goes through the doorway: the jambs and the head stay solid, the leaf only while shut. */
+    walk: [
+      { x: [-0.5, 0.5], z: [-2, -1.5], top: B * 6 }, { x: [-0.5, 0.5], z: [1.5, 2], top: B * 6 },
+      { x: [-0.5, 0.5], z: [-2, 2], from: 5.0, top: B * 6 },
+      { x: [-0.1, 0.1], z: [-1.5, 1.5], top: 5.0, shut: true },
+    ] }),
   model("window_shutters", ["Window with Shutters", "百葉窗"], "doors", 1, 4, B * 2, [
     { box: [0.98, 0.24, 1.96], at: [0, 0.12, 0], c: "white" }, { box: [0.98, 0.24, 1.96], at: [0, B * 2 - 0.12, 0], c: "white" },
     [-0.89, 0.89].map((z) => ({ box: [0.98, B * 2, 0.2], at: [0, B, z], c: "white" })),
@@ -350,7 +359,12 @@ export const MORE_PARTS = Object.freeze([
       range(7, (i) => ({ box: [0.2, 0.06, 3.2], at: [0.04, 0.3 + i * 0.62, 0], c: "grey", bevel: 0 })),
     ]),
     { studs: grid(1, 4), at: [0, B * 4, 0] },
-  ], machine({ at: [0, B * 4 - 0.4, 0], axis: "z", step: 22.5, min: 0, max: 90, open: 90 })),
+  ], { ...machine({ at: [0, B * 4 - 0.4, 0], axis: "z", step: 22.5, min: 0, max: 90, open: 90 }),
+    walk: [
+      { x: [-0.5, 0.5], z: [-2, -1.62], top: B * 4 }, { x: [-0.5, 0.5], z: [1.62, 2], top: B * 4 },
+      { x: [-0.5, 0.5], z: [-2, 2], from: B * 4 - 0.4, top: B * 4 },
+      { x: [-0.1, 0.1], z: [-1.62, 1.62], top: B * 4 - 0.4, shut: true },
+    ] }),
 
   /* ── Wheels ── */
   model("wheel_wagon", ["Wagon Wheel", "馬車輪"], "wheels", 1, 2, 1.8, [
