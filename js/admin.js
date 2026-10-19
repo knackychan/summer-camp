@@ -45,6 +45,11 @@
      higher = finer control. 4px puts a full hour at ~48px, roughly one board row. */
   const DRAG_PX=4;
   let boardScope="all", timeDrag=null, blockDrag=null;
+  /* phone width: the board shows one kid, #check gets the bottom bar */
+  const boardNarrow=window.matchMedia?window.matchMedia("(max-width: 820px)"):{matches:false,addEventListener:function(){}};
+  let boardKid=(function(){try{return sessionStorage.getItem("sq-admin-board-kid");}catch(e){return null;}})();
+  if(!KIDS[boardKid])boardKid="lucien";
+  boardNarrow.addEventListener("change",function(){if(currentRoute==="today")renderOverview();});
   let browserNotifyEnabled=localStorage.getItem("sq-admin-notify")==="1";
   const silentRealtime=new Map();
   let currentRoute="today";
@@ -250,6 +255,7 @@
     }
     var cc=$("navCountCheck"), m=checkCount();
     if(cc){cc.textContent=String(m);cc.setAttribute("data-zero",m===0?"1":"0");}
+    renderPhoneTabs();
     var dc=$("dockCount");
     if(dc)dc.textContent=String(n);
     var db=$("dockBadge");
@@ -545,25 +551,21 @@
       toast(kidName(p[0])+(p[1]==='open'?': Games open for today':': open-today undone'),true);renderQuestStudio();
     };});
   }
-  /* ---- To check: the parent app on a phone (docs/plans/2026-10-19-parent-app/ D5) ----
-     What waits for a parent (task claims, reward asks), each kid's Games today
-     with the threshold, and this device's push notifications. */
+  /* ---- To check: the parents' phone screens (docs/plans/2026-10-19-parent-app/ D5,
+     layout in docs/plans/2026-10-19-parent-app-layout/) ----
+     Three tabs inside #check: Awaiting (what a parent has to answer, the first
+     thing a phone opens on), Kids (points today, Games open or what is left)
+     and Settings (school or holiday, games gate, thresholds, notifications).
+     On a phone a bottom bar adds Schedule (the Today board, one kid at a time). */
   let pushRow=null, pushLoaded=false, pushBusy=false;
-  function checkLabel(pair,fallback){
-    if(Array.isArray(pair)&&pair[0])return {en:String(pair[0]),zh:String(pair[1]||"")};
-    const rule=SQPoints.rules[fallback];
-    if(rule)return {en:rule.label[0],zh:rule.label[1]};
-    return {en:String(fallback||"Task").replace(/[_:]+/g," "),zh:""};
+  const CHECK_TABS=[["awaiting","Awaiting"],["kids","Kids"],["settings","Settings"]];
+  let checkTab=(function(){try{return sessionStorage.getItem("sq-admin-check-tab");}catch(e){return null;}})()||"awaiting";
+  let checkKid="all", checkDraft=null, checkSheet=null, checkBusy=new Set(), brainCounts={}, brainAt="";
+  function checkDeps(){
+    return {rules:SQPoints.rules,extra:SQPoints.extraKinds?SQPoints.extraKinds():[],
+      chores:window.SQSchool?SQSchool.CHORES:[],bonus:window.SQSchool?SQSchool.BONUS:[]};
   }
-  function checkItems(){
-    const claims=(rows.pointClaims||[]).filter(function(c){return c.status==="pending";}).map(function(c){
-      return {type:"claim",id:c.id,kid:c.kid_id,at:c.created_at,label:checkLabel(c.evidence&&c.evidence.label,c.kind),points:"+"+Number(c.amount||0),note:c.evidence&&c.evidence.reason||""};
-    });
-    const asks=(rows.pointRequests||[]).filter(function(r){return r.status==="requested";}).map(function(r){
-      return {type:"request",id:r.id,kid:r.kid_id,at:r.created_at,label:checkLabel(r.label,r.reward_id),points:"−"+Number(r.points||0),note:"Reward ask"};
-    });
-    return claims.concat(asks).sort(function(a,b){return String(b.at).localeCompare(String(a.at));});
-  }
+  function checkItems(){return SQCheck.items(rows,checkDeps());}
   function checkCount(){return pointsReady?checkItems().length:0;}
   function checkTime(iso){
     if(!iso)return "";
@@ -571,39 +573,158 @@
     const t=d.toLocaleTimeString("en-GB",{timeZone:"Asia/Taipei",hour:"2-digit",minute:"2-digit"});
     return day===today?t:d.toLocaleDateString("en-GB",{timeZone:"Asia/Taipei",day:"numeric",month:"short"})+" "+t;
   }
+  function checkModeToday(fs){return window.SQSchool?SQSchool.modeFor(today,fs):"holiday";}
+  function setCheckTab(t){
+    checkTab=t;
+    try{sessionStorage.setItem("sq-admin-check-tab",t);}catch(e){}
+  }
+  /* The phone's bottom bar: three #check tabs plus the Today board as Schedule. */
+  function renderPhoneTabs(){
+    const el=$("phoneTabs");if(!el)return;
+    const n=checkCount();
+    const svg=function(d){return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">'+d+'</svg>';};
+    const tabs=[["awaiting","Awaiting",svg('<rect x="2" y="1.7" width="12" height="12.6" rx="1.4"/><path d="m5 8.2 2 2 4-4.4"/>')],
+      ["kids","Kids",svg('<circle cx="5.6" cy="5.4" r="2.5"/><path d="M1.4 13.6c0-2.3 1.9-3.9 4.2-3.9s4.2 1.6 4.2 3.9"/><path d="M10.8 3.3a2.4 2.4 0 0 1 0 4.5M11.6 10.1c1.8.3 3 1.7 3 3.5"/>')],
+      ["schedule","Schedule",svg('<rect x="1.7" y="2.7" width="12.6" height="11.6" rx="1"/><path d="M1.7 6.2h12.6M5.3 1.4v2.6M10.7 1.4v2.6"/>')],
+      ["settings","Settings",svg('<circle cx="8" cy="8" r="2.3"/><path d="M8 1.6v1.7M8 12.7v1.7M14.4 8h-1.7M3.3 8H1.6M12.5 3.5l-1.2 1.2M4.7 11.3l-1.2 1.2M12.5 12.5l-1.2-1.2M4.7 4.7 3.5 3.5"/>')]];
+    el.innerHTML=tabs.map(function(t){
+      const on=t[0]==="schedule"?currentRoute==="today":currentRoute==="check"&&checkTab===t[0];
+      return '<button class="phone-tabs__b" data-phonetab="'+t[0]+'"'+(on?' aria-current="page"':'')+'>'+t[2]+'<span>'+t[1]+'</span>'+
+        (t[0]==="awaiting"&&n?'<em>'+n+'</em>':'')+'</button>';
+    }).join('');
+    el.querySelectorAll('[data-phonetab]').forEach(function(b){b.onclick=function(){
+      const t=b.dataset.phonetab;
+      if(t==="schedule"){window.sqGo("today");return;}
+      setCheckTab(t);
+      if(currentRoute!=="check")window.sqGo("check");else renderForRoute("check");
+      $("scroll").scrollTop=0;
+    };});
+  }
   function renderCheck(){
-    renderCheckList();
-    renderCheckKids();
-    renderCheckPush();
-    const focus=String(window.sqRouteDetail||"").split("/");
-    if(focus[1]){
-      const el=$("pc-"+focus[0]+"-"+focus[1]);
+    const detail=String(window.sqRouteDetail||"").split("/");
+    if(detail[0]==="claim"||detail[0]==="request")setCheckTab("awaiting");
+    else if(CHECK_TABS.some(function(t){return t[0]===detail[0];})){setCheckTab(detail[0]);window.sqRouteDetail="";}
+    const title=$("routeTitle");if(title)title.textContent=CHECK_TABS.find(function(t){return t[0]===checkTab;})[1];
+    const tabs=$("checkTabs");
+    tabs.innerHTML=CHECK_TABS.map(function(t){
+      return '<button class="chip" role="tab" data-checktab="'+t[0]+'" aria-selected="'+(checkTab===t[0])+'">'+t[1]+(t[0]==="awaiting"&&checkCount()?' <em>'+checkCount()+'</em>':'')+'</button>';
+    }).join('');
+    tabs.querySelectorAll('[data-checktab]').forEach(function(b){b.onclick=function(){setCheckTab(b.dataset.checktab);renderCheck();renderPhoneTabs();};});
+    if(checkTab==="kids")renderCheckKids();
+    else if(checkTab==="settings")renderCheckSettings();
+    else renderCheckList();
+    if((detail[0]==="claim"||detail[0]==="request")&&detail[1]){
+      const el=$("pc-"+detail[0]+"-"+detail[1]);
       if(el){el.classList.add("is-focus");el.scrollIntoView({block:"center"});window.sqRouteDetail="";}
     }
   }
+  function checkKidChips(list){
+    const by=function(k){return list.filter(function(i){return i.kid===k;}).length;};
+    return '<div class="pc-kidchips" role="group" aria-label="Show">'+[["all","All",list.length]].concat(Object.keys(KIDS).map(function(k){return [k,kidName(k),by(k)];})).map(function(c){
+      return '<button class="chip'+(c[0]!=="all"?' k-'+c[0]:'')+'" data-checkkid="'+c[0]+'" aria-pressed="'+(checkKid===c[0])+'">'+esc(c[1])+(c[2]?' <em>'+c[2]+'</em>':'')+'</button>';
+    }).join('')+'</div>';
+  }
   function renderCheckList(){
-    const el=$("checkList");if(!el)return;
-    if(!pointsReady){el.innerHTML='<p class="qs-callout">The points database is not deployed yet, so tasks cannot be checked here.</p>';$("checkCount").textContent="";return;}
-    const items=checkItems();
-    $("checkCount").textContent=items.length?items.length+" waiting":"";
-    el.innerHTML=items.length?items.map(function(it){
-      const acts=it.type==="claim"
-        ?'<button class="btn" data-pccheck="claim:'+it.id+':no">Not yet</button><button class="btn btn--primary" data-pccheck="claim:'+it.id+':yes">Confirm</button>'
-        :'<button class="btn" data-pccheck="request:'+it.id+':no">Decline</button><button class="btn btn--primary" data-pccheck="request:'+it.id+':yes">Approve</button>';
-      return '<article class="pc-item k-'+esc(it.kid)+'" id="pc-'+it.type+'-'+esc(it.id)+'">'+
-        '<div class="pc-item__head"><b>'+esc(kidName(it.kid))+'</b><span>'+esc(it.type==="claim"?"Finished a task":"Asked for a reward")+' · '+esc(checkTime(it.at))+'</span></div>'+
-        '<div class="pc-item__what"><span>'+esc(it.label.en)+'</span>'+(it.label.zh?'<span lang="zh-Hant">'+esc(it.label.zh)+'</span>':'')+'</div>'+
-        '<div class="pc-item__pts">'+esc(it.points)+' points</div>'+
-        '<div class="pc-item__acts">'+acts+'</div></article>';
-    }).join(''):'<p class="pc-empty">Nothing is waiting. Finished tasks and reward asks will show up here.</p>';
-    el.querySelectorAll('[data-pccheck]').forEach(function(b){b.onclick=async function(){
-      const p=b.dataset.pccheck.split(':');
-      b.closest('.pc-item').querySelectorAll('button').forEach(function(x){x.disabled=true;});
-      if(p[0]==='claim'){
-        if(await pointsRpc('points_review_claim',{p_id:p[1],p_approve:p[2]==='yes',p_note:p[2]==='yes'?'Parent confirmed':'Parent: not yet'})){toast(p[2]==='yes'?'Confirmed':'Marked not yet',true);await loadAll();}
-        else renderCheckList();
-      }else if(p[2]==='yes')await approveRewardRequest(p[1]);
-      else await denyRewardRequest(p[1]);
+    const el=$("checkBody");
+    if(!pointsReady){el.innerHTML='<p class="qs-callout">The points database is not deployed yet, so tasks cannot be checked here.</p>';return;}
+    const list=checkItems(), shown=checkKid==="all"?list:list.filter(function(i){return i.kid===checkKid;});
+    const others=rows.asks.filter(function(a){return a.answer===null&&String(a.kind||"").indexOf("reward:")!==0;}).length+
+      rows.passes.filter(function(p){return p.status==="requested";}).length+rows.helpClaims.filter(function(c){return c.status==="requested";}).length;
+    const off=navigator.onLine===false;
+    el.innerHTML=(off?'<p class="pc-offline">You are offline. This is the last list loaded; Confirm comes back when you are online.</p>':'')+
+      '<div class="pc-head"><h2>'+(list.length?list.length+' waiting for you':'Waiting for you')+'</h2></div>'+checkKidChips(list)+
+      '<div class="pc-list">'+(shown.length?shown.map(function(it){
+        const dis=off||checkBusy.has(it.id)?' disabled':'';
+        const acts=it.type==="claim"
+          ?'<button class="btn" data-pccheck="claim:'+esc(it.id)+':no"'+dis+'>Not yet</button><button class="btn btn--primary" data-pccheck="claim:'+esc(it.id)+':yes"'+dis+'>Confirm</button>'
+          :'<button class="btn" data-pccheck="request:'+esc(it.id)+':no"'+dis+'>Not now</button><button class="btn btn--primary" data-pccheck="request:'+esc(it.id)+':yes"'+dis+'>Approve</button>';
+        return '<article class="pc-item k-'+esc(it.kid)+'" id="pc-'+it.type+'-'+esc(it.id)+'">'+
+          '<div class="pc-item__head"><span class="pc-dot" aria-hidden="true"></span><b>'+esc(kidName(it.kid))+'</b><span>'+esc(checkTime(it.at))+'</span>'+
+          (it.type==="request"?'<span class="pc-tag">Reward ask</span>':it.bonus?'<span class="pc-tag">Bonus</span>':'')+'</div>'+
+          '<div class="pc-item__what"><span class="pc-item__ico" aria-hidden="true">'+esc(it.icon)+'</span><div><b>'+esc(it.label[0])+'</b>'+
+          (it.label[1]?'<span lang="zh-Hant">'+esc(it.label[1])+'</span>':'')+(it.detail?'<small>'+esc(it.detail)+'</small>':'')+'</div>'+
+          '<span class="pc-item__pts">'+(it.type==="request"?'−':'+')+it.points+'<small>points</small></span></div>'+
+          '<div class="pc-item__acts">'+acts+'</div></article>';
+      }).join(''):'<div class="pc-empty"><b>All done</b><span>'+(checkKid==="all"?'Nothing is waiting. Finished tasks and reward asks show up here.':'Nothing from '+esc(kidName(checkKid))+' right now.')+'</span></div>')+'</div>'+
+      (others?'<button class="pc-more" data-checkinbox>'+others+(others===1?' question or pass waits':' questions or passes wait')+' in the Inbox →</button>':'');
+    el.querySelectorAll('[data-checkkid]').forEach(function(b){b.onclick=function(){checkKid=b.dataset.checkkid;renderCheckList();};});
+    const inbox=el.querySelector('[data-checkinbox]');if(inbox)inbox.onclick=function(){window.sqGo("inbox");};
+    el.querySelectorAll('[data-pccheck]').forEach(function(b){b.onclick=function(){
+      const p=b.dataset.pccheck.split(':'), it=list.find(function(x){return x.id===p[1];});
+      if(p[0]==='claim'&&p[2]==='no'){openCheckSheet(it);return;}
+      checkAct(p[1],function(){
+        if(p[0]==='claim')return pointsRpc('points_review_claim',{p_id:p[1],p_approve:true,p_note:'Parent confirmed'});
+        return pointsRpc(p[2]==='yes'?'points_approve_redemption':'points_deny_redemption',{p_id:p[1]});
+      },p[0]==='claim'?'Confirmed · +'+(it?it.points:0)+' for '+kidName(it?it.kid:''):p[2]==='yes'?'Exchange approved':'Exchange declined');
+    };});
+  }
+  async function checkAct(id,fn,done){
+    if(checkBusy.has(id))return;
+    checkBusy.add(id);renderCheck();
+    let ok=false;
+    try{ok=!!await fn();}finally{checkBusy.delete(id);}
+    if(ok)toast(done,true);
+    await loadAll();
+  }
+  /* Not yet: the kid's tablet shows its usual gentle try-again; the note is
+     only for the parents' record, never shown to a kid. */
+  function openCheckSheet(it){
+    if(!it)return;
+    checkSheet=it;
+    const el=$("checkSheet");
+    el.innerHTML='<div class="pc-sheet__card" role="dialog" aria-modal="true" aria-labelledby="pcSheetTitle">'+
+      '<h2 id="pcSheetTitle">Not yet: '+esc(it.label[0])+'</h2>'+
+      '<p>'+esc(kidName(it.kid))+'\'s tablet asks for another try and no points are added. A note is for your records only.</p>'+
+      '<textarea class="inp" id="pcSheetNote" rows="2" maxlength="200" placeholder="Note (optional)"></textarea>'+
+      '<div class="pc-item__acts"><button class="btn" data-checksheet="cancel">Cancel</button><button class="btn btn--primary" data-checksheet="send">Send not yet</button></div></div>';
+    el.hidden=false;
+    el.onclick=function(e){
+      const b=e.target.closest('[data-checksheet]');
+      if(e.target!==el&&!b)return;
+      const send=b&&b.dataset.checksheet==="send", note=send?($("pcSheetNote").value||"").trim():"";
+      el.hidden=true;el.innerHTML="";checkSheet=null;
+      if(send)checkAct(it.id,function(){return pointsRpc('points_review_claim',{p_id:it.id,p_approve:false,p_note:note||'Parent: not yet'});},'Sent back to '+kidName(it.kid)+' for another try');
+    };
+  }
+  /* Brain Gym isn't in loadAll's rows; one small read a minute while Kids is open. */
+  function loadBrainCounts(){
+    const stamp=today+":"+Math.floor(Date.now()/60000);
+    if(brainAt===stamp||!client)return;
+    brainAt=stamp;
+    client.from("brain_done").select("kid_id,game_id").eq("day",today).then(function(res){
+      const seen={};
+      (res.data||[]).forEach(function(r){(seen[r.kid_id]=seen[r.kid_id]||new Set()).add(r.game_id);});
+      brainCounts={};Object.keys(seen).forEach(function(k){brainCounts[k]=seen[k].size;});
+      if(currentRoute==="check"&&checkTab==="kids")renderCheckKids();
+    },function(){});
+  }
+  function renderCheckKids(){
+    const el=$("checkBody");
+    if(!window.SQGamesGate){el.innerHTML='';return;}
+    loadBrainCounts();
+    const fs=familySettingsMap(), mode=checkModeToday(fs), s=SQGamesGate.parseSettings(fs.games_gate_v1);
+    const ctx={settings:fs,gate:SQGamesGate,today:today,mode:mode,claimsToday:rows.pointClaimsToday||[],exclude:checkDeps().extra,brain:brainCounts};
+    const list=checkItems(), off=navigator.onLine===false;
+    el.innerHTML='<div class="pc-head"><h2>'+(mode==="school"?"School day":"Holiday")+'</h2><span class="lbl">'+(s.enabled?'Games gate on':'Games gate off')+'</span></div>'+
+      (!s.enabled?'<p class="pc-note">The games gate is off, so Games are open for everyone. Turn it on in Settings.</p>':'')+
+      '<div class="pc-kids">'+Object.keys(KIDS).map(function(kid){
+        const d=SQCheck.kidDay(kid,ctx), waitN=list.filter(function(i){return i.kid===kid;}).length;
+        return '<article class="pc-kid k-'+kid+'">'+
+          '<div class="pc-kid__head"><span class="pc-dot" aria-hidden="true"></span><b>'+esc(kidName(kid))+'</b><span class="pc-games'+(d.games.open?' is-open':'')+'">'+(d.games.open?'Games open':'Games waiting')+'</span></div>'+
+          '<div class="pc-kid__pts"><b>'+d.points+'</b><span>/ '+d.threshold+' points today</span></div>'+
+          '<span class="pc-bar" role="img" aria-label="'+d.points+' of '+d.threshold+' points"><span style="width:'+d.pct+'%"></span></span>'+
+          '<p class="pc-kid__line">'+esc(d.games.text)+'</p>'+
+          '<dl class="pc-facts"><div><dt>Brain Gym</dt><dd>'+(d.brainOn?d.brainDone+' of 3':'Off')+'</dd></div>'+
+          '<div><dt>Waiting for you</dt><dd>'+(waitN?'<button class="pc-link" data-checkwait="'+kid+'">'+waitN+' to check</button>':'Nothing')+'</dd></div>'+
+          (d.waiting?'<div><dt>Counted, not checked yet</dt><dd>'+d.waiting+' points</dd></div>':'')+'</dl>'+
+          '<button type="button" class="btn" data-pcopen="'+kid+':'+(d.papaOpen?'undo':'open')+'"'+(off?' disabled':'')+'>'+(d.papaOpen?'Undo open today':'Open Games today')+'</button></article>';
+      }).join('')+'</div><p class="pc-foot">Points waiting for your check already count toward the bar. Bonus tasks never do.</p>';
+    el.querySelectorAll('[data-checkwait]').forEach(function(b){b.onclick=function(){checkKid=b.dataset.checkwait;setCheckTab("awaiting");renderCheck();renderPhoneTabs();};});
+    el.querySelectorAll('[data-pcopen]').forEach(function(b){b.onclick=async function(){
+      const p=b.dataset.pcopen.split(':');
+      b.disabled=true;
+      if(!await saveFamilySetting('braingate_'+p[0],p[1]==='open'?today:'')){b.disabled=false;return;}
+      toast(kidName(p[0])+(p[1]==='open'?': Games open for today':': open-today undone'),true);renderCheckKids();
     };});
   }
   function gateRaw(fs){
@@ -611,53 +732,49 @@
     if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}
     return v&&typeof v==='object'?v:{};
   }
-  function renderCheckKids(){
-    const el=$("checkKids");if(!el)return;
+  function checkDraftFrom(fs){
+    const s=SQGamesGate.parseSettings(fs.games_gate_v1);
+    return {enabled:s.enabled,threshold:Object.assign({},s.threshold),schoolThreshold:Object.assign({},s.schoolThreshold),
+      mode:window.SQSchool?SQSchool.parseMode(fs.day_mode_v1).mode:"holiday"};
+  }
+  function renderCheckSettings(){
+    const el=$("checkBody");
     if(!window.SQGamesGate){el.innerHTML='';return;}
-    const fs=familySettingsMap(), raw=gateRaw(fs), s=SQGamesGate.parseSettings(fs.games_gate_v1);
-    /* The school-days threshold comes from the school mode plan
-       (docs/plans/2026-10-19-school-mode-chores/); shown once that key exists. */
-    const school=raw.schoolThreshold&&typeof raw.schoolThreshold==='object'?raw.schoolThreshold:null;
-    $("checkGateState").textContent=s.enabled?"Gate on":"Gate off";
-    const stepper=function(kid,field,value,label){
-      return '<label class="pc-step"><span>'+esc(label)+'</span><span class="pc-step__row"><button type="button" class="btn btn--icon" data-pcstep="'+kid+':'+field+':-5" aria-label="5 fewer">−</button>'+
-        '<input type="number" inputmode="numeric" min="0" max="300" step="5" data-pcthreshold="'+kid+':'+field+'" value="'+Number(value)+'"><button type="button" class="btn btn--icon" data-pcstep="'+kid+':'+field+':5" aria-label="5 more">+</button></span></label>';
+    const fs=familySettingsMap(), d=checkDraft||checkDraftFrom(fs), off=navigator.onLine===false;
+    const weekend=window.SQSchool&&SQSchool.isWeekend(today);
+    const stepper=function(kid,field){
+      return '<div class="pc-step"><button type="button" class="btn" data-pcstep="'+kid+':'+field+':-5" aria-label="'+esc(kidName(kid))+' 5 fewer">−</button>'+
+        '<output>'+d[field][kid]+'</output><button type="button" class="btn" data-pcstep="'+kid+':'+field+':5" aria-label="'+esc(kidName(kid))+' 5 more">+</button></div>';
     };
-    el.innerHTML='<form id="pcGateForm"><label class="pc-switch"><input type="checkbox" id="pcGateOn"'+(s.enabled?' checked':'')+'> Games open only after enough points today</label>'+
-      Object.keys(KIDS).map(function(kid){
-        const pts=SQGamesGate.todayPoints(kid,today,{claims:rows.pointClaimsToday||[]});
-        const st=SQGamesGate.state(kid,{settings:fs.games_gate_v1,mode:window.SQSchool?SQSchool.modeFor(today,fs):'holiday',today:pts,papaOpen:fs["braingate_"+kid]===today});
-        const pct=st.threshold?Math.min(100,Math.round(pts/st.threshold*100)):100;
-        const badge=st.reason==="off"?"No gate":st.reason==="papa"?"Open, you opened it today":st.reason==="reached"?"Open":st.need+" points to go";
-        return '<article class="pc-kid k-'+kid+'"><div class="pc-kid__head"><b>'+esc(kidName(kid))+'</b><span class="pc-kid__state'+(st.open?' is-open':'')+'">'+esc(badge)+'</span></div>'+
-          '<div class="pc-kid__pts">'+pts+' / '+st.threshold+' points today</div><span class="gg-bar"><span style="width:'+pct+'%"></span></span>'+
-          '<div class="pc-kid__set">'+stepper(kid,'threshold',s.threshold[kid],school?'Holiday days':'Points needed')+(school?stepper(kid,'schoolThreshold',school[kid]!=null?school[kid]:s.threshold[kid],'School days'):'')+'</div>'+
-          '<button type="button" class="btn" data-pcopen="'+kid+':'+(st.reason==="papa"?'undo':'open')+'">'+(st.reason==="papa"?'Undo open today':'Open Games today')+'</button></article>';
-      }).join('')+'<button class="btn btn--primary pc-save" type="submit">Save thresholds</button></form>';
-    el.querySelectorAll('[data-pcstep]').forEach(function(b){b.onclick=function(){
-      const p=b.dataset.pcstep.split(':'), input=el.querySelector('[data-pcthreshold="'+p[0]+':'+p[1]+'"]');
-      input.value=Math.max(0,Math.min(300,(Number(input.value)||0)+Number(p[2])));
+    el.innerHTML='<section class="pc-set"><h2>School or holiday</h2>'+
+        (window.SQSchool?'<div class="pc-seg" role="radiogroup" aria-label="Day mode">'+[["holiday","Holiday"],["school","School"]].map(function(m){
+          return '<button type="button" role="radio" aria-checked="'+(d.mode===m[0])+'" data-pcmode="'+m[0]+'">'+m[1]+'</button>';}).join('')+'</div>'+
+        '<p class="field__hint">School mode shows the kids the after-school plan and uses the school-day bar, Monday to Friday. Weekends always keep the holiday day.'+(weekend&&d.mode==="school"?' Today is a weekend day.':'')+'</p>':'<p class="field__hint">School mode is not installed.</p>')+'</section>'+
+      '<section class="pc-set"><h2>Games gate</h2>'+
+        '<label class="pc-switch"><input type="checkbox" id="pcGateOn"'+(d.enabled?' checked':'')+'> Games open only after enough points today</label>'+
+        '<div class="pc-thr"><div class="pc-thr__h"><span></span><span>Holiday</span><span>School day</span></div>'+
+        Object.keys(KIDS).map(function(kid){return '<div class="pc-thr__r k-'+kid+'"><b><span class="pc-dot" aria-hidden="true"></span>'+esc(kidName(kid))+'</b>'+stepper(kid,'threshold')+stepper(kid,'schoolThreshold')+'</div>';}).join('')+
+        '</div><p class="field__hint">Points a kid needs today before Games open. 0 = no bar for that kid. Brain Gym always comes first.</p></section>'+
+      '<section class="pc-set"><h2>Notifications on this device</h2><div id="checkPush" class="pc-push"></div></section>'+
+      '<section class="pc-set pc-set--row"><button type="button" class="btn" data-pcfull>All admin sections</button><button type="button" class="btn" data-pcsignout>Sign out</button></section>'+
+      (checkDraft?'<div class="pc-save"><button type="button" class="btn" data-pcsave="discard">Discard</button><button type="button" class="btn btn--primary" data-pcsave="save"'+(off?' disabled':'')+'>Save changes</button></div>':'');
+    const edit=function(fn){if(!checkDraft)checkDraft=checkDraftFrom(familySettingsMap());fn(checkDraft);renderCheckSettings();};
+    el.querySelectorAll('[data-pcmode]').forEach(function(b){b.onclick=function(){edit(function(x){x.mode=b.dataset.pcmode;});};});
+    el.querySelectorAll('[data-pcstep]').forEach(function(b){b.onclick=function(){const p=b.dataset.pcstep.split(':');edit(function(x){x[p[1]][p[0]]=SQCheck.step(x[p[1]][p[0]],Number(p[2]));});};});
+    $("pcGateOn").onchange=function(){const on=this.checked;edit(function(x){x.enabled=on;});};
+    el.querySelector('[data-pcfull]').onclick=function(){const nb=$("navBtn");if(nb&&boardNarrow.matches)nb.click();else window.sqGo("today");};
+    el.querySelector('[data-pcsignout]').onclick=function(){$("navLogout").click();};
+    el.querySelectorAll('[data-pcsave]').forEach(function(b){b.onclick=async function(){
+      if(b.dataset.pcsave==="discard"){checkDraft=null;renderCheckSettings();return;}
+      const x=checkDraft, fs2=familySettingsMap();
+      b.disabled=true;
+      if(window.SQSchool&&x.mode!==SQSchool.parseMode(fs2.day_mode_v1).mode&&!await saveFamilySetting('day_mode_v1',JSON.stringify({mode:x.mode}))){b.disabled=false;return;}
+      /* unknown keys in games_gate_v1 are kept */
+      const next=Object.assign({},gateRaw(fs2),SQGamesGate.parseSettings(fs2.games_gate_v1),{enabled:x.enabled,threshold:x.threshold,schoolThreshold:x.schoolThreshold});
+      if(!await saveFamilySetting('games_gate_v1',JSON.stringify(next))){b.disabled=false;return;}
+      checkDraft=null;toast('Settings saved',true);renderCheckSettings();
     };});
-    el.querySelectorAll('[data-pcopen]').forEach(function(b){b.onclick=async function(){
-      const p=b.dataset.pcopen.split(':');
-      if(!await saveFamilySetting('braingate_'+p[0],p[1]==='open'?today:''))return;
-      toast(kidName(p[0])+(p[1]==='open'?': Games open for today':': open-today undone'),true);renderCheckKids();
-    };});
-    $("pcGateForm").onsubmit=async function(e){
-      e.preventDefault();
-      const fs2=familySettingsMap(), raw2=gateRaw(fs2), next=Object.assign({},raw2,SQGamesGate.parseSettings(fs2.games_gate_v1));
-      let bad=false;
-      el.querySelectorAll('[data-pcthreshold]').forEach(function(i){
-        const p=i.dataset.pcthreshold.split(':'), n=Number(i.value);
-        if(!Number.isInteger(n)||n<0||n>300||n%5!==0){bad=true;return;}
-        if(p[1]==='threshold')next.threshold=Object.assign({},next.threshold,{[p[0]]:n});
-        else next.schoolThreshold=Object.assign({},next.schoolThreshold,{[p[0]]:n});
-      });
-      if(bad){toast('Thresholds are 0 to 300 in steps of 5');return;}
-      next.enabled=$('pcGateOn').checked;
-      if(!await saveFamilySetting('games_gate_v1',JSON.stringify(next)))return;
-      toast(next.enabled?'Saved, games gate on':'Saved, games gate off',true);renderCheckKids();
-    };
+    renderCheckPush();
   }
   function renderCheckPush(){
     const el=$("checkPush");if(!el||!window.SQAdminPush)return;
@@ -1080,21 +1197,31 @@
     renderBoardScope();
     var eff=scopeEff();
     var info=SQTime.timelineInfo(DAY,eff,SQ_DAY.nowMins());
-    el.innerHTML='<div class="board">'+
+    /* A phone shows one kid's day at a time, picked by the chips above it. */
+    var one=boardNarrow.matches, kids=one?[boardKid]:Object.keys(KIDS);
+    el.innerHTML=(one?'<div class="board-kids" role="group" aria-label="Show the day of">'+Object.keys(KIDS).map(function(id){
+        return '<button class="chip k-'+id+'" data-boardkid="'+id+'" aria-pressed="'+(boardKid===id)+'">'+esc(KIDS[id].name)+'</button>';
+      }).join("")+'</div>':'')+
+      '<div class="board'+(one?' board--one':'')+'">'+
       '<div class="board__h" data-kid="all"><span class="lbl">Time</span><span class="lbl board__scope">'+esc(scopeLabel())+'</span></div>'+
-      Object.keys(KIDS).map(function(id){
+      kids.map(function(id){
         var k=KIDS[id];
         var stars=(rows.totals.find(function(t){return t.kid_id===id;})||{}).stars||0;
         return '<div class="board__h"><span class="who k-'+id+'"><span class="who__m">'+esc(k.name[0])+'</span><b>'+esc(k.name)+'</b></span><span class="star">'+stars+' points</span></div>';
       }).join("")+
       SQTime.displayOrder(DAY,eff).map(function(i){
         var rowsHtml=boardTime(i,eff,info);
-        Object.keys(KIDS).forEach(function(kid){
+        kids.forEach(function(kid){
           rowsHtml+=boardCell(kid,i);
         });
         return rowsHtml;
       }).join("")+
     '</div>';
+    el.querySelectorAll("[data-boardkid]").forEach(function(b){b.onclick=function(){
+      boardKid=b.dataset.boardkid;
+      try{sessionStorage.setItem("sq-admin-board-kid",boardKid);}catch(e){}
+      renderOverview();
+    };});
     bindScheduleBlocks();
     bindTimeEdit();
   }
@@ -1220,8 +1347,19 @@
     document.querySelectorAll(".cell").forEach(function(cell){
       cell.onpointerdown=function(e){
         if(e.button||inBoardControl(e.target))return;
-        var canMove=cell.dataset.movable==="true";
+        /* A finger on a phone or tablet scrolls the board; only the :: grip
+           reorders (Fred, 2026-10-19: scrolling over a block got stuck as a drag). */
+        var scrollOnly=e.pointerType!=="mouse"&&!(e.target.closest&&e.target.closest(".cell__grab"));
+        var canMove=cell.dataset.movable==="true"&&!scrollOnly;
         var startX=e.clientX,startY=e.clientY,kid=cell.dataset.kid,from=+cell.dataset.block,moved=false,to=from;
+        if(scrollOnly){
+          cell.onpointermove=function(ev){if(Math.abs(ev.clientX-startX)+Math.abs(ev.clientY-startY)>=8)moved=true;};
+          cell.onpointerup=cell.onpointercancel=function(ev){
+            cell.onpointermove=cell.onpointerup=cell.onpointercancel=null;
+            if(ev.type==="pointerup"&&!moved)openBlockLibrary(kid,from);
+          };
+          return;
+        }
         dragState={kid:kid,block:from};
         cell.setPointerCapture(e.pointerId);
         cell.onpointermove=function(ev){
