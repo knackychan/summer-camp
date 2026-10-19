@@ -59,6 +59,29 @@
     console.warn(what,error.message);
   }
 
+  /* Papa's reset (admin Clean up, docs/plans/2026-10-19-admin-reset/): the server
+     writes family_settings.points_reset_v1 = {kid:{at,progress}}. Which queued ops
+     belong to a kid, which a reset drops, and when each was made. */
+  const RESET_SEEN_KEY="sq:pointsReset";
+  const RESET_POINT_OPS=["pointBegin","pointClaim","stars","questVerify","guideDecision","guideStarted"];
+  const RESET_PROGRESS_OPS=["tick","roll","actDone","vocab","stat","brainDone"];
+  function parseResetStamps(raw){
+    try{
+      const v=typeof raw==="string"?JSON.parse(raw||"{}"):raw;
+      return v&&typeof v==="object"&&!Array.isArray(v)?v:{};
+    }catch(e){return {};}
+  }
+  function opKid(op){
+    if(!op)return "";
+    return op.kid||(op.claim&&op.claim.kid_id)||(op.row&&op.row.kid_id)||(op.key&&op.key.kid_id)||"";
+  }
+  /* ms since epoch the op was queued; 0 when unknown (queued by an older build,
+     so before any reset this build can see) */
+  function opTime(op){
+    const t=Number(op&&op.at)||Date.parse(op&&op.claim&&op.claim.started_at||"");
+    return isFinite(t)?t:0;
+  }
+
   function loadScript(src){
     return new Promise((resolve,reject)=>{
       if(window.supabase) return resolve();
@@ -464,6 +487,11 @@
         if(typeof location!=="undefined"&&location.reload)location.reload();
         return;
       }
+      /* Papa reset some kids' points (and maybe progress) from Admin. hydrate only
+         ADDS claims and progress, so without this the tablet would keep showing
+         them and send its queued earnings straight back. */
+      const reset=this.applyResetStamps();
+      if(reset.reload&&typeof location!=="undefined"&&location.reload){location.reload();return;}
       if(Array.isArray(redos)){
         this.redos={};
         redos.forEach(r=>{(this.redos[r.kid_id]=this.redos[r.kid_id]||{})[r.block_idx]=r.note||"";});
@@ -551,8 +579,72 @@
       }else write(QUEUE_KEY,next);
     }
 
+    /* A tablet that was offline during Papa's reset flushes before it hydrates
+       (startFlush), so read the reset stamp first; a failed read never blocks. */
+    async _checkResetStamps(){
+      if(!this.queue.some(op=>RESET_POINT_OPS.concat(RESET_PROGRESS_OPS).includes(op&&op.type)))return false;
+      try{
+        const {data,error}=await this.supabase.from("family_settings").select("value").eq("key","points_reset_v1").maybeSingle();
+        if(error||!data)return false;
+        this.familySettings.points_reset_v1=data.value;
+        saveJson("sq:famSettings",this.familySettings);
+        if(this.applyResetStamps().reload&&typeof location!=="undefined"&&location.reload){location.reload();return true;}
+      }catch(e){}
+      return false;
+    }
+
+    /* Drop what this tablet still holds for each kid Papa reset since it last
+       looked: local claims, attempts and totals, the Games-gate "reached today"
+       mark, guide picks, and every point (and, for a progress reset, learning) op
+       queued before the reset. Anything earned after the reset stays. Returns the
+       kids handled and whether the page should reload (progress lives in the
+       app's own state, like a season reset). */
+    applyResetStamps(){
+      const stamps=parseResetStamps(this.familySettings.points_reset_v1);
+      const seen=loadJson(RESET_SEEN_KEY,{})||{};
+      const kids=KIDS.filter(kid=>stamps[kid]&&stamps[kid].at&&seen[kid]!==stamps[kid].at);
+      if(!kids.length)return {kids:[],reload:false};
+      const at={},progress={};
+      kids.forEach(kid=>{at[kid]=Date.parse(stamps[kid].at)||Infinity;progress[kid]=stamps[kid].progress===true;});
+      const drop=op=>{
+        const kid=opKid(op);
+        if(!at[kid]||opTime(op)>at[kid])return false;
+        return RESET_POINT_OPS.includes(op.type)||progress[kid]&&RESET_PROGRESS_OPS.includes(op.type);
+      };
+      this.queue=this.queue.filter(op=>!(op&&drop(op)));
+      this.persistQueue(this.queue,false);
+      if(this.pointCache){
+        const queued=new Set(this.queue.filter(op=>op.type==="pointClaim"||op.type==="pointBegin").map(op=>this.points.identity(op.claim)));
+        const keep=c=>!c||!at[c.kid_id]||queued.has(this.points.identity(c));
+        this.pointClaims=this.pointClaims.filter(keep);
+        Object.keys(this.pointAttempts).forEach(key=>{if(!keep(this.pointAttempts[key]))delete this.pointAttempts[key];});
+        kids.forEach(kid=>{this.pointCache.totals[kid]={kid_id:kid,total_earned:0,spent:0,available:0,pending:0};});
+        try{this.persistPoints();}catch(e){}
+      }
+      kids.forEach(kid=>{
+        this.serverStars[kid]=0;
+        try{localStorage.removeItem("sq:gamesgate:open:"+kid);}catch(e){}
+      });
+      saveJson("sq:serverStars",this.serverStars);
+      const guide=loadJson("sq:guide:v1",null);
+      if(guide&&guide.decisions){
+        Object.keys(guide.decisions).forEach(key=>{const d=guide.decisions[key];if(d&&at[d.kid_id])delete guide.decisions[key];});
+        saveJson("sq:guide:v1",guide);
+      }
+      this.guideDecisions=(this.guideDecisions||[]).filter(d=>!at[d.kid_id]);
+      const wiped=kids.filter(kid=>progress[kid]);
+      if(wiped.length){
+        wiped.forEach(kid=>{delete this.progress[kid];ensureKid(this.progress,kid);});
+        this.last=clone(this.progress);
+        this.persistLocal();
+      }
+      kids.forEach(kid=>{seen[kid]=stamps[kid].at;});
+      saveJson(RESET_SEEN_KEY,seen);
+      return {kids:kids,reload:wiped.length>0};
+    }
+
     enqueue(op){
-      const next=this.queue.concat(Object.assign({id:uuid()},op));
+      const next=this.queue.concat(Object.assign({id:uuid(),at:Date.now()},op));
       this.persistQueue(next,this.points&&["pointBegin","pointClaim","stars","questVerify"].includes(op.type));
       this.queue=next;
     }
@@ -611,6 +703,7 @@
     }
     async _flush(){
       if(!this.supabase||!navigator.onLine||!this.queue.length) return;
+      if(await this._checkResetStamps()||!this.queue.length) return;
       const pending=[...this.queue];
       let sentStars=false;
       for(const op of pending){

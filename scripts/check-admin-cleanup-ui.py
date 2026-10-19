@@ -92,11 +92,11 @@ FAKE = r"""(() => {
       const ids = db[a.p_category].filter(r => (!a.p_kid || r.kid_id === a.p_kid) && (!a.p_archived_only || archived().includes(r.id))).map(r => String(r.id));
       return ok(apply(a.p_category, ids));
     }
-    if (name === 'admin_reset_points') {
+    if (name === 'admin_reset_all') {
       const hit = db.point_totals.filter(t => !a.p_kid || t.kid_id === a.p_kid);
       hit.forEach(t => Object.assign(t, {total_earned: 0, spent: 0, available: 0, pending: 0}));
       if (!a.p_kid) db.points_requests = []; else db.points_requests = db.points_requests.filter(r => r.kid_id !== a.p_kid);
-      return ok({kids: hit.length, deleted: 9});
+      return ok({kids: hit.length, deleted: 9, progress: !!a.p_progress});
     }
     return ok(null);
   };
@@ -161,8 +161,8 @@ def run(browser_path, out):
         assert page.locator("#cleanupResetBtn").is_enabled()
         page.locator("#cleanupResetBtn").click()
         page.wait_for_function("document.querySelector('#cleanupBalance').textContent.startsWith('0 points available')")
-        assert "Points reset to 0 for 1 kid" in text(page, "#toastMsg")
-        assert page.evaluate("window.__fake.rpcs.at(-1)") == ["admin_reset_points", {"p_kid": "lili"}]
+        assert "Points and progress reset for 1 kid" in text(page, "#toastMsg")
+        assert page.evaluate("window.__fake.rpcs.at(-1)") == ["admin_reset_all", {"p_kid": "lili", "p_progress": True}]
         assert page.evaluate("window.__db.point_totals.find(t=>t.kid_id==='luis').available") == 600, "Luis keeps his points"
 
         # Messages: tick two, a reward ask is kept, the voice file goes.

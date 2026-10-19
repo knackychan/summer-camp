@@ -103,10 +103,17 @@
   }
   function resetText(res){
     const n=Number(res&&res.kids)||0;
-    return "Points reset to 0 for "+n+(n===1?" kid":" kids");
+    return (res&&res.progress?"Points and progress reset":"Points reset to 0")+" for "+n+(n===1?" kid":" kids");
+  }
+  /* Reset card hint: what goes, what stays (docs/plans/2026-10-19-admin-reset/). */
+  function resetScopeText(progress){
+    return (progress
+      ?"Clears points, rewards, Games-gate opening and guide picks, plus My Day ticks, activities, Brain Gym, word mastery, best scores, missions and captain help. "
+      :"Clears points, rewards, Games-gate opening and guide picks. My Day ticks, Brain Gym and learning stay. ")+
+      "Messages, photos, settings and PINs stay. Tablets drop their own copy and anything queued before the reset when they next connect.";
   }
 
-  const api={KIDS:KIDS,CATEGORIES:CATEGORIES,category:category,when:when,buildRows:buildRows,toggle:toggle,allSelected:allSelected,toggleAll:toggleAll,prune:prune,confirmText:confirmText,resultText:resultText,balanceText:balanceText,resetText:resetText};
+  const api={KIDS:KIDS,CATEGORIES:CATEGORIES,category:category,when:when,buildRows:buildRows,toggle:toggle,allSelected:allSelected,toggleAll:toggleAll,prune:prune,confirmText:confirmText,resultText:resultText,balanceText:balanceText,resetText:resetText,resetScopeText:resetScopeText};
   if(typeof window!=="undefined")window.SQAdminCleanup=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

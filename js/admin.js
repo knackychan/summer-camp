@@ -52,7 +52,7 @@
   let questStudioTab="tasks", questEditId=null, rewardEditId=null;
   /* Settings → Clean up (docs/plans/2026-10-09-admin-cleanup/): open tab, kid
      filter, ticked ids, the pending confirm card and the points-reset kid. */
-  let cleanupTab="asks", cleanupKid="all", cleanupSel=new Set(), cleanupConfirm=null, cleanupResult="", cleanupResetKid="luis", cleanupResetResult="";
+  let cleanupTab="asks", cleanupKid="all", cleanupSel=new Set(), cleanupConfirm=null, cleanupResult="", cleanupResetKid="luis", cleanupResetProgress=true, cleanupResetResult="";
 
   const CHAT_KEY="sq-admin-chat-filters";
   const CHAT_TYPES=[
@@ -2446,12 +2446,12 @@
   /* ---- Clean up (docs/plans/2026-10-09-admin-cleanup/) ----
      Real deletes and the points reset go through parent-only database functions
      (design D1); rows, filters and wording come from SQAdminCleanup (D6). */
-  const cleanupMissing=error=>/admin_(delete_rows|clear|reset_points)/.test(String(error&&error.message||""))&&/find|schema cache|does not exist/i.test(String(error&&error.message||""));
-  const cleanupError=error=>cleanupMissing(error)?"Run supabase/migrations/20261009_admin_cleanup.sql in the Supabase SQL editor first.":(error&&error.message)||"Could not clean up";
+  const cleanupMissing=error=>/admin_(delete_rows|clear|reset_points|reset_all)/.test(String(error&&error.message||""))&&/find|schema cache|does not exist/i.test(String(error&&error.message||""));
+  const cleanupError=error=>cleanupMissing(error)?(/reset_all/.test(String(error&&error.message||""))?"Run supabase/migrations/20261019_admin_reset_all.sql in the Supabase SQL editor first.":"Run supabase/migrations/20261009_admin_cleanup.sql in the Supabase SQL editor first."):(error&&error.message)||"Could not clean up";
   function renderCleanup(){
     var el=$("cleanupPanel");
     if(!el)return;
-    el.innerHTML='<div class="cleanup-reset"><h3>Reset points</h3><div id="cleanupReset"></div></div>'+
+    el.innerHTML='<div class="cleanup-reset"><h3>Reset points and progress</h3><div id="cleanupReset"></div></div>'+
       '<div class="cleanup-data"><h3>Delete rows</h3><div id="cleanupData"></div></div>';
     renderCleanupReset();
     renderCleanupData();
@@ -2460,16 +2460,20 @@
     var el=$("cleanupReset");
     if(!el)return;
     var kids=SQAdminCleanup.KIDS.concat([["all","All"]]);
-    el.innerHTML='<p class="field__hint">Sync every tablet first — unsent earnings in a tablet\'s offline queue would come back. Kids, messages, settings and learning stay; today\'s Games gate counts from 0 again.</p>'+
+    el.innerHTML='<p class="field__hint">'+esc(SQAdminCleanup.resetScopeText(cleanupResetProgress))+'</p>'+
       '<div class="chips" role="group" aria-label="Kid to reset">'+kids.map(function(k){
         return '<button class="chip" data-cleanreset="'+k[0]+'" aria-pressed="'+(cleanupResetKid===k[0])+'">'+esc(k[1])+'</button>';
+      }).join("")+'</div>'+
+      '<div class="chips" role="group" aria-label="What to reset">'+[[true,"Points and progress"],[false,"Points only"]].map(function(o){
+        return '<button class="chip" data-cleanscope="'+o[0]+'" aria-pressed="'+(cleanupResetProgress===o[0])+'">'+o[1]+'</button>';
       }).join("")+'</div>'+
       '<p class="cleanup-balance" id="cleanupBalance">'+(pointsReady?esc(SQAdminCleanup.balanceText(rows.pointTotals,cleanupResetKid)):"Deploy the points migration before resetting points.")+'</p>'+
       '<label class="field" style="max-width:260px;margin-bottom:0"><span class="lbl">Type RESET to confirm</span>'+
       '<input class="inp" id="cleanupResetConfirm" autocomplete="off" placeholder="RESET" aria-describedby="cleanupResetStatus"></label>'+
-      '<div class="row" style="margin-top:12px"><button class="btn btn--danger" id="cleanupResetBtn" disabled>Reset points to 0</button>'+
+      '<div class="row" style="margin-top:12px"><button class="btn btn--danger" id="cleanupResetBtn" disabled>'+(cleanupResetProgress?"Reset points and progress":"Reset points to 0")+'</button>'+
       '<span class="tbl__note" id="cleanupResetStatus" aria-live="polite">'+esc(cleanupResetResult)+'</span></div>';
     el.querySelectorAll("[data-cleanreset]").forEach(function(b){b.onclick=function(){cleanupResetKid=b.dataset.cleanreset;cleanupResetResult="";renderCleanupReset();};});
+    el.querySelectorAll("[data-cleanscope]").forEach(function(b){b.onclick=function(){cleanupResetProgress=b.dataset.cleanscope==="true";cleanupResetResult="";renderCleanupReset();};});
     var input=$("cleanupResetConfirm"),btn=$("cleanupResetBtn");
     input.oninput=function(){btn.disabled=!pointsReady||input.value.trim().toUpperCase()!=="RESET";};
     btn.onclick=runPointsReset;
@@ -2479,7 +2483,9 @@
     if(!pointsReady){status.textContent="Deploy the points migration before resetting points.";return;}
     btn.disabled=true;
     status.textContent="Resetting…";
-    const {data,error}=await client.rpc("admin_reset_points",{p_kid:cleanupResetKid==="all"?null:cleanupResetKid});
+    /* admin_reset_all also stamps points_reset_v1 so tablets drop their own
+       copies and queued earnings (docs/plans/2026-10-19-admin-reset/) */
+    const {data,error}=await client.rpc("admin_reset_all",{p_kid:cleanupResetKid==="all"?null:cleanupResetKid,p_progress:cleanupResetProgress});
     if(error){status.textContent=cleanupError(error);btn.disabled=false;return;}
     cleanupResetResult=SQAdminCleanup.resetText(data);
     toast(cleanupResetResult,true);
