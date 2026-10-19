@@ -1,6 +1,6 @@
 # Admin reset — points and progress, tablets included
 
-**Status:** asked by Papa 2026-10-19 ("i want the reset function to actually reset all the points etc"). Papa then ran `20261009_admin_cleanup.sql` live and confirmed the existing points reset works. This follow-up is built on branch `claude/admin-reset-3entni`, **not merged and not approved**. It waits on Papa deciding whether he wants it.
+**Status:** asked by Papa 2026-10-19 ("i want the reset function to actually reset all the points etc"). Papa ran `20261009_admin_cleanup.sql` live and confirmed the plain points reset worked. Papa then approved this follow-up and asked for it to be merged to main (2026-10-19). **Waiting on:** Papa running `supabase/migrations/20261019_admin_reset_all.sql` in the Supabase SQL editor. Until he does, the Reset button says to run it.
 
 Amends `2026-10-09-admin-cleanup/` D2 (points reset). Admin chrome is English-only (D23). The kid app gets no new strings.
 
