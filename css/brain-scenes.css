@@ -412,7 +412,7 @@
    the kid studies, never on top of it. Calm colours, no red (coach not cop). */
 .brain-study-timer { display: grid; justify-items: center; align-content: center; gap: 6px; flex: 0 0 auto; text-align: center; }
 .brain-study-timer[hidden] { display: none; }
-.brain-study-timer__dial { position: relative; display: block; width: clamp(88px, 22cqh, 136px); aspect-ratio: 1; }
+.brain-study-timer__dial { position: relative; display: block; width: clamp(84px, 18cqh, 136px); aspect-ratio: 1; }
 .brain-study-timer__dial svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .brain-study-timer__track { fill: var(--brain-paper-2); stroke: var(--brain-outline); stroke-width: 4; stroke-dasharray: 6 5; }
 .brain-study-timer__disc {
@@ -1588,3 +1588,59 @@
   .brain-key, .brain-button, .brain-generic__counter,
   .brain-round--contained .brain-change__tray-group { transition: none; }
 }
+
+/* ---------- Readability floor (2026-10-19, Papa: "check text size for all
+   tablet sizes down to 1280×600") ----------
+   Measured on every exercise at 1280×600: Chinese subtitles fell to 10–13 px
+   and several buttons kept the browser's 13 px default. Nothing a kid reads in
+   a round goes below 16 px now; scripts/check-brain-text-size.py holds it. */
+.brain-round { --brain-key-font: clamp(18px, 3.6cqh, 22px); }
+.brain-round .brain-button { font-size: 18px; line-height: 1.15; }
+.brain-round .brain-button .zhs, .brain-round .brain-button .zht { font-size: 16px; }
+.brain-round .zhs, .brain-round .zht,
+.brain-round .brain-lesson .zhs,
+.brain-round--contained .brain-round__identity .zht,
+.brain-round .brain-fractions .zhs, .brain-round .brain-balance .zhs,
+.brain-round .brain-circuit .zhs, .brain-round .brain-sorter .zhs,
+.brain-round .brain-bonds .zhs,
+.brain-round .brain-generic__sub .zhs,
+.brain-round .brain-sentence__meaning-zh, .brain-round .brain-sound__instruction-zh { font-size: max(16px, .8em); }
+.brain-round .brain-lesson .brain-button { font-size: 17px; }
+.brain-round .brain-key:not(.brain-key--bpmf) { font-size: max(18px, var(--brain-key-font, 20px)); }
+.brain-round .brain-echo__actions .brain-button { min-width: 140px; white-space: nowrap; }
+.brain-round .brain-fractions__food-name,
+.brain-round .brain-balance__pan > span,
+.brain-round .brain-circuit__layout,
+.brain-round .brain-circuit__switch-label,
+.brain-round .brain-circuit__bridge,
+.brain-round .brain-circuit__battery-caption,
+.brain-round .brain-fractions__hint, .brain-round .brain-balance__hint { font-size: 16px; }
+.brain-round .brain-circuit .brain-circuit__board--parallel .brain-circuit__switch { font-size: 16px; }
+.brain-round .brain-circuit .brain-circuit__material { font-size: clamp(16px, 2cqi, 18px); }
+.brain-round .brain-memory .brain-memory__card small { font-size: 15px; }
+.brain-round .brain-sound__listen, .brain-round .brain-sound__reveal { font-size: 17px; }
+.brain-round .brain-recall__next { font-size: clamp(22px, 5cqh, 30px); }
+/* Clue / "Let's work it out" overlay: same floor. */
+.brain-round .brain-learning-support__actions button { font-size: 18px; }
+.brain-round .brain-learning-support__actions button span { font-size: 16px; opacity: .8; }
+.brain-round .brain-learning-support__prompt span:not(.brain-learning-support__bulb),
+.brain-round .brain-learning-support__copy span,
+.brain-round .brain-learning-support__loading em { font-size: 16px; }
+.brain-round .brain-learning-support__objects { font-size: max(16px, 2.8cqh); }
+.brain-round .brain-round__feedback, .brain-round .brain-lesson__practice-note { font-size: 16px; }
+/* Word Memory with the Zhuyin keyboard: Done fell below the round at 1280×600
+   and had to be scrolled to. The two buttons share the last row instead. */
+.brain-round--contained .brain-scene:has(.brain-generic__bpmfpad:not([hidden])) .brain-generic__pad {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; justify-items: center; align-items: center;
+}
+.brain-round--contained .brain-scene:has(.brain-generic__bpmfpad:not([hidden])) .brain-generic__pad > :not(.brain-generic__alt):not(.brain-key) { grid-column: 1 / -1; }
+.brain-round--contained .brain-scene:has(.brain-generic__bpmfpad:not([hidden])) .brain-generic__type { height: clamp(48px, 11cqh, 96px); padding-block: 8px; }
+.brain-round--contained .brain-scene:has(.brain-generic__bpmfpad:not([hidden])) .brain-generic__pad > .brain-key { min-width: 120px; }
+/* Battery caption sat on the wire once it was readable; it goes right of the cell. */
+.brain-round .brain-circuit__battery-caption { top: 41%; left: 13%; width: auto; text-align: left; line-height: 1.1; }
+.brain-round .brain-circuit__board--parallel .brain-circuit__battery-caption { top: 47%; }
+/* Number pads and study pictures: bigger glyphs in the same key size. */
+.brain-round .brain-generic__keypad .brain-key,
+.brain-round .brain-generic__grid .brain-key,
+.brain-round .brain-recall__keypad .brain-key { font-size: clamp(22px, 5.5cqh, 30px); }
+.brain-round .brain-generic__words:not(:has(> :nth-child(7))) .brain-generic__word { font-size: clamp(24px, 6cqh, 40px); }
