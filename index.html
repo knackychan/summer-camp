@@ -930,6 +930,8 @@ function ttsEnabled(){
    switch and the voice setting don't silence it; only the app's sound mute does. */
 function say(txt,lang,keep,essential){
   if(essential?!sound:(!ttsEnabled()||!settings.vocab.tts)) return;
+  /* The Android WebView has no speechSynthesis; the shell's native TextToSpeech speaks instead. */
+  if(typeof speechSynthesis==="undefined"){ try{ if(window.SQPlatform) SQPlatform.speak(txt,lang||"en-US"); }catch(e){} return; }
   try{ if(!keep) speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(txt);
     u.lang=lang||"en-US"; u.rate=.85; u.pitch=1.05;
