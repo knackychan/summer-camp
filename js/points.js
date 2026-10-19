@@ -15,6 +15,22 @@
     garden_tidy:{points:15,limit:1,category:"help",parent:true,label:["Tidy the garden","整理花園"]},
     living_tidy:{points:10,limit:1,category:"help",parent:true,label:["Tidy the living room","整理客廳"]},
     office_tidy:{points:10,limit:1,category:"help",parent:true,label:["Tidy the office","整理辦公室"]},
+    /* school-mode home chores (2026-10-19-school-mode-chores D3); Papa checks each */
+    rice_wash:{points:5,limit:1,category:"help",parent:true,label:["Wash the rice","洗米"]},
+    dishwasher_load:{points:10,limit:1,category:"help",parent:true,label:["Fill the dishwasher","把碗盤放進洗碗機"]},
+    dishwasher_unload:{points:10,limit:1,category:"help",parent:true,label:["Empty the dishwasher","把洗碗機的碗盤拿出來"]},
+    desk_tidy:{points:5,limit:1,category:"help",parent:true,label:["Tidy up the desk","整理書桌"]},
+    bed_prepare:{points:5,limit:1,category:"help",parent:true,label:["Get the bed ready","整理床鋪"]},
+    floor_toys:{points:5,limit:1,category:"help",parent:true,label:["Pick up toys from the floor","把地上的玩具撿起來"]},
+    garden_toys:{points:10,limit:1,category:"help",parent:true,label:["Put away garden toys and bikes","收好花園玩具和腳踏車"]},
+    garlic_peel:{points:5,limit:1,category:"help",parent:true,label:["Peel the garlic","剝大蒜"]},
+    bowls_tidy:{points:5,limit:1,category:"help",parent:true,label:["Put away the after-school bowl","收好放學後的碗"]},
+    vacuum_floor:{points:10,limit:1,category:"help",parent:true,label:["Vacuum the floor","用吸塵器吸地"]},
+    altar_water:{points:5,limit:1,category:"help",parent:true,label:["Change the water for the Gohonzon","幫御本尊換水"]},
+    /* bonus tasks (school-mode-chores D7): extra points to exchange later; `extra`
+       keeps them out of the games gate's daily count */
+    gym_exercise:{points:20,limit:1,category:"move",parent:true,extra:true,label:["Gym exercise","健身運動"]},
+    music_bonus:{points:15,limit:1,category:"learn",parent:true,extra:true,label:["Music practice","音樂練習"]},
     housework:{points:20,limit:1,category:"help",parent:true,label:["Extra housework","額外家事"]},
     reading:{points:20,limit:1,category:"learn",parent:true,label:["Reading Nest","閱讀小窩"]},
     brain:{points:10,limit:3,category:"learn",label:["Assigned Brain Gym exercise","指定頭腦體操"]},
@@ -96,7 +112,9 @@
     }
     return cache;
   }
-  const api={VERSION:1,rules:rules,POLICY:rules,amount:amount,block:block,quest:quest,activity:activity,claim:claim,identity:identity,goal:goal,week:week,bonuses:bonuses,migrateCache:migrateCache};
+  /* kinds that never count toward the games gate (bonus tasks) */
+  function extraKinds(){return Object.keys(rules).filter(function(k){return rules[k].extra===true;});}
+  const api={VERSION:1,extraKinds:extraKinds,rules:rules,POLICY:rules,amount:amount,block:block,quest:quest,activity:activity,claim:claim,identity:identity,goal:goal,week:week,bonuses:bonuses,migrateCache:migrateCache};
   if(typeof window!=="undefined")window.SQPoints=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();
