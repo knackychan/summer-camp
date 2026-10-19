@@ -387,12 +387,12 @@
 .brain-generic__field span { font-variant-numeric: tabular-nums; }
 .brain-generic__grid { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(var(--brain-space-1), 2cqh, var(--brain-space-3)); margin: 0 auto clamp(var(--brain-space-1), 2cqh, var(--brain-space-3)); }
 .brain-generic__cell {
-  min-width: clamp(44px, 12cqh, 56px); min-height: clamp(44px, 12cqh, 56px);
+  min-width: clamp(56px, 15cqh, 84px); min-height: clamp(56px, 15cqh, 84px);
   display: grid; place-items: center;
   border: 3px solid var(--brain-outline);
   border-radius: 4px;
   background: var(--brain-paper-2);
-  font-size: clamp(17px, 4.4cqh, 24px); font-weight: 900;
+  font-size: clamp(26px, 7cqh, 40px); font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
 .brain-generic__cell.is-hidden { background: var(--brain-ink-2); color: var(--brain-white); }
@@ -402,19 +402,38 @@
   border: 2px solid var(--brain-outline);
   border-radius: 4px;
   background: var(--brain-paper-2);
+  font-size: clamp(20px, 4.4cqh, 30px);
   font-weight: 800;
 }
 .brain-generic__word.is-hidden { background: var(--brain-ink-2); color: var(--brain-white); }
 .brain-generic__word--ask { font-size: clamp(28px, 7cqi, 48px); }
-/* Study countdown: big, calm, no red (coach not cop). */
-.brain-generic__countdown { display: flex; align-items: center; justify-content: center; gap: var(--brain-space-3); margin: 0 auto var(--brain-space-2); }
-.brain-generic__countnum {
-  min-width: 1.6em; padding: 0 var(--brain-space-3);
-  display: grid; place-items: center;
-  border: 3px solid var(--brain-outline); border-radius: 4px; background: var(--brain-mint);
-  font-size: clamp(40px, 12cqh, 72px); font-weight: 900; font-variant-numeric: tabular-nums;
+/* Study timer (js/brain/study-timer.js): every memorize phase. A big seconds
+   number on a disc that shrinks as time runs out, in its own slot beside what
+   the kid studies, never on top of it. Calm colours, no red (coach not cop). */
+.brain-study-timer { display: grid; justify-items: center; align-content: center; gap: 6px; flex: 0 0 auto; text-align: center; }
+.brain-study-timer[hidden] { display: none; }
+.brain-study-timer__dial { position: relative; display: block; width: clamp(88px, 22cqh, 136px); aspect-ratio: 1; }
+.brain-study-timer__dial svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.brain-study-timer__track { fill: var(--brain-paper-2); stroke: var(--brain-outline); stroke-width: 4; stroke-dasharray: 6 5; }
+.brain-study-timer__disc {
+  fill: var(--brain-mint); stroke: var(--brain-outline); stroke-width: 4;
+  transform-box: fill-box; transform-origin: center;
+  transition: transform 1s linear, fill .3s;
 }
-.brain-generic__countlabel { font-weight: 800; text-align: left; max-width: 18em; }
+.brain-study-timer.is-last .brain-study-timer__disc { fill: var(--brain-yellow); }
+.brain-study-timer__num {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-family: Fredoka, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  font-size: clamp(40px, 11cqh, 66px); font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums; color: var(--brain-ink);
+  text-shadow: 2px 0 var(--brain-white), -2px 0 var(--brain-white), 0 2px var(--brain-white), 0 -2px var(--brain-white);
+}
+.brain-study-timer__label { font-family: Nunito, system-ui, sans-serif; font-size: 18px; font-weight: 900; color: var(--brain-ink); line-height: 1.2; }
+.brain-study-timer__label .zhs { display: block; font-size: 16px; }
+.brain-generic__study { display: flex; align-items: center; justify-content: center; gap: clamp(16px, 3cqi, 40px); }
+.brain-generic__study .brain-generic__grid { margin: 0; }
+.brain-generic__entry[hidden] { display: none; }
+.brain-scene.is-studying .brain-answer { visibility: hidden; }
 .brain-generic__yesno { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--brain-space-3); width: 100%; max-width: 520px; }
 .brain-generic__yesno .brain-key { min-height: 72px; font-size: clamp(20px, 4cqi, 32px); }
 .brain-generic__alt, .brain-generic__pick {

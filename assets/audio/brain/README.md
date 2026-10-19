@@ -37,6 +37,8 @@ These are the only cues scenes may use. A scene MUST reuse one before requesting
 | `lift-ding` | lowhigh | lift lamp lights, doors close |
 | `train-arrive` | clock | train enters the platform |
 | `brush-swish` | stroop | one clean brush sweep across the canvas |
+| `clock-tick` | memorymatch, lowhigh, wordmem study timer | countdown number steps down; the timer disc shrinks |
+| `clock-tock` | memorymatch, lowhigh, wordmem study timer | countdown number steps down; the timer disc shrinks |
 | `scanner-tick` | crunch | scanner highlight advances one step |
 | `success` | host | success stamp + progress pip turns to a check |
 | `round-complete` | host | result panel enters |

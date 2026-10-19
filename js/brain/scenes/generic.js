@@ -5,6 +5,8 @@
    bespoke scene falls back to if it throws (guidelines §13). Gameplay parity is
    the acceptance bar here, not new visual design. */
 
+import { studyTimerHtml, startStudyTimer } from "../study-timer.js";
+
 var COLORS = {
   red: ["#e5484d", "Red", "紅色"], blue: ["#3b82f6", "Blue", "藍色"],
   green: ["#22c55e", "Green", "綠色"], yellow: ["#eab308", "Yellow", "黃色"],
@@ -43,23 +45,19 @@ function promptHtml(p) {
   if (p.type === "countfield") return '<div class="brain-generic__field">' + p.glyphs.join("") + '</div>' + sub(p);
   if (p.type === "clockface") return clockSvg(p.h, p.m) + sub(p);
   if (p.type === "money") return '<div class="brain-generic__task">' + (p.art || "") + '</div>' + sub(p);
-  if (p.type === "gridflash") return '<div class="brain-generic__grid" data-role="grid"></div>' + sub(p);
-  if (p.type === "wordlist") return countdownHtml(p) + '<div class="brain-generic__words" data-role="words"></div>' + sub(p);
+  if (p.type === "gridflash") return '<div class="brain-generic__study">' + studyTimerHtml(p.flashMs) + '<div class="brain-generic__grid" data-role="grid"></div></div>' + sub(p);
+  if (p.type === "wordlist") return '<div class="brain-generic__study">' + studyTimerHtml(p.studyMs) + '<div class="brain-generic__words" data-role="words"></div></div>' + sub(p, p.studyText);
   if (/^[\d\s+×÷−=?]+$/.test(p.en)) return '<div class="brain-generic__equation">' + p.en.split(/\s+/).map(function (part) {
     var kind = part === '?' ? 'missing' : /^\d+$/.test(part) ? 'number' : 'operator';
     return '<span class="brain-generic__' + kind + '">' + part + '</span>';
   }).join('') + '</div>';
   return p.zh && p.zh !== p.en ? sub(p) : '<div class="brain-generic__task">' + p.en + '</div>';
 }
-function countdownHtml(p) {
-  if (!p.countdownSec) return '';
-  var l = p.countdownLabel || ['', ''];
-  return '<div class="brain-generic__countdown" data-role="countdown" role="timer" aria-live="off">' +
-    '<span class="brain-generic__countnum" data-role="countnum">' + p.countdownSec + '</span>' +
-    '<span class="brain-generic__countlabel">' + l[0] + '<span class="zhs">' + l[1] + '</span></span></div>';
-}
-function sub(p) {
-  return '<div class="brain-generic__sub">' + p.en + '<span class="zhs">' + p.zh + '</span></div>';
+/* pair overrides the prompt's own en/zh, e.g. "Remember these pictures" while a
+   "Which one disappeared?" item is still being studied. */
+function sub(p, pair) {
+  var en = pair ? pair[0] : p.en, zh = pair ? pair[1] : p.zh;
+  return '<div class="brain-generic__sub" data-role="sub">' + en + '<span class="zhs">' + zh + '</span></div>';
 }
 
 function padHtml(pad, entry) {
@@ -109,8 +107,13 @@ function create(ctx) {
   var currentItem = null;
   var inputEnabled = false;
   var pendingSubmit = false;
+  var cancelTimer = null;
 
   function root() { return ctx.mount; }
+  function stopTimer() { if (cancelTimer) cancelTimer(); cancelTimer = null; }
+  /* While the kid studies, the answer side stays out of sight (its space kept,
+     so nothing jumps): the only things to look at are the items and the timer. */
+  function setStudying(on) { root().classList[on ? "add" : "remove"]("is-studying"); }
   function isBopomofoType() { return pad === "type" && ctx.inputScript === "bpmf" && ctx.bopomofo; }
 
   function renderEntry() {
@@ -163,8 +166,17 @@ function create(ctx) {
     var cells = item.prompt.cells;
     host.innerHTML = cells.map(function (c) { return '<span class="brain-generic__cell">' + c.n + '</span>'; }).join("");
     padHost.innerHTML = "";
+    var entryBox = root().querySelector(".brain-generic__entry");
+    if (entryBox) entryBox.hidden = true;
+    var timer = root().querySelector('[data-role="study-timer"]');
+    setStudying(true);
+    cancelTimer = startStudyTimer(ctx, timer, item.prompt.flashMs);
     ctx.scheduler.after(item.prompt.flashMs, function () {
       if (!currentItem || currentItem !== item) return;
+      stopTimer();
+      setStudying(false);
+      if (timer) timer.hidden = true;
+      if (entryBox) entryBox.hidden = false;
       host.innerHTML = cells.map(function () { return '<span class="brain-generic__cell is-hidden">?</span>'; }).join("");
       var C = window.SQBrainCore;
       var shuffled = C.seededShuffle(cells, ctx.random);
@@ -189,20 +201,16 @@ function create(ctx) {
     host.innerHTML = item.prompt.words.map(function (w) { return '<span class="brain-generic__word">' + w + '</span>'; }).join("");
     var ta = root().querySelector('[data-role="type"]');
     if (ta) { ta.disabled = true; ta.dataset.studying = "1"; }
-    var countBox = root().querySelector('[data-role="countdown"]');
-    var countNum = root().querySelector('[data-role="countnum"]');
-    var left = item.prompt.countdownSec || 0;
-    function tick() {
-      if (!currentItem || currentItem !== item || !countNum) return;
-      left -= 1;
-      if (left < 0) return;
-      countNum.textContent = left;
-      ctx.scheduler.after(1000, tick);
-    }
-    if (countNum && left > 0) ctx.scheduler.after(1000, tick);
+    var timer = root().querySelector('[data-role="study-timer"]');
+    setStudying(true);
+    cancelTimer = startStudyTimer(ctx, timer, item.prompt.studyMs);
     ctx.scheduler.after(item.prompt.studyMs, function () {
       if (!currentItem || currentItem !== item) return;
-      if (countBox) countBox.hidden = true;
+      stopTimer();
+      setStudying(false);
+      if (timer) timer.hidden = true;
+      var subBox = root().querySelector('[data-role="sub"]');
+      if (subBox && item.prompt.studyText) subBox.innerHTML = item.prompt.en + '<span class="zhs">' + item.prompt.zh + '</span>';
       if (item.prompt.recognize) { mountYesNo(item, host); return; }
       if (item.choices) {
         host.innerHTML = item.prompt.words
@@ -299,6 +307,8 @@ function create(ctx) {
   }
 
   function present(item) {
+    stopTimer();
+    setStudying(false);
     currentItem = item; entry = ""; inputEnabled = false; pendingSubmit = false;
     pad = item.prompt.recognize ? "yesno" : basePad;
     root().innerHTML =
@@ -355,6 +365,8 @@ function create(ctx) {
   }
 
   function destroy() {
+    stopTimer();
+    setStudying(false);
     currentItem = null;
     root().removeEventListener('keydown', onKeydown);
     root().innerHTML = "";
