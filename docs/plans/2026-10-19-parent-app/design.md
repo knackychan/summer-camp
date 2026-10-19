@@ -1,12 +1,20 @@
 # Parent app: supervise from the phone, get told when a task waits
 
-**Status:** **Draft, waiting on Papa** (2026-10-19). Nothing is built until Papa approves §3 and answers §8.
+**Status:** **Approved by Papa, 2026-10-19** (web app, not native; Q2–Q5 on defaults). **Amended the same day (§0):** Papa pointed out the PWA already exists, so the parent app *is* the existing `admin.html`, not a new `parent.html`.
 **Date:** 2026-10-19.
 **Asked by Papa (2026-10-19):** games stay locked until a kid has enough points from tasks; parents get a notification on their app / phone / PC to check the task; a proper parent app for Android phones, and iOS too unless a PWA is enough there; the points needed to unlock games and screen time are set from admin.
 **Builds on:** `2026-10-03-points-system` (`points_claims` pending → `points_review_claim`), `2026-10-08-games-gate-ai-guide` (per-kid daily threshold in `family_settings.games_gate_v1`, "open Games today"), `2026-07-27-admin-ops-redesign` (the desktop admin shell), `2026-10-09-admin-cleanup`.
 **Sibling thread:** the kid side (school mode, home chores list, the chores → points → games lock, admin thresholds) is built in the thread "School mode and home chores". This plan does **not** add chore kinds, thresholds or lock rules; it reads and acts on whatever that work writes to `points_claims`, `points_requests` and `games_gate_v1`.
 
 ---
+
+## 0. Amendment, 2026-10-19: build on the existing PWA
+Papa: "the PWA exist already". `admin.html` already ships in the PWA (shared `manifest.webmanifest`, cached by `sw.js`, Apple home-screen tags) and already shows browser notifications, but only while the page is open. So:
+- **No `parent.html`.** Wherever this design says "parent app", read `admin.html`. D5's three tabs become a phone layout of admin (To check, Today, Settings with the gate thresholds) below 820 px; the desktop shell is unchanged.
+- **Admin gets its own manifest** (`admin.webmanifest`, `start_url`/`id` `admin.html`). Today the shared manifest's `start_url` is `index.html`, so "Install" from admin opens the kid app.
+- **The existing service worker** (`sw.js`) gains `push` and `notificationclick`; no second worker.
+- The existing "Windows notifications" switch becomes "Notify this device" and registers a Web Push subscription, so notifications arrive with the app closed. Slice 06 folds into 02.
+- Everything else (D3, D4, D7, §4–5) stands.
 
 ## 1. What already exists (so the parent app stays thin)
 
@@ -75,7 +83,7 @@ Checks: `node scripts/check.mjs`; a new `scripts/check-parent-app-ui.py` at phon
 ## 7. Depends on the sibling thread
 Chore claims arrive as `points_claims` rows with a bilingual label; the parent app shows whatever `kind` they use. The thresholds stay in `games_gate_v1` unless the sibling thread moves them; if it adds a "screen time" threshold separate from Games, the Settings tab shows it from the same key. This plan agrees the data model with that thread before slice 03.
 
-## 8. Questions for Papa
+## 8. Questions for Papa (answered 2026-10-19: Q1 web app; Q2–Q5 defaults)
 - **Q1** — PWA for all phones now, native Android wrapper only if pushes are unreliable? *(Recommended: yes.)*
 - **Q2** — Parent app in English like admin, or also 中文 for the other parent? *(Default: English.)*
 - **Q3** — Which notifications: finished tasks + reward requests (default), plus Summer chat flags?
