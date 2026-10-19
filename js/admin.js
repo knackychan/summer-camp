@@ -236,7 +236,7 @@
         q.push({id:p.id,type:"pass",kidId:p.kid_id,at:p.created_at,body:blockTitle(p.block_idx)+" "+blockTz(p.block_idx),actions:["grant","deny"]});
       }
     });
-    (rows.pointClaims||[]).forEach(function(c){q.push({id:c.id,type:"points",kidId:c.kid_id,at:c.created_at,body:(SQPoints.rules[c.kind]||{label:[c.kind]}).label[0]+" · "+c.amount+" points · "+c.day,actions:["review_points"]});});
+    (rows.pointClaims||[]).forEach(function(c){q.push({id:c.id,type:"points",kidId:c.kid_id,at:c.created_at,body:claimLabel(c)+" · "+c.amount+" points · "+c.day,actions:["review_points"]});});
     (rows.pointRequests||[]).filter(function(r){return r.status==="requested"&&!q.some(function(a){return a.id===r.id;});}).forEach(function(r){q.push({id:r.id,type:"reward",kidId:r.kid_id,at:r.created_at,body:(Array.isArray(r.label)?r.label[0]:r.reward_id)+" · "+r.points+" points",actions:["approve_reward","deny_reward"]});});
     q.sort(function(a,b){return (a.at||"").localeCompare(b.at||"");});
     return q;
@@ -448,12 +448,17 @@
     if(result.error){writeFailed(result.error);return null;}
     return result;
   }
+  /* a chore's own name from its evidence (school-mode-chores D4), else the kind's */
+  function claimLabel(c){
+    const ev=c&&c.evidence||{}, rule=SQPoints.rules[c.kind];
+    return Array.isArray(ev.label)&&ev.label[0]?String(ev.label[0]):rule?rule.label[0]:String(c.kind);
+  }
   function renderPointsReviews(target){
     const el=target||$("pointsReviews");if(!el)return;
     if(!pointsReady){el.innerHTML='<p class="qs-callout">Points database migration is not available. Earnings and exchanges cannot be confirmed until it is deployed.</p>';return;}
     const claims=rows.pointClaims||[], requests=rows.pointRequests||[];
     el.innerHTML='<p>Confirmed funds only. Each approval and refund is recorded once. A retry keeps the same request.</p>'+claims.map(function(c){
-      const rule=SQPoints.rules[c.kind],label=rule?rule.label[0]:c.kind;
+      const label=claimLabel(c);
       return '<article class="qs-row"><div class="qs-title"><b>'+esc(kidName(c.kid_id))+' · '+esc(label)+'</b><span>'+esc(c.day)+' · '+esc(c.slot)+' · '+esc(c.work_id||'')+'</span><span>'+esc(c.evidence&&c.evidence.reason||'')+'</span><span>'+esc(c.note||'')+'</span><span>'+esc(c.evidence&&c.evidence.goal?Array.isArray(c.evidence.goal)?c.evidence.goal.join(' · '):c.evidence.goal:'')+'</span></div><div class="qs-meta"><span>'+c.amount+' points pending</span></div><div class="qs-actions"><button class="btn btn--sm" data-reviewpoints="'+c.id+':no">Decline</button><button class="btn btn--sm btn--primary" data-reviewpoints="'+c.id+':yes">Confirm work</button></div></article>';
     }).join('')+requests.filter(function(r){return ['requested','approved','refunded'].includes(r.status);}).map(function(r){
       const label=Array.isArray(r.label)?r.label.join(' · '):String(r.reward_id||'Exchange');
@@ -486,7 +491,7 @@
         '<label class="gg-threshold">School day <input type="number" min="0" max="300" step="5" data-ggschool="'+kid+'" value="'+s.schoolThreshold[kid]+'"></label>'+
         (st.reason==="papa"?'<button class="btn btn--sm" data-ggopen="'+kid+':undo">Undo open today</button>':'<button class="btn btn--sm" data-ggopen="'+kid+':open">Open Games today</button>')+'</div></article>';
     }).join('');
-    const label=function(id){const it=window.SQHomeHelp&&SQHomeHelp.ITEMS.find(function(x){return x.id===id;});return it?it.icon+' '+it.label[0]:id;};
+    const label=function(id){const it=window.SQHomeHelp&&SQHomeHelp.ITEMS.find(function(x){return x.id===id;});if(it)return it.icon+' '+it.label[0];const ch=/^chore:/.test(id)&&window.SQSchool&&SQSchool.choreList(fs).find(function(c){return 'chore:'+c.id===id;});return ch?ch.icon+' '+ch.label[0]:id;};
     const history=(rows.guideDecisions||[]).map(function(d){
       const picks=(Array.isArray(d.picks)?d.picks:[]).map(function(p){return (p.id===d.started_id?'▶ ':'')+label(p.id);}).join(' · ');
       const a=d.answers||{};
@@ -500,6 +505,85 @@
       '<div class="qs-list">'+kids+'</div><button class="btn btn--primary" type="submit">Save games gate</button></form>'+
       '<h3>Guide decisions (7 days)</h3><p>What the home-help guide suggested, newest first. ▶ marks the pick the child started. A saved decision is reused for the rest of its time slot.</p>'+
       '<div class="qs-list">'+(history||'<p>No guide decisions yet.</p>')+'</div>';
+  }
+  /* Chore editor (docs/plans/2026-10-19-school-mode-chores/ D8). The draft
+     survives realtime re-renders until it is saved or reset. Built-in chores
+     keep their points kind (points in Award amounts); added ones get their
+     own points, check and bonus flag, paid as family_chore. */
+  let choreDraft=null;
+  function choreRows(){
+    if(!choreDraft)choreDraft=SQSchool.choreList(familySettingsMap()).map(function(c){return Object.assign({},c,{label:c.label.slice(),kids:c.kids.slice()});});
+    return choreDraft;
+  }
+  function choresEditorHtml(){
+    if(!window.SQSchool)return '';
+    const fs=familySettingsMap(), list=choreRows();
+    const kidBoxes=function(c,i){return Object.keys(KIDS).map(function(k){return '<label class="ce-kid"><input type="checkbox" data-ce="kid" data-i="'+i+'" value="'+k+'"'+(c.kids.indexOf(k)>=0?' checked':'')+'> '+esc(kidName(k))+'</label>';}).join('');};
+    const rowsHtml=list.map(function(c,i){
+      const pts=c.builtin
+        ?'<span class="ce-fixed">'+SQPoints.amount(c.kind,fs,c.slot)+' pts · set in Award amounts'+(SQPoints.rules[c.kind]&&SQPoints.rules[c.kind].parent?' · you check':' · counts straight away')+(c.bonus?' · bonus':'')+'</span>'
+        :'<label class="gg-threshold">Points <input type="number" min="0" max="100" step="5" data-ce="points" data-i="'+i+'" value="'+c.points+'"></label>'+
+         '<label class="gg-threshold">Check <select data-ce="check" data-i="'+i+'"><option value="parent"'+(c.check!=='self'?' selected':'')+'>You check</option><option value="self"'+(c.check==='self'?' selected':'')+'>Counts straight away</option></select></label>'+
+         '<label class="ce-kid"><input type="checkbox" data-ce="bonus" data-i="'+i+'"'+(c.bonus?' checked':'')+'> Bonus (never opens Games)</label>';
+      return '<article class="qs-row ce-row'+(c.enabled?'':' is-off')+'" data-ce-row="'+i+'">'+
+        '<input class="ce-icon" aria-label="Icon" maxlength="8" data-ce="icon" data-i="'+i+'" value="'+esc(c.icon)+'">'+
+        '<div class="ce-main"><div class="ce-names"><input aria-label="English name" maxlength="60" placeholder="English name" data-ce="en" data-i="'+i+'" value="'+esc(c.label?c.label[0]:'')+'">'+
+        '<input aria-label="Chinese name" maxlength="40" placeholder="中文名稱" data-ce="zh" data-i="'+i+'" value="'+esc(c.label?c.label[1]:'')+'"></div>'+
+        '<div class="ce-opts">'+pts+kidBoxes(c,i)+'<label class="ce-kid"><input type="checkbox" data-ce="enabled" data-i="'+i+'"'+(c.enabled?' checked':'')+'> On</label></div></div>'+
+        '<div class="qs-actions"><button class="btn btn--sm" type="button" data-ce-move="'+i+':-1" aria-label="Move up"'+(i?'':' disabled')+'>↑</button><button class="btn btn--sm" type="button" data-ce-move="'+i+':1" aria-label="Move down"'+(i<list.length-1?'':' disabled')+'>↓</button>'+
+        (c.builtin?'':'<button class="btn btn--sm" type="button" data-ce-del="'+i+'">Remove</button>')+'</div></article>';
+    }).join('');
+    return '<h3>Chores</h3><p>What the kids see on Help at home and Bonus points, in this order. Every chore needs an English and a 中文 name. Built-in chores can be renamed, switched off or kept to some kids; their points are in Award amounts below. Chores you add get their own points. Points already earned stay as they are. The home-help guide and Summer chat suggest from this list.</p>'+
+      '<form id="choresForm"><div class="qs-list">'+rowsHtml+'</div>'+
+      '<div class="ce-bar"><button class="btn" type="button" id="ceAdd">+ Add chore</button><button class="btn" type="button" id="ceReset">Undo changes</button><button class="btn btn--primary" type="submit">Save chores</button></div></form>';
+  }
+  function bindChoresEditor(body){
+    const form=body.querySelector('#choresForm'); if(!form)return;
+    const list=choreRows();
+    form.querySelectorAll('[data-ce]').forEach(function(el){
+      const ev=el.type==='checkbox'||el.tagName==='SELECT'?'change':'input';
+      el.addEventListener(ev,function(){
+        const c=list[+el.dataset.i]; if(!c)return;
+        const f=el.dataset.ce;
+        if(f==='icon')c.icon=el.value;
+        else if(f==='en'||f==='zh'){c.label=c.label?c.label.slice():['',''];c.label[f==='en'?0:1]=el.value;}
+        else if(f==='points')c.points=Number(el.value);
+        else if(f==='check')c.check=el.value==='self'?'self':'parent';
+        else if(f==='bonus')c.bonus=el.checked;
+        else if(f==='enabled'){c.enabled=el.checked;el.closest('.ce-row').classList.toggle('is-off',!el.checked);}
+        else if(f==='kid'){c.kids=Object.keys(KIDS).filter(function(k){const b=form.querySelector('[data-ce="kid"][data-i="'+el.dataset.i+'"][value="'+k+'"]');return b&&b.checked;});}
+      });
+    });
+    form.querySelectorAll('[data-ce-move]').forEach(function(b){b.onclick=function(){
+      const p=b.dataset.ceMove.split(':'), i=+p[0], j=i+(+p[1]);
+      if(j<0||j>=list.length)return;
+      const t=list[i];list[i]=list[j];list[j]=t;renderQuestStudio();
+    };});
+    form.querySelectorAll('[data-ce-del]').forEach(function(b){b.onclick=function(){
+      const c=list[+b.dataset.ceDel];
+      if(!c||!confirm('Remove "'+((c.label&&c.label[0])||'this chore')+'"? Points already earned for it stay.'))return;
+      list.splice(+b.dataset.ceDel,1);renderQuestStudio();
+    };});
+    $('ceAdd').onclick=function(){
+      list.push({id:null,icon:'🧹',label:['',''],enabled:true,kids:Object.keys(KIDS),builtin:false,bonus:false,points:5,check:'parent',minutes:10,kind:'family_chore'});
+      renderQuestStudio();
+      const last=body.querySelectorAll('[data-ce="en"]');if(last.length)last[last.length-1].focus();
+    };
+    $('ceReset').onclick=function(){choreDraft=null;renderQuestStudio();};
+    form.onsubmit=async function(e){
+      e.preventDefault();
+      const bad=list.find(function(c){return !c.label||!String(c.label[0]).trim()||!String(c.label[1]).trim();});
+      if(bad){toast('Every chore needs an English and a 中文 name');return;}
+      if(list.some(function(c){return !c.builtin&&(!Number.isInteger(c.points)||c.points<0||c.points>100||c.points%5!==0);})){toast('Chore points are 0 to 100 in steps of 5');return;}
+      if(list.some(function(c){return c.enabled&&!c.kids.length;})){toast('Pick at least one child for each chore that is on');return;}
+      list.forEach(function(c){
+        c.label=[String(c.label[0]).trim(),String(c.label[1]).trim()];
+        c.icon=String(c.icon||'').trim()||'🧹';
+        if(!c.id){c.id=SQSchool.newId(c.label[0],list);c.slot=c.id;}
+      });
+      if(!await saveFamilySetting('chores_v1',JSON.stringify(SQSchool.serialize(list))))return;
+      choreDraft=null;toast('Chores saved',true);renderQuestStudio();
+    };
   }
   /* Summer chat (docs/plans/2026-10-09-summer-chat-crash-test/ D5, D6): Papa's
      switch and the last 7 days of what the kids wrote and what Summer answered. */
@@ -518,6 +602,7 @@
       '<div class="qs-list">'+(list||'<p>No chats yet.</p>')+'</div>';
   }
   function bindGamesGate(body){
+    bindChoresEditor(body);
     const chatForm=body.querySelector('#kidChatForm');
     if(chatForm)chatForm.onsubmit=async function(e){
       e.preventDefault();
@@ -824,7 +909,7 @@
     const fs=familySettingsMap(),economy=SQQuestConfig.economy(fs);
     const kinds=Object.keys(SQPoints.rules).filter(function(k){return !/^balanced|^brain$/.test(k);});
     const kidOptions=Object.keys(KIDS).map(function(k){return '<option value="'+k+'">'+esc(kidName(k))+'</option>';}).join('');
-    body.innerHTML=gamesGateHtml()+summerChatHtml()+'<div class="qs-callout">Same work earns once across every entrance. Age-appropriate goals earn the same points; help and mistakes do not reduce them. Daily limits use Asia/Taipei.</div>'+
+    body.innerHTML=gamesGateHtml()+choresEditorHtml()+summerChatHtml()+'<div class="qs-callout">Same work earns once across every entrance. Age-appropriate goals earn the same points; help and mistakes do not reduce them. Daily limits use Asia/Taipei.</div>'+
       '<h3>Award amounts</h3><p>Changes apply to future claims. Existing pending claims retain their agreed amount. Limits stay fixed.</p><form id="pointsPolicyForm"><div class="qs-form">'+Object.keys(SQPoints.rules).map(function(k){const r=SQPoints.rules[k];return '<div class="qs-field"><label for="pointAmount-'+k+'">'+esc(r.label[0])+'</label><input id="pointAmount-'+k+'" data-pointamount="'+k+'" type="number" min="0" max="1000" step="5" value="'+SQPoints.amount(k,fs)+'"><span>'+esc(String(r.limit||1))+' per '+(k==='project'||k==='balanced_week'?'week':'day')+'</span></div>';}).join('')+'</div><button class="btn btn--primary" type="submit">Save future awards</button></form>'+
       '<h3>Gift and cash conversion</h3><p>Currency, points per currency unit and monthly budget are required for paid gifts and cash. Cash also requires explicit enablement and uses 100-point steps. Experience rewards need no retail price. Changing an established rate announces the previous and new conversion to children; existing requests keep their agreed rate.</p><form id="pointsEconomyForm"><div class="qs-form">'+
       '<div class="qs-field"><label for="pointsCurrency">Currency code</label><input id="pointsCurrency" value="'+esc(economy.currency)+'" maxlength="3" placeholder="e.g. TWD"></div><div class="qs-field"><label for="pointsRate">Points per currency unit</label><input id="pointsRate" type="number" min="0.01" step="0.01" value="'+(economy.pointsPerUnit||'')+'"></div><div class="qs-field"><label for="pointsBudget">Monthly budget per child (currency)</label><input id="pointsBudget" type="number" min="0.01" step="0.01" value="'+(economy.monthlyBudget||'')+'"></div><div class="qs-field"><label for="pointsCash"><input id="pointsCash" type="checkbox"'+(economy.cashEnabled?' checked':'')+'> Enable cash redemption</label></div></div><button class="btn btn--primary" type="submit">Save conversion settings</button></form>'+

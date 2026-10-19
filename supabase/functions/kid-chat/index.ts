@@ -17,6 +17,11 @@ const deps = {
   fetch,
   apiKey: Deno.env.get("OPENAI_API_KEY") || "",
   db: {
+    async chores() {
+      const { data, error } = await db.from("family_settings").select("value").eq("key", "chores_v1").maybeSingle();
+      if (error) throw error;
+      return data ? data.value : null;
+    },
     async settings() {
       const { data, error } = await db.from("family_settings").select("value").eq("key", "kid_chat_v1").maybeSingle();
       if (error) throw error;

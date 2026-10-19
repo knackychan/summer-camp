@@ -331,4 +331,22 @@ assert.deepEqual(Object.keys(stamps2).sort(), ['lili', 'lucien', 'luis']); asser
 assert.equal(await count('day_ticks'), 1, 'points-only reset keeps progress');
 await claim('luis', today, 'morning_teeth');
 await assert.rejects(() => run(`delete from stars_ledger;`, 'authenticated'), /cannot be edited or deleted/, 'ledger guard back on');
+// School mode chores (2026-10-19-school-mode-chores slice 02) and Papa's own chores (slice 04, D8).
+const choreKindsSql = readFileSync(new URL('../supabase/migrations/20261019_school_chores_kinds.sql', import.meta.url), 'utf8');
+const familySql = readFileSync(new URL('../supabase/migrations/20261019b_family_chores.sql', import.meta.url), 'utf8');
+await run(choreKindsSql); await run(familySql); await run(familySql);
+const rice = await claim('lili', today, 'rice_wash', 'default', { amount: 999 });
+assert.deepEqual([rice.amount, rice.status], [5, 'pending'], 'a built-in chore waits for Papa at its own amount');
+await run(`insert into family_settings(key,value) values('chores_v1','{"version":1,"items":[{"id":"c_water_plants","label":["Water the plants","澆花"],"points":15,"check":"parent","kids":["lili","luis"]},{"id":"c_feed_cat","label":["Feed the cat","餵貓"],"points":10,"check":"self"},{"id":"c_off","label":["Off","關"],"points":5,"enabled":false}]}') on conflict(key) do update set value=excluded.value`);
+const water = await claim('lili', today, 'family_chore', 'c_water_plants', { amount: 999, evidence: { policy_snapshot: { amount: 999 } } });
+assert.deepEqual([water.amount, water.status, water.slot, water.category], [15, 'pending', 'c_water_plants', 'helping'], "Papa's points, never the tablet's");
+const cat = await claim('lili', today, 'family_chore', 'c_feed_cat');
+assert.deepEqual([cat.amount, cat.status], [10, 'confirmed'], 'a second family chore the same day, self-checked');
+assert.equal((await claim('lili', today, 'family_chore', 'c_water_plants')).id, water.id, 'once a day per chore');
+await assert.rejects(() => claim('lucien', today, 'family_chore', 'c_water_plants'), /Chore unavailable/, 'kept to some kids');
+await assert.rejects(() => claim('lili', today, 'family_chore', 'c_off'), /Chore unavailable/, 'switched off');
+await assert.rejects(() => claim('lili', today, 'family_chore', 'c_missing'), /Chore unavailable/);
+await assert.rejects(() => claim('lili', today, 'family_chore', 'default'), /Choose a family chore/);
+await run(`update family_settings set value='{}' where key='chores_v1'`, 'anon', '').catch(() => {}); // refused or no row visible to update
+assert.equal((await one(`select value from family_settings where key='chores_v1'`)).value.includes('c_water_plants'), true, 'chore list unchanged by a kid');
 console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation, games-gate home-help kinds, settings guard, guide decisions and admin clean-up.');

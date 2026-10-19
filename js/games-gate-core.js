@@ -41,12 +41,13 @@
   /* D1: today's points = today's counted claims + queued claims the tablet has
      not yet seen come back + any manual awards the caller knows of. A queued
      op and its claim are the same task, so each identity counts once.
-     src.exclude: kinds that never count (bonus tasks, school-mode-chores D7). */
+     src.exclude: kinds, or kind:slot identities, that never count (bonus tasks,
+     school-mode-chores D7, D8). */
   function todayPoints(kid,day,src){
     src=src||{};
     const seen=new Set(), skip=new Set(src.exclude||[]);let total=0;
     function add(c){
-      if(!c||c.kid_id!==kid||c.day!==day||skip.has(c.kind))return;
+      if(!c||c.kid_id!==kid||c.day!==day||skip.has(c.kind)||skip.has(c.kind+":"+(c.slot||"default")))return;
       const key=identity(c);
       if(seen.has(key))return;
       seen.add(key);

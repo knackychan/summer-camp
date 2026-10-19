@@ -1739,11 +1739,22 @@ function homeHelpContext(id){
       if(d.kind==="table_helper"&&start!=null)meals.push({slot:d.slot,start:start});
     });
   });
-  return {minutes:SQ_DAY.nowMins(),meals:meals,claims:claims,
+  return {minutes:SQ_DAY.nowMins(),meals:meals,claims:claims,extra:choreGuideItems(id),
     known:function(kind,quest){return !!SQPoints.rules[kind]&&(!quest||!!questById(quest));},
     claimed:function(kind,slot){return claims.some(c=>c.kind===kind&&(c.slot||"default")===slot);},
     atLimit:function(kind){return claims.filter(c=>c.kind===kind).length>=SQPoints.rules[kind].limit;},
-    amount:function(kind){return SQPoints.amount(kind,fs);}};
+    amount:function(kind,slot){return SQPoints.amount(kind,fs,slot);}};
+}
+/* Papa's chores for the guide (school-mode-chores D8), shaped like SQHomeHelp
+   items. A chore paid by one of the eight's kinds (shoes, clothes, table) is
+   already there; bonus chores never open Games, so the guide leaves them out. */
+function choreGuideItems(id){
+  if(!window.SQSchool)return [];
+  const fs=famSettings(), base=new Set(SQHomeHelp.ITEMS.map(i=>i.kind));
+  return SQSchool.choresFor(id,fs,false).filter(c=>!base.has(c.kind)).map(c=>({
+    id:"chore:"+c.id,chore:c.id,kind:c.kind,slot:c.slot||"default",route:"chore",icon:c.icon,minutes:c.minutes||10,
+    verify:c.kind==="family_chore"?c.check:(SQPoints.rules[c.kind].parent?"parent":"self"),
+    label:c.label,windows:[["8:00","20:30"]],goal:{lucien:c.label,lili:c.label,luis:c.label}}));
 }
 /* ---- Home-help guide (design.md D5, D6, D8): two tap-only questions, three
    picks that fit the schedule now, reroll. A decision is saved per
@@ -1788,11 +1799,11 @@ function guideDecide(id,slot,reroll,answers){
 }
 /* "done" (✓) or "check" (Papa will check) once a pick's award is claimed today */
 function guideStatus(id){
-  const claims=homeHelpContext(id).claims;
+  const ctx=homeHelpContext(id), claims=ctx.claims;
   return function(pick){
-    const it=SQHomeHelp.ITEMS.find(x=>x.id===pick), c=it&&claims.find(c=>c.kind===it.kind);
+    const it=SQHomeHelp.ITEMS.concat(ctx.extra).find(x=>x.id===pick), c=it&&claims.find(c=>c.kind===it.kind&&(!it.slot||(c.slot||"default")===it.slot));
     if(!c)return null;
-    return SQPoints.rules[it.kind].parent&&c.status!=="confirmed"?"check":"done";
+    return it.verify==="parent"&&c.status!=="confirmed"?"check":"done";
   };
 }
 function showHomeHelpChooser(){
@@ -1850,14 +1861,14 @@ function guideTime(id,slot,reroll,done){
 /* Show a saved decision: finished picks show ✓ / Papa will check, started ones
    hide, the gap refills from today's local ranking (never a new decision). */
 function guidePicks(id,dec){
-  const shown=SQHomeHelp.view(dec,SQHomeHelp.rank(guideRanking(id,dec.slot,dec.answers)),guideStatus(id));
+  const shown=SQHomeHelp.view(dec,SQHomeHelp.rank(guideRanking(id,dec.slot,dec.answers)),guideStatus(id),choreGuideItems(id));
   SQSummerAgent.interact({stage:"help_pick",picks:shown.map(c=>c.id)}).then(r=>{
     const cards=shown.map(function(c,i){
       const ln=c.line||c.item.goal[id]||c.item.goal.luis;
       const right=c.state==="done"?`<b>✓</b>`:c.state==="check"?`<small>⏳ ${hhPlain("papaChecks")}</small>`
         :`<b>+${c.entry.points}</b> <small>${hhPlain("pointsWord")}</small>${c.item.verify==="parent"?`<small>${hhPlain("papaChecks")}</small>`:""}`;
       return `<button class="hhcard" data-hh="${i}" ${c.state==="live"?"":"disabled"}>
-        <span class="hhicon">${c.item.icon}</span>
+        <span class="hhicon">${escHtml(c.item.icon)}</span>
         <span class="hhtext"><b>${escHtml(c.item.label[0])} · ${escHtml(c.item.label[1])}</b><small>${escHtml(ln[0])}</small><small>${escHtml(ln[1])}</small></span>
         <span class="hhpts">${right}</span></button>`;
     }).join("");
@@ -1875,6 +1886,7 @@ function guidePicks(id,dec){
         dec.started_id=c.id;guideSave(dec,true);
         o.remove();
         if(c.item.route==="day")SummerQuest.navigate("day");
+        else if(c.item.route==="chore")showChore(c.item.chore);
         else SummerQuest.openQuest(c.entry.quest);
       };
     });
@@ -2351,8 +2363,11 @@ function tickBlockDone(i){
 /* D4: the home chores card. A tap asks "All done?", then sends a claim Papa
    checks; pending claims count toward today's gate like any other (games-gate D1). */
 /* today's claims + queue; bonus kinds (D7) never count toward the gate */
-function choreSource(){return {claims:store&&store.pointClaims,queue:store&&store.queue,exclude:window.SQPoints?SQPoints.extraKinds():[]};}
-function findChore(id){return SQSchool.CHORES.concat(SQSchool.BONUS).find(x=>x.id===id);}
+function famSettings(){return (store&&store.familySettings)||{};}
+function choreSource(){return {claims:store&&store.pointClaims,queue:store&&store.queue,
+  exclude:window.SQPoints?SQPoints.extraKinds().concat(window.SQSchool?SQSchool.bonusIdentities(famSettings()):[]):[]};}
+/* Papa's edited chore list (school-mode-chores D8) */
+function findChore(id){return SQSchool.choreList(famSettings()).find(x=>x.id===id);}
 function choresCardHtml(id){
   if(!window.SQSchool||!window.SQPoints)return "";
   const day=todayStr(), gate=pointsGateState(id);
@@ -2363,24 +2378,34 @@ function choresCardHtml(id){
     <div class="chores__head"><b>🏡 ${sc("choresTitle")}</b><span>${head}</span></div>
     ${gate.reason==="off"?"":`<div class="chores__bar"><span style="width:${pct}%"></span></div>`}
     <p class="chores__sub">${sc("choresSub")}</p>
-    <div class="chores__grid">${choreButtons(id,SQSchool.CHORES)}</div></section>
-  <section class="chores chores--bonus" id="bonusCard">
+    <div class="chores__grid">${choreButtons(id,SQSchool.choresFor(id,famSettings(),false))}</div></section>
+  ${SQSchool.choresFor(id,famSettings(),true).length?`<section class="chores chores--bonus" id="bonusCard">
     <div class="chores__head"><b>⭐ ${sc("bonusTitle")}</b></div>
     <p class="chores__sub">${sc("bonusSub")}</p>
-    <div class="chores__grid">${choreButtons(id,SQSchool.BONUS)}</div></section>`;
+    <div class="chores__grid">${choreButtons(id,SQSchool.choresFor(id,famSettings(),true))}</div></section>`:""}`;
 }
 function choreButtons(id,list){
   const day=todayStr();
   return list.map(c=>{
       const st=SQSchool.choreState(id,day,c,choreSource());
-      const amt=SQPoints.amount(c.kind,store&&store.familySettings);
+      const amt=SQPoints.amount(c.kind,famSettings(),c.slot);
       const tag=st==="confirmed"?`✓ ${sc("confirmed")}`:st==="waiting"?`⏳ ${sc("waiting")}`:st==="denied"?`↻ ${sc("again")}`:`+${amt} points <span class="zhs">${amt} 點</span>`;
       const busy=st==="confirmed"||st==="waiting";
       return `<button class="chore chore--${st}" data-chore="${c.id}" ${busy?"disabled":""}>
-        <span class="chore__icon" aria-hidden="true">${c.icon}</span>
+        <span class="chore__icon" aria-hidden="true">${escHtml(c.icon)}</span>
         <span class="chore__label">${escHtml(c.label[0])}<span class="zhs">${escHtml(c.label[1])}</span></span>
         <span class="chore__tag">${tag}</span></button>`;
     }).join("");
+}
+/* from the guide: open My Day at the chore so the kid can tap it when done */
+function showChore(choreId){
+  SummerQuest.navigate("day");
+  setTimeout(()=>{
+    const b=document.querySelector(`[data-chore="${choreId}"]`);
+    if(!b)return;
+    b.scrollIntoView({block:"center",behavior:"smooth"});
+    b.classList.add("chore--picked");
+  },120);
 }
 function bindChores(root){
   root.querySelectorAll("[data-chore]").forEach(btn=>btn.onclick=()=>{
@@ -2393,7 +2418,7 @@ function confirmChore(c){
   const o=document.createElement("div");
   o.className="overlay";o.id="choreConfirm";
   o.innerHTML=`<div class="card chore-confirm">
-    <div class="chore-confirm__icon" aria-hidden="true">${c.icon}</div>
+    <div class="chore-confirm__icon" aria-hidden="true">${escHtml(c.icon)}</div>
     <h3>${sc("sureTitle")}</h3>
     <p>${escHtml(SQSchool.fill(SQSchool.TEXT.sureBody,{job:job[0]})[0])}<span class="zhs">${escHtml(SQSchool.fill(SQSchool.TEXT.sureBody,{job:job[1]})[1])}</span></p>
     <div class="vrow">

@@ -31,6 +31,11 @@ const deps = {
       if (error) throw error;
       return get(row);
     },
+    async chores() {
+      const { data, error } = await db.from("family_settings").select("value").eq("key", "chores_v1").maybeSingle();
+      if (error) throw error;
+      return data ? data.value : null;
+    },
     async settings() {
       const { data, error } = await db.from("family_settings").select("value").eq("key", "games_gate_v1").maybeSingle();
       if (error) throw error;

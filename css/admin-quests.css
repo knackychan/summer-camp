@@ -18,3 +18,14 @@
 .gg-threshold{display:flex;align-items:center;gap:6px;font-size:13px}.gg-threshold input{width:76px}
 .gg-enabled{display:flex;align-items:center;gap:8px;font-weight:700;margin:8px 0 10px}
 @media(max-width:620px){.qs-row.gg-row{grid-template-columns:1fr}}
+
+/* chore editor (school-mode-chores D8) */
+.qs-row.ce-row{grid-template-columns:56px minmax(0,1fr) auto}
+.ce-icon{width:52px;height:46px;font-size:24px;text-align:center}
+.ce-names{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ce-names input{min-height:40px}
+.ce-opts{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-top:8px;font-size:13px}
+.ce-kid{display:inline-flex;align-items:center;gap:5px;min-height:32px}
+.ce-fixed{font-size:12px;color:var(--text-2)}
+.ce-bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px}
+@media(max-width:620px){.qs-row.ce-row{grid-template-columns:52px 1fr}.ce-names{grid-template-columns:1fr}.ce-row .qs-actions{grid-column:1/-1}}

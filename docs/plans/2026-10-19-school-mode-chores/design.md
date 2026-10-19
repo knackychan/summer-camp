@@ -1,7 +1,7 @@
 # School mode, after-school plan and home chores
 
 **Status:** **Requested by Papa, 2026-10-19** (project thread). Built the same day on branch `claude/school-mode-chores-46k4fr`; the defaults marked *(default)* below were picked by Claude where Papa didn't say, and wait on his look.
-**Slices:** 01–03 in this folder, all built 2026-10-19. 02's SQL must be run live by Papa (`supabase/migrations/20261019_school_chores_kinds.sql`).
+**Slices:** 01–04 in this folder, all built 2026-10-19 (04: the chore editor, D8). 02's SQL must be run live by Papa (`supabase/migrations/20261019_school_chores_kinds.sql`).
 **Builds on:** `2026-10-08-games-gate-ai-guide` (the daily points gate, `games_gate_v1`, `SQGamesGate`), `2026-10-03-points-system` (`points_claims`, Papa's check), `2026-07-26-brain-gym` (§6 gate).
 **Supersedes:** nothing. It **amends CLAUDE.md exception (5)**: the points threshold can differ on school days, and bonus tasks never count toward it.
 **Shared with:** `2026-10-19-parent-app` (parents' Android app thread) relies on: chores are ordinary `points_claims` rows with a bilingual `evidence.label`, Papa confirms with `points_review_claim`, and every threshold lives in `family_settings.games_gate_v1`.
@@ -76,6 +76,16 @@ Admin's live channel already listens to `points_claims`. A row that **becomes `p
 
 `SQSchool.BONUS`: **Gym exercise 健身運動** (`gym_exercise`, 20) and **Music practice 音樂練習** (`music_bonus`, 15), both Papa-checked, shown in their own ⭐ Bonus points card. Kinds marked `extra: true` in `js/points.js` are left out of the gate's daily count (`todayPoints(..., {exclude})`), so they only grow the wallet for the reward catalog. `music_bonus` is separate from the practice-day `music` kind; Papa decides if both were really done.
 
+### D8 — Papa edits the chores; the guide and Summer know them (Papa, 2026-10-19)
+
+Papa asked whether tasks are editable, whether he can add more, and whether the AI picks them up; then said yes, build it.
+- **One list, `family_settings.chores_v1`**, written only from Admin (parents). Built-ins can be renamed, re-iconed, reordered, kept to some kids or switched off, but keep their points kind, so their points stay in Award amounts and earned history never moves. A built-in added to the code later appears at the end of a saved list.
+- **Papa's own chores** are one general kind, `family_chore`, with the chore id (`c_…`, from its English name, never changed) as the claim slot. Their points (0–100, steps of 5), check (Papa / counts straight away), kids and Bonus flag are read **by the server** from `chores_v1`; the tablet's amount is never used. Once a day per chore. Removing a chore keeps points already earned.
+- **Bonus chores** Papa adds are left out of the gate like Gym and Music (`exclude` by `family_chore:<id>`).
+- **Guide:** the home-help guide ranks Papa's non-bonus chores next to its eight (chores already paid by one of the eight's kinds are not repeated) and opens My Day at the picked chore. The AI version (Edge Function `games-guide`) accepts a `chore:<id>` candidate only when Papa's list has it on, with labels read from the database. The tablet does not call the AI version yet (games-gate slice 06).
+- **Summer chat** is told the family's helping jobs (from the same list) so it can suggest real ones when a child asks how to help or earn points.
+- An editor-saved list is complete (built-ins included), so the Edge Functions see Papa's renames.
+
 ## 4. Not in this plan
 
-The parents' Android app and push notifications (own thread). A school-holiday calendar. Editing the after-school times from Admin (the holiday template editor is not reused; ask if wanted). Adding the chores to the home-help guide's eight suggestions.
+The parents' Android app and push notifications (own thread). A school-holiday calendar. Editing the after-school times from Admin (the holiday template editor is not reused; ask if wanted).

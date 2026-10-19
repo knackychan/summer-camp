@@ -134,7 +134,64 @@
     if(claims.some(function(c){return c.status==="denied";}))return "denied";
     return "todo";
   }
-  const api={KIDS:KIDS,SCHEDULE:SCHEDULE,CHORES:CHORES,BONUS:BONUS,TEXT:TEXT,parseMode:parseMode,isWeekend:isWeekend,modeFor:modeFor,mins:mins,currentRow:currentRow,fill:fill,choreState:choreState};
+  /* D8: Papa's edited list (family_settings.chores_v1, written only from Admin).
+     Built-in chores keep their points kind, so their points stay in Award
+     amounts; Papa can rename them, change the icon, reorder them, limit them to
+     some kids or switch them off. Chores Papa adds are `family_chore` with the
+     slot = their id and their own points, check and bonus flag. A built-in
+     missing from a saved list (added to the code later) is appended. */
+  const CUSTOM_ID=/^c_[a-z0-9_]{1,24}$/;
+  function text(v,max){return typeof v==="string"?v.trim().slice(0,max):"";}
+  function pairOf(v,fallback){
+    const en=Array.isArray(v)?text(v[0],60):"", zh=Array.isArray(v)?text(v[1],40):"";
+    return en&&zh?[en,zh]:fallback||null;
+  }
+  function builtins(){
+    return CHORES.map(function(c){return Object.assign({},c,{bonus:false});})
+      .concat(BONUS.map(function(c){return Object.assign({},c,{bonus:true});}));
+  }
+  function choreList(settings){
+    let v=settings&&settings.chores_v1;
+    if(typeof v==="string"){try{v=JSON.parse(v);}catch(e){v=null;}}
+    const saved=v&&Array.isArray(v.items)?v.items:[], base=builtins(), out=[], seen={};
+    saved.forEach(function(s){
+      if(!s||typeof s.id!=="string"||seen[s.id])return;
+      const b=base.find(function(x){return x.id===s.id;});
+      const kids=Array.isArray(s.kids)?KIDS.filter(function(k){return s.kids.indexOf(k)>=0;}):KIDS.slice();
+      const common={id:s.id,icon:text(s.icon,8)||(b?b.icon:"🧹"),enabled:s.enabled!==false,kids:kids};
+      if(b){seen[s.id]=1;out.push(Object.assign({},b,common,{label:pairOf(s.label,b.label),builtin:true}));return;}
+      const label=pairOf(s.label,null), pts=Number(s.points);
+      if(!CUSTOM_ID.test(s.id)||!label)return;
+      seen[s.id]=1;
+      out.push(Object.assign(common,{kind:"family_chore",slot:s.id,label:label,builtin:false,bonus:s.bonus===true,
+        points:Number.isInteger(pts)&&pts>=0&&pts<=100&&pts%5===0?pts:5,check:s.check==="self"?"self":"parent",
+        minutes:Math.max(1,Math.min(60,Math.round(Number(s.minutes)||10)))}));
+    });
+    base.forEach(function(b){if(!seen[b.id])out.push(Object.assign({},b,{builtin:true,enabled:true,kids:KIDS.slice()}));});
+    return out;
+  }
+  function choresFor(kid,settings,bonus){
+    return choreList(settings).filter(function(c){return c.enabled&&c.kids.indexOf(kid)>=0&&!!c.bonus===!!bonus;});
+  }
+  /* identities (kind:slot) of Papa's bonus chores: never counted toward the gate */
+  function bonusIdentities(settings){
+    return choreList(settings).filter(function(c){return c.bonus&&c.kind==="family_chore";}).map(function(c){return "family_chore:"+c.slot;});
+  }
+  function serialize(list){
+    return {version:1,items:list.map(function(c){
+      const row={id:c.id,icon:c.icon,label:c.label.slice(),enabled:c.enabled!==false,kids:c.kids.slice()};
+      if(!c.builtin){row.points=c.points;row.check=c.check;row.bonus=!!c.bonus;row.minutes=c.minutes;}
+      return row;
+    })};
+  }
+  /* a new chore id from its English name: c_ + letters/digits, unique in the list */
+  function newId(label,list){
+    const stem="c_"+(String(label||"").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,18)||"chore");
+    let id=stem, n=2;
+    while((list||[]).some(function(c){return c.id===id;}))id=stem+"_"+(n++);
+    return id;
+  }
+  const api={KIDS:KIDS,SCHEDULE:SCHEDULE,CHORES:CHORES,BONUS:BONUS,TEXT:TEXT,choreList:choreList,choresFor:choresFor,bonusIdentities:bonusIdentities,serialize:serialize,newId:newId,parseMode:parseMode,isWeekend:isWeekend,modeFor:modeFor,mins:mins,currentRow:currentRow,fill:fill,choreState:choreState};
   if(typeof window!=="undefined")window.SQSchool=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

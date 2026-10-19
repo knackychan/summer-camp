@@ -28,6 +28,9 @@
     laundry_in:{points:10,limit:1,category:"help",parent:true,label:["Bring in the dry laundry","把曬乾的衣服收進來"]},
     vacuum_floor:{points:10,limit:1,category:"help",parent:true,label:["Vacuum the floor","用吸塵器吸地"]},
     altar_water:{points:5,limit:1,category:"help",parent:true,label:["Change the water for the Gohonzon","幫御本尊換水"]},
+    /* a chore Papa adds in Admin (school-mode-chores D8): slot = its id, amount and
+       check come from family_settings.chores_v1; once a day per chore */
+    family_chore:{points:0,limit:1,category:"help",parent:true,label:["Family chore","家事"]},
     /* bonus tasks (school-mode-chores D7): extra points to exchange later; `extra`
        keeps them out of the games gate's daily count */
     gym_exercise:{points:20,limit:1,category:"move",parent:true,extra:true,label:["Gym exercise","健身運動"]},
@@ -50,8 +53,14 @@
   const aliases={reading_nest:"reading",move_break:"movement",creative_build:"creative",weekly_craft:"project",captain_help:"sibling_help",photo_mission:"photo",music_practice:"music",table_helper_breakfast:"table_helper",table_helper_dinner:"table_helper"};
   const blocks={0:["dressing","morning_teeth"],1:["table_helper:breakfast"],2:["learning:1"],3:["reading"],4:["homework"],6:["table_helper:lunch"],8:["creative"],10:["creative"],11:["movement"],12:["room_rescue"],13:["table_helper:dinner"],14:["shower","evening_teeth"],15:["photo"]};
   function parse(raw,fallback){try{return typeof raw==="string"?JSON.parse(raw):raw||fallback;}catch(e){return fallback;}}
-  function amount(kind,settings){
+  /* Papa's own chore from chores_v1, or null */
+  function familyChore(settings,slot){
+    const list=parse(settings&&settings.chores_v1,null), items=list&&Array.isArray(list.items)?list.items:[];
+    return items.find(c=>c&&c.id===slot&&/^c_[a-z0-9_]{1,24}$/.test(slot))||null;
+  }
+  function amount(kind,settings,slot){
     if(!rules[kind])return 0;
+    if(kind==="family_chore"){const c=familyChore(settings,slot),v=c&&Number(c.points);return Number.isInteger(v)&&v>=0&&v<=100&&v%5===0?v:0;}
     const policy=parse(settings&&settings.points_policy_v1,{}), value=policy.awards&&policy.awards[kind];
     return Number.isInteger(value)&&value>=0&&value<=1000&&value%5===0?value:rules[kind].points;
   }
@@ -78,8 +87,9 @@
     if(kind==="table_helper"&&!(["breakfast","lunch","dinner"].includes(slot)))throw new Error("Choose a meal");
     if(kind==="learning"&&!(["1","2"].includes(slot)))throw new Error("Choose an assigned session");
     if(kind==="brain"&&(slot==="default"||!/^[a-z][a-z0-9_]*$/.test(slot)))throw new Error("Choose an assigned Brain exercise");
-    if(!["table_helper","learning","brain"].includes(kind))slot="default";
-    return {kid_id:kid,day:rules[kind].weekly?week(day):day,kind:kind,slot:slot,work_id:String(options.workId||options.work_id||kind+":"+slot),amount:amount(kind,settings),status:"queued",policy_version:1,evidence:Object.assign({},options.evidence||{})};
+    if(kind==="family_chore"&&!/^c_[a-z0-9_]{1,24}$/.test(slot))throw new Error("Choose a family chore");
+    if(!["table_helper","learning","brain","family_chore"].includes(kind))slot="default";
+    return {kid_id:kid,day:rules[kind].weekly?week(day):day,kind:kind,slot:slot,work_id:String(options.workId||options.work_id||kind+":"+slot),amount:amount(kind,settings,slot),status:"queued",policy_version:1,evidence:Object.assign({},options.evidence||{})};
   }
   function goal(kind,kid){
     if(kind==="reading")return kid==="lucien"?["Listen to a picture book and describe a favourite picture.","聽一本圖畫書，說說最喜歡的圖片。"]:kid==="lili"?["Read a short passage and share your favourite part.","讀一小段文章，分享最喜歡的部分。"]:["Read a chapter and share a short summary.","讀一章書，分享簡短摘要。"];
@@ -115,7 +125,7 @@
   }
   /* kinds that never count toward the games gate (bonus tasks) */
   function extraKinds(){return Object.keys(rules).filter(function(k){return rules[k].extra===true;});}
-  const api={VERSION:1,extraKinds:extraKinds,rules:rules,POLICY:rules,amount:amount,block:block,quest:quest,activity:activity,claim:claim,identity:identity,goal:goal,week:week,bonuses:bonuses,migrateCache:migrateCache};
+  const api={VERSION:1,extraKinds:extraKinds,familyChore:familyChore,rules:rules,POLICY:rules,amount:amount,block:block,quest:quest,activity:activity,claim:claim,identity:identity,goal:goal,week:week,bonuses:bonuses,migrateCache:migrateCache};
   if(typeof window!=="undefined")window.SQPoints=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

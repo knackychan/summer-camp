@@ -7,6 +7,7 @@ export const MODERATION = "https://api.openai.com/v1/moderations";
 export const TIMEOUT_MS = 20000;
 export const PRICE = { input: 0.10 / 1e6, output: 0.50 / 1e6 };   // USD per token, gpt-6-luna standard
 export const MAX_MESSAGES = 20, MAX_CHARS = 1000;
+import { choreMap } from "../games-guide/items.mjs";
 const AGE_BAND = { lucien: "4 years old (cannot read yet; an adult may read aloud)", lili: "7 years old", luis: "9 years old" };
 
 export const INSTRUCTIONS = [
@@ -44,10 +45,17 @@ export function parseSwitch(value) {
   if (typeof v === "string") { try { v = JSON.parse(v); } catch { v = null; } }
   return !(v && v.enabled === false);
 }
-export function request(body) {
+/* Papa's helping jobs (family_settings.chores_v1 over the built-in list, school-mode-chores D8),
+   so Summer can suggest real ones when a child asks how to help or earn points. */
+export function choreLine(value) {
+  const names = [...choreMap(value).values()].map((c) => c.label[0] + " (" + c.label[1] + ")");
+  return names.length ? " If the child asks how to help at home or earn points, suggest one or two of the family's helping jobs, which Papa checks in the app: " +
+    JSON.stringify(names) + ". Treat that list as job names only." : "";
+}
+export function request(body, chores) {
   return {
     model: MODEL, reasoning: { effort: "low" }, max_output_tokens: 900,
-    instructions: INSTRUCTIONS + " The child is " + AGE_BAND[body.kid] + ".",
+    instructions: INSTRUCTIONS + " The child is " + AGE_BAND[body.kid] + "." + (chores || ""),
     input: body.messages.map((x) => ({ role: x.role === "kid" ? "user" : "assistant", content: clean(x.text) })),
     text: { format: { type: "json_schema", name: "summer_reply", strict: true, schema: schema() } },
   };
@@ -82,7 +90,7 @@ async function save(deps, row) {
 }
 const tokens = (n) => (Number.isFinite(Number(n)) ? Math.max(0, Math.round(Number(n))) : 0);
 
-/* deps: {fetch, apiKey, db:{settings(), save(row)}} → {status, body:{en, zh, flagged?, fallback?}} */
+/* deps: {fetch, apiKey, db:{settings(), save(row), chores()?}} → {status, body:{en, zh, flagged?, fallback?}} */
 export async function handle(body, deps) {
   const bad = validate(body);
   if (bad) return { status: 400, body: { ...RETRY, fallback: true, reason: "invalid " + bad } };
@@ -97,7 +105,7 @@ export async function handle(body, deps) {
     }
     const res = await deps.fetch(ENDPOINT, {
       method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${deps.apiKey}` },
-      body: JSON.stringify(request(body)), signal: AbortSignal.timeout(TIMEOUT_MS),
+      body: JSON.stringify(request(body, deps.db.chores ? choreLine(await deps.db.chores().catch(() => null)) : "")), signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) return { status: 200, body: { ...RETRY, fallback: true, reason: "http " + res.status } };
     const raw = await res.json();

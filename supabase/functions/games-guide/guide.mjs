@@ -5,7 +5,8 @@
 // Spend caps (design D10) were removed by Papa on 2026-10-09. What still bounds
 // the calls: one decision per kid / Taipei day / slot / reroll, the day and slot
 // must be now, and reroll ≤ games_gate_v1.rerollsPerSlot.
-import { ITEMS, SLOTS } from "./items.mjs";
+import { ITEMS, SLOTS, choreMap } from "./items.mjs";
+export { choreMap };
 
 export const MODEL = "gpt-6-luna";
 export const ENDPOINT = "https://api.openai.com/v1/responses";
@@ -43,8 +44,9 @@ export function parseSettings(value) {
   return { aiEnabled: ai.enabled === true, rerollsPerSlot: Number.isFinite(rerolls) ? Math.max(0, Math.min(10, Math.round(rerolls))) : 3 };
 }
 
-/* Request: {kid, day, slot, reroll, answers:{done, time}, candidates:[3..6 ids], need, points?:{id: n}} */
-export function validate(body, now) {
+/* Request: {kid, day, slot, reroll, answers:{done, time}, candidates:[3..6 ids], need, points?:{id: n}}
+   chores: choreMap() when a candidate is a "chore:" id */
+export function validate(body, now, chores) {
   if (!body || typeof body !== "object") return "body";
   const { kid, day, slot, reroll, answers, candidates, need, points } = body;
   if (!Object.hasOwn(AGE_BAND, kid)) return "kid";
@@ -56,7 +58,7 @@ export function validate(body, now) {
   if (!answers || typeof answers !== "object" || !Object.hasOwn(TIMES, answers.time)) return "answers";
   if (!Array.isArray(answers.done) || !answers.done.every((id) => IDS.includes(id))) return "answers";
   if (!Array.isArray(candidates) || candidates.length < 3 || candidates.length > 6) return "candidates";
-  if (new Set(candidates).size !== candidates.length || !candidates.every((id) => IDS.includes(id))) return "candidates";
+  if (new Set(candidates).size !== candidates.length || !candidates.every((id) => IDS.includes(id) || (chores && chores.has(id)))) return "candidates";
   if (!Number.isFinite(need) || need < 0 || need > 300) return "need";
   if (points != null && (typeof points !== "object" || !Object.values(points).every((n) => Number.isFinite(n) && n >= 0 && n <= 100))) return "points";
   return null;
@@ -78,14 +80,14 @@ export function schema(candidates) {
 }
 
 /* The model sees an age band, the time, the answers and the candidates. No names, no history, no free text. */
-export function request(body, now) {
+export function request(body, now, chores) {
   const t = taipei(now);
   const context = {
     ageBand: AGE_BAND[body.kid], slot: body.slot,
     timeNow: `${String(Math.floor(t.minutes / 60)).padStart(2, "0")}:${String(t.minutes % 60).padStart(2, "0")}`,
     timeAvailable: TIMES[body.answers.time], pointsStillNeeded: body.need,
     candidates: body.candidates.map((id) => {
-      const item = ITEMS.find((i) => i.id === id);
+      const item = ITEMS.find((i) => i.id === id) || (chores && chores.get(id));
       return { id, label: item.label[0], minutes: item.minutes, points: body.points && Number.isFinite(body.points[id]) ? body.points[id] : null };
     }),
   };
@@ -128,10 +130,12 @@ export function readPicks(raw, candidates) {
 const fallback = (reason) => ({ status: 200, body: { fallback: true, reason } });
 const tokens = (n) => (Number.isFinite(Number(n)) ? Math.max(0, Math.round(Number(n))) : 0);
 
-/* deps: {fetch, apiKey, now?, db:{get(key), insert(row), settings()}} → {status, body} */
+/* deps: {fetch, apiKey, now?, db:{get(key), insert(row), settings(), chores()?}} → {status, body} */
 export async function handle(body, deps) {
   const now = deps.now ? deps.now() : new Date();
-  const bad = validate(body, now);
+  const wantsChores = body && Array.isArray(body.candidates) && body.candidates.some((id) => typeof id === "string" && id.startsWith("chore:"));
+  const chores = wantsChores && deps.db.chores ? choreMap(await deps.db.chores()) : null;
+  const bad = validate(body, now, chores);
   if (bad) return { status: 400, body: { fallback: true, reason: "invalid " + bad } };
   const key = { kid_id: body.kid, day: body.day, slot: body.slot, reroll: body.reroll };
   const saved = await deps.db.get(key);
@@ -145,7 +149,7 @@ export async function handle(body, deps) {
     const res = await deps.fetch(ENDPOINT, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${deps.apiKey}` },
-      body: JSON.stringify(request(body, now)),
+      body: JSON.stringify(request(body, now, chores)),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) return fallback("http " + res.status);

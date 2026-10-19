@@ -164,7 +164,9 @@ def run(browser, base, out):
     for label, quest in (("Tidy the garden", "Garden Tidy"), ("Help clean the table", "Table Helper"), ("Tidy the living room", "Living Room Tidy"), ("Tidy the office", "Office Tidy")):
         page.evaluate("showHomeHelpChooser()")
         page.wait_for_selector("#homeHelpOverlay .hhcard")
-        for _ in range(4):
+        # Papa's chores rank with the eight (school-mode-chores D8), so a full
+        # round of rerolls is longer than the eight alone needed
+        for _ in range(9):
             if page.locator(".hhcard:has-text('%s')" % label).count():
                 break
             before = "|".join(shown())

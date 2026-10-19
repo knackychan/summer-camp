@@ -665,6 +665,7 @@ body.music-mode{overflow:hidden}
 .chore--confirmed{border-color:rgba(61,220,151,.7);background:rgba(61,220,151,.16)}
 .chore--confirmed .chore__tag{color:var(--ok)}
 .chore:disabled{cursor:default;opacity:1}
+.chore--picked{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,201,60,.35)}
 .chores--bonus{background:rgba(255,201,60,.07);border-color:rgba(255,201,60,.4)}
 .chore-confirm{text-align:center}
 .chore-confirm__icon{font-size:48px}

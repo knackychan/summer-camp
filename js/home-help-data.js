@@ -118,16 +118,18 @@
      known(kind, quest), claimed(kind,slot), atLimit(kind), amount(kind)}.
      Items the app cannot start yet (points kind or quest missing) stay listed
      as "soon", last. */
+  /* ctx.extra: Papa's chores shaped like ITEMS (school-mode-chores D8), each
+     with its own claim slot; they rank alongside the eight. */
   function available(ctx){
     const out=[];
-    ITEMS.forEach(function(item){
-      let slot="default";
+    ITEMS.concat(ctx.extra||[]).forEach(function(item){
+      let slot=item.slot||"default";
       if(item.meal){slot=mealSlot(ctx.minutes,ctx.meals);if(!slot)return;}
       else if(!inWindow(item,ctx.minutes))return;
       const quest=item.meal?item.quest[slot]:item.quest;
       if(!ctx.known(item.kind,quest)){out.push({item:item,slot:slot,ready:false,points:0,quest:quest});return;}
-      if(ctx.claimed(item.kind,slot)||ctx.atLimit(item.kind))return;
-      out.push({item:item,slot:slot,ready:true,points:ctx.amount(item.kind),quest:quest});
+      if(ctx.claimed(item.kind,slot)||(!item.slot&&ctx.atLimit(item.kind)))return;
+      out.push({item:item,slot:slot,ready:true,points:ctx.amount(item.kind,slot),quest:quest});
     });
     return out.filter(function(x){return x.ready;}).concat(out.filter(function(x){return !x.ready;}));
   }
@@ -174,12 +176,13 @@
   /* The cards for a saved decision: a pick finished since shows ✓ (or "Papa
      will check"), a pick started but not finished is hidden, and the gap is
      filled from the ranking (a display refill, never a new decision).
-     status(id) → "done" | "check" | null. */
-  function view(dec,ranked,status){
+     status(id) → "done" | "check" | null. extra: Papa's chore items. */
+  function view(dec,ranked,status,extra){
+    const all=ITEMS.concat(extra||[]);
     const byId={};ranked.forEach(function(x){byId[x.item.id]=x;});
     const out=[];
     dec.picks.forEach(function(p){
-      const st=status(p.id), item=ITEMS.find(function(it){return it.id===p.id;});
+      const st=status(p.id), item=all.find(function(it){return it.id===p.id;});
       if(st&&item)out.push({id:p.id,item:item,line:p.line,state:st});
       else if(byId[p.id]&&p.id!==dec.started_id)out.push({id:p.id,item:item,entry:byId[p.id],line:p.line,state:"live"});
     });
