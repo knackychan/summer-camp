@@ -26,8 +26,8 @@ test("keyBytes decodes a base64url VAPID key", () => {
 });
 test("row: subscription keys, a readable device label and cleaned preferences", () => {
   const sub = { endpoint: "https://fcm.googleapis.com/fcm/send/x", keys: { p256dh: "pk", auth: "au" } };
-  const r = P.row(sub, ANDROID, { kinds: ["task", "spam"], quiet_start: "25:00", quiet_end: "06:30" });
+  const r = P.row(sub, ANDROID, { kinds: ["task", "ask", "spam"], quiet_start: "25:00", quiet_end: "06:30" });
   assert.deepEqual(r, { endpoint: sub.endpoint, p256dh: "pk", auth: "au", device_label: "Android · Chrome",
-    kinds: ["task"], quiet_start: "21:30", quiet_end: "06:30", enabled: true });
+    kinds: ["task", "ask"], quiet_start: "21:30", quiet_end: "06:30", enabled: true });
   assert.equal(P.deviceLabel(IPHONE), "iPhone · Safari");
 });

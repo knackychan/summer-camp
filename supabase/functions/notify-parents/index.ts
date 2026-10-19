@@ -33,6 +33,7 @@ const deps = {
   db: {
     claim: (id: string) => one("points_claims", id),
     request: (id: string) => one("points_requests", id),
+    ask: (id: string) => one("asks", id),
     async kidName(id: string) {
       const { data } = await db.from("kids").select("name").eq("id", id).maybeSingle();
       return data ? data.name : null;
@@ -47,7 +48,9 @@ const deps = {
     async pendingCount() {
       const a = await db.from("points_claims").select("id", { count: "exact", head: true }).eq("status", "pending");
       const b = await db.from("points_requests").select("id", { count: "exact", head: true }).eq("status", "requested");
-      return (a.count || 0) + (b.count || 0);
+      const c = await db.from("asks").select("id", { count: "exact", head: true }).is("answered_at", null)
+        .not("kind", "like", "reward:%").gte("created_at", new Date(Date.now() - 12 * 3600 * 1000).toISOString());
+      return (a.count || 0) + (b.count || 0) + (c.count || 0);
     },
     async isParent(userId: string) {
       const { data } = await db.from("admins").select("user_id").eq("user_id", userId).maybeSingle();
