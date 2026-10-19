@@ -83,4 +83,7 @@ assert.match(C.balanceText(totals, 'all'), /^Luis: 600 points available.*Lili: 0
 assert.equal(C.balanceText([], 'luis'), 'No points recorded');
 assert.equal(C.resetText({ kids: 1 }), 'Points reset to 0 for 1 kid');
 assert.equal(C.resetText({ kids: 3 }), 'Points reset to 0 for 3 kids');
+assert.equal(C.resetText({ kids: 1, progress: true }), 'Points and progress reset for 1 kid');
+assert.match(C.resetScopeText(true), /Brain Gym, word mastery/);
+assert.match(C.resetScopeText(false), /Brain Gym and learning stay/);
 console.log('admin-cleanup: rows, filters, selection, confirm and result wording OK');

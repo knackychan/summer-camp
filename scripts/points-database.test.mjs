@@ -311,4 +311,24 @@ await assert.rejects(() => run(`delete from stars_ledger;`, 'authenticated'), /c
 assert.deepEqual(await rpc('admin_delete_rows', `'asks',array['${uuid(2)}']`), { deleted: 1, skipped: 0, paths: [] }, 'after a reset the reward ask deletes');
 await run(cleanupSql);
 assert.equal((await wallet('lili')).total_earned, 5, 're-running the clean-up migration changes nothing');
+// Reset all (2026-10-19-admin-reset): points + progress for one kid, stamp for tablets.
+const resetAllSql = readFileSync(new URL('../supabase/migrations/20261019_admin_reset_all.sql', import.meta.url), 'utf8');
+await run(resetAllSql); await run(resetAllSql);
+await assert.rejects(() => rpc('admin_reset_all', `'lili',true`, 'anon', ''), /permission denied/);
+await assert.rejects(() => rpc('admin_reset_all', `'lili',true`, 'authenticated', stranger), /Parent approval/);
+await run(`insert into day_ticks(kid_id,day,block_idx) values('lili','${today}',1),('luis','${today}',1);
+insert into family_settings(key,value) values('braingate_lili','${today}') on conflict(key) do update set value=excluded.value;`);
+const r1 = await rpc('admin_reset_all', `'lili',true`);
+assert.equal(r1.kids, 1); assert.equal(r1.progress, true);
+assert.equal((await wallet('lili')).total_earned, 0);
+assert.deepEqual((await rows(`select kid_id from day_ticks`)).map(r => r.kid_id), ['luis'], "only Lili's ticks go");
+assert.equal((await one(`select value from family_settings where key='braingate_lili'`)).value, '');
+const stamps = JSON.parse((await one(`select value from family_settings where key='points_reset_v1'`)).value);
+assert.deepEqual(Object.keys(stamps), ['lili']); assert.equal(stamps.lili.progress, true);
+await rpc('admin_reset_all', `null,false`);
+const stamps2 = JSON.parse((await one(`select value from family_settings where key='points_reset_v1'`)).value);
+assert.deepEqual(Object.keys(stamps2).sort(), ['lili', 'lucien', 'luis']); assert.equal(stamps2.luis.progress, false);
+assert.equal(await count('day_ticks'), 1, 'points-only reset keeps progress');
+await claim('luis', today, 'morning_teeth');
+await assert.rejects(() => run(`delete from stars_ledger;`, 'authenticated'), /cannot be edited or deleted/, 'ledger guard back on');
 console.log('Points PostgreSQL checks passed: repeat-safe 10× migration, legacy task reservations/queues, server amounts/eligibility, 60 Brain assignment cases, daily/weekly bonuses, caps, redo, project top-up, offline snapshots, RLS, concurrent funds/budget approvals, request snapshots, idempotent refunds, season preservation, games-gate home-help kinds, settings guard, guide decisions and admin clean-up.');
