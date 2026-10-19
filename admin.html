@@ -7,8 +7,8 @@
 <meta name="theme-color" content="#0D1114" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Summer Quest">
-<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="SQ Parents">
+<link rel="manifest" href="admin.webmanifest">
 <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 <title>Summer Quest — Operations</title>
@@ -39,6 +39,11 @@
     <div class="nav__body">
       <div class="nav__group">
         <span class="lbl">Run the day</span>
+        <a href="#check" data-route="check">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="1.7" width="12" height="12.6" rx="1.4"/><path d="m5 8.2 2 2 4-4.4"/></svg>
+          <span>To check</span>
+          <em class="nav__count" id="navCountCheck" data-zero="1">0</em>
+        </a>
         <a href="#today" data-route="today" aria-current="page">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="1.7" y="2.7" width="12.6" height="11.6" rx="1"/><path d="M1.7 6.2h12.6M5.3 1.4v2.6M10.7 1.4v2.6"/></svg>
           <span>Today</span>
@@ -151,6 +156,22 @@
           </label>
           <p class="message message--error" id="loginErr"></p>
           <button class="btn" id="loginBtn">Sign in</button>
+        </section>
+      </section>
+
+      <!-- ============ TO CHECK (parent app on a phone, docs/plans/2026-10-19-parent-app/) ============ -->
+      <section class="view view--check" id="view-check" hidden>
+        <section class="sheet">
+          <div class="sheet__head"><h2>Waiting for you</h2><span class="lbl" id="checkCount"></span></div>
+          <div id="checkList" class="pc-list"></div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head"><h2>Games today</h2><span class="lbl" id="checkGateState"></span></div>
+          <div id="checkKids" class="pc-kids"></div>
+        </section>
+        <section class="sheet">
+          <div class="sheet__head"><h2>Notifications on this device</h2></div>
+          <div id="checkPush" class="pc-push"></div>
         </section>
       </section>
 
@@ -480,12 +501,17 @@
 <script src="js/admin-nav.js"></script>
 <script src="js/vendor/supabase.js"></script>
 <script src="js/admin-cleanup.js"></script>
-<script src="js/admin.js?v=70"></script>
+<script src="js/admin-push.js"></script>
+<script src="js/admin.js?v=71"></script>
 <script type="module" src="js/admin-ai-lab.js?v=3"></script>
 <script type="module" src="js/admin-learning-telemetry.js?v=1"></script>
 <script>
 if("serviceWorker" in navigator){
   addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+  /* A tapped parent notification while admin is already open (sw.js notificationclick). */
+  navigator.serviceWorker.addEventListener("message",e=>{
+    if(e.data&&e.data.type==="sq-open"){try{location.hash=new URL(e.data.url).hash;}catch(err){}}
+  });
 }
 </script>
 </html>

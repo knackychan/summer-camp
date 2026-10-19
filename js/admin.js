@@ -248,6 +248,8 @@
       el.textContent=String(n);
       el.setAttribute("data-zero",n===0?"1":"0");
     }
+    var cc=$("navCountCheck"), m=checkCount();
+    if(cc){cc.textContent=String(m);cc.setAttribute("data-zero",m===0?"1":"0");}
     var dc=$("dockCount");
     if(dc)dc.textContent=String(n);
     var db=$("dockBadge");
@@ -287,7 +289,7 @@
     if(ns){ns.textContent=email||"Signed in";ns.title=email;}
     /* Re-route now that the shell is reachable — go() refused to leave
        view-locked while is-locked was set. */
-    if(window.sqGo)window.sqGo((location.hash||"#today").slice(1));
+    if(window.sqGo)window.sqGo(window.sqHashRoute?window.sqHashRoute():(location.hash||"#today").slice(1));
     today=dayISO(0);
     $("boardDate").textContent=new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"Asia/Taipei"})+" · Asia/Taipei";
     updateNotifyState();
@@ -363,13 +365,13 @@
   var TABLE_ROUTES={
     day_ticks:["today"],
     stars_ledger:["today","stars"],
-    points_claims:["today","stars","quests"],
-    points_requests:["today","stars","quests"],
+    points_claims:["check","today","stars","quests"],
+    points_requests:["check","today","stars","quests"],
     asks:["today","inbox"],
     passes:["today"],
     photos:["inbox"],
     help_claims:["today","inbox"],
-    family_settings:["today","kids","quests","settings","inbox"],
+    family_settings:["check","today","kids","quests","settings","inbox"],
     day_overrides:["today"],
     day_redos:["today"],
     act_done:["reports"],
@@ -389,6 +391,9 @@
   function renderRoute(route){
     currentRoute=route;
     updateNavCounts();
+    if(route==="check"){
+      renderCheck();
+    }
     if(route==="today"||!route){
       renderBand();
       renderQueue();
@@ -539,6 +544,164 @@
       if(!await saveFamilySetting('braingate_'+p[0],p[1]==='open'?today:''))return;
       toast(kidName(p[0])+(p[1]==='open'?': Games open for today':': open-today undone'),true);renderQuestStudio();
     };});
+  }
+  /* ---- To check: the parent app on a phone (docs/plans/2026-10-19-parent-app/ D5) ----
+     What waits for a parent (task claims, reward asks), each kid's Games today
+     with the threshold, and this device's push notifications. */
+  let pushRow=null, pushLoaded=false, pushBusy=false;
+  function checkLabel(pair,fallback){
+    if(Array.isArray(pair)&&pair[0])return {en:String(pair[0]),zh:String(pair[1]||"")};
+    const rule=SQPoints.rules[fallback];
+    if(rule)return {en:rule.label[0],zh:rule.label[1]};
+    return {en:String(fallback||"Task").replace(/[_:]+/g," "),zh:""};
+  }
+  function checkItems(){
+    const claims=(rows.pointClaims||[]).filter(function(c){return c.status==="pending";}).map(function(c){
+      return {type:"claim",id:c.id,kid:c.kid_id,at:c.created_at,label:checkLabel(c.evidence&&c.evidence.label,c.kind),points:"+"+Number(c.amount||0),note:c.evidence&&c.evidence.reason||""};
+    });
+    const asks=(rows.pointRequests||[]).filter(function(r){return r.status==="requested";}).map(function(r){
+      return {type:"request",id:r.id,kid:r.kid_id,at:r.created_at,label:checkLabel(r.label,r.reward_id),points:"−"+Number(r.points||0),note:"Reward ask"};
+    });
+    return claims.concat(asks).sort(function(a,b){return String(b.at).localeCompare(String(a.at));});
+  }
+  function checkCount(){return pointsReady?checkItems().length:0;}
+  function checkTime(iso){
+    if(!iso)return "";
+    const d=new Date(iso), day=d.toLocaleDateString("en-CA",{timeZone:"Asia/Taipei"});
+    const t=d.toLocaleTimeString("en-GB",{timeZone:"Asia/Taipei",hour:"2-digit",minute:"2-digit"});
+    return day===today?t:d.toLocaleDateString("en-GB",{timeZone:"Asia/Taipei",day:"numeric",month:"short"})+" "+t;
+  }
+  function renderCheck(){
+    renderCheckList();
+    renderCheckKids();
+    renderCheckPush();
+    const focus=String(window.sqRouteDetail||"").split("/");
+    if(focus[1]){
+      const el=$("pc-"+focus[0]+"-"+focus[1]);
+      if(el){el.classList.add("is-focus");el.scrollIntoView({block:"center"});window.sqRouteDetail="";}
+    }
+  }
+  function renderCheckList(){
+    const el=$("checkList");if(!el)return;
+    if(!pointsReady){el.innerHTML='<p class="qs-callout">The points database is not deployed yet, so tasks cannot be checked here.</p>';$("checkCount").textContent="";return;}
+    const items=checkItems();
+    $("checkCount").textContent=items.length?items.length+" waiting":"";
+    el.innerHTML=items.length?items.map(function(it){
+      const acts=it.type==="claim"
+        ?'<button class="btn" data-pccheck="claim:'+it.id+':no">Not yet</button><button class="btn btn--primary" data-pccheck="claim:'+it.id+':yes">Confirm</button>'
+        :'<button class="btn" data-pccheck="request:'+it.id+':no">Decline</button><button class="btn btn--primary" data-pccheck="request:'+it.id+':yes">Approve</button>';
+      return '<article class="pc-item k-'+esc(it.kid)+'" id="pc-'+it.type+'-'+esc(it.id)+'">'+
+        '<div class="pc-item__head"><b>'+esc(kidName(it.kid))+'</b><span>'+esc(it.type==="claim"?"Finished a task":"Asked for a reward")+' · '+esc(checkTime(it.at))+'</span></div>'+
+        '<div class="pc-item__what"><span>'+esc(it.label.en)+'</span>'+(it.label.zh?'<span lang="zh-Hant">'+esc(it.label.zh)+'</span>':'')+'</div>'+
+        '<div class="pc-item__pts">'+esc(it.points)+' points</div>'+
+        '<div class="pc-item__acts">'+acts+'</div></article>';
+    }).join(''):'<p class="pc-empty">Nothing is waiting. Finished tasks and reward asks will show up here.</p>';
+    el.querySelectorAll('[data-pccheck]').forEach(function(b){b.onclick=async function(){
+      const p=b.dataset.pccheck.split(':');
+      b.closest('.pc-item').querySelectorAll('button').forEach(function(x){x.disabled=true;});
+      if(p[0]==='claim'){
+        if(await pointsRpc('points_review_claim',{p_id:p[1],p_approve:p[2]==='yes',p_note:p[2]==='yes'?'Parent confirmed':'Parent: not yet'})){toast(p[2]==='yes'?'Confirmed':'Marked not yet',true);await loadAll();}
+        else renderCheckList();
+      }else if(p[2]==='yes')await approveRewardRequest(p[1]);
+      else await denyRewardRequest(p[1]);
+    };});
+  }
+  function gateRaw(fs){
+    let v=fs.games_gate_v1;
+    if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}
+    return v&&typeof v==='object'?v:{};
+  }
+  function renderCheckKids(){
+    const el=$("checkKids");if(!el)return;
+    if(!window.SQGamesGate){el.innerHTML='';return;}
+    const fs=familySettingsMap(), raw=gateRaw(fs), s=SQGamesGate.parseSettings(fs.games_gate_v1);
+    /* The school-days threshold comes from the school mode plan
+       (docs/plans/2026-10-19-school-mode-chores/); shown once that key exists. */
+    const school=raw.schoolThreshold&&typeof raw.schoolThreshold==='object'?raw.schoolThreshold:null;
+    $("checkGateState").textContent=s.enabled?"Gate on":"Gate off";
+    const stepper=function(kid,field,value,label){
+      return '<label class="pc-step"><span>'+esc(label)+'</span><span class="pc-step__row"><button type="button" class="btn btn--icon" data-pcstep="'+kid+':'+field+':-5" aria-label="5 fewer">−</button>'+
+        '<input type="number" inputmode="numeric" min="0" max="300" step="5" data-pcthreshold="'+kid+':'+field+'" value="'+Number(value)+'"><button type="button" class="btn btn--icon" data-pcstep="'+kid+':'+field+':5" aria-label="5 more">+</button></span></label>';
+    };
+    el.innerHTML='<form id="pcGateForm"><label class="pc-switch"><input type="checkbox" id="pcGateOn"'+(s.enabled?' checked':'')+'> Games open only after enough points today</label>'+
+      Object.keys(KIDS).map(function(kid){
+        const pts=SQGamesGate.todayPoints(kid,today,{claims:rows.pointClaimsToday||[]});
+        const st=SQGamesGate.state(kid,{settings:fs.games_gate_v1,mode:window.SQSchool?SQSchool.modeFor(today,fs):'holiday',today:pts,papaOpen:fs["braingate_"+kid]===today});
+        const pct=st.threshold?Math.min(100,Math.round(pts/st.threshold*100)):100;
+        const badge=st.reason==="off"?"No gate":st.reason==="papa"?"Open, you opened it today":st.reason==="reached"?"Open":st.need+" points to go";
+        return '<article class="pc-kid k-'+kid+'"><div class="pc-kid__head"><b>'+esc(kidName(kid))+'</b><span class="pc-kid__state'+(st.open?' is-open':'')+'">'+esc(badge)+'</span></div>'+
+          '<div class="pc-kid__pts">'+pts+' / '+st.threshold+' points today</div><span class="gg-bar"><span style="width:'+pct+'%"></span></span>'+
+          '<div class="pc-kid__set">'+stepper(kid,'threshold',s.threshold[kid],school?'Holiday days':'Points needed')+(school?stepper(kid,'schoolThreshold',school[kid]!=null?school[kid]:s.threshold[kid],'School days'):'')+'</div>'+
+          '<button type="button" class="btn" data-pcopen="'+kid+':'+(st.reason==="papa"?'undo':'open')+'">'+(st.reason==="papa"?'Undo open today':'Open Games today')+'</button></article>';
+      }).join('')+'<button class="btn btn--primary pc-save" type="submit">Save thresholds</button></form>';
+    el.querySelectorAll('[data-pcstep]').forEach(function(b){b.onclick=function(){
+      const p=b.dataset.pcstep.split(':'), input=el.querySelector('[data-pcthreshold="'+p[0]+':'+p[1]+'"]');
+      input.value=Math.max(0,Math.min(300,(Number(input.value)||0)+Number(p[2])));
+    };});
+    el.querySelectorAll('[data-pcopen]').forEach(function(b){b.onclick=async function(){
+      const p=b.dataset.pcopen.split(':');
+      if(!await saveFamilySetting('braingate_'+p[0],p[1]==='open'?today:''))return;
+      toast(kidName(p[0])+(p[1]==='open'?': Games open for today':': open-today undone'),true);renderCheckKids();
+    };});
+    $("pcGateForm").onsubmit=async function(e){
+      e.preventDefault();
+      const fs2=familySettingsMap(), raw2=gateRaw(fs2), next=Object.assign({},raw2,SQGamesGate.parseSettings(fs2.games_gate_v1));
+      let bad=false;
+      el.querySelectorAll('[data-pcthreshold]').forEach(function(i){
+        const p=i.dataset.pcthreshold.split(':'), n=Number(i.value);
+        if(!Number.isInteger(n)||n<0||n>300||n%5!==0){bad=true;return;}
+        if(p[1]==='threshold')next.threshold=Object.assign({},next.threshold,{[p[0]]:n});
+        else next.schoolThreshold=Object.assign({},next.schoolThreshold,{[p[0]]:n});
+      });
+      if(bad){toast('Thresholds are 0 to 300 in steps of 5');return;}
+      next.enabled=$('pcGateOn').checked;
+      if(!await saveFamilySetting('games_gate_v1',JSON.stringify(next)))return;
+      toast(next.enabled?'Saved, games gate on':'Saved, games gate off',true);renderCheckKids();
+    };
+  }
+  function renderCheckPush(){
+    const el=$("checkPush");if(!el||!window.SQAdminPush)return;
+    const state=SQAdminPush.support(SQAdminPush.env());
+    if(state==="off"){el.innerHTML='<p>Push notifications are not set up on the server yet. The steps are in <code>supabase/functions/notify-parents/README.md</code>.</p>';return;}
+    if(state==="install"){el.innerHTML='<p><b>On iPhone or iPad, add this page to the Home Screen first.</b></p><ol class="pc-steps"><li>Open this page in Safari.</li><li>Tap Share, then <b>Add to Home Screen</b>.</li><li>Open <b>SQ Parents</b> from the Home Screen and sign in, then come back here.</li></ol><p class="field__hint">Needs iOS 16.4 or later.</p>';return;}
+    if(state==="unsupported"){el.innerHTML='<p>This browser cannot receive push notifications. Use Chrome on Android, Chrome or Edge on a computer, or the Home Screen app on iPhone.</p>';return;}
+    if(state==="blocked"){el.innerHTML='<p>Notifications are blocked for this site. Allow them in the browser or phone settings, then reload.</p>';return;}
+    if(!pushLoaded){
+      el.innerHTML='<p class="field__hint">Checking this device…</p>';
+      pushLoaded=true;
+      SQAdminPush.load(client).then(function(r){pushRow=r;renderCheckPush();}).catch(function(){pushRow=null;renderCheckPush();});
+      return;
+    }
+    if(!pushRow){
+      el.innerHTML='<p>Get a notification here when a kid finishes a task or asks for a reward, even when this app is closed.</p><button class="btn btn--primary" id="pcPushOn"'+(pushBusy?' disabled':'')+'>Notify this device</button>';
+      $("pcPushOn").onclick=async function(){
+        pushBusy=true;renderCheckPush();
+        try{await SQAdminPush.enable(client,SQAdminPush.PREFS_DEFAULT);pushRow=await SQAdminPush.load(client);toast('Notifications on for this device',true);}
+        catch(e){toast(e&&e.message==="blocked"?'Notifications were not allowed':'Could not turn on notifications: '+(e&&e.message||e));}
+        pushBusy=false;renderCheckPush();
+      };
+      return;
+    }
+    const kinds=pushRow.kinds||[];
+    el.innerHTML='<p>On for <b>'+esc(pushRow.device_label||'this device')+'</b>.</p>'+
+      '<form id="pcPushForm"><label class="pc-switch"><input type="checkbox" data-pckind="task"'+(kinds.indexOf('task')>=0?' checked':'')+'> Finished tasks</label>'+
+      '<label class="pc-switch"><input type="checkbox" data-pckind="reward"'+(kinds.indexOf('reward')>=0?' checked':'')+'> Reward asks</label>'+
+      '<div class="pc-quiet"><span>Quiet hours (Taipei)</span><input type="time" id="pcQuietStart" value="'+esc(pushRow.quiet_start)+'"><span>to</span><input type="time" id="pcQuietEnd" value="'+esc(pushRow.quiet_end)+'"></div>'+
+      '<p class="field__hint">Nothing arrives during quiet hours; one summary comes when they end. Same start and end means no quiet hours.</p>'+
+      '<div class="pc-push__acts"><button class="btn btn--primary" type="submit">Save</button><button class="btn" type="button" id="pcPushTest">Send a test</button><button class="btn btn--quiet" type="button" id="pcPushOff">Turn off here</button></div></form>';
+    $("pcPushForm").onsubmit=async function(e){
+      e.preventDefault();
+      const prefs={kinds:Array.from(el.querySelectorAll('[data-pckind]:checked')).map(function(i){return i.dataset.pckind;}),quiet_start:$("pcQuietStart").value,quiet_end:$("pcQuietEnd").value};
+      try{await SQAdminPush.savePrefs(client,prefs);pushRow=await SQAdminPush.load(client);toast('Notification settings saved',true);}catch(err){toast('Could not save: '+(err&&err.message||err));}
+      renderCheckPush();
+    };
+    $("pcPushTest").onclick=async function(){
+      try{const r=await SQAdminPush.test(client);toast(r.sent?'Test sent':'No device received it. Turn notifications off and on again.',!!r.sent);}catch(err){toast('Test failed: '+(err&&err.message||err));}
+    };
+    $("pcPushOff").onclick=async function(){
+      try{await SQAdminPush.disable(client);pushRow=null;toast('Notifications off for this device',true);}catch(err){toast('Could not turn off: '+(err&&err.message||err));}
+      renderCheckPush();
+    };
   }
   function renderPointsSettings(body){
     const fs=familySettingsMap(),economy=SQQuestConfig.economy(fs);

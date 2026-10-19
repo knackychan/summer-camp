@@ -1,8 +1,9 @@
-const CACHE_NAME = "summer-quest-v205-school-mode";
+const CACHE_NAME = "summer-quest-v206-parent-push";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./admin.html",
+  "./admin.webmanifest",
   "./dist/mobile/packages/core/src/localization.js",
   "./dist/mobile/packages/core/src/interaction-profile.js",
   "./dist/mobile/packages/core/src/tablet-runtime.js",
@@ -122,7 +123,8 @@ const APP_SHELL = [
   "./js/bopomofo.js",
   "./js/admin-nav.js",
   "./js/admin-cleanup.js",
-  "./js/admin.js?v=70",
+  "./js/admin-push.js",
+  "./js/admin.js?v=71",
   "./js/admin-ai-lab.js?v=1",
   "./js/admin-learning-telemetry.js?v=1",
   "./js/sync.js",
@@ -585,4 +587,28 @@ self.addEventListener("fetch", event => {
   });
   event.respondWith(response);
   event.waitUntil(response.then(() => refresh).catch(() => null));
+});
+
+// Parent push notifications (docs/plans/2026-10-19-parent-app/ D4). Sent by the
+// notify-parents Edge Function to parent devices only; tablets never subscribe.
+self.addEventListener("push", event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data ? event.data.text() : "" }; }
+  event.waitUntil(self.registration.showNotification(data.title || "Summer Quest", {
+    body: data.body || "",
+    tag: data.tag || "summer-quest",
+    icon: "./assets/icons/icon-192.png",
+    badge: "./assets/icons/icon-192.png",
+    data: { url: data.url || "admin.html#check" }
+  }));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || "admin.html#check", self.registration.scope).href;
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    const open = list.find(c => new URL(c.url).pathname.endsWith("/admin.html"));
+    if (open) return open.focus().then(c => (c || open).postMessage({ type: "sq-open", url: target })).catch(() => self.clients.openWindow(target));
+    return self.clients.openWindow(target);
+  }));
 });
