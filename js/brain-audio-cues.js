@@ -71,6 +71,15 @@
     "brush-swish": [
       {t:"noise", hz:3000, q:0.6, at:0, dur:0.16, gain:0.045}
     ],
+    /* study timer: a soft wooden clock, high "tick" then lower "tock" */
+    "clock-tick": [
+      {t:"tone", wave:"triangle", f0:1900, f1:1500, at:0, dur:0.04, gain:0.06},
+      {t:"noise", hz:3800, q:2.0, at:0, dur:0.015, gain:0.04}
+    ],
+    "clock-tock": [
+      {t:"tone", wave:"triangle", f0:1250, f1:950, at:0, dur:0.05, gain:0.06},
+      {t:"noise", hz:2400, q:2.0, at:0, dur:0.018, gain:0.04}
+    ],
     "scanner-tick": [
       {t:"tone", wave:"triangle", f0:1000, f1:980, at:0, dur:0.025, gain:0.035}
     ],

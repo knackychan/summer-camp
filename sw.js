@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v208-admin-reset-all";
+const CACHE_NAME = "summer-quest-v209-brain-gym-ergonomics";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -136,6 +136,7 @@ const APP_SHELL = [
   "./js/brain-ui.js",
   "./js/brain/host.js",
   "./js/brain/scenes/index.js",
+  "./js/brain/study-timer.js",
   "./js/brain/scenes/generic.js",
   "./js/brain/scenes/change.js",
   "./js/brain/scenes/recall.js",

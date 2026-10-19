@@ -249,7 +249,7 @@ test("present and destroy cancel an in-flight mismatched flip without changing t
     assert.equal(h.ctx.scheduler.activeCount, 1);
     if (replace) {
       const next = h.scene.present(h.item);
-      assert.equal(h.ctx.scheduler.activeCount, 1, "the new study timer replaces the mismatch timer");
+      assert.equal(h.ctx.scheduler.activeCount, 2, "the new study wait and its countdown replace the mismatch timer");
       h.ctx.scheduler.advance(750);
       assert.equal(h.ctx.mount.querySelectorAll(".brain-memory__back").length, 0, "old flip callback cannot hide the replacement study cards");
       assert.ok(h.ctx.mount.querySelectorAll(".brain-memory__card").every(card => card.disabled));
@@ -417,7 +417,7 @@ test("replacing or destroying memory study/playback cancels work and resolves pe
       h.ctx.scheduler.advance(400);
       const next = h.scene.present(h.item);
       await h.presenting;
-      assert.equal(h.ctx.scheduler.activeCount, 1, "replacement cancels the previous step");
+      assert.equal(h.ctx.scheduler.activeCount, module === memorymatch ? 2 : 1, "replacement cancels the previous step (Memory Match also runs its countdown)");
       h.ctx.scheduler.advance(400);
       if (cancelSchedulerFirst) h.ctx.scheduler.cancelAll();
       h.scene.destroy(); await next; h.scene.destroy();
@@ -440,6 +440,35 @@ test("both memory games retain a working generic choice fallback for every gener
       assert.equal(h.submitted.at(-1), item.answer);
     }
     assert.equal(h.submitted.length, 6);
+    h.cleanup();
+  }
+});
+
+test("memorize phases show a countdown number, tick-tock each second and hide the timer when study ends", async () => {
+  const cases = [
+    { module: memorymatch, gameId: "memorymatch", ms: item => item.prompt.studyMs },
+    { module: generic, gameId: "lowhigh", ms: item => item.prompt.flashMs },
+    { module: generic, gameId: "wordmem", ms: item => item.prompt.studyMs }
+  ];
+  for (const { module, gameId, ms } of cases) {
+    const played = [];
+    const h = setup(module, "tot", gameId);
+    h.ctx.audio.play = cue => played.push(cue);
+    h.ctx.random = core.mulberry32(1);
+    const timer = h.ctx.mount.querySelector('[data-role="study-timer"]');
+    assert.ok(timer, gameId + " has a study timer");
+    const secs = Math.ceil(ms(h.item) / 1000);
+    const num = timer.querySelector(".brain-study-timer__num");
+    assert.equal(num.textContent, String(secs));
+    h.ctx.scheduler.advance(1000);
+    assert.equal(num.textContent, String(secs - 1), gameId + " counts down one per second");
+    /* The spy is installed after present(), which already ticked for the first second. */
+    assert.deepEqual(played, [(secs - 1) % 2 ? "clock-tick" : "clock-tock"], "tick and tock alternate");
+    assert.equal(timer.hidden, false);
+    h.ctx.scheduler.advance(ms(h.item));
+    assert.equal(timer.hidden, true, gameId + " hides the timer once study is over");
+    const ticks = played.filter(cue => /^clock-/.test(cue)).length;
+    assert.equal(ticks, secs - 1, gameId + " ticks once per second");
     h.cleanup();
   }
 });

@@ -376,6 +376,7 @@
     return {
       prompt:{type:"wordlist",words:shown,studyMs:4000,
         countdownSec:4,countdownLabel:WORD_COUNTDOWN_LABEL.slice(),
+        studyText:["Remember these pictures","記住這些圖片"],
         en:"Which one disappeared?",zh:"哪一個不見了？"},
       say:["Remember these pictures","記住這些圖片"],
       answer:missing,

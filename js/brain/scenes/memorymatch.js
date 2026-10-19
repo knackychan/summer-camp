@@ -1,3 +1,5 @@
+import { studyTimerHtml, startStudyTimer } from '../study-timer.js';
+
 /* Pixel symbols also identify Pattern Echo pads without relying on colour. */
 export function memorySymbol(id) {
   var paths = [
@@ -13,8 +15,10 @@ export function memorySymbol(id) {
 
 function create(ctx) {
   var current = null, selected = [], enabled = false, studying = false, revealed = false, pending = false;
-  var cancelStudy = null, resolveStudy = null, cancelMismatch = null, matched = [], mistakes = 0;
+  var cancelStudy = null, resolveStudy = null, cancelMismatch = null, cancelTimer = null, matched = [], mistakes = 0;
   function stopStudy() {
+    if (cancelTimer) cancelTimer();
+    cancelTimer = null;
     if (cancelMismatch) cancelMismatch();
     cancelMismatch = null;
     if (cancelStudy) cancelStudy();
@@ -61,7 +65,7 @@ function create(ctx) {
     var p = item.prompt;
     ctx.mount.innerHTML = '<div class="brain-memory">' +
       '<div class="brain-memory__instruction" role="status">Remember the pictures<span class="zhs">記住圖片的位置</span></div>' +
-      '<div class="brain-memory__target-slot"><div class="brain-memory__target" hidden>' + (p.mode === 'all' ? '<span>Find every matching pair<span class="zhs">找出全部相同的圖片配對</span></span>' : memorySymbol(p.target) + '<span>Find both ' + p.symbols[p.target][0] + ' cards<span class="zhs">找出兩張' + p.symbols[p.target][1] + '卡片</span></span>') + '</div></div>' +
+      '<div class="brain-memory__target-slot">' + studyTimerHtml(p.studyMs) + '<div class="brain-memory__target" hidden>' + (p.mode === 'all' ? '<span>Find every matching pair<span class="zhs">找出全部相同的圖片配對</span></span>' : memorySymbol(p.target) + '<span>Find both ' + p.symbols[p.target][0] + ' cards<span class="zhs">找出兩張' + p.symbols[p.target][1] + '卡片</span></span>') + '</div></div>' +
       '<div class="brain-memory__board" style="--memory-columns:' + (p.cards.length === 6 ? 3 : 4) + '">' +
         p.cards.map(function (_, i) { return '<button type="button" class="brain-key brain-memory__card" data-card="' + i + '"></button>'; }).join('') + '</div>' +
       '<div class="brain-memory__pairs" role="status"></div><div class="brain-corrective" hidden role="status"></div></div>';
@@ -77,10 +81,15 @@ function create(ctx) {
       };
     });
     renderCards();
+    cancelTimer = startStudyTimer(ctx, ctx.mount.querySelector('[data-role="study-timer"]'), p.studyMs);
     return new Promise(function (resolve) {
       resolveStudy = resolve;
       cancelStudy = ctx.scheduler.after(p.studyMs, function () {
         cancelStudy = null; studying = false;
+        if (cancelTimer) cancelTimer();
+        cancelTimer = null;
+        var timer = ctx.mount.querySelector('[data-role="study-timer"]');
+        if (timer) timer.hidden = true;
         ctx.mount.querySelector('.brain-memory__instruction').innerHTML = 'Where were they?<span class="zhs">剛才在哪裡？</span>';
         ctx.mount.querySelector('.brain-memory__target').hidden = false;
         renderCards();
