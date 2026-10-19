@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "supabase": "^2.121.0",
     "three": "0.185.1",
     "typescript": "5.9.3"
   },
