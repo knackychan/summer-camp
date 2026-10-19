@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v209-brain-gym-ergonomics";
+const CACHE_NAME = "summer-quest-v210-ask-push";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -125,7 +125,7 @@ const APP_SHELL = [
   "./js/admin-cleanup.js",
   "./js/admin-push.js",
   "./js/admin-check-core.js",
-  "./js/admin.js?v=73",
+  "./js/admin.js?v=74",
   "./js/admin-ai-lab.js?v=1",
   "./js/admin-learning-telemetry.js?v=1",
   "./js/sync.js",

@@ -888,6 +888,7 @@
     el.innerHTML='<p>On for <b>'+esc(pushRow.device_label||'this device')+'</b>.</p>'+
       '<form id="pcPushForm"><label class="pc-switch"><input type="checkbox" data-pckind="task"'+(kinds.indexOf('task')>=0?' checked':'')+'> Finished tasks</label>'+
       '<label class="pc-switch"><input type="checkbox" data-pckind="reward"'+(kinds.indexOf('reward')>=0?' checked':'')+'> Reward asks</label>'+
+      '<label class="pc-switch"><input type="checkbox" data-pckind="ask"'+(kinds.indexOf('ask')>=0?' checked':'')+'> Messages from the Ask panel (urgent ones also arrive in quiet hours)</label>'+
       '<div class="pc-quiet"><span>Quiet hours (Taipei)</span><input type="time" id="pcQuietStart" value="'+esc(pushRow.quiet_start)+'"><span>to</span><input type="time" id="pcQuietEnd" value="'+esc(pushRow.quiet_end)+'"></div>'+
       '<p class="field__hint">Nothing arrives during quiet hours; one summary comes when they end. Same start and end means no quiet hours.</p>'+
       '<div class="pc-push__acts"><button class="btn btn--primary" type="submit">Save</button><button class="btn" type="button" id="pcPushTest">Send a test</button><button class="btn btn--quiet" type="button" id="pcPushOff">Turn off here</button></div></form>';

@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { encrypt, vapidHeader, makeVapidKeys, b64u, unb64u } from "../supabase/functions/notify-parents/webpush.mjs";
-import { handle, isQuiet, digestDue, label, claimMessage } from "../supabase/functions/notify-parents/notify.mjs";
+import { handle, isQuiet, digestDue, label, claimMessage, askKind } from "../supabase/functions/notify-parents/notify.mjs";
 
 const subtle = globalThis.crypto.subtle;
 const enc = new TextEncoder();
@@ -59,7 +59,7 @@ test("vapid: ES256 JWT for the push service's origin, signed by the public key i
 
 // 2026-10-19 12:00 Taipei = 04:00Z
 const at = (hhmm) => new Date("2026-10-19T" + hhmm + ":00+08:00");
-const SUB = (extra) => ({ id: "s1", user_id: "u1", enabled: true, kids: [], kinds: ["task", "reward"], quiet_start: "21:30", quiet_end: "07:00", last_digest_day: null, ...extra });
+const SUB = (extra) => ({ id: "s1", user_id: "u1", enabled: true, kids: [], kinds: ["task", "reward", "ask"], quiet_start: "21:30", quiet_end: "07:00", last_digest_day: null, ...extra });
 
 test("quiet hours wrap past midnight in Taipei time", () => {
   assert.equal(isQuiet(SUB(), at("12:00")), false);
@@ -88,14 +88,14 @@ test("labels show the kid-facing EN + 中文 name, else a readable kind", () => 
 });
 
 const CLAIM = { id: "11111111-2222-3333-4444-555555555555", kid_id: "lili", kind: "rice_wash", status: "pending", amount: 10, evidence: { label: ["Wash rice", "洗米"] } };
-function setup({ subs = [SUB()], claim = CLAIM, request = null, status = 201, pending = 3, parents = ["u1"] } = {}) {
+function setup({ subs = [SUB()], claim = CLAIM, request = null, ask = null, status = 201, pending = 3, parents = ["u1"] } = {}) {
   const sent = [], log = [];
   const deps = {
     secret: "s3cret",
     now: () => at("12:00"),
     send: async (sub, payload) => { sent.push({ sub: sub.id, payload: JSON.parse(payload) }); return typeof status === "function" ? status(sub) : status; },
     db: {
-      claim: async () => claim, request: async () => request, kidName: async () => "Lili",
+      claim: async () => claim, request: async () => request, ask: async () => ask, kidName: async () => "Lili",
       subscriptions: async () => subs, pendingCount: async () => pending, isParent: async (u) => parents.includes(u),
       markOk: async (id) => log.push(["ok", id]), drop: async (id) => log.push(["drop", id]), markDigest: async (id, d) => log.push(["digest", id, d]),
     },
@@ -170,4 +170,38 @@ test("test push: only a signed-in parent, only to their own devices, even in qui
   const r = await handle({ secret: "", user: "u1", body: { type: "test" } }, deps);
   assert.equal(r.body.sent, 1);
   assert.deepEqual(sent.map((s) => s.sub), ["mine"]);
+});
+
+const ASK = { id: "99999999-2222-3333-4444-555555555555", kid_id: "lili", kind: "question", body: "Can we go to the park after lunch?", audio_path: null, answered_at: null };
+
+test("an Ask panel message is pushed to devices that want messages, with its text", async () => {
+  const { deps, sent } = setup({ subs: [SUB({ id: "a" }), SUB({ id: "b", kinds: ["task", "reward"] })], ask: ASK });
+  const r = await call(deps, { type: "ask", id: ASK.id });
+  assert.equal(r.body.sent, 1);
+  assert.deepEqual(sent.map((s) => s.sub), ["a"]);
+  assert.deepEqual(sent[0].payload, { title: "Lili sent you a message", body: "Can we go to the park after lunch?", tag: "ask-" + ASK.id, url: "admin.html#inbox" });
+});
+
+test("an urgent ask arrives in quiet hours; an ordinary one waits for the digest", async () => {
+  const quiet = [SUB({ id: "q", quiet_start: "11:00", quiet_end: "13:00" })];
+  const a = setup({ subs: quiet, ask: ASK });
+  assert.equal((await call(a.deps, { type: "ask", id: ASK.id })).body.sent, 0);
+  const b = setup({ subs: quiet, ask: { ...ASK, kind: "urgent", body: "" , audio_path: "asks/lili.webm" } });
+  await call(b.deps, { type: "ask", id: ASK.id });
+  assert.equal(b.sent[0].payload.title, "Lili needs you now");
+  assert.equal(b.sent[0].payload.body, "Voice message. Tap to listen.");
+});
+
+test("asks: quests to verify count as tasks, reward asks and answered asks send nothing, long text is cut", async () => {
+  assert.equal(askKind({ kind: "quest_verify:plant_patrol:2026-10-19" }), "task");
+  assert.equal(askKind({ kind: "reward:ice_cream" }), null);
+  assert.equal(askKind({ kind: "canned" }), "ask");
+  const r = setup({ ask: { ...ASK, kind: "reward:x" } });
+  assert.equal((await call(r.deps, { type: "ask", id: ASK.id })).body.sent, 0);
+  const done = setup({ ask: { ...ASK, answered_at: "2026-10-19T04:00:00Z" } });
+  assert.equal((await call(done.deps, { type: "ask", id: ASK.id })).body.sent, 0);
+  const long = setup({ ask: { ...ASK, body: "x".repeat(300) } });
+  await call(long.deps, { type: "ask", id: ASK.id });
+  assert.equal(long.sent[0].payload.body.length, 120);
+  assert.equal(r.sent.length + done.sent.length, 0);
 });

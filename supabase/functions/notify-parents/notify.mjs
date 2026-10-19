@@ -5,12 +5,15 @@
 // Callers:
 //   {type:"claim", id}    database trigger: a kid finished a task that waits for a parent
 //   {type:"request", id}  database trigger: a kid asked for a reward
+//   {type:"ask", id}      database trigger: a kid sent a message from the Ask panel
+//                         (or a quest to verify); urgent asks ignore quiet hours
 //   {type:"digest"}       pg_cron, every 15 minutes: one summary when a device's quiet hours end
 //   {type:"test"}         a signed-in parent: "Send a test" to their own devices
 // The first three carry the shared webhook secret; "test" carries the parent's session.
 export const TZ_OFFSET_MIN = 8 * 60;          // Asia/Taipei, no daylight saving
 export const DIGEST_WINDOW_MIN = 20;          // cron runs every 15; a little slack
-export const KINDS = ["task", "reward"];
+export const KINDS = ["task", "reward", "ask"];
+export const ASK_PREVIEW = 120;
 
 const minutes = (hhmm) => {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ""));
@@ -68,10 +71,32 @@ export function requestMessage(req, kidName) {
     url: "admin.html#check/request/" + req.id,
   };
 }
+/* asks.kind: question | canned | urgent (Ask panel), quest_verify:<quest>:<day>
+   (a finished quest to check), reward:* (already sent as a reward request). */
+export function askKind(row) {
+  const k = String(row && row.kind || "");
+  if (k.startsWith("reward:")) return null;
+  return k.startsWith("quest_verify:") ? "task" : "ask";
+}
+export function askMessage(row, kidName) {
+  const k = String(row.kind || "");
+  let text = String(row.body || "").replace(/\s+/g, " ").trim();
+  if (text.length > ASK_PREVIEW) text = text.slice(0, ASK_PREVIEW - 1) + "…";
+  if (k.startsWith("quest_verify:")) {
+    return { title: kidName + " finished a quest", body: (text || "Ready for your check") + ". Tap to check.", tag: "ask-" + row.id, url: "admin.html#inbox" };
+  }
+  const urgent = k === "urgent";
+  return {
+    title: urgent ? kidName + " needs you now" : kidName + " sent you a message",
+    body: text || (row.audio_path ? "Voice message. Tap to listen." : "Tap to read."),
+    tag: "ask-" + row.id,
+    url: "admin.html#inbox",
+  };
+}
 export function digestMessage(count) {
   return {
     title: count === 1 ? "1 thing is waiting for you" : count + " things are waiting for you",
-    body: "Tasks and reward asks from while you were in quiet hours. Tap to check.",
+    body: "Tasks, reward asks and messages from while you were in quiet hours. Tap to check.",
     tag: "digest",
     url: "admin.html#check",
   };
@@ -116,8 +141,18 @@ export async function handle(req, deps) {
     return { status: 200, body: await deliver(due, digestMessage(count), deps) };
   }
 
-  if (body.type !== "claim" && body.type !== "request") return { status: 400, body: { error: "type" } };
+  if (body.type !== "claim" && body.type !== "request" && body.type !== "ask") return { status: 400, body: { error: "type" } };
   if (typeof body.id !== "string" || !/^[0-9a-f-]{36}$/i.test(body.id)) return { status: 400, body: { error: "id" } };
+  if (body.type === "ask") {
+    const ask = await deps.db.ask(body.id);
+    if (!ask) return { status: 200, body: { sent: 0, reason: "gone" } };
+    const kind = askKind(ask);
+    if (!kind || ask.answered_at) return { status: 200, body: { sent: 0, reason: "not needed" } };
+    const urgent = ask.kind === "urgent";
+    const name = (await deps.db.kidName(ask.kid_id)) || ask.kid_id;
+    const targets = subs.filter((s) => wants(s, kind, ask.kid_id) && (urgent || !isQuiet(s, now)));
+    return { status: 200, body: await deliver(targets, askMessage(ask, name), deps) };
+  }
   const row = body.type === "claim" ? await deps.db.claim(body.id) : await deps.db.request(body.id);
   if (!row) return { status: 200, body: { sent: 0, reason: "gone" } };
   if (body.type === "claim" && row.status !== "pending") return { status: 200, body: { sent: 0, reason: "not pending" } };

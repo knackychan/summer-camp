@@ -3,7 +3,7 @@
    in parent_push_subscriptions, so the notify-parents Edge Function can reach this
    phone or computer with the app closed. Admin chrome is English-only (D23). */
 (function(){
-  const PREFS_DEFAULT={kinds:["task","reward"],quiet_start:"21:30",quiet_end:"07:00"};
+  const PREFS_DEFAULT={kinds:["task","reward","ask"],quiet_start:"21:30",quiet_end:"07:00"};
 
   function keyBytes(b64u){
     const s=String(b64u||"").replace(/-/g,"+").replace(/_/g,"/");

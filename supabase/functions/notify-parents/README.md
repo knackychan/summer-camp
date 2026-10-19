@@ -23,7 +23,8 @@ admin is added to the Home Screen.
    supabase functions deploy notify-parents --no-verify-jwt
    ```
 
-3. Run `supabase/migrations/20261019_parent_push.sql` in the SQL editor, then
+3. Run `supabase/migrations/20261019_parent_push.sql` and then
+   `supabase/migrations/20261019_parent_push_asks.sql` in the SQL editor, then
    tell the database where to call (same webhook secret as above):
 
    ```sql
@@ -50,10 +51,13 @@ Each parent signs in with their own account, and that account must be in
 
 - A task claim turns `pending` → "Lili finished a task · Wash rice 洗米 · +10 points".
 - A reward request turns `requested` → "Luis asked for a reward".
+- A message from the Ask panel → "Lili sent you a message" with its text (urgent:
+  "Lili needs you now", sent even in quiet hours). Needs
+  `supabase/migrations/20261019_parent_push_asks.sql` too.
 - During a device's quiet hours (default 21:30–07:00 Taipei) nothing is sent;
   one summary ("3 things are waiting for you") arrives when they end.
 
-Payloads carry the kid's name, the task name and points only. No photos, no chat.
+Payloads carry the kid's name, the task name and points, and for Ask messages the first 120 characters of the text (encrypted end to end). No photos, no Summer chat.
 
 ## Tests
 
