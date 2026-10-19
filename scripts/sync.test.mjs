@@ -689,4 +689,47 @@ for (const [error, kept] of [[{ message: "TypeError: Failed to fetch", code: "" 
 }
 console.log("ok - guide decisions retry when offline and never block the queue");
 
+// --- Brain Gym times are performance.now() decimals; brain_done.ms and
+// game_stats.value are integer columns, and Postgres refuses "70030.2" (22P02),
+// which stopped Lili's whole queue for ten days. Integers go out, whatever is queued. ---
+{
+  const pending = [
+    { id: "op-brain", type: "brainDone", kid: "lili", day: TODAY, gameId: "memorymatch", score: 1, ms: 70030.20000000019 },
+    { id: "op-stat", type: "stat", kid: "lili", stat: "brain_memorymatch_ms", value: 70030.2 }
+  ];
+  const ls = makeLocalStorage({ "sq:queue": JSON.stringify(pending) });
+  const SyncStore = loadSyncStore(ls);
+  const writes = [];
+  const store = new SyncStore({ progress: seedProgress(), settings: {} }, fakeSupabase({}, writes));
+  await store.flush();
+  const brain = writes.find(w => w.table === "brain_done"), stat = writes.find(w => w.table === "game_stats");
+  assert.equal(brain.payload.ms, 70030, "brain_done.ms sent as an integer");
+  assert.equal(stat.payload.value, 70030, "game_stats.value sent as an integer");
+  assert.equal(store.queue.length, 0, "queue drains");
+}
+console.log("ok - Brain Gym decimals are rounded before the integer columns");
+
+// --- A data exception (22xxx) is dropped, not retried forever ahead of everything else ---
+{
+  const pending = [
+    { id: "op-bad", type: "vocab", kid: "lili", wordKey: "w:cat", box: 1 },
+    { id: "op-act", type: "actDone", kid: "lili", day: TODAY, actIdx: 3 }
+  ];
+  const ls = makeLocalStorage({ "sq:queue": JSON.stringify(pending) });
+  const SyncStore = loadSyncStore(ls);
+  const writes = [];
+  const client = fakeSupabase({}, writes);
+  const from = client.from.bind(client);
+  client.from = table => {
+    const builder = from(table);
+    if (table === "vocab_mastery") builder.upsert = () => Promise.resolve({ error: { code: "22P02", message: "invalid input syntax for type integer" } });
+    return builder;
+  };
+  const store = new SyncStore({ progress: seedProgress(), settings: {} }, client);
+  await store.flush();
+  assert.equal(store.queue.length, 0, "bad op dropped, the rest sent");
+  assert.ok(writes.some(w => w.table === "act_done"), "the op behind it reached the server");
+}
+console.log("ok - a data exception never freezes the queue");
+
 console.log("sync tests passed");

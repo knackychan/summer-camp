@@ -724,6 +724,15 @@
             if(claim){claim.sync_error=e.message||"Points task needs parent review";this.persistPoints();}
             continue;
           }
+          /* A data exception (class 22: bad number, value too long…) fails the
+             same way on every retry. Waiting on it froze everything queued
+             behind it, so drop that one op; points keep their own handling above. */
+          if(/^22/.test(e.code||"")&&!["pointBegin","pointClaim","stars","questVerify"].includes(op.type)){
+            console.warn("sync: dropped an op the server can never store",op.type,e.message);
+            this.queue=this.queue.filter(q=>q.id!==op.id);
+            this.persistQueue(this.queue,!!this.points);
+            continue;
+          }
           break;
         }
       }
@@ -796,7 +805,7 @@
         if(error) throw error;
       }else if(op.type==="stat"){
         const {error}=await this.supabase.from("game_stats").upsert({
-          kid_id:op.kid,stat:op.stat,value:op.value
+          kid_id:op.kid,stat:op.stat,value:Math.round(op.value)||0
         });
         if(error) throw error;
       }else if(op.type==="override"){
@@ -820,7 +829,7 @@
         if(error&&error.code!=="23505") throw error;
       }else if(op.type==="brainDone"){
         const {error}=await this.supabase.from("brain_done").upsert({
-          kid_id:op.kid,day:op.day,game_id:op.gameId,score:op.score||0,ms:op.ms||null
+          kid_id:op.kid,day:op.day,game_id:op.gameId,score:Math.round(op.score)||0,ms:Math.round(op.ms)||null
         },{onConflict:"kid_id,day,game_id"});
         if(error) throw error;
       }else if(op.type==="guideDecision"){
