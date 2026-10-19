@@ -510,6 +510,7 @@ const KIDS = {
 <script src="js/lock-core.js"></script>
 <script src="js/games-gate-core.js"></script>
 <script src="js/home-help-data.js"></script>
+<script src="js/school-data.js"></script>
 <script src="js/pinpad.js"></script>
 <script src="js/papa-tools.js?v=63"></script>
 <script src="js/drills.js"></script>
@@ -2103,10 +2104,20 @@ function pointsGateState(kidId){
   const key="sq:gamesgate:open:"+id;
   let remembered=false;
   try{remembered=localStorage.getItem(key)===day;}catch(e){}
-  const today=SQGamesGate.todayPoints(id,day,{claims:store&&store.pointClaims,queue:store&&store.queue});
-  const st=SQGamesGate.state(id,{settings:fs.games_gate_v1,today:today,papaOpen:isTestMode()||fs["braingate_"+id]===day,remembered:remembered});
+  const today=SQGamesGate.todayPoints(id,day,choreSource());
+  const st=SQGamesGate.state(id,{settings:fs.games_gate_v1,mode:dayMode(),today:today,papaOpen:isTestMode()||fs["braingate_"+id]===day,remembered:remembered});
   if(st.reason==="reached"&&!remembered){try{localStorage.setItem(key,day);}catch(e){}}
   return st;
+}
+/* School mode (docs/plans/2026-10-19-school-mode-chores/ D1): Papa's switch,
+   Monday–Friday only; weekends keep the holiday day. */
+function dayMode(){
+  return window.SQSchool?SQSchool.modeFor(todayStr(),store&&store.familySettings):"holiday";
+}
+/* one EN + 中文 line from SQSchool.TEXT, escaped */
+function sc(key,vars){
+  const p=SQSchool.fill(SQSchool.TEXT[key],vars);
+  return `${escHtml(p[0])} <span class="zhs">${escHtml(p[1])}</span>`;
 }
 /* one EN + 中文 line from SQHomeHelp.TEXT, escaped */
 function hh(key,vars){
@@ -2337,7 +2348,114 @@ function tickBlockDone(i){
   const lo=document.getElementById("lockOverlay");
   if(lo&&!gameLockState().locked)lo.remove();
 }
+/* D4: the home chores card. A tap asks "All done?", then sends a claim Papa
+   checks; pending claims count toward today's gate like any other (games-gate D1). */
+/* today's claims + queue; bonus kinds (D7) never count toward the gate */
+function choreSource(){return {claims:store&&store.pointClaims,queue:store&&store.queue,exclude:window.SQPoints?SQPoints.extraKinds():[]};}
+function findChore(id){return SQSchool.CHORES.concat(SQSchool.BONUS).find(x=>x.id===id);}
+function choresCardHtml(id){
+  if(!window.SQSchool||!window.SQPoints)return "";
+  const day=todayStr(), gate=pointsGateState(id);
+  const pts=SQGamesGate.todayPoints(id,day,choreSource());
+  const head=gate.reason==="off"?sc("choresNoGate",{t:pts}):sc("choresToday",{t:pts,m:gate.threshold});
+  const pct=gate.threshold?Math.min(100,Math.round(pts/gate.threshold*100)):100;
+  return `<section class="chores" id="choresCard">
+    <div class="chores__head"><b>🏡 ${sc("choresTitle")}</b><span>${head}</span></div>
+    ${gate.reason==="off"?"":`<div class="chores__bar"><span style="width:${pct}%"></span></div>`}
+    <p class="chores__sub">${sc("choresSub")}</p>
+    <div class="chores__grid">${choreButtons(id,SQSchool.CHORES)}</div></section>
+  <section class="chores chores--bonus" id="bonusCard">
+    <div class="chores__head"><b>⭐ ${sc("bonusTitle")}</b></div>
+    <p class="chores__sub">${sc("bonusSub")}</p>
+    <div class="chores__grid">${choreButtons(id,SQSchool.BONUS)}</div></section>`;
+}
+function choreButtons(id,list){
+  const day=todayStr();
+  return list.map(c=>{
+      const st=SQSchool.choreState(id,day,c,choreSource());
+      const amt=SQPoints.amount(c.kind,store&&store.familySettings);
+      const tag=st==="confirmed"?`✓ ${sc("confirmed")}`:st==="waiting"?`⏳ ${sc("waiting")}`:st==="denied"?`↻ ${sc("again")}`:`+${amt} points <span class="zhs">${amt} 點</span>`;
+      const busy=st==="confirmed"||st==="waiting";
+      return `<button class="chore chore--${st}" data-chore="${c.id}" ${busy?"disabled":""}>
+        <span class="chore__icon" aria-hidden="true">${c.icon}</span>
+        <span class="chore__label">${escHtml(c.label[0])}<span class="zhs">${escHtml(c.label[1])}</span></span>
+        <span class="chore__tag">${tag}</span></button>`;
+    }).join("");
+}
+function bindChores(root){
+  root.querySelectorAll("[data-chore]").forEach(btn=>btn.onclick=()=>{
+    const c=findChore(btn.dataset.chore);
+    if(c)confirmChore(c);
+  });
+}
+function confirmChore(c){
+  const kid=hubKid, job=c.label;
+  const o=document.createElement("div");
+  o.className="overlay";o.id="choreConfirm";
+  o.innerHTML=`<div class="card chore-confirm">
+    <div class="chore-confirm__icon" aria-hidden="true">${c.icon}</div>
+    <h3>${sc("sureTitle")}</h3>
+    <p>${escHtml(SQSchool.fill(SQSchool.TEXT.sureBody,{job:job[0]})[0])}<span class="zhs">${escHtml(SQSchool.fill(SQSchool.TEXT.sureBody,{job:job[1]})[1])}</span></p>
+    <div class="vrow">
+      <button class="btn" id="choreYes">✓ ${sc("yes")}</button>
+      <button class="btn small" id="choreNo">${sc("notYet")}</button>
+    </div></div>`;
+  document.body.appendChild(o);
+  o.querySelector("#choreNo").onclick=()=>o.remove();
+  o.querySelector("#choreYes").onclick=async()=>{
+    o.remove();
+    const award={kind:c.kind,slot:c.slot||"default"};
+    await submitPointActivity(award,{chore:c.id,label:c.label,completed:true},kid);
+    sGood();
+    if(hubKid===kid&&hubTab==="day")renderMyDay(true);
+    renderHubHead(); refreshLockUI();
+  };
+}
+/* D2: the after-school plan is information only — no ticks, no missions */
+function schoolStatus(row,id){
+  if(row.gate==="brain"){
+    const g=brainGate(id), n=g.doneCount+g.remaining.length;
+    return g.open?`<div class="passline">✓ ${sc("brainDone")}</div>`:`<button class="btn small" data-schoolbrain="1">🧠 ${sc("brainTodo",{d:g.doneCount,n:n})}</button>`;
+  }
+  if(row.gate==="chores"){
+    return `<button class="btn small" data-schooljobs="1">🏡 ${sc("chooseJobs")}</button>`;
+  }
+  if(row.gate==="screen"){
+    const lock=gameLockState(id);
+    if(!lock.locked)return `<div class="passline school-open">🔓 ${sc("screenOpen")}</div>`;
+    if(lock.reason==="brain"){const g=brainGate(id);return `<div class="passline">🧠 ${sc("screenBrain",{d:g.doneCount,n:g.doneCount+g.remaining.length})}</div>`;}
+    return `<div class="passline">🏡 ${sc("screenPoints",{n:pointsGateState(id).need})}</div>`;
+  }
+  return "";
+}
+function renderSchoolDay(skipScroll){
+  const id=hubKid, k=KIDS[id], now=SQ_DAY.nowMins(), cur=SQSchool.currentRow(now);
+  const gate=pointsGateState(id), pts=SQGamesGate.todayPoints(id,todayStr(),choreSource());
+  document.getElementById("dayFill").style.width=(gate.threshold?Math.min(100,pts/gate.threshold*100):100)+"%";
+  document.getElementById("dayTxt").textContent=gate.reason==="off"?pts+" points today 今天 "+pts+" 點":pts+" / "+gate.threshold+" points today 今天 "+pts+" / "+gate.threshold+" 點";
+  const note=store&&store.papaNote?`<div class="notehero">📝 Papa says 爸爸留言\n${escHtml(store.papaNote)}</div>`:"";
+  const hero=SQSchool.fill(SQSchool.TEXT.hero,{name:k.name});
+  const list=document.getElementById("dayList");
+  list.innerHTML=note+`<div class="dayhero school-hero">🎒 ${escHtml(hero[0])}<span class="zhs" style="color:#BFE3CF">${escHtml(hero[1])}</span><span class="school-hero__sub">${sc("heroSub")}</span></div>`+
+    `<div class="school-plan">${SQSchool.SCHEDULE.map((r,i)=>{
+      const state=i===cur?"now":i<cur?"past":"";
+      return `<div class="dayrow routine school-row ${state}" data-schoolrow="${i}">
+        <div class="dtime">${escHtml(r.t)}${state==="now"?`<span class="nowflag">NOW 現在</span>`:""}</div>
+        <div class="dmid">
+          <div class="dt-title">${r.icon} ${escHtml(r.title[0])}<span class="zht">${escHtml(r.title[1])}</span></div>
+          <div class="dt-mis routine">${escHtml(r.txt[id][0])}<span class="zhs">${escHtml(r.txt[id][1])}</span>${schoolStatus(r,id)}</div>
+        </div></div>`;
+    }).join("")}</div>`+choresCardHtml(id);
+  bindChores(list);
+  list.querySelectorAll("[data-schoolbrain]").forEach(b=>b.onclick=()=>{const next=brainGate(id).remaining[0];if(next)SummerQuest.openGame(next);});
+  list.querySelectorAll("[data-schooljobs]").forEach(b=>b.onclick=()=>{const c=document.getElementById("choresCard");if(c)c.scrollIntoView({block:"start",behavior:"smooth"});});
+  if(!skipScroll&&cur>=0)setTimeout(()=>{
+    const row=list.querySelector(`[data-schoolrow="${cur}"]`);
+    if(row)row.scrollIntoView({block:"center",behavior:"smooth"});
+  },80);
+}
 function renderMyDay(skipScroll){
+  if(dayMode()==="school")return renderSchoolDay(skipScroll);
   const d=dayState(hubKid), k=KIDS[hubKid], info=timelineInfo();
   const total=DAY.length, done=coveredCount(hubKid,d);
   document.getElementById("dayFill").style.width=(done/total*100)+"%";
@@ -2382,7 +2500,8 @@ function renderMyDay(skipScroll){
           `}
         </div>
       </div>`;
-    }).join("");
+    }).join("")+choresCardHtml(hubKid);
+  bindChores(document.getElementById("dayList"));
   if(!skipScroll)setTimeout(()=>{
     const row=document.querySelector(`#dayList [data-row="${info.current}"]`);
     if(row&&!row.classList.contains("done")) row.scrollIntoView({block:"center",behavior:"smooth"});
