@@ -32,3 +32,7 @@ Measured on every exercise and tier at 1280×600: Chinese subtitles fell to 10�
 - Circuit Builder: the "Battery 電池" caption sat on the wire; it moved right of the cell.
 - Calculations, Low to High and Math Recall number keys: bigger digits in the same key size. Math Recall's Next button text went from 13 px to 22–30 px.
 - Pattern Echo buttons no longer wrap "Check pattern" onto two lines.
+
+## D6 Sound Match speaks even with TTS switched off
+
+Requested by Papa 2026-10-19: Sound Match is a listening game, so the word must play when the family "tts_enabled" switch (or the kid's voice setting) is off. The Brain host gains `ctx.sayWord`, which `index.html` routes through `say(…, essential)`: it ignores both voice switches and only respects the app's own sound mute. Every other spoken line (instructions, hints, other games) still follows the switch. "No sound? Show word" stays for a muted tablet.

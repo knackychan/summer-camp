@@ -600,6 +600,9 @@ function createRound(opts) {
       submit: submit,
       announce: announce,
       sayPair: function (pair) { if (opts.sayPair) opts.sayPair(pair); },
+      /* A word the exercise is built on (Sound Match): spoken even with the
+         family TTS switch off. Hosts without sayWord fall back to sayPair. */
+      sayWord: function (pair) { if (opts.sayWord) opts.sayWord(pair); else if (opts.sayPair) opts.sayPair(pair); },
       audio: Object.freeze({ play: audioSvc.play, unlock: audioSvc.unlock }),
       motion: motionSvc,
       scheduler: scheduler,

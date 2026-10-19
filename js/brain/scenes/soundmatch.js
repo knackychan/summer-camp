@@ -4,7 +4,7 @@ function create(ctx) {
   function speak() {
     if (!item || !enabled || submitted) return;
     heard = true;
-    ctx.sayPair(item.prompt.speech || (item.prompt.script === 'bpmf' ? ['', item.prompt.word[1]] : [item.prompt.word[0], '']));
+    (ctx.sayWord || ctx.sayPair)(item.prompt.speech || (item.prompt.script === 'bpmf' ? ['', item.prompt.word[1]] : [item.prompt.word[0], '']));
     ctx.motion.emphasize(ctx.mount.querySelector('.brain-sound__listen'));
   }
 

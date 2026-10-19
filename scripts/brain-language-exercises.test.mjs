@@ -279,3 +279,18 @@ test('saved Sound Match items without lesson or mode still play, reveal and grad
   assert.ok(ctx.mount.querySelector('.brain-corrective').textContent.includes('cat'));
   scene.destroy();
 });
+
+test('Sound Match speaks its word through sayWord, which hosts keep on when TTS is switched off', () => {
+  data.setInputScript('abc');
+  const ctx = context('soundmatch');
+  const words = [], pairs = [];
+  ctx.sayWord = pair => words.push(pair);
+  ctx.sayPair = pair => pairs.push(pair);
+  const scene = soundmatch.create(ctx);
+  const item = core.buildRound('soundmatch', 'tot', core.mulberry32(3)).items[0];
+  scene.present(item); scene.setInputEnabled(true);
+  ctx.mount.querySelector('.brain-sound__listen').onclick();
+  assert.equal(words.length, 2, 'spoken on enable and on Listen again');
+  assert.equal(pairs.length, 0, 'the word never goes through the switchable voice');
+  scene.destroy();
+});

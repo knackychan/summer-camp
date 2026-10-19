@@ -926,8 +926,10 @@ const sWin =()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.14,"tr
 function ttsEnabled(){
   return !!(store&&store.familySettings&&store.familySettings.tts_enabled==="1");
 }
-function say(txt,lang,keep){
-  if(!ttsEnabled()||!settings.vocab.tts) return;
+/* essential: the word IS the exercise (Brain Gym Sound Match), so Papa's TTS
+   switch and the voice setting don't silence it; only the app's sound mute does. */
+function say(txt,lang,keep,essential){
+  if(essential?!sound:(!ttsEnabled()||!settings.vocab.tts)) return;
   try{ if(!keep) speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(txt);
     u.lang=lang||"en-US"; u.rate=.85; u.pitch=1.05;
@@ -1433,6 +1435,7 @@ function startBrain(gameId){
     onProgress:function(state){ if(learningDirectorLaunch)return; p.brain.inProgress=state; saveProgress(); },
     say:function(pair){say(pair[0],"en-US");if(pair[1])say(pair[1],"zh-TW",true);},
     sayPair:function(pair){say(pair[0],"en-US");if(pair[1])say(pair[1],"zh-TW",true);},
+    sayWord:function(pair){if(pair[0])say(pair[0],"en-US",false,true);if(pair[1])say(pair[1],"zh-TW",!!pair[0],true);},
     canLearningSupport:function(meta){
       if(isPlacementCalibration||gameId!=="calc"||!window.SQLearningRuntime)return Promise.resolve(false);
       return SQLearningRuntime.canSupportBrainMath({
