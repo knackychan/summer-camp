@@ -54,6 +54,7 @@
     {id:"garlic",kind:"garlic_peel",icon:"🧄",label:["Peel the garlic","剝大蒜"]},
     {id:"bowls",kind:"bowls_tidy",icon:"🥢",label:["Put away your after-school bowl","收好放學後的碗"]},
     {id:"shoes",kind:"shoe_tidy",icon:"👟",label:["Tidy up the shoes","整理鞋子"]},
+    {id:"laundry_in",kind:"laundry_in",icon:"🧺",label:["Bring in the dry laundry","把曬乾的衣服收進來"]},
     {id:"vacuum",kind:"vacuum_floor",icon:"🧹",label:["Vacuum the floor","用吸塵器吸地"]},
     /* added by Papa 2026-10-19: the small water cup on the family prayer altar */
     {id:"altar",kind:"altar_water",icon:"💧",label:["Change the water for the Gohonzon","幫御本尊換水"]}

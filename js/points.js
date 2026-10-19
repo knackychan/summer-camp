@@ -25,6 +25,7 @@
     garden_toys:{points:10,limit:1,category:"help",parent:true,label:["Put away garden toys and bikes","收好花園玩具和腳踏車"]},
     garlic_peel:{points:5,limit:1,category:"help",parent:true,label:["Peel the garlic","剝大蒜"]},
     bowls_tidy:{points:5,limit:1,category:"help",parent:true,label:["Put away the after-school bowl","收好放學後的碗"]},
+    laundry_in:{points:10,limit:1,category:"help",parent:true,label:["Bring in the dry laundry","把曬乾的衣服收進來"]},
     vacuum_floor:{points:10,limit:1,category:"help",parent:true,label:["Vacuum the floor","用吸塵器吸地"]},
     altar_water:{points:5,limit:1,category:"help",parent:true,label:["Change the water for the Gohonzon","幫御本尊換水"]},
     /* bonus tasks (school-mode-chores D7): extra points to exchange later; `extra`

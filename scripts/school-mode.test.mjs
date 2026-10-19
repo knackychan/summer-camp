@@ -42,7 +42,7 @@ test("after-school plan: ordered times, every line bilingual for every kid", () 
 });
 
 test("chores: Papa's list, real points kinds, bilingual, unique identities", () => {
-  assert.equal(School.CHORES.length, 14);
+  assert.equal(School.CHORES.length, 15);
   const ids = new Set(), identities = new Set();
   for (const c of School.CHORES) {
     assert.ok(SQPoints.rules[c.kind], c.id + " resolves to a points kind");
@@ -54,7 +54,7 @@ test("chores: Papa's list, real points kinds, bilingual, unique identities", () 
     assert.ok(!identities.has(key), key + " pays once"); identities.add(key);
     assert.doesNotThrow(() => SQPoints.claim("lili", "2026-10-19", c.kind, { slot: c.slot }));
   }
-  for (const k of ["rice_wash", "dishwasher_load", "dishwasher_unload", "desk_tidy", "bed_prepare", "floor_toys", "garden_toys", "garlic_peel", "bowls_tidy", "altar_water", "vacuum_floor"])
+  for (const k of ["rice_wash", "dishwasher_load", "dishwasher_unload", "desk_tidy", "bed_prepare", "floor_toys", "garden_toys", "garlic_peel", "bowls_tidy", "altar_water", "vacuum_floor", "laundry_in"])
     assert.equal(SQPoints.rules[k].parent, true, k + " is Papa-checked");
   for (const t of Object.keys(School.TEXT)) pair(School.TEXT[t], "TEXT." + t);
 });

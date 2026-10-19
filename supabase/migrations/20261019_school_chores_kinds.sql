@@ -1,8 +1,8 @@
 -- School mode and home chores (docs/plans/2026-10-19-school-mode-chores/ slice 02):
--- eleven chore award kinds Papa listed on 2026-10-19 — rice_wash 5,
+-- twelve chore award kinds Papa listed on 2026-10-19 — rice_wash 5,
 -- dishwasher_load 10, dishwasher_unload 10, desk_tidy 5, bed_prepare 5,
 -- floor_toys 5, garden_toys 10, garlic_peel 5, bowls_tidy 5, altar_water 5
--- (the water cup on the family altar), vacuum_floor 10. All helping, once a day,
+-- (the water cup on the family altar), vacuum_floor 10, laundry_in 10. All helping, once a day,
 -- parent-checked, no parent assignment needed. Plus two bonus kinds (D7):
 -- gym_exercise 20 (movement) and music_bonus 15 (learning), parent-checked;
 -- the tablets leave them out of the games gate's daily count. (Clean the table,
@@ -10,7 +10,7 @@
 --
 -- Run AFTER 20261008_games_gate_kinds.sql, as the database owner. Safe to
 -- re-run: it only re-creates points_policy and points_claim. Both bodies are
--- copied from 20261008_games_gate_kinds.sql; the only changes are the thirteen
+-- copied from 20261008_games_gate_kinds.sql; the only changes are the fourteen
 -- kinds in the rules JSON and in the policy-snapshot default amounts.
 -- Existing grants on the two functions are kept by `create or replace`.
 begin;
@@ -18,7 +18,7 @@ begin;
 create or replace function public.points_policy(p_kind text) returns jsonb language plpgsql stable security definer set search_path=public as $$
 declare rules jsonb; custom jsonb; rule jsonb; amount integer;
 begin
-  rules:='{"morning_teeth":[5,1,"care","self"],"evening_teeth":[5,1,"care","self"],"dressing":[5,1,"care","self"],"shower":[5,1,"care","self"],"table_helper":[5,3,"helping","self"],"plant_patrol":[10,1,"helping","self"],"room_rescue":[10,1,"helping","parent"],"laundry_helper":[15,1,"helping","parent"],"shoe_tidy":[5,1,"helping","self"],"garden_tidy":[15,1,"helping","parent"],"living_tidy":[10,1,"helping","parent"],"office_tidy":[10,1,"helping","parent"],"rice_wash":[5,1,"helping","parent"],"dishwasher_load":[10,1,"helping","parent"],"dishwasher_unload":[10,1,"helping","parent"],"desk_tidy":[5,1,"helping","parent"],"bed_prepare":[5,1,"helping","parent"],"floor_toys":[5,1,"helping","parent"],"garden_toys":[10,1,"helping","parent"],"garlic_peel":[5,1,"helping","parent"],"bowls_tidy":[5,1,"helping","parent"],"altar_water":[5,1,"helping","parent"],"vacuum_floor":[10,1,"helping","parent"],"gym_exercise":[20,1,"movement","parent"],"music_bonus":[15,1,"learning","parent"],"housework":[20,1,"helping","parent"],"reading":[20,1,"learning","parent"],"brain":[10,3,"learning","brain"],"homework":[30,1,"learning","parent"],"learning":[20,2,"learning","parent"],"movement":[20,1,"movement","parent"],"creative":[20,1,"creative","parent"],"photo":[15,1,"creative","parent"],"music":[15,1,"learning","parent"],"sibling_help":[10,1,"helping","parent"],"outing":[20,1,"movement","parent"],"project":[50,1,"creative","parent"],"balanced_day":[20,1,"bonus","server"],"balanced_week":[50,1,"bonus","server"]}';
+  rules:='{"morning_teeth":[5,1,"care","self"],"evening_teeth":[5,1,"care","self"],"dressing":[5,1,"care","self"],"shower":[5,1,"care","self"],"table_helper":[5,3,"helping","self"],"plant_patrol":[10,1,"helping","self"],"room_rescue":[10,1,"helping","parent"],"laundry_helper":[15,1,"helping","parent"],"shoe_tidy":[5,1,"helping","self"],"garden_tidy":[15,1,"helping","parent"],"living_tidy":[10,1,"helping","parent"],"office_tidy":[10,1,"helping","parent"],"rice_wash":[5,1,"helping","parent"],"dishwasher_load":[10,1,"helping","parent"],"dishwasher_unload":[10,1,"helping","parent"],"desk_tidy":[5,1,"helping","parent"],"bed_prepare":[5,1,"helping","parent"],"floor_toys":[5,1,"helping","parent"],"garden_toys":[10,1,"helping","parent"],"garlic_peel":[5,1,"helping","parent"],"bowls_tidy":[5,1,"helping","parent"],"altar_water":[5,1,"helping","parent"],"vacuum_floor":[10,1,"helping","parent"],"laundry_in":[10,1,"helping","parent"],"gym_exercise":[20,1,"movement","parent"],"music_bonus":[15,1,"learning","parent"],"housework":[20,1,"helping","parent"],"reading":[20,1,"learning","parent"],"brain":[10,3,"learning","brain"],"homework":[30,1,"learning","parent"],"learning":[20,2,"learning","parent"],"movement":[20,1,"movement","parent"],"creative":[20,1,"creative","parent"],"photo":[15,1,"creative","parent"],"music":[15,1,"learning","parent"],"sibling_help":[10,1,"helping","parent"],"outing":[20,1,"movement","parent"],"project":[50,1,"creative","parent"],"balanced_day":[20,1,"bonus","server"],"balanced_week":[50,1,"bonus","server"]}';
   rule:=rules->p_kind;
   if rule is null then raise exception 'Unknown award kind: %',p_kind; end if;
   select value::jsonb into custom from family_settings where key='points_policy_v1';
@@ -77,7 +77,7 @@ begin
     if history is null then raise exception 'Unknown award policy revision; reconnect before confirming this attempt'; end if;
     -- Defaults are stable; policy history supplies overrides. Never accept an
     -- arbitrary client amount. A previous policy requires explicit parent review.
-    amount:=coalesce((history->'awards'->>kind)::integer,(case kind when 'morning_teeth' then 5 when 'evening_teeth' then 5 when 'dressing' then 5 when 'shower' then 5 when 'table_helper' then 5 when 'plant_patrol' then 10 when 'room_rescue' then 10 when 'laundry_helper' then 15 when 'shoe_tidy' then 5 when 'garden_tidy' then 15 when 'living_tidy' then 10 when 'office_tidy' then 10 when 'rice_wash' then 5 when 'dishwasher_load' then 10 when 'dishwasher_unload' then 10 when 'desk_tidy' then 5 when 'bed_prepare' then 5 when 'floor_toys' then 5 when 'garden_toys' then 10 when 'garlic_peel' then 5 when 'bowls_tidy' then 5 when 'altar_water' then 5 when 'vacuum_floor' then 10 when 'gym_exercise' then 20 when 'music_bonus' then 15 when 'housework' then 20 when 'reading' then 20 when 'brain' then 10 when 'homework' then 30 when 'learning' then 20 when 'movement' then 20 when 'creative' then 20 when 'photo' then 15 when 'music' then 15 when 'sibling_help' then 10 when 'outing' then 20 when 'project' then 50 end));
+    amount:=coalesce((history->'awards'->>kind)::integer,(case kind when 'morning_teeth' then 5 when 'evening_teeth' then 5 when 'dressing' then 5 when 'shower' then 5 when 'table_helper' then 5 when 'plant_patrol' then 10 when 'room_rescue' then 10 when 'laundry_helper' then 15 when 'shoe_tidy' then 5 when 'garden_tidy' then 15 when 'living_tidy' then 10 when 'office_tidy' then 10 when 'rice_wash' then 5 when 'dishwasher_load' then 10 when 'dishwasher_unload' then 10 when 'desk_tidy' then 5 when 'bed_prepare' then 5 when 'floor_toys' then 5 when 'garden_toys' then 10 when 'garlic_peel' then 5 when 'bowls_tidy' then 5 when 'altar_water' then 5 when 'vacuum_floor' then 10 when 'laundry_in' then 10 when 'gym_exercise' then 20 when 'music_bonus' then 15 when 'housework' then 20 when 'reading' then 20 when 'brain' then 10 when 'homework' then 30 when 'learning' then 20 when 'movement' then 20 when 'creative' then 20 when 'photo' then 15 when 'music' then 15 when 'sibling_help' then 10 when 'outing' then 20 when 'project' then 50 end));
     if (snapshot->>'amount')::integer is distinct from amount then raise exception 'Award amount does not match its policy revision'; end if;
     review_snapshot:=amount<>(rule->>'amount')::integer;
   end if;

@@ -13,7 +13,7 @@
 - A **school mode** next to the holiday mode we already have. On school days the kids come home in the afternoon; the app shows an **after-school schedule** that is **only informative**: an idea of what they can expect, not a list to tick.
 - **Screen time** (Games) after school opens once they have done their **Brain Gym + a few home chores**.
 - **Weekends** look like the holiday day, even with school mode on.
-- Twelve **home chores**: wash rice, fill the dishwasher, empty the dishwasher, clean the table and prepare for dinner, tidy clothes, tidy desk, prepare bed, gather toys from the floor, tidy garden toys and bicycles, peel garlic, tidy their after-school bowls, tidy shoes. Then two more: **change the water for the Gohonzon** (the small water cup on the family prayer altar) and **vacuum the floor**.
+- Twelve **home chores**: wash rice, fill the dishwasher, empty the dishwasher, clean the table and prepare for dinner, tidy clothes, tidy desk, prepare bed, gather toys from the floor, tidy garden toys and bicycles, peel garlic, tidy their after-school bowls, tidy shoes. Then two more: **change the water for the Gohonzon** (the small water cup on the family prayer altar) and **vacuum the floor**; later the same day, **bring in the dry laundry**.
 - Games locked until enough points, kids do the task, **parents get a notification** to check it.
 - The **number of points** to unlock screen time and games is **set in the admin panel**.
 - **Bonus tasks** such as Gym exercise and Music practice: not chores, extra points to exchange later.
@@ -36,7 +36,7 @@
 
 `SQSchool.SCHEDULE`, 8 rows from 16:00 *(default times)*: Home from school (snack, bowl and shoes) → Brain Gym → Help at home → Homework → Screen time → Dinner → Bath + school bag → Story and bed. Per-kid lines in EN + 中文. Rows have **no ticks, no missions, no points, no "late" colour** — the current row is highlighted, past rows are just dimmed. Three rows carry live status: Brain Gym (n / 3, tap to play), Help at home (jumps to the chores), Screen time (open, or what is left: Brain Gym first, then "n more points from home jobs"). The holiday day is unchanged.
 
-### D3 — Fourteen chores, kept as data, each a points kind Papa checks
+### D3 — Fifteen chores, kept as data, each a points kind Papa checks
 
 | Chore | Points kind | Points | Check |
 |---|---|---:|---|
@@ -54,6 +54,7 @@
 | Tidy up the shoes 整理鞋子 | `shoe_tidy` (existing) | 5 | self (existing rule) |
 | Change the water for the Gohonzon 幫御本尊換水 | `altar_water` (new) | 5 | Papa |
 | Vacuum the floor 用吸塵器吸地 | `vacuum_floor` (new) | 10 | Papa |
+| Bring in the dry laundry 把曬乾的衣服收進來 | `laundry_in` (new) | 10 | Papa |
 
 - Reusing the three existing kinds means the same work never pays twice (the holiday Dinner tick and the chore card share one identity).
 - Amounts *(default)* follow the size of the job. Papa changes any of them in Admin → Points → Award amounts, as for every kind.

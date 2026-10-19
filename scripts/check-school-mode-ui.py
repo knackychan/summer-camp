@@ -73,7 +73,7 @@ def run(browser, base, out):
     assert page.locator(".school-row.now").count() == 1
     text = page.locator("#dayList").inner_text()
     assert "Brain Gym first" in text or "先做頭腦體操" in text, "screen time says Brain Gym comes first"
-    assert page.locator("[data-chore]").count() == 16, "14 chores + 2 bonus tasks"
+    assert page.locator("[data-chore]").count() == 17, "15 chores + 2 bonus tasks"
     page.evaluate("document.querySelector('.school-hero').scrollIntoView({block: 'start'})")
     page.wait_for_timeout(200)
     page.screenshot(path=str(out / "school-plan.png"), full_page=False)
