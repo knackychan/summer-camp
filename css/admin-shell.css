@@ -287,6 +287,12 @@
   .top { padding: 0 12px; gap: 10px; }
   .clock { border: 0; padding: 0; font-size: 12px; }
   .clock .clock__d { display: none; }
+  /* Phone header must fit its frame: title yields (ellipsis), the rest keep
+     their size, the zone name and Live word go (the dot still shows state). */
+  .top > * { flex: none; }
+  .top h1 { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .clock .tz, .live #liveLabel { display: none; }
+  .top__acts { margin-left: auto; }
   .hide-sm { display: none !important; }
 }
 
