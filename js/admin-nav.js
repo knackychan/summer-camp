@@ -2,11 +2,26 @@
 (function(){
   const $ = function(id) { return document.getElementById(id); };
 
-  var TITLES = { today:"Today", inbox:"Inbox", stars:"Points", kids:"Kids", quests:"Quests", content:"Content", reports:"Reports", ai:"AI Lab", settings:"Settings" };
+  var TITLES = { check:"To check", today:"Today", inbox:"Inbox", stars:"Points", kids:"Kids", quests:"Quests", content:"Content", reports:"Reports", ai:"AI Lab", settings:"Settings" };
   var lastRoute = "today";
 
+  /* Phones open on To check (docs/plans/2026-10-19-parent-app/): the parent
+     app is this page installed on a phone. Desktop keeps Today. */
+  function defaultRoute() {
+    return window.matchMedia && window.matchMedia("(max-width: 820px)").matches ? "check" : "today";
+  }
+  function hashRoute() {
+    return (location.hash || "#" + defaultRoute()).slice(1);
+  }
+  /* A notification opens #check/claim/<id>: the route is "check", the rest
+     is kept in window.sqRouteDetail for admin.js to scroll to. */
   function go(route) {
-    if (!TITLES[route]) route = "today";
+    var parts = String(route || "").split("/");
+    route = parts[0];
+    /* Kept across the re-route after sign-in; admin.js clears it once used. */
+    if (parts.length > 1) window.sqRouteDetail = parts.slice(1).join("/");
+    else if (route !== lastRoute) window.sqRouteDetail = "";
+    if (!TITLES[route]) route = defaultRoute();
     var locked = $("app").classList.contains("is-locked");
     /* While locked, the only reachable view is the config/login panel. Routing
        past it is what used to leave a signed-out Papa staring at a blank Today. */
@@ -18,7 +33,7 @@
       else a.removeAttribute("aria-current");
     });
     var title = TITLES[route];
-    if (locked && route === "today") title = "Summer Quest Admin";
+    if (locked && (route === "today" || route === "check")) title = "Summer Quest Admin";
     $("routeTitle").textContent = title;
     var sc = $("scroll");
     if (sc) sc.scrollTop = 0;
@@ -44,9 +59,9 @@
   });
 
   addEventListener("hashchange", function() {
-    var route = (location.hash || "#today").slice(1);
-    if (!TITLES[route]) route = "today";
-    if (route !== lastRoute) go(route);
+    var route = hashRoute();
+    if (!TITLES[route.split("/")[0]]) route = defaultRoute();
+    if (route !== lastRoute || route.indexOf("/") > 0) go(route);
   });
 
   /* ---- drawers ---- */
@@ -98,8 +113,8 @@
   /* Back/forward and hand-edited hashes have to route. go() uses replaceState
      for the canonical form, so only a real user navigation lands here. */
   addEventListener("hashchange", function() {
-    var route = (location.hash || "#today").slice(1);
-    if (TITLES[route]) go(route);
+    var route = hashRoute();
+    if (TITLES[route.split("/")[0]]) go(route);
   });
 
   /* ---- live Taipei clock ---- */
@@ -142,7 +157,8 @@
   window.sqGo = go;
   window.sqSetDock = setDock;
   window.sqTitles = TITLES;
+  window.sqHashRoute = hashRoute;
 
   /* Initial route from hash */
-  go((location.hash || "#today").slice(1));
+  go(hashRoute());
 })();

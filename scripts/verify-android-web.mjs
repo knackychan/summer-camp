@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const offlineConfig = "/* Summer Quest local/offline build: no remote provider config. */\n";
 const sourceDirectories = ["assets", "books", "css", "js", "dist/mobile"];
-const sourceEntries = ["index.html", "admin.html", "manifest.webmanifest", "sw.js"];
+const sourceEntries = ["index.html", "admin.html", "manifest.webmanifest", "admin.webmanifest", "sw.js"];
 // Source references and development entries are not runtime dependencies.
 const excluded = new Set(["js/config.js", "js/config.example.js", "js/games/cube.js"]);
 
