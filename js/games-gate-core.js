@@ -6,6 +6,8 @@
   const DEFAULTS={
     enabled:false,
     threshold:{luis:50,lili:50,lucien:40},
+    /* school-mode days (2026-10-19-school-mode-chores D5): Brain Gym 30 + a few chores */
+    schoolThreshold:{luis:50,lili:50,lucien:40},
     rerollsPerSlot:3,
     /* no AI spend caps: removed by Papa 2026-10-09 (design D10 amended) */
     ai:{enabled:false}
@@ -28,6 +30,8 @@
     out.enabled=v.enabled===true;
     const t=v.threshold&&typeof v.threshold==="object"?v.threshold:{};
     KIDS.forEach(function(k){out.threshold[k]=step5(t[k],DEFAULTS.threshold[k]);});
+    const st=v.schoolThreshold&&typeof v.schoolThreshold==="object"?v.schoolThreshold:{};
+    KIDS.forEach(function(k){out.schoolThreshold[k]=step5(st[k],out.threshold[k]);});
     out.rerollsPerSlot=Math.max(0,Math.min(10,Math.round(capNumber(v.rerollsPerSlot,DEFAULTS.rerollsPerSlot))));
     const ai=v.ai&&typeof v.ai==="object"?v.ai:{};
     out.ai.enabled=ai.enabled===true;
@@ -36,12 +40,13 @@
   function identity(c){return [c.kid_id,c.day,c.kind,c.slot||"default"].join(":");}
   /* D1: today's points = today's counted claims + queued claims the tablet has
      not yet seen come back + any manual awards the caller knows of. A queued
-     op and its claim are the same task, so each identity counts once. */
+     op and its claim are the same task, so each identity counts once.
+     src.exclude: kinds that never count (bonus tasks, school-mode-chores D7). */
   function todayPoints(kid,day,src){
     src=src||{};
-    const seen=new Set();let total=0;
+    const seen=new Set(), skip=new Set(src.exclude||[]);let total=0;
     function add(c){
-      if(!c||c.kid_id!==kid||c.day!==day)return;
+      if(!c||c.kid_id!==kid||c.day!==day||skip.has(c.kind))return;
       const key=identity(c);
       if(seen.has(key))return;
       seen.add(key);
@@ -54,10 +59,15 @@
   }
   /* reason: off (gate not in force for this kid) | papa (Papa opened today) |
      reached (threshold met now or earlier today, D2) | points (still closed) */
+  function thresholdFor(kid,s,mode){
+    if(KIDS.indexOf(kid)<0)return 0;
+    return mode==="school"?s.schoolThreshold[kid]:s.threshold[kid];
+  }
+  /* ctx.mode: "school" on a school-mode weekday (SQSchool.modeFor), else holiday */
   function state(kid,ctx){
     ctx=ctx||{};
     const s=parseSettings(ctx.settings);
-    const threshold=KIDS.indexOf(kid)>=0?s.threshold[kid]:0;
+    const threshold=thresholdFor(kid,s,ctx.mode);
     const today=Math.max(0,Number(ctx.today)||0);
     const base={threshold:threshold,today:today,need:Math.max(0,threshold-today)};
     function out(open,reason){return Object.assign({open:open,reason:reason},base);}
@@ -78,7 +88,7 @@
     const best=items.slice().sort(function(x,y){return y.cost-x.cost;})[0];
     return {kind:"can",available:a,reward:best,cost:Number(best.cost),need:0};
   }
-  const api={KIDS:KIDS,DEFAULTS:DEFAULTS,parseSettings:parseSettings,todayPoints:todayPoints,state:state,giftReminder:giftReminder};
+  const api={KIDS:KIDS,DEFAULTS:DEFAULTS,parseSettings:parseSettings,thresholdFor:thresholdFor,todayPoints:todayPoints,state:state,giftReminder:giftReminder};
   if(typeof window!=="undefined")window.SQGamesGate=api;
   if(typeof module!=="undefined"&&module.exports)module.exports=api;
 })();

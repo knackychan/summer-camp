@@ -466,14 +466,18 @@
   function gamesGateHtml(){
     if(!window.SQGamesGate)return '';
     const fs=familySettingsMap(), s=SQGamesGate.parseSettings(fs.games_gate_v1);
+    /* school mode (2026-10-19-school-mode-chores D1, D5) */
+    const setMode=window.SQSchool?SQSchool.parseMode(fs.day_mode_v1).mode:'holiday';
+    const todayMode=window.SQSchool?SQSchool.modeFor(today,fs):'holiday';
     const kids=Object.keys(KIDS).map(function(kid){
-      const pts=SQGamesGate.todayPoints(kid,today,{claims:rows.pointClaimsToday||[]});
-      const st=SQGamesGate.state(kid,{settings:fs.games_gate_v1,today:pts,papaOpen:fs["braingate_"+kid]===today});
+      const pts=SQGamesGate.todayPoints(kid,today,{claims:rows.pointClaimsToday||[],exclude:SQPoints.extraKinds()});
+      const st=SQGamesGate.state(kid,{settings:fs.games_gate_v1,mode:todayMode,today:pts,papaOpen:fs["braingate_"+kid]===today});
       const pct=st.threshold?Math.min(100,Math.round(pts/st.threshold*100)):100;
       const badge=st.reason==="off"?"Gate off":st.reason==="papa"?"Open — Papa today":st.reason==="reached"?"Open":"Waiting · "+st.need+" to go";
-      return '<article class="qs-row gg-row"><div class="qs-title"><b>'+esc(kidName(kid))+' · '+pts+' / '+s.threshold[kid]+' points today</b>'+
+      return '<article class="qs-row gg-row"><div class="qs-title"><b>'+esc(kidName(kid))+' · '+pts+' / '+st.threshold+' points today</b>'+
         '<span class="gg-bar"><span style="width:'+pct+'%"></span></span><span>'+esc(badge)+'</span></div>'+
-        '<div class="qs-actions"><label class="gg-threshold">Threshold <input type="number" min="0" max="300" step="5" data-ggthreshold="'+kid+'" value="'+s.threshold[kid]+'"></label>'+
+        '<div class="qs-actions"><label class="gg-threshold">Holiday <input type="number" min="0" max="300" step="5" data-ggthreshold="'+kid+'" value="'+s.threshold[kid]+'"></label>'+
+        '<label class="gg-threshold">School day <input type="number" min="0" max="300" step="5" data-ggschool="'+kid+'" value="'+s.schoolThreshold[kid]+'"></label>'+
         (st.reason==="papa"?'<button class="btn btn--sm" data-ggopen="'+kid+':undo">Undo open today</button>':'<button class="btn btn--sm" data-ggopen="'+kid+':open">Open Games today</button>')+'</div></article>';
     }).join('');
     const label=function(id){const it=window.SQHomeHelp&&SQHomeHelp.ITEMS.find(function(x){return x.id===id;});return it?it.icon+' '+it.label[0]:id;};
@@ -483,7 +487,9 @@
       return '<article class="qs-row gg-row"><div class="qs-title"><b>'+esc(kidName(d.kid_id))+' · '+esc(d.day)+' '+esc(d.slot)+(d.reroll?' · reroll '+d.reroll:'')+' · '+esc(d.source)+'</b>'+
         '<span>'+esc(picks)+'</span><span>Done: '+esc((a.done||[]).map(label).join(', ')||'—')+' · Time: '+esc(a.time||'—')+(d.cost_usd!=null?' · $'+Number(d.cost_usd).toFixed(5):'')+'</span></div></article>';
     }).join('');
-    return '<h3>Games gate</h3><p>Games open once a child has earned the threshold in points today (Asia/Taipei; points waiting for your check count), then stay open for the day. Brain Gym, Learn, My Day and Ask are never gated. Threshold 0 = no gate for that child. Open Games today also skips the Brain Gym gate for that day.</p>'+
+    const modeHtml=window.SQSchool?'<h3>School or holiday</h3><p>School mode shows the kids an after-school plan (information only, nothing to tick) and uses the school-day thresholds below, Monday to Friday. Saturday and Sunday keep the holiday day. Today: <b>'+(todayMode==='school'?'school day':'holiday day')+'</b>.</p>'+
+      '<form id="dayModeForm" class="gg-mode"><label><input type="radio" name="dayMode" value="holiday"'+(setMode==='holiday'?' checked':'')+'> Holiday</label> <label><input type="radio" name="dayMode" value="school"'+(setMode==='school'?' checked':'')+'> School</label> <button class="btn btn--sm" type="submit">Save mode</button></form>':'';
+    return modeHtml+'<h3>Games gate</h3><p>Games and screen time open once a child has earned the threshold in points today (Asia/Taipei; points waiting for your check count), then stay open for the day. Brain Gym, Learn, My Day and Ask are never gated. Brain Gym comes first, then the points: chores on the kids\' Help at home card wait for your check here and count as soon as they are sent. Holiday and school-day thresholds are separate. Threshold 0 = no gate for that child. Open Games today also skips the Brain Gym gate for that day.</p>'+
       '<form id="gamesGateForm"><label class="gg-enabled"><input type="checkbox" id="ggEnabled"'+(s.enabled?' checked':'')+'> Games gate on</label>'+
       '<div class="qs-list">'+kids+'</div><button class="btn btn--primary" type="submit">Save games gate</button></form>'+
       '<h3>Guide decisions (7 days)</h3><p>What the home-help guide suggested, newest first. ▶ marks the pick the child started. A saved decision is reused for the rest of its time slot.</p>'+
@@ -513,12 +519,21 @@
       if(!await saveFamilySetting('kid_chat_v1',JSON.stringify({enabled:on})))return;
       toast(on?'Summer chat on':'Summer chat off',true);renderQuestStudio();
     };
+    const modeForm=body.querySelector('#dayModeForm');
+    if(modeForm)modeForm.onsubmit=async function(e){
+      e.preventDefault();
+      const picked=modeForm.querySelector('input[name="dayMode"]:checked');
+      const mode=picked&&picked.value==='school'?'school':'holiday';
+      if(!await saveFamilySetting('day_mode_v1',JSON.stringify({mode:mode})))return;
+      toast(mode==='school'?'School mode on':'Holiday mode on',true);renderQuestStudio();
+    };
     const form=body.querySelector('#gamesGateForm');if(!form)return;
     form.onsubmit=async function(e){
       e.preventDefault();
       const fs=familySettingsMap(), s=SQGamesGate.parseSettings(fs.games_gate_v1);
       let bad=false;
       body.querySelectorAll('[data-ggthreshold]').forEach(function(i){const n=Number(i.value);if(!Number.isInteger(n)||n<0||n>300||n%5!==0)bad=true;else s.threshold[i.dataset.ggthreshold]=n;});
+      body.querySelectorAll('[data-ggschool]').forEach(function(i){const n=Number(i.value);if(!Number.isInteger(n)||n<0||n>300||n%5!==0)bad=true;else s.schoolThreshold[i.dataset.ggschool]=n;});
       if(bad){toast('Thresholds are 0 to 300 in steps of 5');return;}
       s.enabled=$('ggEnabled').checked;
       if(!await saveFamilySetting('games_gate_v1',JSON.stringify(s)))return;
@@ -611,7 +626,7 @@
     el.innerHTML='<form id="pcGateForm"><label class="pc-switch"><input type="checkbox" id="pcGateOn"'+(s.enabled?' checked':'')+'> Games open only after enough points today</label>'+
       Object.keys(KIDS).map(function(kid){
         const pts=SQGamesGate.todayPoints(kid,today,{claims:rows.pointClaimsToday||[]});
-        const st=SQGamesGate.state(kid,{settings:fs.games_gate_v1,today:pts,papaOpen:fs["braingate_"+kid]===today});
+        const st=SQGamesGate.state(kid,{settings:fs.games_gate_v1,mode:window.SQSchool?SQSchool.modeFor(today,fs):'holiday',today:pts,papaOpen:fs["braingate_"+kid]===today});
         const pct=st.threshold?Math.min(100,Math.round(pts/st.threshold*100)):100;
         const badge=st.reason==="off"?"No gate":st.reason==="papa"?"Open, you opened it today":st.reason==="reached"?"Open":st.need+" points to go";
         return '<article class="pc-kid k-'+kid+'"><div class="pc-kid__head"><b>'+esc(kidName(kid))+'</b><span class="pc-kid__state'+(st.open?' is-open':'')+'">'+esc(badge)+'</span></div>'+
@@ -2818,8 +2833,10 @@
     return false;
   }
 
+  var notifiedClaims={};
   function notificationFor(table,payload){
     var row=payload.new||{};
+    if(table==="points_claims"&&payload.eventType==="UPDATE"&&!shouldSuppressRealtime(table,row))payload={eventType:"INSERT",new:row};
     if(payload.eventType!=="INSERT"||shouldSuppressRealtime(table,row))return null;
     if(table==="asks"){
       if(String(row.kind||"").indexOf("quest_verify:")===0)return {kind:"quest",title:kidName(row.kid_id)+" finished a quest",body:row.body||"Ready for review"};
@@ -2830,6 +2847,14 @@
     if(table==="photos")return {kind:"photo",title:kidName(row.kid_id)+" uploaded proof",body:blockTitle(row.block_idx)+" "+blockTz(row.block_idx)};
     if(table==="help_claims"&&row.status==="requested")return {kind:"claim",title:kidName(row.captain_id)+" sent a captain claim",body:"Helped "+kidName(row.helped_kid_id)};
     if(table==="day_ticks"&&row.day===today)return {kind:"done",title:kidName(row.kid_id)+" completed a block",body:blockTitle(row.block_idx)+" "+blockTz(row.block_idx)};
+    /* a task sent for Papa's check (school-mode-chores D6); RPC inserts it
+       pending, or turns a started attempt pending, so updates count too */
+    if(table==="points_claims"&&row.status==="pending"&&row.id&&!notifiedClaims[row.id]){
+      notifiedClaims[row.id]=true;
+      var ev=row.evidence||{}, rule=(window.SQPoints&&SQPoints.rules[row.kind])||null;
+      var what=Array.isArray(ev.label)?ev.label[0]:rule?rule.label[0]:row.kind;
+      return {kind:"points",title:kidName(row.kid_id)+" finished a task — please check",body:what+" · "+row.amount+" points"};
+    }
     if(table==="stars_ledger"&&row.source==="app")return {kind:"star",title:kidName(row.kid_id)+" earned "+row.delta+" points",body:row.reason||"App activity"};
     return null;
   }

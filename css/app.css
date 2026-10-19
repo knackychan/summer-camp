@@ -639,6 +639,35 @@ body.music-mode{overflow:hidden}
 .dayrow .dt-mis.routine{color:var(--muted)}
 .timeflag,.screenflag{display:inline-block;margin-top:5px;font-size:12px;font-weight:900;color:var(--gold)}
 .screenflag.locked{color:#B7B9D6}
+/* school mode (2026-10-19-school-mode-chores): an informative plan, never a late list */
+.school-hero__sub{display:block;margin-top:4px;font-size:13px;color:var(--muted)}
+.school-plan{display:flex;flex-direction:column;gap:10px}
+.dayrow.school-row{cursor:default}
+.dayrow.school-row.past{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.04);opacity:.78}
+.school-row .btn.small{margin-top:8px;min-height:44px}
+.school-open{color:var(--ok)}
+/* home chores card */
+.chores{margin-top:14px;background:rgba(61,220,151,.08);border:2px solid rgba(61,220,151,.4);border-radius:18px;padding:14px}
+.chores__head{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between;font-family:'Fredoka';font-size:17px}
+.chores__head span{font-size:14px;font-weight:800;color:var(--gold)}
+.chores__bar{height:12px;border-radius:99px;background:var(--panel);border:1px solid var(--line);overflow:hidden;margin:8px 0 4px}
+.chores__bar span{display:block;height:100%;background:linear-gradient(90deg,var(--ok),var(--gold));border-radius:99px}
+.chores__sub{margin:6px 0 10px;color:var(--muted);font-weight:700;font-size:13px}
+.chores__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.chore{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:118px;padding:10px 8px;border-radius:16px;
+  border:2px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-weight:800;font-size:14px;text-align:center;cursor:pointer}
+.chore:active{transform:translateY(1px)}
+.chore:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.chore__icon{font-size:32px;line-height:1}
+.chore__label{line-height:1.25}
+.chore__tag{margin-top:auto;font-size:12px;color:var(--gold)}
+.chore--waiting{border-color:rgba(255,201,60,.6);background:rgba(255,201,60,.1)}
+.chore--confirmed{border-color:rgba(61,220,151,.7);background:rgba(61,220,151,.16)}
+.chore--confirmed .chore__tag{color:var(--ok)}
+.chore:disabled{cursor:default;opacity:1}
+.chores--bonus{background:rgba(255,201,60,.07);border-color:rgba(255,201,60,.4)}
+.chore-confirm{text-align:center}
+.chore-confirm__icon{font-size:48px}
 .notehero{background:rgba(78,168,255,.16);border:2px solid rgba(78,168,255,.35);border-radius:16px;
   padding:12px 14px;margin-bottom:12px;font-weight:800;color:var(--ink);white-space:pre-wrap;text-align:left}
 .badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:99px;

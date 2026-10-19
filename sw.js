@@ -1,4 +1,4 @@
-const CACHE_NAME = "summer-quest-v205-parent-push";
+const CACHE_NAME = "summer-quest-v206-parent-push";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -116,6 +116,7 @@ const APP_SHELL = [
   "./js/lock-core.js",
   "./js/games-gate-core.js",
   "./js/home-help-data.js",
+  "./js/school-data.js",
   "./js/pinpad.js",
   "./js/papa-tools.js?v=63",
   "./js/drills.js",
