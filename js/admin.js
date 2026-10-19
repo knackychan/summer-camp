@@ -713,7 +713,9 @@
     const el=$("checkBody");
     if(!pointsReady){el.innerHTML='<p class="qs-callout">The points database is not deployed yet, so tasks cannot be checked here.</p>';return;}
     const list=checkItems(), shown=checkKid==="all"?list:list.filter(function(i){return i.kid===checkKid;});
-    const others=rows.asks.filter(function(a){return a.answer===null&&String(a.kind||"").indexOf("reward:")!==0;}).length+
+    /* Same rule as the Inbox (chat-core): archived asks wait for nobody. */
+    const archived=archivedAskIds();
+    const others=rows.asks.filter(function(a){return !a.answered_at&&!archived.has(a.id)&&String(a.kind||"").indexOf("reward:")!==0;}).length+
       rows.passes.filter(function(p){return p.status==="requested";}).length+rows.helpClaims.filter(function(c){return c.status==="requested";}).length;
     const off=navigator.onLine===false;
     el.innerHTML=(off?'<p class="pc-offline">You are offline. This is the last list loaded; Confirm comes back when you are online.</p>':'')+
