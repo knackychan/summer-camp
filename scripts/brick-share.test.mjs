@@ -351,3 +351,43 @@ test("a group id must be a short string", () => {
   assert.equal(checkOp({ type: "add", piece: brick("n", 0.5, 0, { group: "x".repeat(65) }) }, world, rules), "shape");
   assert.equal(checkOp({ type: "add", piece: brick("n", 0.5, 0, { group: "wall-2" }) }, world, rules), null);
 });
+
+test("ground op applies, its inverse restores, bad shapes are refused", async () => {
+  const { PLAIN } = await import("../js/brick-lab/brick-ground.js");
+  const gr = { ...rules, ground: true };
+  const world = worldOf();
+  const ground = { cells: PLAIN };
+  const op = { type: "ground", idx: [0, 5, 4095], to: "gwl" };
+  assert.equal(checkOp(op, world, gr), null);
+  const inverse = applyOp(op, world, ground);
+  assert.equal(ground.cells[0], "g");
+  assert.equal(ground.cells[5], "w");
+  assert.equal(ground.cells[4095], "l");
+  assert.equal(inverse.to, "...");
+  applyOp(inverse, world, ground);
+  assert.equal(ground.cells, PLAIN);
+  for (const bad of [
+    { type: "ground", idx: [0], to: "z" },
+    { type: "ground", idx: [4096], to: "g" },
+    { type: "ground", idx: [-1], to: "g" },
+    { type: "ground", idx: [3, 2], to: "gg" },
+    { type: "ground", idx: [2, 2], to: "gg" },
+    { type: "ground", idx: [1, 2], to: "g" },
+    { type: "ground", idx: [], to: "" },
+    { type: "ground", idx: [1.5], to: "g" },
+  ]) assert.equal(checkOp(bad, world, gr), "shape", JSON.stringify(bad));
+  assert.equal(checkOp(op, world, rules), "shape", "rules.ground missing");
+});
+
+test("sequencer and client both update the ground box", () => {
+  const gr = { ...rules, ground: true };
+  const hostGround = { cells: ".".repeat(4096) };
+  const guestGround = { cells: ".".repeat(4096) };
+  const host = createSequencer({ world: worldOf(), rules: gr, ground: hostGround });
+  const guest = createClient({ world: worldOf(), ground: guestGround });
+  const r = host.submit("maya", { id: "1", op: { type: "ground", idx: [7, 8], to: "dd" } });
+  assert.equal(r.t, "apply");
+  assert.equal(hostGround.cells.slice(6, 10), ".dd.");
+  assert.deepEqual(guest.apply(r).idx, [7, 8]);
+  assert.equal(guestGround.cells, hostGround.cells);
+});

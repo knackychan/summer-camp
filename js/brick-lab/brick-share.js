@@ -13,6 +13,8 @@
      { type: "recolor", id, colorId }
      { type: "pose", id, pose, x, y, z }   (pose null = rest; sitting moves the piece)
      { type: "batch", ops }                (1–BATCH_MAX adds, or removes: all or none)
+     { type: "ground", idx, to }           (painted ground, terrain-painter D8: idx = sorted unique
+                                            cells, to = one letter for each; the inverse carries the old letters)
    An op may carry `expect`: the state the asker last saw. Undo sends the
    inverse op with `expect`; if the piece has changed since (a sibling moved
    it), the op is refused instead of undoing someone else's work.
@@ -27,6 +29,8 @@
 
 export const PROTO = 7; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint · 4: poses (moving-parts M9) · 5: walking minifigs (brick-lab-walk W12) · 6: batch op (brick-lab-assemblies A6) · 7: a piece's assembly `group` */
 export const BATCH_MAX = 64;
+import { CELLS, PLAIN, TERRAINS } from "./brick-ground.js";
+const GROUND_LETTERS = new Set(TERRAINS.map((t) => t.letter));
 const ID_MAX = 64;
 const Y_MAX = 200;
 const FIELDS = ["partId", "colorId", "x", "y", "z", "rotation"];
@@ -99,6 +103,16 @@ export function checkOp(op, world, rules) {
       if (rules.pose && !rules.pose(current.partId, op.pose)) return "catalog";
       return placeOk({ ...current, x: op.x, y: op.y, z: op.z }, rules) ? null : "place";
     }
+    case "ground": {
+      if (rules.ground !== true) return "shape";
+      const { idx, to } = op;
+      if (!Array.isArray(idx) || typeof to !== "string" || !idx.length || idx.length > CELLS || idx.length !== to.length) return "shape";
+      for (let i = 0; i < idx.length; i += 1) {
+        if (!Number.isInteger(idx[i]) || idx[i] < 0 || idx[i] >= CELLS || (i && idx[i] <= idx[i - 1])) return "shape";
+        if (!GROUND_LETTERS.has(to[i])) return "shape";
+      }
+      return null;
+    }
     case "batch": {
       /* All adds or all removes, each id once; every member is checked on
          the world as the members before it leave it: one bad member and
@@ -124,7 +138,7 @@ export function checkOp(op, world, rules) {
 
 /* Apply a checked op to `world`; returns the inverse op, with `expect` set
    to the state this op leaves behind. */
-export function applyOp(op, world) {
+export function applyOp(op, world, ground) {
   switch (op.type) {
     case "add": {
       const piece = copyPiece(op.piece);
@@ -159,9 +173,16 @@ export function applyOp(op, world) {
       back.expect = stateOf(piece);
       return back;
     }
+    case "ground": {
+      const cells = ground.cells.split("");
+      const was = op.idx.map((i) => cells[i]);
+      op.idx.forEach((i, k) => { cells[i] = op.to[k]; });
+      ground.cells = cells.join("");
+      return { type: "ground", idx: op.idx.slice(), to: was.join("") };
+    }
     case "batch":
       /* One inverse for the lot, last member first: Undo is one step. */
-      return { type: "batch", ops: op.ops.map((member) => applyOp(member, world)).reverse() };
+      return { type: "batch", ops: op.ops.map((member) => applyOp(member, world, ground)).reverse() };
     default:
       throw new Error(`unknown op ${op.type}`);
   }
@@ -178,7 +199,7 @@ export function groupIds(world, id) {
 }
 
 /* The host's loop: one request at a time, in arrival order. */
-export function createSequencer({ world, rules, seq = 0 }) {
+export function createSequencer({ world, rules, seq = 0, ground = { cells: PLAIN } }) {
   return {
     get seq() { return seq; },
     /* `req` = { id, op }. Returns { t: "apply", seq, by, req, op, inverse }
@@ -194,7 +215,7 @@ export function createSequencer({ world, rules, seq = 0 }) {
       if (why) return { t: "reject", req: reqId, why };
       const { expect, ...clean } = op;
       if (clean.type === "batch") clean.ops = clean.ops.map(({ expect: seen, ...member }) => member);
-      const inverse = applyOp(clean, world);
+      const inverse = applyOp(clean, world, ground);
       seq += 1;
       return { t: "apply", seq, by: kid, req: reqId, op: clean, inverse };
     },
@@ -203,7 +224,7 @@ export function createSequencer({ world, rules, seq = 0 }) {
 
 /* A guest's side: applies the host's numbered changes in order and asks
    for a fresh copy when one is missing. */
-export function createClient({ world, seq = 0 }) {
+export function createClient({ world, seq = 0, ground = { cells: PLAIN } }) {
   return {
     get seq() { return seq; },
     /* Returns the inverse of the applied op, "stale" (already seen) or
@@ -212,7 +233,7 @@ export function createClient({ world, seq = 0 }) {
       if (message.seq <= seq) return "stale";
       if (message.seq !== seq + 1) return "resync";
       seq = message.seq;
-      return applyOp(message.op, world);
+      return applyOp(message.op, world, ground);
     },
     reset(nextWorld, nextSeq) {
       world.clear();

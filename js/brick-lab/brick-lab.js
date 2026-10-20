@@ -1627,6 +1627,7 @@ export class BrickLabRuntime {
     this.drag = null;
     this.placementArmed = false;
     this.history = [];
+    this.groundBox = { cells: PLAIN_GROUND }; /* the ground string the sequencer owns (terrain painter 04) */
     this.pieces = new Map();
     this.sceneObjects = new Map();
     this.pointerDown = null;
@@ -3204,6 +3205,19 @@ export class BrickLabRuntime {
     this.flushStroke();
     this.stroke = null;
     this.hideBrush();
+    this.commitStroke(stroke);
+  }
+
+  /* One finger stroke = one op = one Undo step (terrain painter D7). */
+  commitStroke(stroke) {
+    const idx = [];
+    let to = "";
+    for (let i = 0; i < stroke.pending.length; i += 1) {
+      if (stroke.pending[i] !== stroke.before[i]) { idx.push(i); to += stroke.pending[i]; }
+    }
+    if (!idx.length) return;
+    this.setGround(stroke.before);
+    this.change({ type: "ground", idx, to });
   }
 
   paintAt(event) {
@@ -3261,6 +3275,7 @@ export class BrickLabRuntime {
 
   clearPlate() {
     this.stopPainting();
+    this.groundBox.cells = PLAIN_GROUND;
     this.setGround(PLAIN_GROUND);
     this.selectPiece(null);
     this.moveId = null;
@@ -3282,8 +3297,9 @@ export class BrickLabRuntime {
     const stale = saved.grid !== GRID_VERSION;
     const pieces = stale ? this.settle(saved.pieces) : saved.pieces;
     pieces.forEach((instance) => this.addPiece(instance, false));
-    this.setGround(cleanGround(saved.ground));
-    this.sequencer = createSequencer({ world: this.pieces, rules: this.shareRules() });
+    this.groundBox.cells = cleanGround(saved.ground);
+    this.setGround(this.groundBox.cells);
+    this.sequencer = createSequencer({ world: this.pieces, rules: this.shareRules(), ground: this.groundBox });
     this.syncRails();
     if (stale && pieces.length) this.scheduleSave();
     this.setMode("build", { quiet: true });
@@ -3603,6 +3619,7 @@ export class BrickLabRuntime {
         const part = getPart(piece.partId);
         return isRail(part) && railClash(part, piece.x, piece.z, piece.rotation, this.railList(this.pieces, ignoreId), ignoreId);
       },
+      ground: true,
       pose: (partId, pose) => pose === null || samePose(cleanPose(getPart(partId), pose), pose),
     };
   }
@@ -3643,6 +3660,7 @@ export class BrickLabRuntime {
   showOp(op) {
     this.freeEndsCache = null;
     if (op.type === "batch") { op.ops.forEach((member) => this.showOp(member)); return; }
+    if (op.type === "ground") { this.setGround(this.groundBox.cells); this.scheduleSave(); return; }
     if (op.type === "add") this.addObject(this.pieces.get(op.piece.id));
     else if (op.type === "remove") {
       const object = this.sceneObjects.get(op.id);
@@ -4967,8 +4985,8 @@ export class BrickLabRuntime {
   }
 
   recordHistory() {
-    const snapshot = Array.from(this.pieces.values()).map((piece) => ({ ...piece }));
-    this.history.push(snapshot);
+    const pieces = Array.from(this.pieces.values()).map((piece) => ({ ...piece }));
+    this.history.push({ pieces, ground: this.groundBox.cells });
     if (this.history.length > 40) this.history.shift();
     this.updateUndoUI();
   }
@@ -4993,15 +5011,18 @@ export class BrickLabRuntime {
       this.walkSync();
       return;
     }
-    const snapshot = this.history.pop();
-    if (!snapshot) return;
+    const popped = this.history.pop();
+    if (!popped) return;
+    const snapshot = Array.isArray(popped) ? { pieces: popped, ground: this.groundBox.cells } : popped;
     this.selectPiece(null);
     this.moveId = null;
     /* An armed assembly stays armed: build it again somewhere else (A5). */
     this.placementArmed = !!this.assembly;
     this.ghost.visible = false;
     for (const id of Array.from(this.pieces.keys())) this.removePiece(id, false);
-    snapshot.forEach((piece) => this.addPiece(piece, false));
+    snapshot.pieces.forEach((piece) => this.addPiece(piece, false));
+    this.groundBox.cells = cleanGround(snapshot.ground);
+    this.setGround(this.groundBox.cells);
     if (this.focus) {
       if (this.pieces.has(this.focus.id)) { this.selectPiece(this.focus.id); this.renderFocus(); } else this.leaveFocus();
     }
@@ -5021,7 +5042,7 @@ export class BrickLabRuntime {
   saveNow(notify = false, thumb) {
     if (!this.worldId) return;
     const pieces = Array.from(this.pieces.values()).map((piece) => ({ ...piece }));
-    this.worlds.save(this.worldId, { mode: this.mode, grid: GRID_VERSION, pieces, assemblies: [] }, thumb);
+    this.worlds.save(this.worldId, { mode: this.mode, grid: GRID_VERSION, pieces, assemblies: [], ground: this.groundBox.cells }, thumb);
     if (notify) this.toast(this.preReader ? "✓ 💾" : say(HINTS.saved));
   }
 

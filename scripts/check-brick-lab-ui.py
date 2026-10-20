@@ -2003,6 +2003,16 @@ def run(args):
                 tp.locator('[data-brush="L"]').click()
                 finger_path([((px - 30, py), (px + 30, py))])
                 check('The eraser puts the plain ground back', tp.evaluate(SNAP)['ground'].count('w') == 0)
+                # Terrain painter 04: one stroke is one Undo step, and the ground is saved with the world.
+                tp.locator('[data-action="undo"]').click()
+                u1 = tp.evaluate(SNAP)['ground']
+                check('Undo takes back the eraser stroke only', u1.count('w') >= 81 and u1.count('p') == 1)
+                tp.locator('[data-action="undo"]').click()
+                u2 = tp.evaluate(SNAP)['ground']
+                check('Undo again takes back the stamp', u2.count('p') == 0 and u2.count('w') >= 81)
+                tp.wait_for_timeout(400)
+                saved = world_build(tp, 'luis', 'ground')
+                check('The ground is saved with the world', saved == u2)
                 for size in ((1280, 800), (800, 1280)):
                     tp.set_viewport_size({'width': size[0], 'height': size[1]})
                     tp.wait_for_timeout(300)
