@@ -19,6 +19,8 @@ import { ASSEMBLY_KEYS, ASSEMBLY_PATTERNS, assemblyParts, blockRotation, buildAs
 import { JOINT_LABELS, REACT_SECONDS, SLIDE_UNIT, SWING_MS, cleanPose, isOpen, isSitting, isSwingPart, jointAngles, jointDef, jointKeys, posesFor, poseShape, reactAngles, samePose, seedOf, sitOffset, sitShift, stopsOf, swingAngles } from "./brick-pose.js";
 import { createLanSession } from "../game-services/lan-session.js";
 import { BrickTogether } from "./brick-together.js";
+import { PLAIN as PLAIN_GROUND, PLAIN_COLOR, cleanGround } from "./brick-ground.js";
+import { createGroundView } from "./brick-ground-view.js";
 
 let THREE = null;
 
@@ -176,6 +178,7 @@ const MARKER_MAX = 240;
 const DEFAULT_COLOR = "red";
 const SELECTION_BLUE = 0x3c8df6;
 const BASEPLATE_GREEN = 0x4b9f4a;
+if (PLAIN_COLOR !== BASEPLATE_GREEN) throw new Error("brick-ground PLAIN_COLOR must equal BASEPLATE_GREEN");
 
 /* Real brick proportions on a 1-unit pitch (D10): stud Ø0.6 × 0.2, a small
    seam between neighbours so stacked bricks show the groove. */
@@ -1890,7 +1893,16 @@ export class BrickLabRuntime {
     if (cheap) {
       this.baseplateStuds = BASE_HALF * 2 * BASE_HALF * 2;
       this.paintStuds();
-    } else this.addBaseplateStuds(plastic);
+    } else this.addBaseplateStuds(this.kit.custom("ground:studs", () => litMaterial(this.kit.cheap, { color: 0xffffff, roughness: 0.55 })));
+    /* Painted ground (terrain painter 02): flat colour plane over the plate,
+       coloured studs on top when the studs are instanced. */
+    this.groundView = createGroundView({
+      THREE,
+      scene: this.scene,
+      material: this.kit.custom("ground:plane", () => litMaterial(this.kit.cheap, { color: 0xffffff, roughness: 0.55 })),
+      studs: this.baseStudMesh || null,
+      invalidate: () => this.invalidate(),
+    });
 
     this.selectionBox = new THREE.Box3();
     this.selectionHelper = new THREE.Box3Helper(this.selectionBox, SELECTION_BLUE);
@@ -2097,8 +2109,9 @@ export class BrickLabRuntime {
     const studs = new THREE.InstancedMesh(studGeometry(this.renderer.sqReducedQuality ? 6 : 10), material, count);
     const matrix = new THREE.Matrix4();
     let i = 0;
-    for (let x = -BASE_HALF + 0.5; x < BASE_HALF; x += 1) {
-      for (let z = -BASE_HALF + 0.5; z < BASE_HALF; z += 1) {
+    /* z outer, x inner: instance i is ground cell i (iz * 64 + ix). */
+    for (let z = -BASE_HALF + 0.5; z < BASE_HALF; z += 1) {
+      for (let x = -BASE_HALF + 0.5; x < BASE_HALF; x += 1) {
         studs.setMatrixAt(i, matrix.makeTranslation(x, 0, z));
         i += 1;
       }
@@ -3024,7 +3037,13 @@ export class BrickLabRuntime {
     return this.leaveWorld();
   }
 
+  /* Terrain painter 02: draw a ground string (diffed, on-demand redraw). */
+  setGround(next) {
+    if (this.groundView) this.groundView.set(next);
+  }
+
   clearPlate() {
+    this.setGround(PLAIN_GROUND);
     this.selectPiece(null);
     this.moveId = null;
     this.snap = null;
@@ -3045,6 +3064,7 @@ export class BrickLabRuntime {
     const stale = saved.grid !== GRID_VERSION;
     const pieces = stale ? this.settle(saved.pieces) : saved.pieces;
     pieces.forEach((instance) => this.addPiece(instance, false));
+    this.setGround(cleanGround(saved.ground));
     this.sequencer = createSequencer({ world: this.pieces, rules: this.shareRules() });
     this.syncRails();
     if (stale && pieces.length) this.scheduleSave();
@@ -4887,6 +4907,7 @@ export class BrickLabRuntime {
       menu: !!(this.menuEl && !this.menuEl.hidden),
       lan: this.lan.available,
       together: this.together.snapshot(),
+      ground: this.groundView ? this.groundView.cells : null,
       selectionColor: this.selectionHelper ? `#${this.selectionHelper.material.color.getHexString()}` : null,
       world: this.worldId,
       worlds: this.worlds.list().map((w) => ({ id: w.id, name: w.name, count: w.count, thumb: !!w.thumb })),
@@ -5013,6 +5034,7 @@ export class BrickLabRuntime {
     if (this.onResume) window.removeEventListener("summerquest:native-resume", this.onResume);
     if (this.onInput) INPUT_EVENTS.forEach((type) => this.root.removeEventListener(type, this.onInput, { capture: true }));
     if (this.cam) this.cam.dispose();
+    if (this.groundView) this.groundView.dispose();
     if (this.scene) disposeTree(this.scene, true);
     if (this.kit) this.kit.dispose();
     if (this.renderer) this.renderer.dispose();
