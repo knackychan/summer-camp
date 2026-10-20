@@ -464,7 +464,7 @@ def catalog_checks(page, snap, check, out):
     pieces0 = len(snap()['pieces'])
     box = page.locator('.sqbl-stage canvas').bounding_box()
     check('Favourites first, then twenty categories in build order', page.evaluate(
-          "Array.from(document.querySelectorAll('.sqbl-category'), e => e.dataset.category)") == ['favorites'] + list(CATEGORIES))
+          "Array.from(document.querySelectorAll('.sqbl-category[data-category]'), e => e.dataset.category)") == ['favorites'] + list(CATEGORIES))
     slow, bare, seen = [], [], set()
     for cat in CATEGORIES:
         pick(page, cat)
@@ -1676,11 +1676,11 @@ def run(args):
                 cam_buttons = [page.locator(f'.sqbl-cam [data-cam="{b}"]').bounding_box() for b in ('left', 'right', 'in', 'out')]
                 check('Turn and zoom buttons are tablet-sized', all(b and b['width'] >= 56 and b['height'] >= 56 for b in cam_buttons))
                 page.locator('.sqbl-cam [data-cam="right"]').dispatch_event('pointerdown')
-                page.wait_for_timeout(500)
+                page.wait_for_timeout(1500)
                 v1 = snap()['view']
                 check(f'↻ turns the view 45° {v1["yaw"] - v0["yaw"]:.4f}', abs(v1['yaw'] - v0['yaw'] - 0.785398) < 1e-3)
                 page.locator('.sqbl-cam [data-cam="left"]').dispatch_event('pointerdown')
-                page.wait_for_timeout(500)
+                page.wait_for_timeout(1500)
                 check('↺ turns it back', abs(snap()['view']['yaw'] - v0['yaw']) < 1e-3)
                 for _ in range(3):
                     page.locator('.sqbl-cam [data-cam="in"]').dispatch_event('pointerdown')
@@ -1965,6 +1965,55 @@ def run(args):
                 check(f'Two fingers twisting turn the view {d2["yaw"] - d1["yaw"]:.3f}', abs(d2['yaw'] - d1['yaw']) > 0.5)
                 check('Neither slide nor pinch placed or selected anything', len(tp.evaluate(SNAP)['pieces']) == n_touch)
                 tp.screenshot(path=str(out / 'camera-touch.png'))
+
+                # Terrain painter 03: the Ground tool. One finger paints, two never do, a tap stamps once.
+                tp.locator('[data-action="home-view"]').dispatch_event('pointerdown')  # centre the view on the plate
+                tp.wait_for_timeout(1200)
+                tp.locator('[data-ground-open]').click()
+                tp.wait_for_timeout(200)
+                check('Ground panel opens in the rail', tp.evaluate(SNAP)['painting'] is not None and tp.evaluate(SNAP)['tray']['view'] == 'ground')
+                tp.locator('[data-terrain="water"]').click()
+                tp.locator('[data-brush="L"]').click()
+                sw = [tp.locator(sel).bounding_box() for sel in ('[data-terrain="water"]', '[data-terrain="plain"]', '[data-brush="S"]', '[data-action="ground-done"]')]
+                check('Ground targets are tablet-sized', all(b and b['width'] >= 56 and b['height'] >= 56 for b in sw))
+                g0 = tp.evaluate(SNAP)['ground']
+                px, py = cb['x'] + cb['width'] * 0.5, cb['y'] + cb['height'] * 0.5
+                finger_path([((px - 30, py), (px + 30, py))])
+                s_g = tp.evaluate(SNAP)
+                c0 = tp.evaluate(ground_under, [px - 30, py])
+                ci = int((c0['z'] + 32) // 1) * 64 + int((c0['x'] + 32) // 1)
+                check(f'One finger paints water in a disc {s_g["ground"].count("w")}', s_g['ground'].count('w') >= 81 and s_g['ground'][ci] == 'w'
+                      and g0 == '.' * 4096 and len(s_g['pieces']) == n_touch)
+                tp.screenshot(path=str(out / 'ground-painted.png'))
+                tp.locator('[data-terrain="lava"]').click()
+                before = tp.evaluate(SNAP)
+                finger_path([((px - 40, py + 60), (px - 140, py + 60)), ((px + 40, py + 60), (px + 140, py + 60))])
+                after = tp.evaluate(SNAP)
+                check('Two fingers never paint and still move the camera', after['ground'] == before['ground'] and after['view']['distance'] != before['view']['distance'])
+                tp.locator('[data-terrain="stone"]').click()
+                tp.locator('[data-brush="S"]').click()
+                px2, py2 = cb['x'] + cb['width'] * 0.5, cb['y'] + cb['height'] * 0.35
+                cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': touches([(px2, py2)])})
+                cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+                tp.wait_for_timeout(150)
+                check('A tap stamps one cell', tp.evaluate(SNAP)['ground'].count('p') == 1)
+                tp.locator('[data-action="home-view"]').dispatch_event('pointerdown')  # same view as the first stroke
+                tp.wait_for_timeout(1200)
+                tp.locator('[data-terrain="plain"]').click()
+                tp.locator('[data-brush="L"]').click()
+                finger_path([((px - 30, py), (px + 30, py))])
+                check('The eraser puts the plain ground back', tp.evaluate(SNAP)['ground'].count('w') == 0)
+                for size in ((1280, 800), (800, 1280)):
+                    tp.set_viewport_size({'width': size[0], 'height': size[1]})
+                    tp.wait_for_timeout(300)
+                    fit = tp.evaluate("() => { const r = document.querySelector('.sqbl-left-rail').getBoundingClientRect(), p = document.querySelector('[data-ground-panel]'); const d = document.querySelector('[data-action=ground-done]').getBoundingClientRect(); return { fits: r.right <= innerWidth && p.scrollWidth <= p.clientWidth + 1, done: d.bottom <= innerHeight && d.top >= 0 }; }")
+                    check(f'Ground panel fits at {size[0]}x{size[1]}', fit['fits'] and fit['done'])
+                    tp.screenshot(path=str(out / f'ground-{size[0]}x{size[1]}.png'))
+                tp.set_viewport_size({'width': 800, 'height': 480})
+                tp.wait_for_timeout(300)
+                tp.locator('[data-action="ground-done"]').click()
+                done = tp.evaluate(SNAP)
+                check('Done painting leaves the tool', done['painting'] is None and done['tray']['view'] == 'categories')
 
                 lst = tp.locator('.sqbl-category-list')
                 lb = lst.bounding_box()

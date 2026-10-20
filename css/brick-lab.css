@@ -324,3 +324,23 @@
 .sqbl-walk-view b{font-size:26px;line-height:1}
 @media(max-width:760px){.sqbl-walk-pad{grid-template-columns:repeat(2,76px);gap:8px}.sqbl-walk-pad button{width:76px;height:76px}.sqbl-walk-pad .sqbl-walk-turn,.sqbl-walk-pad .sqbl-walk-remove{width:60px;height:60px}.sqbl-walk-stick{width:120px;height:120px}}
 .sqbl-app.is-walking .sqbl-cam,.sqbl-app.is-walking .sqbl-bubble,.sqbl-app.is-walking .sqbl-mode-toggle,.sqbl-app.is-walking [data-action=home-view]{visibility:hidden}
+
+/* Ground tool (terrain painter 03): swatches, brush sizes and a ring label. Targets stay >= 56px; nothing needs hover. */
+.sqbl-ground{display:none;flex:1 1 auto;min-height:0;flex-direction:column;gap:10px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.sqbl-ground::-webkit-scrollbar{display:none}
+.sqbl-left-rail[data-view=ground] .sqbl-ground{display:flex}
+.sqbl-left-rail[data-view=ground] .sqbl-category-list,.sqbl-left-rail[data-view=ground] .sqbl-parts,.sqbl-left-rail[data-view=ground] .sqbl-colors,.sqbl-left-rail[data-view=ground] .sqbl-rail-collapse,.sqbl-left-rail[data-view=ground] .sqbl-rail-find,.sqbl-left-rail[data-view=ground] .sqbl-search,.sqbl-left-rail[data-view=ground] .sqbl-size{display:none}
+.sqbl-swatches{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.sqbl-swatch,.sqbl-brush{border:2px solid var(--sqbl-line);border-radius:14px;background:#fff;min-height:64px;padding:5px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;touch-action:manipulation}
+.sqbl-swatch i{width:28px;height:28px;border-radius:8px;border:2px solid rgba(30,50,70,.18)}
+.sqbl-swatch b,.sqbl-brush b,.sqbl-ground-done b{font-size:10.5px;line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.sqbl-swatch b small,.sqbl-brush b small,.sqbl-ground-done b small{display:block;font-size:10px;font-weight:700;color:var(--sqbl-muted)}
+.sqbl-swatch.is-active,.sqbl-brush.is-active{border-color:var(--sqbl-blue);outline:3px solid var(--sqbl-blue);outline-offset:-1px;background:#e9f2ff}
+.sqbl-brushes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.sqbl-brush-dot{display:block;border-radius:50%;background:var(--sqbl-ink,#27425f)}
+.sqbl-brush-S{width:8px;height:8px}.sqbl-brush-M{width:16px;height:16px}.sqbl-brush-L{width:26px;height:26px}
+.sqbl-brush{min-height:72px;justify-content:space-between}.sqbl-brush .sqbl-brush-dot{margin-top:6px}
+.sqbl-ground-done{flex:0 0 auto;min-height:56px;border:0;border-radius:16px;background:var(--sqbl-blue);color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;touch-action:manipulation}
+.sqbl-ground-done b{white-space:normal;text-align:left}.sqbl-ground-done b small{color:rgba(255,255,255,.85)}
+.sqbl-ground-tag{position:absolute;left:0;top:0;z-index:5;pointer-events:none;padding:6px 12px;border-radius:999px;background:rgba(20,40,60,.82);color:#fff;font-size:14px;font-weight:800;white-space:nowrap}
+.sqbl-ground-tag[hidden]{display:none}

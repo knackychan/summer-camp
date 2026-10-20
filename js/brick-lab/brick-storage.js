@@ -67,12 +67,15 @@ export class BrickLabStorage {
     /* walkView: behind or eyes, the last view this kid walked with (walk plan slice 04). */
     /* assembly: the last wall / floor / tower / bridge settings (assemblies plan A4), cleaned by the lab. */
     return { favorites: ids(saved.favorites), recents: ids(saved.recents), walkView: saved.walkView === "eyes" ? "eyes" : "behind",
-      assembly: saved.assembly && typeof saved.assembly === "object" ? saved.assembly : null };
+      assembly: saved.assembly && typeof saved.assembly === "object" ? saved.assembly : null,
+      groundTerrain: typeof saved.groundTerrain === "string" ? saved.groundTerrain : "", groundSize: typeof saved.groundSize === "string" ? saved.groundSize : "" };
   }
 
   savePrefs(prefs) {
     const payload = { favorites: prefs.favorites.slice(), recents: prefs.recents.slice(), walkView: prefs.walkView === "eyes" ? "eyes" : "behind" };
     if (prefs.assembly) payload.assembly = prefs.assembly;
+    if (prefs.groundTerrain) payload.groundTerrain = prefs.groundTerrain;
+    if (prefs.groundSize) payload.groundSize = prefs.groundSize;
     try { localStorage.setItem(this.prefsKey, JSON.stringify(payload)); } catch { return null; }
     return payload;
   }

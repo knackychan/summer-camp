@@ -127,7 +127,9 @@ export function createKidCamera({ camera, element, limits, view, reducedMotion =
   function begin() {
     const list = Array.from(pointers.values());
     samples = [];
-    if (list.length === 1) {
+    if (list.length === 1 && !api.oneFinger && list[0].button !== 2) {
+      gesture = null; /* a tool owns one finger (Ground painting) */
+    } else if (list.length === 1) {
       const p = list[0];
       gesture = { kind: p.button === 2 || saved ? "turn" : "slide", x0: p.x, y0: p.y, active: false, anchor: ground(p.x, p.y), lastX: p.x, yaw0: state.yaw };
     } else if (list.length >= 2) {
@@ -189,6 +191,8 @@ export function createKidCamera({ camera, element, limits, view, reducedMotion =
 
   const api = {
     enabled: true,
+    /* False while a tool owns one finger (Ground painting): two still drive the view. */
+    oneFinger: true,
 
     /* True when the touch sequence that just ended moved the view: the lift
        must not count as a tap. */

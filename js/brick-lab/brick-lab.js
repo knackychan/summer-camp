@@ -19,7 +19,7 @@ import { ASSEMBLY_KEYS, ASSEMBLY_PATTERNS, assemblyParts, blockRotation, buildAs
 import { JOINT_LABELS, REACT_SECONDS, SLIDE_UNIT, SWING_MS, cleanPose, isOpen, isSitting, isSwingPart, jointAngles, jointDef, jointKeys, posesFor, poseShape, reactAngles, samePose, seedOf, sitOffset, sitShift, stopsOf, swingAngles } from "./brick-pose.js";
 import { createLanSession } from "../game-services/lan-session.js";
 import { BrickTogether } from "./brick-together.js";
-import { PLAIN as PLAIN_GROUND, PLAIN_COLOR, cleanGround } from "./brick-ground.js";
+import { BRUSH, PLAIN as PLAIN_GROUND, PLAIN_COLOR, TERRAINS, applyCells, brushCells, cellAt, cleanGround, terrainOf } from "./brick-ground.js";
 import { createGroundView } from "./brick-ground-view.js";
 
 let THREE = null;
@@ -53,6 +53,16 @@ const HINTS = {
   placedBy: (name) => [`${name} put this one here.`, `這塊是 ${name} 放的。`],
   walk: ["Walk with the circle. Point the ＋ and press Place.", "用圓圈走路。把＋對準，再按「放上去」。"],
 };
+
+/* Ground tool (terrain painter 03): paint the plate cell by cell. */
+const GROUND = {
+  tool: ["Ground", "地面"],
+  hint: ["Drag one finger to paint the ground. Two fingers move the view.", "用一根手指拖著畫地面，兩根手指移動畫面。"],
+  size: { S: ["Small", "小"], M: ["Medium", "中"], L: ["Big", "大"] },
+  done: ["Done painting", "畫好了"],
+};
+const GROUND_SIZES = ["S", "M", "L"];
+const GROUND_RING_Y = 0.05;
 
 /* Assemblies: a wall, floor, tower or bridge in one go (docs/plans/2026-10-06-brick-lab-assemblies/). */
 const ASSEMBLY = {
@@ -1629,7 +1639,10 @@ export class BrickLabRuntime {
     this.sizeFilter = "";
     this.prefs = this.cleanPrefs(this.storage.loadPrefs());
     this.infoPartId = null;
-    this.railView = "categories"; /* slice 12: "categories" | "parts" */
+    this.railView = "categories"; /* slice 12: "categories" | "parts" | "ground" */
+    this.painting = null; /* terrain painter 03: { terrain, size } while the Ground panel is open */
+    this.stroke = null;
+    this.paintDown = new Set();
     this.studsPainted = false; /* slice 13/14: baseplate studs as a texture */
     this.perf = { level: 0, sum: 0, count: 0, last: 0 }; /* slice 14 step-down */
     this.finding = false; /* slice 12: search + size shown under the rail head */
@@ -1650,7 +1663,9 @@ export class BrickLabRuntime {
   cleanPrefs(prefs) {
     const known = (list, max) => Array.from(new Set(list)).filter((id) => PARTS.some((part) => part.id === id)).slice(0, max);
     return { favorites: known(prefs.favorites, PARTS.length), recents: known(prefs.recents, RECENT_MAX), walkView: prefs.walkView === "eyes" ? "eyes" : "behind",
-      assembly: cleanAssemblyPrefs(prefs.assembly) };
+      assembly: cleanAssemblyPrefs(prefs.assembly),
+      groundTerrain: TERRAINS.some((t) => t.id === prefs.groundTerrain) ? prefs.groundTerrain : "grass",
+      groundSize: GROUND_SIZES.includes(prefs.groundSize) ? prefs.groundSize : "M" };
   }
 
   async mount() {
@@ -1684,6 +1699,18 @@ export class BrickLabRuntime {
     const categoryButtons = RAIL_CATEGORIES.map((category) => `
       <button type="button" class="sqbl-category" data-category="${category.id}" aria-label="${escapeHtml(label(category.label))}">
         <span aria-hidden="true">${category.icon}</span><b>${pre ? "" : `${escapeHtml(category.label[0])}<small>${escapeHtml(category.label[1])}</small>`}</b>
+      </button>`).join("");
+    const groundButton = `
+      <button type="button" class="sqbl-category" data-ground-open aria-label="${escapeHtml(label(GROUND.tool))}">
+        <span aria-hidden="true">🖌️</span><b>${pre ? "" : `${escapeHtml(GROUND.tool[0])}<small>${escapeHtml(GROUND.tool[1])}</small>`}</b>
+      </button>`;
+    const swatches = TERRAINS.slice(1).concat(TERRAINS[0]).map((t) => `
+      <button type="button" class="sqbl-swatch" data-terrain="${t.id}" aria-pressed="false" aria-label="${escapeHtml(t.en + " " + t.zh)}">
+        <i style="background:#${t.color.toString(16).padStart(6, "0")}" aria-hidden="true"></i><b>${escapeHtml(t.en)}<small>${escapeHtml(t.zh)}</small></b>
+      </button>`).join("");
+    const sizes = GROUND_SIZES.map((k) => `
+      <button type="button" class="sqbl-brush" data-brush="${k}" aria-pressed="false" aria-label="${escapeHtml(label(GROUND.size[k]))}">
+        <i class="sqbl-brush-dot sqbl-brush-${k}" aria-hidden="true"></i><b>${escapeHtml(GROUND.size[k][0])}<small>${escapeHtml(GROUND.size[k][1])}</small></b>
       </button>`).join("");
     const tool = (action, icon, pair, extra = "") => `
       <button type="button" data-action="${action}"${extra} aria-label="${escapeHtml(label(pair))}">
@@ -1720,7 +1747,12 @@ export class BrickLabRuntime {
               <option value="">${escapeHtml(label(TRAY.allSizes))}</option>
               ${Array.from(new Set(PARTS.map(partDims))).sort((a, b) => a.localeCompare(b, "en", { numeric: true })).map((dims) => `<option value="${dims}">${dims}</option>`).join("")}
             </select>`}
-            <div class="sqbl-category-list">${categoryButtons}</div>
+            <div class="sqbl-category-list">${categoryButtons.replace("</button>", "</button>" + groundButton)}</div>
+            <div class="sqbl-ground" data-ground-panel>
+              <div class="sqbl-swatches">${swatches}</div>
+              <div class="sqbl-brushes" role="group" aria-label="Brush 筆刷">${sizes}</div>
+              <button type="button" class="sqbl-ground-done" data-action="ground-done">✓ <b>${escapeHtml(GROUND.done[0])}<small>${escapeHtml(GROUND.done[1])}</small></b></button>
+            </div>
             <div class="sqbl-parts" data-parts></div>
             <div class="sqbl-colors" data-colors></div>
           </aside>
@@ -2171,6 +2203,7 @@ export class BrickLabRuntime {
       });
     });
 
+    this.bindGround();
     this.root.querySelector("[data-action=save]").addEventListener("pointerdown", () => this.saveNow(true));
     this.root.querySelector("[data-action=undo]").addEventListener("pointerdown", () => this.undo());
     this.root.querySelector("[data-action=home-view]").addEventListener("pointerdown", () => this.homeView());
@@ -2200,6 +2233,7 @@ export class BrickLabRuntime {
     });
     this.root.querySelector("[data-action=toggle-left]").addEventListener("pointerdown", () => this.leftRail.classList.toggle("is-collapsed"));
     this.root.querySelector("[data-action=parts-back]").addEventListener("pointerdown", () => {
+      if (this.painting) { this.stopPainting(); return; }
       this.setFilters("", "");
       this.setFinding(false);
       this.setRailView("categories");
@@ -2285,6 +2319,7 @@ export class BrickLabRuntime {
     canvas.addEventListener("pointerup", (event) => {
       if (this.onDragEnd(event, false)) { this.pointerDown = null; return; }
       if (this.drag) return; /* a second finger during a drag is not a tap */
+      if (this.painting) { this.pointerDown = null; return; } /* painting never taps */
       if (this.cam.moved()) { this.pointerDown = null; return; } /* a slide or a pinch is not a tap */
       if (!this.pointerDown) return;
       const dx = event.clientX - this.pointerDown.x;
@@ -2456,9 +2491,9 @@ export class BrickLabRuntime {
     if (!title) return;
     const searching = !!(this.query || this.sizeFilter);
     const count = this.trayCount || 0;
-    const name = this.railView !== "parts" ? TRAY.pieces : searching ? TRAY.results : (category && category.label) || TRAY.pieces;
+    const name = this.railView === "ground" ? GROUND.tool : this.railView !== "parts" ? TRAY.pieces : searching ? TRAY.results : (category && category.label) || TRAY.pieces;
     if (this.preReader) {
-      title.textContent = this.railView !== "parts" ? "🧱" : `${searching ? "🔍" : (category && category.icon) || "🧱"} ${count}`;
+      title.textContent = this.railView === "ground" ? "🖌️" : this.railView !== "parts" ? "🧱" : `${searching ? "🔍" : (category && category.icon) || "🧱"} ${count}`;
       return;
     }
     /* Two lines, "Bricks" / "積木 · 9", so the title fits between the head
@@ -3037,12 +3072,195 @@ export class BrickLabRuntime {
     return this.leaveWorld();
   }
 
+  /* ---------- terrain painter 03: the Ground tool ---------- */
+
+  bindGround() {
+    this.groundPanel = this.root.querySelector("[data-ground-panel]");
+    this.groundTag = document.createElement("div");
+    this.groundTag.className = "sqbl-ground-tag";
+    this.groundTag.hidden = true;
+    this.stage.parentElement.appendChild(this.groundTag);
+    this.root.querySelector("[data-ground-open]").addEventListener("click", () => this.startPainting());
+    this.root.querySelector("[data-action=ground-done]").addEventListener("pointerdown", () => this.stopPainting());
+    this.groundPanel.addEventListener("click", (event) => {
+      const swatch = event.target.closest("[data-terrain]");
+      const brush = event.target.closest("[data-brush]");
+      if (swatch) this.prefs.groundTerrain = swatch.dataset.terrain;
+      else if (brush) this.prefs.groundSize = brush.dataset.brush;
+      else return;
+      this.storage.savePrefs(this.prefs);
+      this.syncPainting();
+      this.haptic("tap");
+    });
+    /* Capture on the stage runs before the camera's own listener. */
+    this.stage.addEventListener("pointerdown", (event) => this.onPaintDown(event), true);
+    const canvas = this.renderer.domElement;
+    canvas.addEventListener("pointermove", (event) => this.onPaintMove(event));
+    canvas.addEventListener("pointerup", (event) => this.onPaintUp(event));
+    canvas.addEventListener("pointercancel", (event) => this.onPaintUp(event));
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.84, 1, 48),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = GROUND_RING_Y;
+    ring.renderOrder = 20;
+    ring.visible = false;
+    ring.raycast = () => {};
+    this.scene.add(ring);
+    this.groundRing = ring;
+  }
+
+  startPainting() {
+    if (this.mode !== "build") return;
+    this.leaveWalk();
+    this.leaveFocus();
+    this.selectPiece(null);
+    this.moveId = null;
+    this.snap = null;
+    this.placementArmed = false;
+    this.disarmAssembly();
+    this.ghost.visible = false;
+    this.hideInfo();
+    this.painting = { terrain: this.prefs.groundTerrain, size: this.prefs.groundSize };
+    this.cam.oneFinger = false; /* one finger paints, two move the camera */
+    this.setRailView("ground");
+    this.syncPainting();
+    this.setHint("🖌️", GROUND.hint);
+  }
+
+  syncPainting() {
+    if (!this.painting) return;
+    this.painting = { terrain: this.prefs.groundTerrain, size: this.prefs.groundSize };
+    this.root.querySelectorAll("[data-terrain]").forEach((b) => {
+      const on = b.dataset.terrain === this.painting.terrain;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+    this.root.querySelectorAll("[data-brush]").forEach((b) => {
+      const on = b.dataset.brush === this.painting.size;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+  }
+
+  stopPainting() {
+    if (this.stroke) this.cancelStroke();
+    this.paintDown.clear();
+    this.hideBrush();
+    if (this.cam) this.cam.oneFinger = true;
+    if (!this.painting) return;
+    this.painting = null;
+    if (this.railView === "ground") this.setRailView("categories");
+    this.setHint("🧱", HINTS.choose);
+  }
+
+  /* The cell under a pointer: the plate top is the plane y = 0. */
+  cellUnder(event) {
+    this.setRay(event);
+    if (!this.paintPlane) this.paintPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const point = this.raycaster.ray.intersectPlane(this.paintPlane, this.dragPoint);
+    return point ? cellAt(point.x, point.z) : -1;
+  }
+
+  showBrush(event, cell) {
+    if (cell < 0) { this.hideBrush(); return; }
+    const terrain = TERRAINS.find((x) => x.id === this.painting.terrain);
+    const r = BRUSH[this.painting.size] + 0.5;
+    this.groundRing.scale.set(r, r, 1);
+    this.groundRing.position.set((cell % 64) - 31.5, GROUND_RING_Y, Math.floor(cell / 64) - 31.5);
+    this.groundRing.visible = true;
+    const rect = this.stage.parentElement.getBoundingClientRect();
+    const tag = this.groundTag;
+    tag.textContent = `${terrain.en} · ${terrain.zh}`;
+    tag.hidden = false;
+    tag.style.transform = `translate3d(${(event.clientX - rect.left).toFixed(0)}px,${(event.clientY - rect.top - 76).toFixed(0)}px,0) translateX(-50%)`;
+    this.invalidate();
+  }
+
+  hideBrush() {
+    if (this.groundRing) this.groundRing.visible = false;
+    if (this.groundTag) this.groundTag.hidden = true;
+    this.invalidate();
+  }
+
+  onPaintDown(event) {
+    if (!this.painting || event.target !== this.renderer.domElement) return;
+    this.paintDown.add(event.pointerId);
+    if (this.paintDown.size > 1) { this.cancelStroke(); this.hideBrush(); return; } /* two fingers: camera */
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    this.stroke = { id: event.pointerId, before: this.groundView.cells, pending: this.groundView.cells, last: -1, raf: 0 };
+    this.paintAt(event);
+  }
+
+  onPaintMove(event) {
+    if (this.stroke && this.stroke.id === event.pointerId) this.paintAt(event);
+  }
+
+  onPaintUp(event) {
+    this.paintDown.delete(event.pointerId);
+    const stroke = this.stroke;
+    if (!stroke || stroke.id !== event.pointerId) return;
+    this.flushStroke();
+    this.stroke = null;
+    this.hideBrush();
+  }
+
+  paintAt(event) {
+    const stroke = this.stroke;
+    const cell = this.cellUnder(event);
+    this.showBrush(event, cell);
+    if (cell < 0) { stroke.last = -1; return; }
+    const letter = TERRAINS.find((x) => x.id === this.painting.terrain).letter;
+    /* Every cell between the last sample and this one (Bresenham), so a fast drag leaves no gaps. */
+    let x = stroke.last < 0 ? cell % 64 : stroke.last % 64;
+    let z = stroke.last < 0 ? Math.floor(cell / 64) : Math.floor(stroke.last / 64);
+    const x1 = cell % 64;
+    const z1 = Math.floor(cell / 64);
+    const dx = Math.abs(x1 - x);
+    const dz = -Math.abs(z1 - z);
+    const sx = x < x1 ? 1 : -1;
+    const sz = z < z1 ? 1 : -1;
+    let err = dx + dz;
+    const idx = new Set();
+    for (;;) {
+      brushCells(x, z, this.painting.size).forEach((i) => idx.add(i));
+      if (x === x1 && z === z1) break;
+      const e2 = 2 * err;
+      if (e2 >= dz) { err += dz; x += sx; }
+      if (e2 <= dx) { err += dx; z += sz; }
+    }
+    stroke.last = cell;
+    const next = applyCells(stroke.pending, Array.from(idx), letter);
+    if (!next.undo.idx.length) return;
+    stroke.pending = next.ground;
+    if (!stroke.raf) stroke.raf = requestAnimationFrame(() => { stroke.raf = 0; this.flushStroke(); });
+  }
+
+  /* One texture upload per animation frame. */
+  flushStroke() {
+    const stroke = this.stroke;
+    if (!stroke) return;
+    if (stroke.raf) { cancelAnimationFrame(stroke.raf); stroke.raf = 0; }
+    if (stroke.pending !== this.groundView.cells) this.setGround(stroke.pending);
+  }
+
+  /* A second finger landed: put the ground back as it was before the stroke. */
+  cancelStroke() {
+    const stroke = this.stroke;
+    if (!stroke) return;
+    if (stroke.raf) cancelAnimationFrame(stroke.raf);
+    this.stroke = null;
+    this.setGround(stroke.before);
+  }
+
   /* Terrain painter 02: draw a ground string (diffed, on-demand redraw). */
   setGround(next) {
     if (this.groundView) this.groundView.set(next);
   }
 
   clearPlate() {
+    this.stopPainting();
     this.setGround(PLAIN_GROUND);
     this.selectPiece(null);
     this.moveId = null;
@@ -4338,6 +4556,7 @@ export class BrickLabRuntime {
      rides on it hide; a stand-in walks for them, driven by brick-walk-view.js
      with the kid camera off. Nothing changes in the world until the walk ends. */
   enterWalk(id) {
+    this.stopPainting();
     const piece = id && this.pieces.get(id);
     if (!piece || this.walk || this.walkAsk || this.focus || this.mode !== "build" || !this.canWalk(piece)) return false;
     /* W12: in a hosted or joined world the host gives the figure, first come first served. */
@@ -4706,6 +4925,7 @@ export class BrickLabRuntime {
     if (this.mode === mode) return;
     this.leaveWalk();
     this.leaveFocus();
+    this.stopPainting();
     this.mode = mode;
     this.moveId = null;
     this.snap = null;
@@ -4908,6 +5128,7 @@ export class BrickLabRuntime {
       lan: this.lan.available,
       together: this.together.snapshot(),
       ground: this.groundView ? this.groundView.cells : null,
+      painting: this.painting ? { ...this.painting, stroke: !!this.stroke, ring: !!(this.groundRing && this.groundRing.visible) } : null,
       selectionColor: this.selectionHelper ? `#${this.selectionHelper.material.color.getHexString()}` : null,
       world: this.worldId,
       worlds: this.worlds.list().map((w) => ({ id: w.id, name: w.name, count: w.count, thumb: !!w.thumb })),
