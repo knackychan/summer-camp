@@ -185,3 +185,28 @@
 
 ## Build notes
 (Fill in as slices ship: date, commit, what was checked, deviations.)
+
+## Spike results (2026-10-20)
+Throwaway page outside the repo (scratchpad): the repo's own vendor builds — r185 on a `webgl2` context, r162 (`three-legacy`) on a forced `webgl` context — a 64×64 plate, 4096 instanced studs, 8 terrains in a test pattern, Lambert material, 1280×800 at pixel ratio 1, no antialias. Orbit bench: 240 frames, each `render()` followed by a 1-px `readPixels` so the frame is really finished (`gl.finish()` returns at once in Chromium and gave ~0 ms — don't use it to time). Browser: Playwright Chromium 149 headless; Chrome 138 is not installed on this machine (`.tmp/chrome138` gone), so `check-android8-ui.py` was not run. Two GPUs: RTX 4080 (D3D11) and SwiftShader (CPU, used as a slow fill-bound tablet stand-in; its absolute ms are not tablet ms, the ratios are what counts).
+
+**Risk 1 — instance colours (`setColorAt` / `instanceColor`) on 4096 studs: PASS on both paths.** Pixel probes on stud tops in six cells (four quadrants, two inner squares) read the expected terrain colour, identical on r185/WebGL2 and r162/WebGL1, `gl.getError()` 0, still 3 draw calls. Only console line on r162 is its usual "WebGL 1 support was deprecated" warning. Cost of the colour attribute itself is nil next to the stud geometry (studs: 0.30 ms RTX, ~54 ms SwiftShader on both paths — the stud mesh, not the colours, is what the cheap tier already drops). Slice 03 can go ahead as planned.
+
+**Risk 2 — cheap tier: terrain DataTexture + stud-shading overlay vs flat.** Average ms per frame while orbiting (p95 in brackets):
+
+| top face | draw calls | SwiftShader r185 | SwiftShader r162 | RTX r185 |
+|---|---|---|---|---|
+| today's painted studs (one green stud texture) | 1 | 5.0 (5.5) | 5.1 (5.7) | 0.18 |
+| flat: terrain DataTexture 64², NearestFilter | 2 | 5.6 (6.1) | 5.4 (6.1) | 0.18 |
+| terrain 64² + transparent stud overlay plane | 3 | 8.6 (9.0) | 8.5 (9.3) | 0.23 |
+| terrain 128² + overlay | 3 | 8.8 (10.0) | 8.5 (9.0) | 0.20 |
+
+The overlay adds ~+3.4 ms (~+60–70 %) on the fill-bound renderer: a second full-plate transparent pass. Flat costs ~+0.5 ms over today. 128² texels gives nothing over 64² (one texel per stud is enough; 128² only matters if cells ever get sub-stud detail).
+
+**Chosen for slice 02:** cheap / stepped-down tier = the **flat** terrain plane (64×64 `DataTexture`, `NearestFilter`, one texel per stud) — the plan's fallback. Studs stay readable on the full tier through the coloured instanced studs; the cheap tier is the tier that is already short of frames, so it should not pay a second transparent pass. Overlay rejected for now; revisit only if Papa wants studs on the cheap tier and a real tablet shows headroom.
+
+**Plan changes:**
+- Slice 02 step 3: drop the overlay option; ship flat and record it in Build notes.
+- Better than a second plane, if studs are wanted later on the cheap tier: one material — terrain `DataTexture` as `map` multiplied by the stud canvas texture via a small `onBeforeCompile` second sample (one pass, not two). Not measured; note only.
+- Texel row order: in the spike the `PlaneGeometry` (rotated −90° on X) showed the texture mirrored in z against the instanced studs. Slice 02 must write texel row `(BASE_HALF*2-1-z)` (or set `flipY`/UVs once) and its check must compare one asymmetric painted cell between plane and studs, not a symmetric pattern.
+- Set `colorSpace = SRGBColorSpace` on the terrain `DataTexture` (bytes written from sRGB palette hex) so flat and studded tiers show the same colour.
+- Still owed: a Chrome 138 run of `check-android8-ui.py` once slice 02 exists, and the frame check on a real slow tablet.
