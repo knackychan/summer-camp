@@ -2,6 +2,7 @@
    amended by the multiplayer plan's D8: a shared world is saved on the host's
    tablet only). Since the multiplayer plan's slice 01 a kid's builds live in
    brick-worlds.js; this file keeps the build shape and the tray prefs. */
+import { PLAIN } from "./brick-ground.js";
 export const BUILD_FORMAT = "summer-quest-brick-build";
 export const BUILD_VERSION = 1;
 const FORMAT = BUILD_FORMAT;
@@ -28,6 +29,8 @@ export function buildPayload(state) {
     grid: state.grid || 1,
     pieces: Array.isArray(state.pieces) ? state.pieces : [],
     assemblies: Array.isArray(state.assemblies) ? state.assemblies : [],
+    /* Painted ground (terrain-painter plan): additive, absent on a plain plate; the lab cleans it on load. */
+    ground: typeof state.ground === "string" && state.ground !== PLAIN ? state.ground : undefined,
   };
 }
 
