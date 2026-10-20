@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { COLORS, PARTS } from "../js/brick-lab/brick-catalog.js";
+import { PLAIN } from "../js/brick-lab/brick-ground.js";
 import { createSequencer, PROTO } from "../js/brick-lab/brick-share.js";
 import { BrickTogether } from "../js/brick-lab/brick-together.js";
 import { createLanSession, createLoopback, LINE_MAX } from "../js/game-services/lan-session.js";
 
-const rules = { part: (id) => PARTS.find((p) => p.id === id) || null, color: (id) => id in COLORS, half: 32 };
+const rules = { part: (id) => PARTS.find((p) => p.id === id) || null, color: (id) => id in COLORS, half: 32, ground: true };
 const brick = (id, x = 0.5, z = 0) => ({ id, partId: "brick_2x4", colorId: "red", x, y: 0.6, z, rotation: 0 });
 const flush = async (n = 6) => { for (let i = 0; i < n; i += 1) await new Promise((done) => setTimeout(done, 0)); };
 const plain = (world) => Array.from(world.values()).map((p) => ({ ...p })).sort((a, b) => a.id.localeCompare(b.id));
@@ -13,11 +14,11 @@ const plain = (world) => Array.from(world.values()).map((p) => ({ ...p })).sort(
 /* What BrickTogether needs from the lab, without DOM or Three. */
 function fakeLab(kid) {
   const lab = {
-    kidId: kid, pieces: new Map(), sequencer: null, events: [],
+    kidId: kid, pieces: new Map(), groundBox: { cells: PLAIN }, setGround() {}, sequencer: null, events: [],
     kidName: (k) => k, currentWorldName: () => "Castle 城堡",
     renderJoin() {}, renderCrew() {}, sharedChanged() {}, showOp() {}, afterRemoteOp() {}, updateUndoUI() {},
     crewToast: (k, joined) => lab.events.push(["crew", k, joined]),
-    loadShared(world) { lab.pieces.clear(); world.forEach((p) => lab.pieces.set(p.id, { ...p })); lab.events.push(["loaded", world.length]); },
+    loadShared(world) { lab.groundBox.cells = PLAIN; lab.pieces.clear(); world.forEach((p) => lab.pieces.set(p.id, { ...p })); lab.events.push(["loaded", world.length]); },
     ownChangeApplied: (op) => lab.events.push(["mine", op.type]),
     ownChangeRefused: (op, why) => lab.events.push(["refused", why]),
     sessionEnded: (reason, host) => lab.events.push(["ended", reason, host]),
@@ -41,7 +42,7 @@ async function family() {
   const wifi = createLoopback();
   const maya = fakeLab("maya");
   maya.pieces.set("a", { ...brick("a"), by: "maya" });
-  maya.sequencer = createSequencer({ world: maya.pieces, rules });
+  maya.sequencer = createSequencer({ world: maya.pieces, rules, ground: maya.groundBox });
   const host = new BrickTogether(maya, createLanSession(wifi.device()), "maya");
   await host.host("Castle 城堡");
   const guests = [];
@@ -264,6 +265,63 @@ test("a world too big for one line still reaches a guest who joins, and one whos
   await flush();
   assert.equal(maya.pieces.get("after").by, "tom");
   assert.deepEqual(plain(leo.lab.pieces), plain(maya.pieces));
+});
+
+/* ---------- painted ground (terrain-painter slice 05) ---------- */
+
+const stroke = (letter, ...idx) => ({ type: "ground", idx, to: letter.repeat(idx.length) });
+
+test("ground: a guest joining gets the host's painted ground", async () => {
+  const wifi = createLoopback();
+  const maya = fakeLab("maya");
+  maya.groundBox.cells = "g" + PLAIN.slice(1);
+  maya.sequencer = createSequencer({ world: maya.pieces, rules, ground: maya.groundBox });
+  const host = new BrickTogether(maya, createLanSession(wifi.device()), "maya");
+  await host.host("Castle 城堡");
+  const lab = fakeLab("leo");
+  const leo = new BrickTogether(lab, createLanSession(wifi.device()), "leo");
+  leo.startLooking();
+  await flush();
+  assert.ok(await leo.join(leo.joinable()[0]));
+  await flush();
+  assert.equal(lab.groundBox.cells, maya.groundBox.cells);
+});
+
+test("ground: strokes from either side show everywhere, last one wins, guest undo is their own", async () => {
+  const { maya, host, leo, lili } = await family();
+  hostChange(maya, host, stroke("g", 10, 11));
+  await flush();
+  assert.equal(leo.lab.groundBox.cells.slice(10, 12), "gg");
+  leo.together.request(stroke("w", 11, 12));
+  await flush();
+  for (const lab of [maya, leo.lab, lili.lab]) assert.equal(lab.groundBox.cells.slice(10, 13), "gww", "last seq wins on cell 11");
+  lili.together.request(stroke("l", 12));
+  await flush();
+  assert.equal(maya.groundBox.cells.slice(12, 13), "l");
+  /* Leo undoes his own stroke: his two cells go back to what they were before it (a later stroke on a shared cell loses, last one wins). */
+  leo.together.undoLast();
+  await flush();
+  for (const lab of [maya, leo.lab, lili.lab]) assert.equal(lab.groundBox.cells.slice(10, 13), "gg.", `undo ${lab.kidId}`);
+});
+
+test("ground: a walked figure does not block painting; a PROTO 7 peer is refused", async () => {
+  const { wifi, host } = await family();
+  assert.equal(host.claims.busy(stroke("g", 1), "lili"), null);
+  const old = createLanSession(wifi.device());
+  const got = [];
+  old.onMessage((_, m) => got.push(m));
+  const peer = await old.join({ host: Array.from(wifi.services.keys())[0], port: 1 });
+  old.send(peer, { t: "hello", proto: 7, kid: "lucien" });
+  await new Promise((done) => setTimeout(done, 300));
+  assert.deepEqual(got, [{ t: "refuse", why: "proto" }]);
+});
+
+test("ground: the worst-case welcome and stroke each fit one line", async () => {
+  const { maya, host } = await family();
+  maya.groundBox.cells = "w".repeat(4096);
+  host.welcome("tom").forEach((m) => assert.ok(JSON.stringify(m).length < LINE_MAX, m.t));
+  const all = { type: "ground", idx: Array.from({ length: 4096 }, (_, i) => i), to: "l".repeat(4096) };
+  assert.ok(JSON.stringify({ t: "apply", seq: 99999, by: "maya", req: "h0.123456789", op: all }).length < LINE_MAX);
 });
 
 /* ---------- walking a minifig together (docs/plans/2026-10-06-brick-lab-walk/ W12, W13) ---------- */

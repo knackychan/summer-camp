@@ -11,7 +11,7 @@
    Messages (one JSON object per line):
      guest → host  hello {proto, cat, kid} · req {id, op} · resync · bye
                    walk-claim {id, ids} · walk-pos {id, x, y, z, yaw, view, moving} · walk-release {id}
-     host → guest  welcome {world, seq, roster, name, host, more, walkers} · world {pieces} · refuse {why}
+     host → guest  welcome {world, ground, seq, roster, name, host, more, walkers} · world {pieces} · refuse {why}
                    apply {seq, by, req, op} · reject {req, why} · peers {roster} · bye
                    walkers {list} · walk-grant {id, ok} · walk-pos {…, kid}
    Walking (docs/plans/2026-10-06-brick-lab-walk/ W12, W13): the host keeps
@@ -19,6 +19,7 @@
    changes but the walker's. Positions are relayed, never numbered or saved.
    A line is at most 64 KB, so a big world comes as a welcome plus `more`
    world lines, sent back to back; the guest loads it once they are all in. */
+import { cleanGround } from "./brick-ground.js";
 import { PROTO, cleanWalk, createClaims, createClient, createUndo } from "./brick-share.js";
 import { CATALOG_ID } from "./brick-catalog.js";
 import { LINE_MAX } from "../game-services/lan-session.js";
@@ -149,7 +150,7 @@ export class BrickTogether {
   welcome(joining) {
     const roster = this.roster.slice();
     if (joining && !roster.includes(joining)) roster.push(joining);
-    const budget = LINE_MAX - 4096; /* room for the welcome's other fields */
+    const budget = LINE_MAX - 8192; /* room for the welcome's other fields and the 4096-letter ground */
     const chunks = [[]];
     let size = 0;
     for (const piece of this.lab.pieces.values()) {
@@ -161,6 +162,7 @@ export class BrickTogether {
     const head = {
       t: "welcome",
       world: chunks[0],
+      ground: this.lab.groundBox.cells,
       seq: this.lab.sequencer.seq,
       roster,
       name: this.lab.currentWorldName(),
@@ -373,7 +375,10 @@ export class BrickTogether {
     this.roster = Array.isArray(message.roster) ? message.roster.filter((k) => typeof k === "string") : [];
     this.pending.clear();
     this.lab.loadShared(world);
-    this.client = createClient({ world: this.lab.pieces, seq: Number(message.seq) || 0 });
+    /* Guests keep no copy: the box is never saved (worldId is null). */
+    this.lab.groundBox.cells = cleanGround(message.ground);
+    this.lab.setGround(this.lab.groundBox.cells);
+    this.client = createClient({ world: this.lab.pieces, seq: Number(message.seq) || 0, ground: this.lab.groundBox });
     this.claims.set(message.walkers);
     this.tell("walkersChanged");
     this.lab.renderCrew();

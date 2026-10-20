@@ -206,8 +206,8 @@ test("a removed posed piece comes back posed; expect sees a pose change", () => 
   assert.equal(checkOp({ type: "move", id: "f", x: 2, y: 2.025, z: 0.5, rotation: 0, expect: { ...before, pose: JSON.stringify({ p: "wave" }) } }, world, rules), "changed");
 });
 
-test("PROTO is 7: a piece's assembly group is new on the wire", () => {
-  assert.equal(PROTO, 7);
+test("PROTO is 8: painted ground is new on the wire", () => {
+  assert.equal(PROTO, 8);
 });
 
 /* Assemblies plan slice 02 (A6): a wall is one atomic batch of adds. */

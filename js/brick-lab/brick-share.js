@@ -27,7 +27,7 @@
      { t: "walk-pos", id, x, y, z, yaw, view, moving }
      { t: "walk-release", id } */
 
-export const PROTO = 7; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint · 4: poses (moving-parts M9) · 5: walking minifigs (brick-lab-walk W12) · 6: batch op (brick-lab-assemblies A6) · 7: a piece's assembly `group` */
+export const PROTO = 8; /* 2: a big world comes in several lines · 3: hello carries the catalog fingerprint · 4: poses (moving-parts M9) · 5: walking minifigs (brick-lab-walk W12) · 6: batch op (brick-lab-assemblies A6) · 7: a piece's assembly `group` · 8: painted ground (terrain-painter D8) */
 export const BATCH_MAX = 64;
 import { CELLS, PLAIN, TERRAINS } from "./brick-ground.js";
 const GROUND_LETTERS = new Set(TERRAINS.map((t) => t.letter));
@@ -303,6 +303,8 @@ export function createClaims() {
         }
         return null;
       }
+      /* Painted ground belongs to nobody: a walk never blocks it. */
+      if (op && op.type === "ground") return null;
       return op && op.type !== "add" ? api.busyFor(op.id, kid) : null;
     },
     get(id) { return claims.get(id) || null; },

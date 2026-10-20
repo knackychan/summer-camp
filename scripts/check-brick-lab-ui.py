@@ -82,12 +82,12 @@ WIFI = """async () => {
   const cat = await import('/js/brick-lab/brick-catalog.js');
   const wifi = lan.createLoopback();
   window.__sqLanTransport = wifi.device();
-  const rules = { part: (id) => cat.PARTS.find((p) => p.id === id) || null, color: (id) => id in cat.COLORS, half: 32 };
+  const rules = { part: (id) => cat.PARTS.find((p) => p.id === id) || null, color: (id) => id in cat.COLORS, half: 32, ground: true };
   /* A sibling tablet: what BrickTogether needs from a lab, nothing drawn. */
   const fake = (kid) => {
-    const lab = { kidId: kid, pieces: new Map(), sequencer: null, events: [], kidName: (k) => k, currentWorldName: () => 'Treehouse',
+    const lab = { kidId: kid, pieces: new Map(), groundBox: { cells: '.'.repeat(4096) }, setGround() {}, sequencer: null, events: [], kidName: (k) => k, currentWorldName: () => 'Treehouse',
       renderJoin() {}, renderCrew() {}, sharedChanged() {}, showOp() {}, afterRemoteOp() {}, updateUndoUI() {},
-      crewToast: (k, j) => lab.events.push(['crew', k, j]), loadShared(w) { lab.pieces.clear(); w.forEach((p) => lab.pieces.set(p.id, { ...p })); },
+      crewToast: (k, j) => lab.events.push(['crew', k, j]), loadShared(w) { lab.groundBox.cells = '.'.repeat(4096); lab.pieces.clear(); w.forEach((p) => lab.pieces.set(p.id, { ...p })); },
       ownChangeApplied: (op) => lab.events.push(['mine', op.type]), ownChangeRefused: (op, why) => lab.events.push(['refused', why]),
       sessionEnded: (r) => lab.events.push(['ended', r]) };
     lab.device = wifi.device();
@@ -1307,6 +1307,11 @@ def lab_together(browser, base, report, console, check, out):
     pg.wait_for_timeout(150)
     lili_brick = next((p for p in snap()['pieces'] if p['id'] == 'lili-1'), None)
     check("Lili's brick lands here, marked as hers", lili_brick is not None and lili_brick.get('by') == 'lili')
+    # Terrain painter 05: Lili's ground stroke reaches this host tablet.
+    sib("""S.lili.together.request({ type: 'ground', idx: [100, 101], to: 'ww' });
+        await new Promise((r) => setTimeout(r, 80)); return true;""")
+    pg.wait_for_timeout(150)
+    check("Lili's painted ground shows here", snap()['ground'][100:102] == 'ww')
     pg.mouse.click(lili_brick['screen']['x'], lili_brick['screen']['y'])
     pg.wait_for_timeout(150)
     check("Tapping Lili's brick says she put it there; its outline is her colour, the brick keeps its own",
@@ -1379,7 +1384,7 @@ def lab_together(browser, base, report, console, check, out):
     # Guest: Lili opens her Treehouse; it shows in our Join list; we join and build in it.
     sib("""const lab = S.lili; lab.together.stopLooking();
         lab.pieces.clear(); lab.pieces.set('t1', { id: 't1', partId: 'plate_2x2', colorId: 'green', x: 1, y: 0.2, z: 1, rotation: 0, by: 'lili' });
-        lab.sequencer = S.share.createSequencer({ world: lab.pieces, rules: S.rules });
+        lab.sequencer = S.share.createSequencer({ world: lab.pieces, rules: S.rules, ground: lab.groundBox });
         await lab.together.host('Treehouse'); return true;""")
     pg.wait_for_selector('.sqbl-join-card')
     check("Lili's open world shows in Join with her name and colour", 'Lili' in pg.locator('.sqbl-join-card').inner_text()
@@ -1400,6 +1405,10 @@ def lab_together(browser, base, report, console, check, out):
     check("Our brick goes to Lili's tablet, comes back numbered, and is selected", len(added) == 1 and added[0].get('by') == 'luis'
           and s['selectedId'] == added[0]['id'] and sib(f"return S.lili.pieces.get('{added[0]['id']}').by") == 'luis')
     pg.screenshot(path=str(out / 'together-guest.png'))
+    # Terrain painter 05: Lili (host) paints; our guest tablet shows it and keeps no copy.
+    sib("const t = S.lili.together; t.applied(S.lili.sequencer.submit('lili', { id: 'g1', op: { type: 'ground', idx: [7], to: 'l' } })); await new Promise((r) => setTimeout(r, 80)); return true;")
+    pg.wait_for_timeout(150)
+    check("The host's painted ground shows on the guest tablet", snap()['ground'][7] == 'l')
 
     # Slice 06: Lili's tablet drops off the wifi; this one waits calmly, then rejoins when she is back.
     sib("S.lili.device.drop(); await new Promise((r) => setTimeout(r, 60)); return true;")
